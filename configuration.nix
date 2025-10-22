@@ -12,7 +12,9 @@
       # Include the results of the hardware scan.
       ./hardware-configuration.nix
       ./mounts.nix
+      ./fonts.nix
     ];
+
 
   # ====================================================================
   #  BOOT AND SYSTEM CONFIGURATION
@@ -52,7 +54,7 @@
   # SERVICES AND HARDWARE
   # ====================================================================
 
-  # --- Graphics/Display ---
+  #---Graphics/Display ---
   services.xserver.enable = true; 
   services.xserver.xkb = {
     layout = "us";
@@ -60,7 +62,8 @@
   };
   hardware.graphics.enable = true;
   hardware.graphics.enable32Bit = true;
-  
+  #--- Display Manager
+  services.displayManager.ly.enable = true;  
   # --- Audio: PipeWire (Full Setup) ---
   services.pipewire = {
     enable = true;
@@ -72,7 +75,8 @@
 
   # --- Wayland/App Compatibility ---
   services.dbus.enable = true;
-  
+services.gnome.gnome-keyring.enable = true;
+security.pam.services.ly.enableGnomeKeyring = true;
   # --- XDG Portal Configuration ---
   xdg.portal = {
     enable = true;
@@ -130,13 +134,15 @@
     GTK_THEME="Moon-Burst-Theme";
     GDK_BACKEND = "wayland,x11"; 
   };
-  
+programs.browserpass.enable = true;
   
   # ====================================================================
   # ENVIRONMENT AND PACKAGES
   # ====================================================================
   nixpkgs.config.allowUnfree = true;
-
+nix.extraOptions = ''
+    experimental-features = nix-command flakes
+  '';
   environment.systemPackages = with pkgs; [
     # --- System Utilities/Shell ---
     zsh
@@ -146,6 +152,8 @@
     s-tui
     nano
     git
+    github-cli
+    gnupg
     jq
     bc
     rsync
@@ -154,6 +162,8 @@
     gawk
     ripgrep
     dict    
+    libsecret
+
     
     # --- Btrfs Tools ---
     btrfs-progs
@@ -178,6 +188,7 @@
     dunst
     swaylock 
     swayidle
+
     # --- Display Manager ---
     ly 
     
@@ -186,7 +197,7 @@
     lxqt.pavucontrol-qt 
     bluez-tools 
     
-   
+    qt5.qtwayland   
     libsForQt5.qt5ct
     qt6ct
     
@@ -203,21 +214,7 @@
     sox
     geany
     sherlock-launcher
-    
-    # --- Fonts ---
-      fira-sans
-      font-awesome
-      roboto
-      nerd-fonts._0xproto
-      nerd-fonts.droid-sans-mono
-      nerd-fonts.jetbrains-mono
-      jetbrains-mono
-      noto-fonts
-      noto-fonts-emoji
-      noto-fonts-cjk-sans
-      noto-fonts-cjk-serif
-      material-symbols
-      material-icons
+
 
   ];
 }
