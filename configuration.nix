@@ -135,7 +135,12 @@
     GDK_BACKEND = "wayland,x11"; 
   };
 programs.browserpass.enable = true;
-  
+programs.gamescope.capSysNice = true;
+programs.gamemode.enable = true;  
+
+hardware.steam-hardware.enable =true;
+programs.steam.enable = true;
+programs.steam.dedicatedServer.openFirewall = true;
   # ====================================================================
   # ENVIRONMENT AND PACKAGES
   # ====================================================================
@@ -162,15 +167,14 @@ nix.extraOptions = ''
     ripgrep
     dict    
     libsecret
-
+    rocmPackages.rocm-smi 
     
     # --- Btrfs Tools ---
     btrfs-progs
     
     # --- Gaming/GPU/Emulation ---
-    steam
     gamescope
-    rocmPackages.rocm-smi 
+
     mesa
     protonup-qt 
     linux-firmware
@@ -181,13 +185,12 @@ nix.extraOptions = ''
     slurp
     wl-clipboard
     satty
-#    xwayland
     wtype
     playerctl 
     dunst
     swaylock 
     swayidle
-mangohud
+    mangohud
     
     # --- Desktop/Theming ---
     nemo
