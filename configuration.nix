@@ -73,9 +73,9 @@
   };
 
   # --- Wayland/App Compatibility ---
-  services.dbus.enable = true;
-services.gnome.gnome-keyring.enable = true;
-security.pam.services.ly.enableGnomeKeyring = true;
+    services.dbus.enable = true;
+    services.gnome.gnome-keyring.enable = true;
+    security.pam.services.ly.enableGnomeKeyring = true;
   # --- XDG Portal Configuration ---
   xdg.portal = {
     enable = true;
@@ -103,8 +103,9 @@ security.pam.services.ly.enableGnomeKeyring = true;
       "input"
       "render" 
     ];
+    
     shell = pkgs.zsh;
-    packages = with pkgs; [];
+#    packages = with pkgs; [];
   };
 
   # ====================================================================
@@ -119,7 +120,7 @@ security.pam.services.ly.enableGnomeKeyring = true;
 
   # Zsh configuration
   programs.zsh.enable = true;
-  environment.shells = with pkgs; [ zsh ];
+ # environment.shells = with pkgs; [ zsh ];
 
   # GnuPG / SSH Agent
   programs.gnupg.agent = {
@@ -144,7 +145,6 @@ nix.extraOptions = ''
   '';
   environment.systemPackages = with pkgs; [
     # --- System Utilities/Shell ---
-    zsh
     kitty
     fastfetch
     lm_sensors
@@ -181,15 +181,13 @@ nix.extraOptions = ''
     slurp
     wl-clipboard
     satty
-    xwayland
+#    xwayland
     wtype
     playerctl 
     dunst
     swaylock 
     swayidle
-
-    # --- Display Manager ---
-    ly 
+mangohud
     
     # --- Desktop/Theming ---
     nemo
