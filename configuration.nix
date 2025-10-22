@@ -133,6 +133,7 @@
     QT_QPA_PLATFORMTHEME = "qt5ct"; 
     GTK_THEME="Moon-Burst-Theme";
     GDK_BACKEND = "wayland,x11"; 
+    XDG_RUNTIME_DIR = "/run/user/$UID";
   };
 programs.browserpass.enable = true;
 programs.gamescope.capSysNice = true;
