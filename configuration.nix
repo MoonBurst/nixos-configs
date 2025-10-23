@@ -22,10 +22,11 @@
   # Bootloader (systemd-boot)
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
-
   # --- AMDGPU/ROCm Kernel Parameters ---
   boot.kernelParams = [
     "amdgpu.vm_fragment_size=9"
+    "fbcon=rotate:2"
+    "amdgpu.ppfeaturemask=0xffffffff"
     "cma=512M"
   ];
   boot.initrd.kernelModules = [ 
@@ -61,6 +62,7 @@
   };
   hardware.graphics.enable = true;
   hardware.graphics.enable32Bit = true;
+
   #--- Display Manager
   services.displayManager.ly.enable = true;  
   # --- Audio: PipeWire (Full Setup) ---
@@ -83,12 +85,20 @@
     extraPortals = [ pkgs.xdg-desktop-portal-gtk ]; 
   };
   
-  # --- AppImage Support ---
-  programs.appimage = {
-    enable = true;
-    binfmt = true;
-  };
 
+security.polkit.enable = true;
+programs.corectrl.enable = true;
+security.polkit.extraConfig = ''
+  polkit.addRule(function(action, subject) {
+    if ((action.id == "org.corectrl.helper.init" || 
+         action.id == "org.corectrl.helperkiller.init") && 
+        subject.local == true && 
+        subject.active == true && 
+        subject.isInGroup("wheel")) {
+      return polkit.Result.YES;
+    }
+  });
+'';
   # ====================================================================
   # USER CONFIGURATION
   # ====================================================================
@@ -105,7 +115,6 @@
     ];
     
     shell = pkgs.zsh;
-#    packages = with pkgs; [];
   };
 
   # ====================================================================
@@ -120,7 +129,6 @@
 
   # Zsh configuration
   programs.zsh.enable = true;
- # environment.shells = with pkgs; [ zsh ];
 
   # GnuPG / SSH Agent
   programs.gnupg.agent = {
@@ -133,27 +141,54 @@
     QT_QPA_PLATFORMTHEME = "qt5ct"; 
     GTK_THEME="Moon-Burst-Theme";
     GDK_BACKEND = "wayland,x11"; 
-    XDG_RUNTIME_DIR = "/run/user/$UID";
   };
+
 programs.browserpass.enable = true;
 programs.gamescope.capSysNice = true;
 programs.gamemode.enable = true;  
 
-hardware.steam-hardware.enable =true;
+hardware.steam-hardware.enable = true;
 programs.steam.enable = true;
 programs.steam.dedicatedServer.openFirewall = true;
+
+  # ====================================================================
+  # APPIMAGE STUFF
+  # ====================================================================
+  programs.appimage = {
+    enable = true;
+    binfmt = true; 
+    package = pkgs.appimage-run.override {
+      extraPkgs = p: [
+        p.xorg.libxshmfence
+   
+        # p.libxshmfence32
+        
+      ];
+    };
+  };
+  
+  # ====================================================================
+  # NIX-LD
+  # ====================================================================
+    programs.nix-ld.enable = true;
+    programs.nix-ld.libraries = with pkgs; [
+    # Add any missing dynamic libraries for unpackaged programs
+    # here, NOT in environment.systemPackages
+  ];
+  
   # ====================================================================
   # ENVIRONMENT AND PACKAGES
   # ====================================================================
   nixpkgs.config.allowUnfree = true;
-nix.extraOptions = ''
+	nix.extraOptions = ''
     experimental-features = nix-command flakes
   '';
-  environment.systemPackages = with pkgs; [
+  
+    environment.systemPackages = with pkgs; [
     # --- System Utilities/Shell ---
     kitty
     fastfetch
-    lm_sensors
+    #lm_sensors
     s-tui
     nano
     git
@@ -169,13 +204,12 @@ nix.extraOptions = ''
     dict    
     libsecret
     rocmPackages.rocm-smi 
-    
+	corectrl
+	lxqt.lxqt-policykit
     # --- Btrfs Tools ---
     btrfs-progs
-    
     # --- Gaming/GPU/Emulation ---
     gamescope
-
     mesa
     protonup-qt 
     linux-firmware
@@ -199,7 +233,7 @@ nix.extraOptions = ''
     bluez-tools 
     
     qt5.qtwayland   
-    libsForQt5.qt5ct
+    #libsForQt5.qt5ct
     qt6ct
     
     # --- Applications/Communication ---
@@ -216,6 +250,6 @@ nix.extraOptions = ''
     geany
     sherlock-launcher
 
-
   ];
+  
 }
