@@ -88,17 +88,6 @@
 
 security.polkit.enable = true;
 programs.corectrl.enable = true;
-#security.polkit.extraConfig = ''
-#  polkit.addRule(function(action, subject) {
-#    if ((action.id == "org.corectrl.helper.init" || 
-#         action.id == "org.corectrl.helperkiller.init") && 
-#        subject.local == true && 
-#        subject.active == true && 
-#        subject.isInGroup("wheel")) {
-#      return polkit.Result.YES;
-#    }
-#  });
-#'';
   # ====================================================================
   # USER CONFIGURATION
   # ====================================================================
@@ -189,7 +178,6 @@ programs.steam.dedicatedServer.openFirewall = true;
     # --- System Utilities/Shell ---
     kitty
     fastfetch
-    #lm_sensors
     s-tui
     nano
     git
@@ -207,13 +195,14 @@ programs.steam.dedicatedServer.openFirewall = true;
     rocmPackages.rocm-smi 
 	corectrl
 	lxqt.lxqt-policykit
+    linux-firmware
     # --- Btrfs Tools ---
     btrfs-progs
     # --- Gaming/GPU/Emulation ---
     gamescope
     mesa
     protonup-qt 
-    linux-firmware
+ 
     
     # --- Wayland Utilities ---
     waybar
