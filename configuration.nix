@@ -196,6 +196,7 @@ programs.steam.dedicatedServer.openFirewall = true;
 	corectrl
 	lxqt.lxqt-policykit
     linux-firmware
+
     # --- Btrfs Tools ---
     btrfs-progs
     # --- Gaming/GPU/Emulation ---
@@ -239,6 +240,7 @@ programs.steam.dedicatedServer.openFirewall = true;
     sox
     geany
     sherlock-launcher
+    cliphist
 
   ];
   
