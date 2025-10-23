@@ -3,6 +3,17 @@
 { config, pkgs, lib, ... }:
 
 # The entire configuration body MUST be wrapped in one attribute set { ... }
+
+
+
+#add imports for packages here===================
+let
+  my-packages = import /etc/nixos/default.nix { inherit pkgs; };
+in
+
+#=====================================
+
+
 {
   # ====================================================================
   #  MODULE IMPORTS
@@ -14,6 +25,18 @@
       ./mounts.nix
       ./fonts.nix
     ];
+
+
+
+
+  nixpkgs.overlays = [
+    (self: super: {
+      fchat-horizon = my-packages;
+    })
+  ];
+
+
+
 
   # ====================================================================
   #  BOOT AND SYSTEM CONFIGURATION
@@ -223,7 +246,6 @@ services.cron = {
 	corectrl
 	lxqt.lxqt-policykit
     linux-firmware
-    xwayland
 
 
     # --- Btrfs Tools ---
@@ -252,9 +274,7 @@ services.cron = {
     nemo
     lxqt.pavucontrol-qt 
     bluez-tools 
-    
     qt5.qtwayland   
-    #libsForQt5.qt5ct
     qt6ct
     
     # --- Applications/Communication ---
@@ -271,8 +291,12 @@ services.cron = {
     geany
     sherlock-launcher
     cliphist
+    
+    
+    
+    
+      fchat-horizon
 
   ];
-  
 }
 
