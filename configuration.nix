@@ -31,6 +31,7 @@ in
   nixpkgs.overlays = [
     (self: super: {
       fchat-horizon = my-packages;
+      moon-burst-theme = super.callPackage ./moonburst-theme.nix {};
     })
   ];
 
@@ -316,7 +317,7 @@ services.cron = {
     
     
       fchat-horizon
-
+  moon-burst-theme
   ];
 }
 
