@@ -90,6 +90,29 @@ nixpkgs.overlays = [
   programs.corectrl.enable = true;
   security.polkit.enable = true;
  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ security.polkit.debug = true;
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
   #--- Display Manager
   services.displayManager.ly.enable = true;  
   # --- Audio: PipeWire (Full Setup) ---
