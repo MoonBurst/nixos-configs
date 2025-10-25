@@ -23,19 +23,22 @@ in
       # Include the results of the hardware scan.
       ./hardware-configuration.nix
       ./mounts.nix
+      
     ];
 
 
 
 
-  nixpkgs.overlays = [
+nixpkgs.overlays = [
     (self: super: {
-      fchat-horizon = my-packages;
-      moon-burst-theme = super.callPackage ./moonburst-theme.nix {};
+      # Use the packages from the my-packages set
+      fchat-horizon = my-packages.fchat-horizon; 
+      
+    
+	moon-burst-theme = super.callPackage ./moonburst-theme.nix {};
+      
     })
   ];
-
-
 
 
   # ====================================================================
@@ -209,8 +212,7 @@ services.cron = {
   # ====================================================================
     programs.nix-ld.enable = true;
     programs.nix-ld.libraries = with pkgs; [
-    # Add any missing dynamic libraries for unpackaged programs
-    # here, NOT in environment.systemPackages
+ 
   ];
   
   # ====================================================================
@@ -267,7 +269,7 @@ services.cron = {
 	corectrl
 	lxqt.lxqt-policykit
     linux-firmware
-
+	nix-prefetch-github
 
     # --- Btrfs Tools ---
     btrfs-progs
@@ -317,7 +319,7 @@ services.cron = {
     
     
       fchat-horizon
-  moon-burst-theme
+	  moon-burst-theme
   ];
 }
 
