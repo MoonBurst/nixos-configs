@@ -267,7 +267,7 @@ services.cron = {
     libsecret
     rocmPackages.rocm-smi 
 	corectrl
-	lxqt.lxqt-policykit
+	kdePackages.polkit-kde-agent-1
     linux-firmware
 	nix-prefetch-github
 
