@@ -33,8 +33,6 @@ nixpkgs.overlays = [
     (self: super: {
       # Use the packages from the my-packages set
       fchat-horizon = my-packages.fchat-horizon; 
-      
-    
 	moon-burst-theme = super.callPackage ./moonburst-theme.nix {};
       
     })
@@ -89,32 +87,14 @@ nixpkgs.overlays = [
   hardware.graphics.enable32Bit = true;
   programs.corectrl.enable = true;
   security.polkit.enable = true;
- 
- 
- 
- 
- 
- 
- 
- 
- 
- security.polkit.debug = true;
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
+  services.dbus.enable = true;
+  services.gnome.gnome-keyring.enable = true;
+  security.pam.services.sway.enableGnomeKeyring = true;
  
  
   #--- Display Manager
   services.displayManager.ly.enable = true;  
+ 
   # --- Audio: PipeWire (Full Setup) ---
   services.pipewire = {
     enable = true;
@@ -125,9 +105,8 @@ nixpkgs.overlays = [
   };
 
   # --- Wayland/App Compatibility ---
-    services.dbus.enable = true;
-    services.gnome.gnome-keyring.enable = true;
-    security.pam.services.ly.enableGnomeKeyring = true;
+
+ 
   # --- XDG Portal Configuration ---
   xdg.portal = {
     enable = true;
@@ -180,7 +159,8 @@ nixpkgs.overlays = [
     GTK_THEME="Moon-Burst-Theme";
     GDK_BACKEND = "wayland,x11"; 
   };
-
+services.hardware.openrgb.enable = true;
+hardware.i2c.enable = true;
 
 programs.browserpass.enable = true;
 programs.gamescope.capSysNice = true;
@@ -189,6 +169,7 @@ programs.gamemode.enable = true;
 hardware.steam-hardware.enable = true;
 programs.steam.enable = true;
 programs.steam.dedicatedServer.openFirewall = true;
+
   # ====================================================================
   # CRON
   # ====================================================================  
@@ -301,8 +282,8 @@ services.cron = {
     mesa
     protonup-qt 
     obs-studio
-    obs-studio-plugins.wlrobs
     obs-cli
+    
     # --- Wayland Utilities ---
     waybar
     grim
@@ -322,7 +303,9 @@ services.cron = {
     bluez-tools 
     qt5.qtwayland   
     qt6ct
-    
+    openrgb-with-all-plugins
+	
+	
     # --- Applications/Communication ---
     audacious 
     vivaldi
