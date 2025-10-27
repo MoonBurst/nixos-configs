@@ -6,8 +6,8 @@
 
   imports = [
     # System-level modules
-    ../../modules/desktop-hardware.nix
-    ../../modules/desktop-kernel.nix
+    #../../modules/desktop-hardware.nix
+    #../../modules/desktop-kernel.nix
     ../../modules/common/default.nix # Imports the base user definition and packages
   ];
   # ====================================================================
