@@ -20,16 +20,13 @@
 #      
 #    })
 #  ];
-  
   # ====================================================================
   # NETWORKING
   # ====================================================================
   networking.hostName = "moonbeauty";
-  
   # ====================================================================
   # SERVICES AND HARDWARE
   # ====================================================================
-  
   #OPENRGB STUFF
   services.hardware.openrgb.enable = true;
   hardware.i2c.enable = true;
@@ -39,11 +36,9 @@
   hardware.steam-hardware.enable = true;
   programs.steam.enable = true;
   programs.steam.dedicatedServer.openFirewall = true;
-
   # ====================================================================
   # CRON
   # ====================================================================  
-  
 services.cron = {
   enable = false;
   systemCronJobs = [
@@ -63,21 +58,14 @@ services.cron = {
 		"*/30 * * * * ~/scripts/cron_scripts/wallpaper.sh  >/dev/null 2>&1"
   ];
 };
-
-
-  
   # ====================================================================
   # ENVIRONMENT AND PACKAGES
   # ====================================================================
-
-  
     environment.systemPackages = with pkgs; [
     # --- System Utilities/Shell ---
     cron
-    
     rocmPackages.rocm-smi 
 	corectrl
-
     # --- Btrfs Tools ---
     # --- Gaming/GPU/Emulation ---
     gamescope
@@ -86,21 +74,11 @@ services.cron = {
     obs-studio
     obs-cli
     mangohud
-    
     # --- Wayland Utilities ---
-    
     # --- Desktop/Theming ---
-   
     openrgb-with-all-plugins
-	
-	
     # --- Applications/Communication ---
-     
-    
     # --- Other Tools ---
-    
-
-      
   ];
 }
 

@@ -26,9 +26,6 @@ in
       
     ];
 
-
-
-
 nixpkgs.overlays = [
     (self: super: {
       # Use the packages from the my-packages set

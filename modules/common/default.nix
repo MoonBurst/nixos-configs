@@ -62,8 +62,6 @@ in
   }; 
 
   # --- Wayland/App Compatibility ---
-
-  
   # --- XDG Portal Configuration ---
   xdg.portal = {
     enable = true;
