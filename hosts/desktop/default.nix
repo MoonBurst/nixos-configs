@@ -10,6 +10,7 @@
   imports = [
     ../../modules/desktop-hardware.nix 
     ../../modules/common/default.nix #Packages on both laptop and desktop
+    ./mounts.nix
   ];
 
 #nixpkgs.overlays = [
