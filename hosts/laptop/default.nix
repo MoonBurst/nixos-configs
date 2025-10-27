@@ -26,7 +26,7 @@ boot.loader.efi.canTouchEfiVariables = true;
     { device = "/dev/disk/by-uuid/e82e50b3-9028-4549-887a-20f91058468c";
       fsType = "btrfs";
       # IMPORTANT: Your root uses a subvolume named "@"
-      options = [ "subvol=@" ];
+      options = [ "subvol=@" "noatime" "compress=zstd"];
     };
 
   fileSystems."/boot" =
