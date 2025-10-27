@@ -36,7 +36,7 @@
   # ====================================================================  
   
 services.cron = {
-  enable = true;
+  enable = false;
   systemCronJobs = [
 		#backs up music
 		"0  12 * * * ~/scripts/cron_scripts/music-backup.sh >/dev/null 2>&1"
