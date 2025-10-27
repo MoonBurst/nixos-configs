@@ -72,4 +72,4 @@ services.cron = {
     mangohud
     openrgb-with-all-plugins
   ];
-}
+);
