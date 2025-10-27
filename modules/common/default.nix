@@ -1,18 +1,34 @@
 { config, pkgs, lib, ... }:
+let
 
+  my-packages = import ../../flake_programs/default.nix { inherit pkgs; }; 
+in
 {
+	
   # Set your time zone.
   time.timeZone = "America/Matamoros";
   # Select internationalisation properties.
   i18n.defaultLocale = "en_US.UTF-8";
   # This value determines the NixOS release.
-  system.stateVersion = "25.05"; # <--- SEMICOLON ADDED HERE
+  system.stateVersion = "25.05"; 
+  
+  #add imports for packages here===================
+
+
+  nixpkgs.overlays = [
+    (self: super: {
+      # Use the packages from the my-packages set
+      fchat-horizon = my-packages.fchat-horizon; 
+	moon-burst-theme = super.callPackage ./moonburst-theme.nix {};
+      
+    })
+  ];
   
   # ====================================================================
   # NETWORKING
   # ====================================================================
   networking.networkmanager.enable = true;
-  hardware.bluetooth.enable = true; # <--- SEMICOLON ADDED HERE
+  hardware.bluetooth.enable = true; 
   
   # ====================================================================
   # SERVICES AND HARDWARE
@@ -24,26 +40,26 @@
     layout = "us";
     variant = "";
   };
+  
   hardware.graphics.enable = true;
   hardware.graphics.enable32Bit = true;
   programs.corectrl.enable = true;
   security.polkit.enable = true;
   services.dbus.enable = true;
   services.gnome.gnome-keyring.enable = true;
-  security.pam.services.sway.enableGnomeKeyring = true; # <--- SEMICOLON ADDED HERE
-  
+  security.pam.services.sway.enableGnomeKeyring = true; 
+  programs.browserpass.enable = true;
   
   #--- Display Manager
-  services.displayManager.ly.enable = true; # <--- SEMICOLON ADDED HERE
-#services.getty.users.tty1 = "moonburst";
-#Audio: PipeWire (Full Setup) ---
+  services.displayManager.ly.enable = true; 
+  #Audio: PipeWire (Full Setup) ---
   services.pipewire = {
     enable = true;
     alsa.enable = true;
     alsa.support32Bit = true;
     pulse.enable = true;
     jack.enable = true;
-  }; # <--- SEMICOLON ADDED HERE
+  }; 
 
   # --- Wayland/App Compatibility ---
 
@@ -53,7 +69,7 @@
     enable = true;
     configPackages = [ pkgs.xdg-desktop-portal-wlr ]; 
     extraPortals = [ pkgs.xdg-desktop-portal-gtk ]; 
-  }; # <--- SEMICOLON ADDED HERE
+  }; 
   
   # ====================================================================
   # PROGRAMS, SHELLS, and THEME FIXES
@@ -63,26 +79,23 @@
   programs.sway = {
     enable = true;
     wrapperFeatures.gtk = true; 
-  }; # <--- SEMICOLON ADDED HERE
+  }; 
 
   # Zsh configuration
-  programs.zsh.enable = true; # <--- SEMICOLON ADDED HERE
+  programs.zsh.enable = true; 
 
   # GnuPG / SSH Agent
   programs.gnupg.agent = {
     enable = true;
     enableSSHSupport = true;
-  }; # <--- SEMICOLON ADDED HERE
+  }; 
 
   # Qt/GTK Theming Fix
   environment.sessionVariables = {
     QT_QPA_PLATFORMTHEME = "qt5ct"; 
     GTK_THEME="Moon-Burst-Theme";
     GDK_BACKEND = "wayland,x11"; 
-  }; # <--- SEMICOLON ADDED HERE
-  
-  # NOTE: The package list from the first definition (neofetch, git) is
-  # now merged into the final, large list at the bottom.
+  }; 
   
   # ====================================================================
   # USER CONFIGURATION
@@ -90,7 +103,7 @@
   users.users.moonburst = {
     isNormalUser = true;
     description = "MoonBurst";
-home = "/home/moonburst";
+    home = "/home/moonburst";
     extraGroups = [ 
       "networkmanager" 
       "wheel" 
@@ -103,7 +116,7 @@ home = "/home/moonburst";
     ];
     
     shell = pkgs.zsh;
-  }; # <--- SEMICOLON ADDED HERE
+  }; 
   
   # ====================================================================
   # FONTS
@@ -125,15 +138,15 @@ home = "/home/moonburst";
       material-icons
     ];
     fontconfig.enable = true;
-  }; # <--- SEMICOLON ADDED HERE
+  }; 
   
   # ====================================================================
   # ENVIRONMENT AND PACKAGES
   # ====================================================================
-  nixpkgs.config.allowUnfree = true; # <--- SEMICOLON ADDED HERE
+  nixpkgs.config.allowUnfree = true; 
   nix.extraOptions = ''
     experimental-features = nix-command flakes
-  ''; # <--- SEMICOLON ADDED HERE
+  ''; 
   
   # ====================================================================
   # APPIMAGE STUFF
@@ -147,7 +160,7 @@ home = "/home/moonburst";
         # p.libxshmfence32
       ];
     };
-  }; # <--- SEMICOLON ADDED HERE
+  }; 
   
   # ====================================================================
   # NIX-LD
@@ -155,20 +168,20 @@ home = "/home/moonburst";
   programs.nix-ld.enable = true;
   programs.nix-ld.libraries = with pkgs; [
     #put programs here
-  ]; # <--- SEMICOLON ADDED HERE
+  ]; 
   
-  # NOTE: Merged both 'environment.systemPackages' definitions into this single list.
+  # ====================================================================
+  # ENVIRONMENT AND PACKAGES
+  # ====================================================================
+  
   environment.systemPackages = with pkgs; [
-    # --- Packages from first definition ---
-    git # A tool everyone needs (from first block)
-    neofetch
-    
     # --- System Utilities/Shell
     kitty
     fastfetch
     gnome-system-monitor
     s-tui
     nano
+    git 
     github-cli
     gnupg
     jq
@@ -222,9 +235,9 @@ home = "/home/moonburst";
     geany
     sherlock-launcher
     cliphist
-   # fchat-horizon
-   # moon-burst-theme
-  ]; # <--- FINAL SEMICOLON ADDED HERE TO RESOLVE LINE 232 ERROR
+    fchat-horizon
+    moon-burst-theme
+  ]; 
   
-  # The final closing brace MUST NOT have a semicolon.
+  
 }

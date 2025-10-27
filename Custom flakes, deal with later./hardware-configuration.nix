@@ -19,7 +19,7 @@
       options = [ "subvol=@" ];
     };
 
-  fileSystems."/boot" =
+#  fileSystems."/boot" =
     { device = "/dev/disk/by-uuid/9FF9-E2A6";
       fsType = "vfat";
       options = [ "fmask=0077" "dmask=0077" ];

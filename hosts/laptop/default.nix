@@ -6,13 +6,9 @@
   imports = [
 
     ../../modules/laptop-hardware.nix
-    #../../modules/desktop-kernel.nix #I didn't make this. Not sure if I will.
-    ../../modules/common/default.nix 
+    ../../modules/common/default.nix #Packages on both laptop and desktop
   ];
  
-  
-
-  services.xserver.enable = true; 
 
   environment.systemPackages = with pkgs; [
 
