@@ -34,9 +34,9 @@
   
   
   #--- Display Manager
-#  services.displayManager.ly.enable = true; # <--- SEMICOLON ADDED HERE
- services.getty.autologin="moonburst"; 
-  # --- Audio: PipeWire (Full Setup) ---
+  services.displayManager.ly.enable = true; # <--- SEMICOLON ADDED HERE
+#services.getty.users.tty1 = "moonburst";
+#Audio: PipeWire (Full Setup) ---
   services.pipewire = {
     enable = true;
     alsa.enable = true;
@@ -90,7 +90,7 @@
   users.users.moonburst = {
     isNormalUser = true;
     description = "MoonBurst";
-home = "home/moonburst";
+home = "/home/moonburst";
     extraGroups = [ 
       "networkmanager" 
       "wheel" 
