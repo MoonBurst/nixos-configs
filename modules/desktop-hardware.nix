@@ -1,37 +1,49 @@
 # ~/nixos-config/modules/desktop-hardware.nix
-# This file contains the machine-specific hardware configuration for moonbeauty (Desktop).
-
-{ config, lib, pkgs, modulesPath, ... }:
+{ config, pkgs, ... }:
 
 {
-  imports =
-    [ (modulesPath + "/installer/scan/not-detected.nix")
-    ];
+  # ====================================================================
+  # BOOT AND SYSTEM CONFIGURATION (Hardware Specific)
+  # ====================================================================
 
-  boot.initrd.availableKernelModules = [ "nvme" "xhci_pci" "ahci" "usbhid" "usb_storage" "sd_mod" ];
-  boot.initrd.kernelModules = [ ];
-  boot.kernelModules = [ "kvm-amd" ];
-  boot.extraModulePackages = [ ];
+  # Bootloader (systemd-boot)
+  boot.loader.systemd-boot.enable = true;
+  boot.loader.efi.canTouchEfiVariables = true;
 
-  fileSystems."/" =
-    { device = "/dev/disk/by-uuid/f427c3b9-0fd4-4868-bb33-8e1393be4201";
-      fsType = "btrfs";
-      options = [ "subvol=@" ];
-    };
+  # --- AMDGPU/ROCm Kernel Parameters ---
+  boot.kernelParams = [
+    "amdgpu.vm_fragment_size=9"
+    "fbcon=rotate:2" #--rotates screen
+    "amdgpu.ppfeaturemask=0xffffffff" #--needed for corectrl
+    "cma=512M"
+  ];
 
-  fileSystems."/boot" =
-    { device = "/dev/disk/by-uuid/9FF9-E2A6";
-      fsType = "vfat";
-      options = [ "fmask=0077" "dmask=0077" ];
-    };
+  boot.initrd.kernelModules = [ 
+    "amdgpu" 
+  ];
 
-  swapDevices = [ ];
+  # ====================================================================
+  # FILE SYSTEM CONFIGURATION (MANDATORY)
+  # ====================================================================
+  fileSystems."/" = {
+    # UUID of /dev/nvme1n1p1 (Root Partition)
+    device = "/dev/disk/by-uuid/f427c3b9-0fd4-4868-bb33-8e1393be4201"; 
+    fsType = "btrfs"; 
+    # Uncomment and update subvolume if you use one (e.g., options = [ "subvol=@root" ];)
+    # options = [ "subvol=root" ]; 
+  };
 
-  # Enables DHCP on each ethernet and wireless interface.
-  networking.useDHCP = lib.mkDefault true;
-  # networking.interfaces.enp34s0.useDHCP = lib.mkDefault true;
-  # networking.interfaces.wlp35s0.useDHCP = lib.mkDefault true;
+  fileSystems."/boot" = {
+    # UUID of /dev/nvme1n1p2 (EFI System Partition)
+    device = "/dev/disk/by-uuid/9FF9-E2A6";
+    fsType = "vfat";
+  };
 
-  nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
-  hardware.cpu.amd.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
+  # If you want to mount your 3TB HDD permanently
+  fileSystems."/mnt/3tb-hdd" = {
+    device = "/dev/disk/by-uuid/2771f69c-effd-4d1d-afd3-8940399ae700";
+    fsType = "btrfs";
+    # options = [ "subvol=data" ]; # Add relevant options
+  };
+
 }

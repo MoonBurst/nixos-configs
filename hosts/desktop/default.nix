@@ -6,7 +6,7 @@
   imports = [
     # System-level modules
     # NOTE: The missing files are commented out to fix the 'path does not exist' error.
-    #../../modules/desktop-hardware.nix
+    ../../modules/desktop-hardware.nix
     #../../modules/desktop-kernel.nix
     ../../modules/common/default.nix # Imports the base user definition and packages
   ];
@@ -18,22 +18,7 @@
   # Bootloader (systemd-boot)
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
-  # ====================================================================
-  # FILE SYSTEM CONFIGURATION (REQUIRED)
-  # ====================================================================
-  fileSystems."/" = {
-    # UUID of /dev/nvme1n1p1 (Root Partition)
-    device = "/dev/disk/by-uuid/f427c3b9-0fd4-4868-bb33-8e1393be4201"; 
-    fsType = "btrfs"; 
-    # Add any subvolume options here if you used a subvolume for your root:
-    # options = [ "subvol=root" ]; 
-  };
-
-  fileSystems."/boot" = {
-    # UUID of /dev/nvme1n1p2 (EFI System Partition)
-    device = "/dev/disk/by-uuid/9FF9-E2A6";
-    fsType = "vfat";
-  };
+  
   
   # --- AMDGPU/ROCm Kernel Parameters ---
   boot.kernelParams = [
