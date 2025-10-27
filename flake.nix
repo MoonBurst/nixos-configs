@@ -1,4 +1,4 @@
-  description = "System multi-host configurations";
+{  description = "System multi-host configurations";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -24,3 +24,4 @@
     };
   };
 
+}

@@ -69,7 +69,7 @@ nixpkgs.overlays = [
   # ====================================================================
   # NETWORKING
   # ====================================================================
-  networking.hostName = "nixos";
+  networking.hostName = "moonbeauty";
   networking.networkmanager.enable = true;
   hardware.bluetooth.enable = true;
   
@@ -128,7 +128,8 @@ nixpkgs.overlays = [
       "video" 
       "input"
       "render"
-      "corectrl" 
+      "corectrl"
+      "i2c"
     ];
     
     shell = pkgs.zsh;
