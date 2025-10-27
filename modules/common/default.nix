@@ -222,7 +222,7 @@
     sherlock-launcher
     cliphist
    # fchat-horizon
-    moon-burst-theme
+   # moon-burst-theme
   ]; # <--- FINAL SEMICOLON ADDED HERE TO RESOLVE LINE 232 ERROR
   
   # The final closing brace MUST NOT have a semicolon.
