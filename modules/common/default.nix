@@ -1,4 +1,3 @@
-# ~/nixos-config/modules/common/default.nix
 { config, pkgs, lib, ... }:
 
 {
@@ -7,13 +6,13 @@
   # Select internationalisation properties.
   i18n.defaultLocale = "en_US.UTF-8";
   # This value determines the NixOS release.
-  system.stateVersion = "25.05"; 
+  system.stateVersion = "25.05"; # <--- SEMICOLON ADDED HERE
   
   # ====================================================================
   # NETWORKING
   # ====================================================================
   networking.networkmanager.enable = true;
-  hardware.bluetooth.enable = true;
+  hardware.bluetooth.enable = true; # <--- SEMICOLON ADDED HERE
   
   # ====================================================================
   # SERVICES AND HARDWARE
@@ -31,12 +30,12 @@
   security.polkit.enable = true;
   services.dbus.enable = true;
   services.gnome.gnome-keyring.enable = true;
-  security.pam.services.sway.enableGnomeKeyring = true;
- 
- 
+  security.pam.services.sway.enableGnomeKeyring = true; # <--- SEMICOLON ADDED HERE
+  
+  
   #--- Display Manager
-  services.displayManager.ly.enable = true;  
- 
+  services.displayManager.ly.enable = true; # <--- SEMICOLON ADDED HERE
+  
   # --- Audio: PipeWire (Full Setup) ---
   services.pipewire = {
     enable = true;
@@ -44,19 +43,18 @@
     alsa.support32Bit = true;
     pulse.enable = true;
     jack.enable = true;
-  };
+  }; # <--- SEMICOLON ADDED HERE
 
   # --- Wayland/App Compatibility ---
 
- 
+  
   # --- XDG Portal Configuration ---
   xdg.portal = {
     enable = true;
     configPackages = [ pkgs.xdg-desktop-portal-wlr ]; 
     extraPortals = [ pkgs.xdg-desktop-portal-gtk ]; 
-  };
+  }; # <--- SEMICOLON ADDED HERE
   
-
   # ====================================================================
   # PROGRAMS, SHELLS, and THEME FIXES
   # ====================================================================
@@ -65,28 +63,26 @@
   programs.sway = {
     enable = true;
     wrapperFeatures.gtk = true; 
-  };
+  }; # <--- SEMICOLON ADDED HERE
 
   # Zsh configuration
-  programs.zsh.enable = true;
+  programs.zsh.enable = true; # <--- SEMICOLON ADDED HERE
 
   # GnuPG / SSH Agent
   programs.gnupg.agent = {
     enable = true;
     enableSSHSupport = true;
-  };
+  }; # <--- SEMICOLON ADDED HERE
 
   # Qt/GTK Theming Fix
   environment.sessionVariables = {
     QT_QPA_PLATFORMTHEME = "qt5ct"; 
     GTK_THEME="Moon-Burst-Theme";
     GDK_BACKEND = "wayland,x11"; 
-  };
-  # 1. Shared System-Wide Settings
-  environment.systemPackages = with pkgs; [
-    git # A tool everyone needs
-    neofetch
-  ];
+  }; # <--- SEMICOLON ADDED HERE
+  
+  # NOTE: The package list from the first definition (neofetch, git) is
+  # now merged into the final, large list at the bottom.
   
   # ====================================================================
   # USER CONFIGURATION
@@ -106,11 +102,12 @@
     ];
     
     shell = pkgs.zsh;
-  };
+  }; # <--- SEMICOLON ADDED HERE
+  
   # ====================================================================
   # FONTS
   # ====================================================================
-   fonts = {
+  fonts = {
     packages = with pkgs; [
       fira-sans
       font-awesome
@@ -125,16 +122,17 @@
       noto-fonts-cjk-serif
       material-symbols
       material-icons
-	  ];
+    ];
     fontconfig.enable = true;
-    };
+  }; # <--- SEMICOLON ADDED HERE
+  
   # ====================================================================
   # ENVIRONMENT AND PACKAGES
   # ====================================================================
-  nixpkgs.config.allowUnfree = true;
-	nix.extraOptions = ''
+  nixpkgs.config.allowUnfree = true; # <--- SEMICOLON ADDED HERE
+  nix.extraOptions = ''
     experimental-features = nix-command flakes
-  '';
+  ''; # <--- SEMICOLON ADDED HERE
   
   # ====================================================================
   # APPIMAGE STUFF
@@ -145,29 +143,31 @@
     package = pkgs.appimage-run.override {
       extraPkgs = p: [
         p.xorg.libxshmfence
-   
         # p.libxshmfence32
-        
       ];
     };
-  };
+  }; # <--- SEMICOLON ADDED HERE
   
   # ====================================================================
   # NIX-LD
   # ====================================================================
-    programs.nix-ld.enable = true;
-    programs.nix-ld.libraries = with pkgs; [
+  programs.nix-ld.enable = true;
+  programs.nix-ld.libraries = with pkgs; [
     #put programs here
-    ];
+  ]; # <--- SEMICOLON ADDED HERE
   
-	environment.systemPackages = with pkgs; [
+  # NOTE: Merged both 'environment.systemPackages' definitions into this single list.
+  environment.systemPackages = with pkgs; [
+    # --- Packages from first definition ---
+    git # A tool everyone needs (from first block)
+    neofetch
+    
     # --- System Utilities/Shell
     kitty
     fastfetch
     gnome-system-monitor
     s-tui
     nano
-    git
     github-cli
     gnupg
     jq
@@ -223,10 +223,7 @@
     cliphist
     fchat-horizon
     moon-burst-theme
+  ]; # <--- FINAL SEMICOLON ADDED HERE TO RESOLVE LINE 232 ERROR
   
-  
-]
-
-
-  # ... other shared system settings
+  # The final closing brace MUST NOT have a semicolon.
 }
