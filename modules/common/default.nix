@@ -34,8 +34,8 @@
   
   
   #--- Display Manager
-  services.displayManager.ly.enable = true; # <--- SEMICOLON ADDED HERE
-  
+#  services.displayManager.ly.enable = true; # <--- SEMICOLON ADDED HERE
+ services.getty.autologin="moonburst"; 
   # --- Audio: PipeWire (Full Setup) ---
   services.pipewire = {
     enable = true;
