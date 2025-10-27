@@ -2,6 +2,11 @@
 { config, lib, pkgs, ... }:
 
 {
+# ----------------------------------------------------------------------
+# BOOTLOADER CONFIGURATION (Mandatory for EFI/Systemd-boot)
+# ----------------------------------------------------------------------
+boot.loader.systemd-boot.enable = true;
+boot.loader.efi.canTouchEfiVariables = true;
   # ====================================================================
   # KERNEL MODULES AND BOOT SETTINGS
   # ====================================================================
