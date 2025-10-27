@@ -221,7 +221,7 @@
     geany
     sherlock-launcher
     cliphist
-    fchat-horizon
+   # fchat-horizon
     moon-burst-theme
   ]; # <--- FINAL SEMICOLON ADDED HERE TO RESOLVE LINE 232 ERROR
   
