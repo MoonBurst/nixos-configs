@@ -90,6 +90,7 @@
   users.users.moonburst = {
     isNormalUser = true;
     description = "MoonBurst";
+home = "home/moonburst";
     extraGroups = [ 
       "networkmanager" 
       "wheel" 
