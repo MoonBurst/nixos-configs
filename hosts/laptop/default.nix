@@ -7,6 +7,16 @@
 # ----------------------------------------------------------------------
 boot.loader.systemd-boot.enable = true;
 boot.loader.efi.canTouchEfiVariables = true;
+# >>> CRITICAL SAFE DEPLOYMENT METHOD <<<
+boot.loader.grub.extraInit = ''
+  # This command forces the new configuration to be switched during boot
+  # It will be disabled immediately after the successful switch.
+  ${config.system.build.toplevel}/bin/switch-to-configuration boot
+
+  # Now, comment out 'boot.loader.grub.extraInit' in the config
+  # and rebuild/reboot to remove this line from the boot script.
+'';
+# >>> CRITICAL SAFE DEPLOYMENT METHOD <<<
   # ====================================================================
   # KERNEL MODULES AND BOOT SETTINGS
   # ====================================================================
