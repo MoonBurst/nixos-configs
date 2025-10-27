@@ -15,12 +15,12 @@
       };
 
       # Target: moonburst@lunarchild (Laptop)
-   #   "lunarchild" = nixpkgs.lib.nixosSystem {
-   #     system = "x86_64-linux";
-   #     modules = [
-   #       ./hosts/laptop/default.nix
-   #     ];
-    #  };
+      "lunarchild" = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        modules = [
+          ./hosts/laptop/default.nix
+        ];
+     };
     };
   };
 

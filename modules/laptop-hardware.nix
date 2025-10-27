@@ -4,6 +4,11 @@
 { config, lib, pkgs, modulesPath, ... }:
 
 {
+  # ====================================================================
+  # BOOTLOADER CONFIGURATION (MANDATORY)
+  # ====================================================================
+  boot.loader.systemd-boot.enable = true;
+  boot.loader.efi.canTouchEfiVariables = true;
   imports =
     [ (modulesPath + "/installer/scan/not-detected.nix")
     ];
