@@ -1,0 +1,335 @@
+{
+     "layer": "top", // Waybar at top layer
+     "position": "top", // Waybar position (top|bottom|left|right)
+   // "height": 26, // Waybar height (to be removed for auto height)
+    // "width": 1280, // Waybar width
+    "spacing": 2, // Gaps between modules (4px)
+    // Choose the order of the modules
+   
+       "modules-left": [
+    "sway/workspaces", 
+//    "hyprland/workspaces", 
+    "idle_inhibitor",
+//    "custom/beats",
+    "clock#day",
+    "custom/weather",
+	"custom/pacman_updates",
+	"custom/dunst_count",
+    "mpris"
+    ],
+   
+
+	
+	
+	
+//	"modules-center": [
+//	"custom/test5",	
+//	"custom/test8"
+//	],
+	
+		
+	"modules-right": [
+	"clock",
+//	"custom/pipewire",
+	"pulseaudio", 
+	"network",
+	"bluetooth",
+//	"cpu", 
+//	"temperature",
+	"custom/gpu_readout",
+	"custom/cpu_readout",
+	"custom/ram_readout",
+	"tray"
+	],
+
+	
+//  Modules configuration
+
+"sway/workspaces": {
+		"disable-scroll": true,
+		"all-outputs": false,
+        "format": "{icon}",
+        "format-icons": {
+            "urgent": "",
+            "focused": "",
+            "default": ""
+         },
+           "persistent-workspaces": {
+            "*": [1,2,3,4,5,6,7,8,9],
+            "HDMI-A-2": [1,4,7],
+            "DP-2": [2,5,8],
+            "HDMI-A-1": [3,6,9]
+        },
+          "sort-by-number": true
+ },
+
+
+"custom/weather": {
+  "exec": "~/.config/waybar/modules/temp.sh",
+  "interval": 600
+},
+
+
+"custom/pacman_updates": {
+    "format": " {}",
+    "exec": "~/.config/waybar/modules/update_checker.sh",
+    "interval": 3600, // Check every hour to be respectful of the AUR.
+    "return-type": "json",
+    "tooltip": true,
+    "on-click": "kitty -e paru -Syu",
+    "hide-empty-text": true
+},
+
+
+
+"mpris": {
+    "format": "{title}",
+    "min-length": 20,
+    "max-length": 20,
+    "exec": "playerctl --player=audacious metadata --format '{{title}}'",
+    "return-type": "json",
+    "on-click": "",
+    "on-click-right": "",
+    "interval": 1,
+    "ignored-players": ["firefox"],
+        "status-icons": {
+            "paused": " "
+        },
+},
+
+        
+"idle_inhibitor": {
+        "format": "{icon}",
+        "format-icons": {
+            "activated": "",
+            "deactivated": ""
+        }
+        
+},
+
+"custom/beats": {
+     "format": "Beats{}",
+      "exec": "~/.config/waybar/modules/beats.sh",
+      "interval": 5
+    },
+"tray": {
+    "icon-size": 21,
+    "spacing": 1,
+},
+"clock": {
+  "format": "{:%I:%M:%p}",
+   "interval": 5,
+   "tooltip": false
+},
+"clock#day": {
+    "format": "{:%a %d %b}",
+    "min-length": 15,
+	"max-length": 150,
+    "tooltip-format": "<tt><small>{calendar}</small></tt>",
+    "calendar": {
+      "mode": "month",
+      "on-scroll": -1,
+      "on-click-right": "mode",
+      "format": {
+        "months": "<span color='#ffead3'><b>{}</b></span>",
+        "days": "<span color='#ecc6d9'><b>{}</b></span>",
+        "weeks": "<span color='#99ffdd'><b>W{}</b></span>",
+        "weekdays": "<span color='#ffcc66'><b>{}</b></span>",
+        "today": "<span color='#ff6699'><b><u>{}</u></b></span>"
+      }
+},
+
+    "actions": {
+      "on-click-right": "mode",
+      "on-click-forward": "tz_up",
+      "on-click-backward": "tz_down",
+      "on-scroll-up": "shift_up",
+      "on-scroll-down": "shift_down"
+    }
+  },
+  
+"cpu": {
+        "format": "CPU {usage}%",
+        "tooltip": true
+},
+    
+"memory": {
+        "format": "RAM {avail}G ",
+        "on-click": "gnome-system-monitor",
+        "interval": 1
+},
+    
+"temperature": {
+        // "thermal-zone": 2,
+         "hwmon-path": "/sys/class/hwmon/hwmon2/temp1_input",
+        "critical-threshold": 80,
+        "format-critical": "{temperatureC}°C {icon}",
+        "format": "{icon} {temperatureC}C",
+        "format-icons": ["", "", "CPU"]
+},
+"custom/cpu_readout2": {
+  "type": "custom/script",
+ "exec": "sh ~/.config/waybar/modules/cpu_readout.sh",
+    "tooltip": false,
+    "interval": 1,
+   	"min-length": 15,
+	"max-length": 15
+},
+
+"custom/gpu_readout2": {
+  "exec": "~/.config/waybar/modules/gpu_readout.sh 0",
+  "tooltip": false,
+  "interval": 1,
+  	"min-length": 30,
+	"max-length": 30
+},
+
+"custom/gpu_readout_nvidia": {
+  "exec": "~/.config/waybar/modules/gpu_readout_nvidia.sh",
+  "tooltip": false,
+  "interval": 1,
+  	"min-length": 30,
+	"max-length": 30
+},
+
+"custom/ram_readout2": {
+  "exec": "~/.config/waybar/modules/ram_readout.sh",
+  "tooltip": false,
+  "interval": 1
+},
+"memory": {
+    "format": "RAM: {available}GiB",
+    "tooltip": true, // Recommended: provides more detailed info on hover
+    "units": "GiB",  // Ensures memory is displayed in GiB
+    "interval": 5,   // More efficient polling (every 5 seconds)
+    "threshold": 8.0 // Apply 'critical' class if available memory drops below 8.0 GiB
+    // "format-alt": "{used}/{total} GiB", // Optional: shows used/total on click
+    // "on-click": "gnome-system-monitor", // Optional: opens system monitor on click
+    // "on-click-right": "htop", // Optional: opens htop on right click
+    // "on-scroll-up": "some_command_up", // Optional: binds scroll up action
+    // "on-scroll-down": "some_command_down" // Optional: binds scroll down action
+},
+"network": {
+    "min-length": 25,
+    "max-length": 25,
+    "interface": "e*", // This is the magic line
+    "format-wifi": " {bandwidthDownBytes}  {bandwidthUpBytes} ",
+    "format-ethernet": "{bandwidthDownBytes}  | {bandwidthUpBytes} ",
+    "format-linked": "(No IP)",
+    "format-disconnected": "",
+    "on-click": "iwmenu -l custom --launcher-command \"sherlock\"",
+    "tooltip": false,
+    "interval": 1
+},
+
+"bluetooth": {
+	// "controller": "controller1", // specify the alias of the controller if there are more than 1 on the system
+	"format": " {status}",
+	"format-disabled": "", // an empty format will hide the module
+	"format-connected": " {num_connections} connected",
+	"tooltip-format": "{controller_alias}\t{controller_address}",
+	"tooltip-format-connected": "{controller_alias}\t{controller_address}\n\n{device_enumerate}",
+	"tooltip-format-enumerate-connected": "{device_alias}\t{device_address}",
+	"on-click": "bzmenu -l custom --launcher-command \"sherlock\"",
+},
+
+"pulseaudio": {
+        // "scroll-step": 1, // %, can be a float
+        "format": "{volume}% {icon} ",
+        "format-bluetooth": "{volume}% {icon}",
+        "format-bluetooth-muted": " {icon}",
+        "format-muted": "",
+        /* The following lines are commented out to disable microphone levels:
+        "format-source": "{volume}% ",
+        "format-source-muted": "",
+        */
+        "format-icons": {
+            "headphone": "",
+            "hands-free": "",
+            "headset": "",
+            "phone": "",
+            "portable": "",
+            "car": "",
+            "default": ["", "", ""]
+        },
+        "on-click": "pavucontrol-qt"
+},
+
+    
+"pulseaudio": {
+    "format": "{volume}% {icon}",
+    "format-muted": "{format_muted}",
+    "format-icons": {
+        "default": ["\uf026", "\uf027", "\uf028"] // Muted, Low, High
+        // Your script icons: MUTE (0%),  (0-15%),  (16-25%),  (26%+)
+        // Here: \uf026 (Mute/Silent), \uf027 (Low), \uf028 (High)
+        // You can adjust these to match your exact thresholds if needed,
+        // but the module often handles thresholds gracefully.
+    },
+    "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle", // Toggle mute
+    "on-scroll-up": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+", // Increase volume by 5%
+    "on-scroll-down": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-", // Decrease volume by 5%
+    "scroll-step": 5 // Amount to scroll by
+},
+
+
+
+"custom/dunst": {
+  "exec": "~/.config/waybar/modules/dunst_count.sh",
+  "interval": 5,
+  "on-click": "dunstctl set-paused toggle"
+},
+"custom/cpu_readout": {
+    // The command to execute (the script needs to be executable)
+    "exec": "~/.config/waybar/scripts/cpu_readout.py",
+    "interval": 0, 
+    "exec-if": true, 
+    "return-type": "json",
+    "format": "{}",
+    "class": "custom-cpu-stats" 
+},
+"custom/dunst_count": {
+    "exec": "~/.config/waybar/scripts/dunst_count.py",
+     "on-click": "dunstctl set-paused toggle",
+    "interval": 0,                   // Set to 0 to disable Waybar's timer
+    "exec-if": true,                 // Tells Waybar to expect continuous output
+    "return-type": "json"            // Use JSON output
+},
+"custom/ram_readout": {
+    "exec": "~/.config/waybar/scripts/ram_readout.py", 
+    "interval": 0,             // Important: Set to 0 to use the script's internal timer
+    "exec-if": true,           // Tells Waybar to expect a persistent process
+    "return-type": "json",
+    "format": "{}",
+    "class": "ram-stats"
+},
+"custom/gpu_readout": {
+    "exec": "~/.config/waybar/scripts/gpu_readout.py 0", 
+    "interval": 0,
+    "exec-if": true,
+    "return-type": "json",
+    "format": "{}",
+    "class": "gpu-stats"
+},
+"custom/test5": {
+    "exec": "~/.config/waybar/scripts/gpu_readout.py 1", 
+    "interval": 0,
+    "exec-if": true,
+    "return-type": "json",
+    "format": "{}",
+    "class": "gpu-stats"
+},
+"custom/pacman_updates": {
+    "format": " {}",
+    "exec": "~/.config/waybar/scripts/update_checker.py", 
+    "interval": 3600, // Check every hour (3600 seconds)
+    "return-type": "json",
+    "tooltip": true,
+    
+},
+"custom/weather": {
+    "exec": "/usr/bin/python3 -u /home/moonburst/.config/waybar/scripts/weather_readout.py", 
+    "interval": 0, // Set interval to 0 or remove it, as the script handles the timing
+    "return-type": "json"
+}
+}

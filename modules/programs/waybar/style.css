@@ -1,0 +1,141 @@
+@define-color base   			#0f0f0f;
+@define-color text     			#ffffff;
+@define-color bubble_background #262626;
+@define-color outline 			#494d64;
+@define-color blue      		#8aadf4;
+@define-color yellow   			#eed49f;
+@define-color red      			#ed8796;
+
+* {
+  font-family: JetBrains Mono Font, FontAwesome, Roboto, Helvetica, Arial, sans-serif,pso_font;
+  font-size: 15px;
+  border-radius: 0.75em;
+}
+window#waybar {
+  border: 2px solid @outline;
+  background: @base;
+  box-shadow: 1px 1px 10px 10px @base;
+  color: @text;
+  transition-property: background-color;
+  transition-duration: 0.5s;
+}
+window#waybar.hidden {
+  opacity: 0.2;
+}
+tooltip {
+  background: @base;
+  border: 1px solid @blue;
+}
+tooltip label {
+  color: @white;
+}
+label:focus {
+  background-color: #000000;
+}
+button {
+  box-shadow: inset 0 -3px transparent;
+  border: none;
+  border-radius: 0;
+}
+
+/* Remove border from parent waybar */
+box {
+  border: none;
+}
+
+#workspaces label {
+  font-size: 15px;
+}
+#workspaces button {
+  padding: 0 0.5em;
+  background-color: @bubble_background;
+  color: @text;
+  margin: 0.25em;
+}
+#workspaces button.active {
+  color: @blue;
+}
+#workspaces button.urgent {
+  background-color: @red;
+  color: @text;
+}
+
+#battery,
+#bluetooth,
+#clock,
+#cpu,
+#custom-beats,
+#custom-cpu_readout,
+#custom-dunst_count,
+#custom-github,
+#custom-gpu_readout,
+#custom-notification,
+#custom-pipewire,
+#custom-pipewire.muted,
+#custom-ram_readout,
+#custom-separator-left,
+#custom-separator-right,
+#custom-pacman_updates,
+#custom-vram_readout,
+#custom-wayves,
+#custom-weather,
+#disk,
+#idle_inhibitor,
+#keyboard-state,
+#memory,
+#mpd,
+#mpris,
+#network,
+#notifications,
+#pulseaudio,
+#pulseaudio.muted,
+#taskbar,
+#temperature,
+#tray,
+#user,
+#window,
+#wireplumber,
+#workspaces{
+  padding: 0 0.5em;
+  margin: 0.005em;
+  padding-left: 5px;
+  padding-right: 5px;
+  font-weight: bold;
+  background-color: @bubble_background;
+  border: 2px solid @outline;  
+}
+#custom-updates.updated {
+  padding-left: 0;
+  padding-right: 1em;
+}
+#custom-updates {
+  color: @red;
+}
+#user {
+  color: @blue;
+}
+#network.disconnected {
+  background-color: #f53c3c;
+}
+#temperature.critical {
+  background-color: #eb4d4b;
+}
+#keyboard-state > label {
+  padding: 0 5px;
+}
+#keyboard-state > label.locked {
+  background: rgba(0, 0, 0, 0.2);
+}
+/* Custom styling for the logout icon on end */
+#custom-wlogout {
+  font-size: 1.75em;
+  padding-right: 0.5em;
+  padding-left: 0.5em;
+  color: @blue;
+}
+@keyframes blink {
+  to {
+    background-color: #ffffff;
+    color: #000000;
+  }
+}
