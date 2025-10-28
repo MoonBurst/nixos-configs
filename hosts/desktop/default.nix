@@ -37,6 +37,25 @@
   hardware.steam-hardware.enable = true;
   programs.steam.enable = true;
   programs.steam.dedicatedServer.openFirewall = true;
+  
+  
+  
+  
+  
+  
+  
+    systemd.user.services.waybar = {
+    enable = true;
+    description = "Waybar System Tray";
+    service.ExecStart = ''
+      ${pkgs.waybar}/bin/waybar \
+        -c ${(pkgs.writeTextDir "share/waybar/moonbeauty" (builtins.readFile ./config/waybar/moonbeauty))} \
+        -s ${(pkgs.writeTextDir "share/waybar/style.css" (builtins.readFile ./config/waybar/style.css))}
+    '';
+    wantedBy = [ "graphical-session.target" ];
+    partOf = [ "graphical-session.target" ];
+  };
+
   # ====================================================================
   # CRON
   # ====================================================================  
