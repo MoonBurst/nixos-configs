@@ -195,6 +195,10 @@ in
     kdePackages.polkit-kde-agent-1
     linux-firmware
     nix-prefetch-github
+    unar
+    zip
+    unzip
+    cliphist
 
     # --- Btrfs Tools 
     btrfs-progs
@@ -219,20 +223,18 @@ in
     qt6ct
 
     # --- Applications/Communication
+    sox
     audacious
     vivaldi
     vesktop
     evolution
 
     # --- Other Tools
+    syncthing
     pass
-    unar
-    zip
-    unzip
-    sox
     geany
     sherlock-launcher
-    cliphist
+    
     fchat-horizon
     moon-burst-theme
   ]; 
