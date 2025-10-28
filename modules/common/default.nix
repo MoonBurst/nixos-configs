@@ -1,8 +1,15 @@
 { config, pkgs, lib, ... }:
 let
-
+  # First declaration 
   my-packages = import ../../flake_programs/default.nix { inherit pkgs; }; 
+  #
+
+  pinentryScript = pkgs.writeScriptBin "pinentry-pass-ssh" ''
+    #!${pkgs.stdenv.shell}
+    ${pkgs.pass}/bin/pass show "github.com" 
+  '';
 in
+
 {
 	
   # Set your time zone.
@@ -12,8 +19,7 @@ in
   # This value determines the NixOS release.
   system.stateVersion = "25.05"; 
   
-  #add imports for packages here===================
-
+  
 
   nixpkgs.overlays = [
     (self: super: {
@@ -68,7 +74,38 @@ in
     configPackages = [ pkgs.xdg-desktop-portal-wlr ]; 
     extraPortals = [ pkgs.xdg-desktop-portal-gtk ]; 
   }; 
-  
+    # GnuPG / SSH Agent
+  programs.gnupg.agent = {
+    enable = true;
+    enableSSHSupport = true;
+  };
+  programs.git = {
+    enable = true;
+    config = {
+      user = {
+        name  = "Moon Burst";
+        email = "MoonBurstPlays@gmail.com";
+      };
+      init = {
+        defaultBranch = "main";
+      };
+    };
+  };
+
+    programs.ssh = {
+    startAgent = false;    
+    extraConfig = ''
+      Host github.com
+        User git
+        IdentityFile /home/moonburst/.ssh/id_ed25519
+        ForwardAgent yes 
+    '';
+  };
+   environment.shellInit = ''
+    export GPG_TTY="$(tty)"
+    export SSH_AUTH_SOCK="/run/user/$UID/gnupg/S.gpg-agent.ssh"
+  '';
+
   # ====================================================================
   # PROGRAMS, SHELLS, and THEME FIXES
   # ====================================================================
@@ -82,18 +119,13 @@ in
   # Zsh configuration
   programs.zsh.enable = true; 
 
-  # GnuPG / SSH Agent
-  programs.gnupg.agent = {
-    enable = true;
-    enableSSHSupport = true;
-  }; 
-
   # Qt/GTK Theming Fix
   environment.sessionVariables = {
     QT_QPA_PLATFORMTHEME = "qt5ct"; 
     GTK_THEME="Moon-Burst-Theme";
     GDK_BACKEND = "wayland,x11"; 
   }; 
+  
   
   # ====================================================================
   # USER CONFIGURATION
