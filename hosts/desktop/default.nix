@@ -44,14 +44,19 @@
   # WAYBAR
   # ====================================================================
   
+
   systemd.user.services.waybar = {
-    # ...
-    service.ExecStart = ''
-      ${pkgs.waybar}/bin/waybar \
-      -c ${(pkgs.writeTextDir "share/waybar/config" (builtins.readFile (../../modules/programs/waybar/moonbeauty)))}/share/waybar/config \
-      -s ${(pkgs.writeTextDir "share/waybar/style.css" (builtins.readFile (../../modules/programs/waybar/style.css)))}/share/waybar/style.css
-    '';
-    # ...
+    enable = true;
+    description = "Waybar System Tray";
+    serviceConfig = {
+      ExecStart = ''
+        ${pkgs.waybar}/bin/waybar \
+        -c ${(pkgs.writeTextDir "share/waybar/config" (builtins.readFile (../../modules/programs/waybar/moonbeauty)))}/share/waybar/config \
+        -s ${(pkgs.writeTextDir "share/waybar/style.css" (builtins.readFile (../../modules/programs/waybar/style.css)))}/share/waybar/style.css
+      '';
+    };
+    wantedBy = [ "graphical-session.target" ];
+    partOf = [ "graphical-session.target" ];
   };
  
   
