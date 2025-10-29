@@ -2,12 +2,8 @@
 let
   # First declaration 
   my-packages = import ../../flake_programs/default.nix { inherit pkgs; }; 
-  #
 
-  pinentryScript = pkgs.writeScriptBin "pinentry-pass-ssh" ''
-    #!${pkgs.stdenv.shell}
-    ${pkgs.pass}/bin/pass show "github.com" 
-  '';
+  #
 in
 
 {
@@ -25,7 +21,7 @@ in
     (self: super: {
       # Use the packages from the my-packages set
       fchat-horizon = my-packages.fchat-horizon; 
-	moon-burst-theme = super.callPackage ./moonburst-theme.nix {};
+	   moon-burst-theme = pkgs.callPackage ./moonburst-theme.nix {};
       
     })
   ];
@@ -79,32 +75,7 @@ in
     enable = true;
     enableSSHSupport = true;
   };
-  programs.git = {
-    enable = true;
-    config = {
-      user = {
-        name  = "Moon Burst";
-        email = "MoonBurstPlays@gmail.com";
-      };
-      init = {
-        defaultBranch = "main";
-      };
-    };
-  };
-
-    programs.ssh = {
-    startAgent = false;    
-    extraConfig = ''
-      Host github.com
-        User git
-        IdentityFile /home/moonburst/.ssh/id_ed25519
-        ForwardAgent yes 
-    '';
-  };
-   environment.shellInit = ''
-    export GPG_TTY="$(tty)"
-    export SSH_AUTH_SOCK="/run/user/$UID/gnupg/S.gpg-agent.ssh"
-  '';
+  services.openssh.enable = true;
 
   # ====================================================================
   # PROGRAMS, SHELLS, and THEME FIXES
@@ -231,7 +202,7 @@ in
     zip
     unzip
     cliphist
-
+    lm_sensors
     # --- Btrfs Tools 
     btrfs-progs
 
