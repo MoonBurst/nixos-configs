@@ -5,8 +5,8 @@
 
   imports = [
 
-    ../../modules/lunarchild-hardware.nix
-    ../../modules/common/default.nix #Packages on both laptop and desktop
+    ../../hosts/lunarchild-hardware.nix
+    ../../hosts/common/default.nix #Packages on both laptop and desktop
   ];
  
   environment.systemPackages = with pkgs; [

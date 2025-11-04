@@ -6,7 +6,7 @@
   # MODULE IMPORTS
   # ====================================================================
   imports = [
-    ../../modules/moonbeauty-hardware.nix
+    ../../hosts/moonbeauty-hardware.nix
     # ../../modules/common/default.nix
     ./mounts.nix
   ];
@@ -63,11 +63,6 @@
     # --- Custom Flake Packages (from overlay in flake.nix) ---
     sherlock-launcher
     fchat-horizon
-    
-    
-    
-    
-    
     
     # --- System Utilities/Shell ---
     cron

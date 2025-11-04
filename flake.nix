@@ -39,10 +39,9 @@
             specialArgs = { inherit niri-flake local-packages; }; # Passes custom inputs to modules
             modules = [
               ./hosts/moonbeauty/default.nix # Updated path
-              ./modules/common/default.nix
-              ./modules/moonbeauty-hardware.nix # CORRECTED path
+              ./hosts/common/default.nix
+              ./hosts/moonbeauty-hardware.nix # CORRECTED path
               ({ config, pkgs, ... }: {
-                # Overlay to inject custom packages into the main pkgs set
                 nixpkgs.overlays = [
                   (final: prev: {
                     sherlock-launcher = local-packages.packages.${final.system}.sherlock-launcher;
@@ -59,10 +58,9 @@
             specialArgs = { inherit niri-flake local-packages; };
             modules = [
               ./hosts/lunarchild/default.nix # Updated path
-              ./modules/common/default.nix
-              ./modules/lunarchild-hardware.nix # Updated file name
+              ./hosts/common/default.nix
+              ./hosts/lunarchild-hardware.nix # Updated file name
               ({ config, pkgs, ... }: {
-                # Overlay to inject custom packages into the main pkgs set
                 nixpkgs.overlays = [
                   (final: prev: {
                     sherlock-launcher = local-packages.packages.${final.system}.sherlock-launcher;
