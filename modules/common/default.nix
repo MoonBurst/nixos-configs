@@ -10,15 +10,10 @@ in
     
   time.timeZone = "America/Matamoros";
   i18n.defaultLocale = "en_US.UTF-8";
-  system.stateVersion = "25.05"; 
+  system.stateVersion = "25.15"; 
     
   nixpkgs.overlays = [
     niri-flake.overlays.niri 
-    
-    (self: super: {
-      # fchat-horizon and sherlock-launcher are available via the customProgramsOverlay in the root flake
-      # moon-burst-theme reference removed
-    })
   ];
     
   # ====================================================================
@@ -92,7 +87,6 @@ in
     wantedBy = [ "graphical-session.target" ];
     serviceConfig = {
       Type = "simple";
-      # Use the absolute path provided by the now-exposed package
       ExecStart = "${pkgs.xwayland-satellite-stable}/bin/xwayland-satellite";
       Restart = "on-failure";
       RestartSec = 5;
@@ -125,7 +119,7 @@ in
     XDG_SESSION_TYPE = "wayland";
     XDG_SESSION_DESKTOP = "niri";
     QT_QPA_PLATFORMTHEME = "qt5ct"; 
-    GTK_THEME="Moon-Burst-Theme"; # Keep this here for the user's desktop environment setup
+    GTK_THEME="Moon-Burst-Theme"; 
     GDK_BACKEND = "wayland,x11"; 
     OBS_PLATFORM = "wayland"; 
   };
@@ -284,9 +278,11 @@ in
     syncthing
     pass
     geany
-    # Access custom packages directly via the 'custom-programs' input, since 
-    # the main 'pkgs' set might not have the overlay applied here yet.
-    (custom-programs.packages.${pkgs.system}.sherlock-launcher) # <-- Custom package 1
-    (custom-programs.packages.${pkgs.system}.fchat-horizon) # <-- Custom package 2
+ 
+ 
+ 
+ 
+    (custom-programs.packages.${pkgs.system}.sherlock-launcher) 
+    (custom-programs.packages.${pkgs.system}.fchat-horizon)
   ]; 
 }

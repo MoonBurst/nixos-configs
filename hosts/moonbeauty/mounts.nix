@@ -9,7 +9,7 @@
     fsType = "btrfs";
     options = [ 
       "noatime"
-      "nofail" # Keep this to prevent boot failure if the drive is missing
+      "nofail"
     ];
   };
 

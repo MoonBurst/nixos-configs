@@ -1,17 +1,13 @@
 { lib, stdenv, fetchFromGitHub, python3, makeWrapper }:
 
-# This is a placeholder derivation using the public 'sherlock' tool 
-# to satisfy the file requirement in your flake.nix.
 stdenv.mkDerivation rec {
   pname = "sherlock-launcher";
-  version = "1.0.1"; # Placeholder version updated to force a rebuild
+  version = "1.0.1";
 
   src = fetchFromGitHub {
     owner = "sherlock-project";
     repo = "sherlock";
-    # Using a known commit hash for a reproducible build
     rev = "9b6279f061d764789648937968508e7a030b4290"; 
-    # NOTE: If this hash changes, you will need to update it.
     hash = "sha256-n6L79eYQ8tTz0n3E/tVwX9y6yN0vJ/m8s6Q9yM0i+0o=";
   };
 
