@@ -5,7 +5,7 @@
 
   imports = [
 
-    ../../hosts/lunarchild-hardware.nix
+    ../../hosts/lunarchild/lunarchild-hardware.nix
     ../../hosts/common/default.nix #Packages on both laptop and desktop
   ];
  
