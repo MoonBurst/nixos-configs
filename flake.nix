@@ -1,31 +1,31 @@
-{  description = "System multi-host configurations";
-
+{
+  description = "System multi-host configurations";
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    flake-parts.url = "github:hercules-ci/flake-parts";
+    
+    niri-flake.url = "github:sodiboo/niri-flake"; 
+    
+    niri-flake.inputs.nixpkgs.follows = "nixpkgs"; 
   };
-
-  outputs = { self, nixpkgs, ... }: {
+	
+  outputs = { self, nixpkgs, flake-parts, niri-flake, ... } @ inputs:
+  {
     nixosConfigurations = {
-      # Target: moonburst@moonbeauty (Desktop)
       "moonbeauty" = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         modules = [
           ./hosts/desktop/default.nix
         ];
+        specialArgs = { inherit niri-flake; };
       };
-
-      # Target: moonburst@lunarchild (Laptop)
+      
       "lunarchild" = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         modules = [
           ./hosts/laptop/default.nix
         ];
-     };
+      };
     };
   };
-
-
-
-
-
 }
