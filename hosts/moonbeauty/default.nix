@@ -1,12 +1,15 @@
 # moonbeauty - Desktop Host Configuration
-{ config, pkgs, lib, local-packages, niri-flake, ... }:
-
 {
+  config,
+  pkgs,
+  lib,
+  niri-flake,
+  ...
+}: {
   # ====================================================================
   # MODULE IMPORTS
   # ====================================================================
   imports = [
-    ../../hosts/moonbeauty-hardware.nix
     # ../../modules/common/default.nix
     ./mounts.nix
   ];
@@ -15,9 +18,6 @@
   # NETWORKING
   # ====================================================================
   networking.hostName = "moonbeauty";
-
-  # Set your time zone
-  time.timeZone = "America/Chicago";
 
   # ====================================================================
   # SERVICES AND HARDWARE (OpenRGB and Steam)
@@ -28,14 +28,14 @@
 
   # STEAM STUFF
   programs.gamescope.capSysNice = true;
-  programs.gamemode.enable = true;  
+  programs.gamemode.enable = true;
   hardware.steam-hardware.enable = true;
   programs.steam.enable = true;
   programs.steam.dedicatedServer.openFirewall = true;
-  
+
   # ====================================================================
   # CRON JOBS
-  # ====================================================================  
+  # ====================================================================
   services.cron = {
     enable = false; # Set to true when ready to activate these jobs
     systemCronJobs = [
@@ -45,7 +45,7 @@
       "0 0 * * 0 ~/scripts/cron_scripts/pass_copy.sh >/dev/null 2>&1"
       # pushes a backup to nextcloud
       "0 4 1 * * ~/scripts/cron_scripts/nextcloud_upload.sh >/dev/null 2>&1"
-      # moves .desktop files from home folder to .local/share/applications (mostly for steam games) 
+      # moves .desktop files from home folder to .local/share/applications (mostly for steam games)
       "0 */4 * * * ~/scripts/cron_scripts/mv-.desktop-to-applications.sh >/dev/null 2>&1"
       # reminders
       "0 */4 * * * ~/scripts/cron_scripts/reminder.sh >/dev/null 2>&1"
@@ -62,18 +62,17 @@
   environment.systemPackages = with pkgs; [
     # --- Custom Flake Packages (from overlay in flake.nix) ---
     sherlock-launcher
-    fchat-horizon
-    
+
     # --- System Utilities/Shell ---
     cron
-    rocmPackages.rocm-smi 
+    rocmPackages.rocm-smi
     corectrl
     wget
     curl
     # --- Gaming/GPU/Emulation ---
     gamescope
     mesa
-    protonup-qt 
+    protonup-qt
     obs-studio
     obs-cli
     mangohud
@@ -81,19 +80,5 @@
     openrgb-with-all-plugins
   ];
 
-  # Niri Wayland Compositor (Restoring the intended configuration)
-  programs.niri = {
-    enable = true;
-    package = niri-flake.packages.${pkgs.system}.niri;
-  };
-
-  # Define all users in your system
-  users.users.moonburst = {
-    isNormalUser = true;
-    extraGroups = [ "wheel" "networkmanager" ];
-    shell = pkgs.zsh;
-  };
-
-  # Essential settings
   system.stateVersion = "25.11"; # Keep this set to your desired version
 }

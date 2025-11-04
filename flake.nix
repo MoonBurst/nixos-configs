@@ -4,7 +4,7 @@
 
   inputs = {
     # Primary Nixpkgs
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
     # Flake-parts for modular structure
     flake-parts.url = "github:hercules-ci/flake-parts";
@@ -14,19 +14,25 @@
       url = "github:YaLTeR/niri";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
-    # Custom local programs flake
-    local-packages = { # RENAMED: from custom-programs
-      url = "path:./packages"; # RENAMED: from ./flake_programs
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
-  outputs = { self, nixpkgs, flake-parts, niri-flake, local-packages, ... }@inputs:
-    flake-parts.lib.mkFlake { inherit inputs; } ({ system, ... }: {
-      systems = [ "x86_64-linux" ];
+  outputs = {
+    self,
+    nixpkgs,
+    flake-parts,
+    niri-flake,
+    ...
+  } @ inputs:
+    flake-parts.lib.mkFlake {inherit inputs;} ({system, ...}: {
+      systems = ["x86_64-linux"];
 
-      perSystem = { config, self', pkgs, lib, ... }: {
+      perSystem = {
+        config,
+        self',
+        pkgs,
+        lib,
+        ...
+      }: {
         # System-specific configuration can go here if needed
       };
 
@@ -36,38 +42,22 @@
           # 1. Desktop Host (moonbeauty)
           moonbeauty = nixpkgs.lib.nixosSystem {
             system = "x86_64-linux";
-            specialArgs = { inherit niri-flake local-packages; }; # Passes custom inputs to modules
+            specialArgs = {inherit niri-flake;}; # Passes custom inputs to modules
             modules = [
               ./hosts/moonbeauty/default.nix # Updated path
               ./hosts/common/default.nix
-              ./hosts/moonbeauty-hardware.nix # CORRECTED path
-              ({ config, pkgs, ... }: {
-                nixpkgs.overlays = [
-                  (final: prev: {
-                    sherlock-launcher = local-packages.packages.${final.system}.sherlock-launcher;
-                    fchat-horizon = local-packages.packages.${final.system}.fchat-horizon;
-                  })
-                ];
-              })
+              ./hosts/moonbeauty/moonbeauty-hardware.nix # CORRECTED path
             ];
           };
 
           # 2. Laptop Host (lunarchild)
           lunarchild = nixpkgs.lib.nixosSystem {
             system = "x86_64-linux";
-            specialArgs = { inherit niri-flake local-packages; };
+            specialArgs = {inherit niri-flake;};
             modules = [
               ./hosts/lunarchild/default.nix # Updated path
               ./hosts/common/default.nix
               ./hosts/lunarchild-hardware.nix # Updated file name
-              ({ config, pkgs, ... }: {
-                nixpkgs.overlays = [
-                  (final: prev: {
-                    sherlock-launcher = local-packages.packages.${final.system}.sherlock-launcher;
-                    fchat-horizon = local-packages.packages.${final.system}.fchat-horizon;
-                  })
-                ];
-              })
             ];
           };
         };
