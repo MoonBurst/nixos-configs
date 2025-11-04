@@ -61,7 +61,6 @@
   # ====================================================================
   environment.systemPackages = with pkgs; [
     # --- Custom Flake Packages (from overlay in flake.nix) ---
-    sherlock-launcher
 
     # --- System Utilities/Shell ---
     cron

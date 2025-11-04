@@ -5,12 +5,13 @@
   niri-flake,
   ...
 }: let
-  # The old 'my-packages' let binding is removed as packages are now exposed via overlay in root flake.nix
+
 in {
   imports = [
+  
   ];
 
-  time.timeZone = "America/Matamoros";
+  time.timeZone = "America/Chicago";
   i18n.defaultLocale = "en_US.UTF-8";
 
   nixpkgs.overlays = [
@@ -64,7 +65,7 @@ in {
     extraPortals = with pkgs; [
       xdg-desktop-portal-gtk
       xdg-desktop-portal-gnome
-      xdg-desktop-portal-wlr # All three portal backends enabled
+      xdg-desktop-portal-wlr
     ];
 
     config = {
@@ -153,7 +154,7 @@ in {
   nixpkgs.config.allowUnfree = true;
   nix.extraOptions = ''
     experimental-features = nix-command flakes
-    max-jobs = 14 # 🚀 Set build jobs to 14
+    max-jobs = 14 # Max cores allowed for building
   '';
 
   # ====================================================================
@@ -175,6 +176,8 @@ in {
   # ====================================================================
   programs.nix-ld.enable = true;
   programs.nix-ld.libraries = with pkgs; [
+  stdenv.cc.cc.lib
+  zlib
     #put programs here
   ];
 
@@ -211,6 +214,7 @@ in {
     cliphist
     lm_sensors
     usbutils
+    cargo
     # --- Btrfs Tools
     btrfs-progs
 
@@ -257,7 +261,7 @@ in {
     pass
     geany
 
-    sherlock-launcher
+    #sherlock-launcher
     (pkgs.callPackage ../../packages/fchat-horizon.nix {})
   ];
 }

@@ -42,11 +42,11 @@
           # 1. Desktop Host (moonbeauty)
           moonbeauty = nixpkgs.lib.nixosSystem {
             system = "x86_64-linux";
-            specialArgs = {inherit niri-flake;}; # Passes custom inputs to modules
+            specialArgs = {inherit niri-flake;};
             modules = [
-              ./hosts/moonbeauty/default.nix # Updated path
+              ./hosts/moonbeauty/default.nix 
               ./hosts/common/default.nix
-              ./hosts/moonbeauty/moonbeauty-hardware.nix # CORRECTED path
+              ./hosts/moonbeauty/moonbeauty-hardware.nix 
             ];
           };
 
@@ -55,9 +55,9 @@
             system = "x86_64-linux";
             specialArgs = {inherit niri-flake;};
             modules = [
-              ./hosts/lunarchild/default.nix # Updated path
+              ./hosts/lunarchild/default.nix 
               ./hosts/common/default.nix
-              ./hosts/lunarchild-hardware.nix # Updated file name
+              ./hosts/lunarchild/lunarchild-hardware.nix 
             ];
           };
         };
