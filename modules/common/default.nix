@@ -1,55 +1,43 @@
-{ config, pkgs, lib, niri-flake, ... }: 
+{ config, pkgs, lib, niri-flake, custom-programs, ... }: 
 let
-  # First declaration 
-  my-packages = import ../../flake_programs/default.nix { inherit pkgs; }; 
+  # The old 'my-packages' let binding is removed as packages are now exposed via overlay in root flake.nix
 in
 
 {
-  # Import the official Niri flake module (This handles programs.niri.enable)
   imports = [
     niri-flake.nixosModules.niri
   ];
-	
-  # Set your time zone.
+    
   time.timeZone = "America/Matamoros";
-  # Select internationalisation properties.
   i18n.defaultLocale = "en_US.UTF-8";
-  # This value determines the NixOS release.
   system.stateVersion = "25.05"; 
-	
+    
   nixpkgs.overlays = [
-    # 💡 CRITICAL FIX: Apply the Niri flake's internal overlay to expose
-    # its packages (like xwayland-satellite-stable) into your pkgs set.
     niri-flake.overlays.niri 
     
-    # EXISTING OVERLAY: Keep your local package definitions
     (self: super: {
-      # Use the packages from the my-packages set
-      fchat-horizon = my-packages.fchat-horizon; 
-      moon-burst-theme = pkgs.callPackage ./moonburst-theme.nix {}; 	
+      # fchat-horizon and sherlock-launcher are available via the customProgramsOverlay in the root flake
+      # moon-burst-theme reference removed
     })
   ];
-  
-  # NOTE: The manual nixpkgs.config.packageOverrides for Niri is removed.
-  # The niri-flake is designed to handle the correct build/doCheck=false settings internally.
-	
+    
   # ====================================================================
   # NETWORKING
   # ====================================================================
   networking.networkmanager.enable = true;
   hardware.bluetooth.enable = true; 
-	
+    
   # ====================================================================
   # SERVICES AND HARDWARE
   # ====================================================================
-	
+    
   #---Graphics/Display ---
   services.xserver.enable = true; 
   services.xserver.xkb = {
     layout = "us";
     variant = "";
   };
-	
+    
   hardware.graphics.enable = true;
   hardware.graphics.enable32Bit = true;
   programs.corectrl.enable = true;
@@ -58,13 +46,12 @@ in
   services.gnome.gnome-keyring.enable = true;
   security.pam.services.sway.enableGnomeKeyring = true; 
   programs.browserpass.enable = true;
-	
+    
   #--- Display Manager
   services.displayManager.ly.enable = true; 
-  
-  # NIRI LAUNCH FIX: Use the standard sessionPackages method to register Niri.
+    
   services.displayManager.sessionPackages = [ pkgs.niri ];
-  
+    
   #Audio: PipeWire (Full Setup) ---
   services.pipewire = {
     enable = true;
@@ -77,7 +64,7 @@ in
   # --- XDG Portal Configuration (SCREENCAPTURE FIX) ---
   xdg.portal = {
     enable = true;
-    wlr.enable = true; # Ensure WLR is enabled
+    wlr.enable = true;
     
     extraPortals = with pkgs; [ 
       xdg-desktop-portal-gtk 
@@ -87,18 +74,19 @@ in
     
     config = {
       common = {
-        # Force the system to use the GTK portal as the default for screencast
-        "org.freedesktop.impl.portal.ScreenCast" = "gtk"; 
+        #"org.freedesktop.impl.portal.ScreenCast" = "wlr"; 
       };
       niri = {
-        default = [ "gtk" "wlr" "gnome" ];
-        "org.freedesktop.impl.portal.ScreenCast" = [ "gtk" ]; # Force Niri to use GTK for capture
-        "org.freedesktop.impl.portal.Screenshot" = [ "wlr" ];
+        default = [ 
+           "gtk"
+           "wlr"
+           "gnome" ];
+        "org.freedesktop.impl.portal.ScreenCast" = [ "gtk" ]; 
+        "org.freedesktop.impl.portal.Screenshot" = [ "gnome" ];
       };
     };
   };
 
-  # 💡 NEW/CORRECTED: Direct autostart command for xwayland-satellite (replaces failing systemd.user.services)
   systemd.user.services."xwayland-satellite-autostart" = {
     description = "XWayland Satellite Autostart for Niri";
     wantedBy = [ "graphical-session.target" ];
@@ -110,7 +98,7 @@ in
       RestartSec = 5;
     };
   };
-  
+    
   # GnuPG / SSH Agent
   programs.gnupg.agent = {
     enable = true;
@@ -122,13 +110,13 @@ in
   # ====================================================================
   # PROGRAMS, SHELLS, and THEME FIXES
   # ====================================================================
-	
+    
   # Sway
   programs.sway = {
     enable = true;
     wrapperFeatures.gtk = true; 
   }; 
-  
+    
   # Zsh configuration
   programs.zsh.enable = true; 
 
@@ -137,13 +125,11 @@ in
     XDG_SESSION_TYPE = "wayland";
     XDG_SESSION_DESKTOP = "niri";
     QT_QPA_PLATFORMTHEME = "qt5ct"; 
-    GTK_THEME="Moon-Burst-Theme";
+    GTK_THEME="Moon-Burst-Theme"; # Keep this here for the user's desktop environment setup
     GDK_BACKEND = "wayland,x11"; 
-    
-    # OBS FIX: Explicitly tell OBS to use the Wayland platform
     OBS_PLATFORM = "wayland"; 
   };
-	
+    
   # ====================================================================
   # USER CONFIGURATION
   # ====================================================================
@@ -164,7 +150,7 @@ in
     
     shell = pkgs.zsh;
   }; 
-	
+    
   # ====================================================================
   # FONTS (Unchanged)
   # ====================================================================
@@ -186,7 +172,7 @@ in
     ];
     fontconfig.enable = true;
   }; 
-	
+    
   # ====================================================================
   # ENVIRONMENT AND PACKAGES (Settings)
   # ====================================================================
@@ -195,7 +181,7 @@ in
     experimental-features = nix-command flakes
     max-jobs = 14 # 🚀 Set build jobs to 14
   ''; 
-	
+    
   # ====================================================================
   # APPIMAGE STUFF (Unchanged)
   # ====================================================================
@@ -209,7 +195,7 @@ in
       ];
     };
   }; 
-	
+    
   # ====================================================================
   # NIX-LD (Unchanged)
   # ====================================================================
@@ -217,11 +203,11 @@ in
   programs.nix-ld.libraries = with pkgs; [
     #put programs here
   ]; 
-	
+    
   # ====================================================================
   # ENVIRONMENT AND PACKAGES (List)
   # ====================================================================
-	
+    
   environment.systemPackages = with pkgs; [
     # --- System Utilities/Shell
     kitty
@@ -292,16 +278,15 @@ in
     xdg-desktop-portal-wlr
     xdg-utils 
 
-    # 💡 Xwayland Satellite (Now correctly accessible via the Niri flake overlay)
     xwayland-satellite-stable
 
     # --- Other Tools
     syncthing
     pass
     geany
-    sherlock-launcher
-    
-    fchat-horizon
-    moon-burst-theme
+    # Access custom packages directly via the 'custom-programs' input, since 
+    # the main 'pkgs' set might not have the overlay applied here yet.
+    (custom-programs.packages.${pkgs.system}.sherlock-launcher) # <-- Custom package 1
+    (custom-programs.packages.${pkgs.system}.fchat-horizon) # <-- Custom package 2
   ]; 
 }
