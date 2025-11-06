@@ -63,9 +63,10 @@ in {
     wlr.enable = true;
 
     extraPortals = with pkgs; [
-      xdg-desktop-portal-gtk
-      xdg-desktop-portal-gnome
-      xdg-desktop-portal-wlr
+	xdg-desktop-portal-wlr
+	xdg-desktop-portal-gtk
+    #xdg-desktop-portal-gnome
+      
     ];
 
     config = {
@@ -96,9 +97,9 @@ in {
   programs.zsh.enable = true;
 
   environment.sessionVariables = {
-    XDG_CURRENT_DESKTOP = "niri";
+    XDG_CURRENT_DESKTOP = "sway";
     XDG_SESSION_TYPE = "wayland";
-    XDG_SESSION_DESKTOP = "niri";
+    XDG_SESSION_DESKTOP = "sway";
     QT_QPA_PLATFORMTHEME = "qt5ct";
     GTK_THEME = "Moon-Burst-Theme";
     GDK_BACKEND = "wayland,x11";
@@ -251,7 +252,7 @@ in {
     obs-studio
     pipewire
     xdg-desktop-portal
-    xdg-desktop-portal-gnome
+   #xdg-desktop-portal-gnome
     xdg-desktop-portal-gtk
     xdg-desktop-portal-wlr
     xdg-utils
@@ -261,7 +262,7 @@ in {
     pass
     geany
 
-    #sherlock-launcher
+    sherlock-launcher
     (pkgs.callPackage ../../packages/fchat-horizon.nix {})
   ];
 }

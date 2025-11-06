@@ -8,8 +8,17 @@
     ../../hosts/lunarchild/lunarchild-hardware.nix
     ../../hosts/common/default.nix #Packages on both laptop and desktop
   ];
- 
-  environment.systemPackages = with pkgs; [
+  # ====================================================================
+  # SERVICES
+  # ====================================================================
+	services.logind.lidSwitch = "poweroff";
+	services.logind.lidSwitchExternalPower = "lock";
+
+
+  # ====================================================================
+  # ENVIRONMENT AND PACKAGES
+  # ====================================================================
+	environment.systemPackages = with pkgs; [
 
   ]; 
 

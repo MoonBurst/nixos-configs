@@ -77,6 +77,7 @@
     mangohud
     # --- Desktop/Theming ---
     openrgb-with-all-plugins
+    lmstudio
   ];
 
   system.stateVersion = "25.11"; # Keep this set to your desired version
