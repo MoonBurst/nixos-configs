@@ -95,6 +95,7 @@ in {
 
   # Zsh configuration
   programs.zsh.enable = true;
+  programs.zsh.autosuggestions.enable=true;
   programs.zsh.promptInit = builtins.readFile ./zshprompt.sh;
   environment.sessionVariables = {
     XDG_CURRENT_DESKTOP = "sway";
@@ -104,6 +105,31 @@ in {
     GTK_THEME = "Moon-Burst-Theme";
     GDK_BACKEND = "wayland,x11";
     OBS_PLATFORM = "wayland";
+    
+  # ====================================================================
+  # XDG RULES
+  # ====================================================================
+    XDG_CACHE_HOME = "$HOME/.cache";
+    XDG_CONFIG_HOME = "$HOME/.config";
+    XDG_DATA_HOME = "$HOME/.local/share";
+    XDG_STATE_HOME = "$HOME/.local/state";
+
+    # Zsh configuration path variables
+   # ZDOTDIR = "$XDG_CONFIG_HOME/zsh";
+    HISTFILE = "$HOME/history";
+
+    # Application-specific XDG paths
+    CARGO_HOME = "$XDG_DATA_HOME/cargo";
+    DOTNET_CLI_HOME = "$XDG_DATA_HOME/dotnet";
+    GOPATH = "$XDG_DATA_HOME/go";
+    GRADLE_USER_HOME = "$XDG_DATA_HOME/gradle";
+    GNUPGHOME = "$XDG_DATA_HOME/gnupg";
+    GTK2_RC_FILES = "$XDG_CONFIG_HOME/gtk-2.0/gtkrc";
+    NPM_CONFIG_CACHE = "$XDG_CACHE_HOME/npm";
+    NPM_CONFIG_INIT_MODULE = "$XDG_CONFIG_HOME/npm/config/npm-init.js";
+    NUGET_PACKAGES = "$XDG_CACHE_HOME/NuGetPackages";
+    PASSWORD_STORE_DIR = "$XDG_DATA_HOME/pass";
+    RUSTUP_HOME = "$XDG_DATA_HOME/rustup";
   };
 
   # ====================================================================
