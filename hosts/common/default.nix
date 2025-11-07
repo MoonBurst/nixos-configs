@@ -96,6 +96,7 @@ in {
   # Zsh configuration
   programs.zsh.enable = true;
   programs.zsh.autosuggestions.enable=true;
+  programs.zsh.syntaxHighlighting.enable=true;
   programs.zsh.promptInit = builtins.readFile ./zshprompt.sh;
   environment.sessionVariables = {
     XDG_CURRENT_DESKTOP = "sway";
@@ -115,8 +116,8 @@ in {
     XDG_STATE_HOME = "$HOME/.local/state";
 
     # Zsh configuration path variables
-   # ZDOTDIR = "$XDG_CONFIG_HOME/zsh";
-    HISTFILE = "$HOME/history";
+    ZDOTDIR = "$XDG_CONFIG_HOME/zsh";
+    HISTFILE = "$ZDOTDIR/history";
 
     # Application-specific XDG paths
     CARGO_HOME = "$XDG_DATA_HOME/cargo";

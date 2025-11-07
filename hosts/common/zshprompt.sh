@@ -1,100 +1,27 @@
 #!/bin/zsh
 
 autoload -Uz colors && colors
+autoload -Uz compinit # Needed for completion, which is often tied to prompt features
+
+
 HISTFILE="${ZDOTDIR}/history"
 setopt appendhistory
-HISTSIZE=1000
-SAVEHIST=1000
-setopt autocd extendedglob nomatch menucomplete
-setopt interactive_comments
-unsetopt BEEP # Beeping is annoying
+HISTSIZE=100000
+SAVEHIST=100000
+
+
 zle_highlight=('paste:none')
 autoload edit-command-line; zle -N edit-command-line
-bindkey '^e' edit-command-line # Bind Ctrl-e to edit-command-line in editor
-autoload -U up-line-or-beginning-search
-autoload -U down-line-or-beginning-search
-zle -N up-line-or-beginning-search
-zle -N down-line-or-beginning-search
+bindkey '^e' edit-command-line
 
 
-zsh_add_file() {
-    local file_path="$ZDOTDIR/$1"
-    if [[ -f "$file_path" ]]; then
-        source "$file_path"
-    # else
-        # Optional: uncomment for debugging missing files
-        # echo "Warning: Zsh config file '$file_path' not found. Ensure it exists in $ZDOTDIR." >&2
-    fi
-}
-
-
-zsh_add_plugin() {
-    local plugin_name="$1"
-    local plugin_dir="$ZDOTDIR/plugins/$plugin_name" # Expected plugin install location
-    if [[ -d "$plugin_dir" ]]; then
-        # Common patterns for plugin loading (try sourcing these)
-        if [[ -f "$plugin_dir/$plugin_name.plugin.zsh" ]]; then source "$plugin_dir/$plugin_name.plugin.zsh"; return; fi
-        if [[ -f "$plugin_dir/$plugin_name.zsh" ]]; then source "$plugin_dir/$plugin_name.zsh"; return; fi
-        if [[ -f "$plugin_dir/init.zsh" ]]; then source "$plugin_dir/init.zsh"; return; fi
-        # Fallback: source all .zsh files directly in the plugin directory
-        for f in "$plugin_dir"/*.zsh; do
-            [[ -f "$f" ]] && source "$f"
-        done
-    # else
-        # echo "Warning: Zsh plugin '$plugin_name' not found at '$plugin_dir'." >&2
-    fi
-}
-
-
-zsh_add_completion() {
-    local comp_file_path="$ZDOTDIR/completion/$1"
-    if [[ -f "$comp_file_path" ]]; then
-        # Add the directory containing the completion to fpath
-        # Assumes $1 is something like "_fnm" and the file is $ZDOTDIR/completion/_fnm
-        fpath+=("$(dirname "$comp_file_path")")
-    # else
-        # echo "Warning: Zsh completion file '$comp_file_path' not found." >&2
-    fi
-}
-
-zsh_add_file "functions"
-zsh_add_file "exports"
-zsh_add_file "aliases"
-
-zsh_add_plugin "zsh-users/zsh-autosuggestions"
-zsh_add_plugin "zsh-users/zsh-syntax-highlighting"
-zsh_add_plugin "hlissner/zsh-autopair"
-
-autoload -Uz compinit
 zmodload zsh/complist
 zstyle ':completion:*' menu select
- zstyle ':completion::complete:lsof:*' menu yes select 
-_comp_options+=(globdots) 
-
+zstyle ':completion::complete:lsof:*' menu yes select
+_comp_options+=(globdots)
 compinit
 
-if [[ -f "/usr/share/fzf/completion.zsh" ]]; then
-    source "/usr/share/fzf/completion.zsh"
-elif [[ -f "/usr/share/doc/fzf/examples/completion.zsh" ]]; then
-    source "/usr/share/doc/fzf/examples/completion.zsh"
-fi
-if [[ -f "/usr/share/fzf/key-bindings.zsh" ]]; then
-    source "/usr/share/fzf/key-bindings.zsh"
-elif [[ -f "/usr/share/doc/fzf/examples/key-bindings.zsh" ]]; then
-    source "/usr/share/doc/fzf/examples/key-bindings.zsh"
-fi
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
-
-# Custom FZF default command example (uncomment if you use ripgrep)
-export FZF_DEFAULT_COMMAND='rg --hidden -l ""'
-
-cd() {
-    builtin cd "$@" && ls
-}
-
-
-update-profile() {
-
+nupdate() {
 local HOSTNAME
   HOSTNAME=$(hostname)
   local FLAKE_PATH="/home/moonburst/nixos-config"
@@ -110,5 +37,26 @@ local HOSTNAME
 }
 
 
-$XDG_CONFIG_HOME/fastfetch/fastfetch.sh
+alias grab='scripts/alias_scripts/search.sh'
+alias color='hyprpicker --format=rgb --autocopy --render-inactive'
+alias quarter='convert_and_number() { local filename="$1"; magick "$filename" -crop 50%x50% +adjoin "${filename%.*}_%d.${filename##*.}"; }; convert_and_number'
+alias quarter400px='convert_and_number() { local filename="$1"; magick "$filename" -crop 50%x50% +adjoin -resize 400x400! "${filename%.*}_%d.${filename##*.}"; }; convert_and_number'
+alias remove-orphans='scripts/alias_scripts/remove-orphans.sh'
+alias scan='$HOME/scripts/alias_scripts/virusscan.sh'
+alias windows='sudo virsh start win11'
+alias comfy='source /home/moonburst/ComfyUI/bin/activate; cd ComfyUI && HSA_OVERRIDE_GFX_VERSION=11.0.0 python main.py'
+alias gifmaker='magick -delay 5 -dispose background -loop 0 *.png output.gif'
+alias crashlogs='journalctl -b -1 -n 100'
+alias bootlogs='journalctl -b -0 -n 300'
+alias alarm='$HOME/scripts/alias_scripts/alarm.sh'
+alias swaystart='source ~/.zshrc && exec sway'
+alias update-grub='sudo grub-mkconfig -o /boot/grub/grub.cfg'
+alias unbind-6400='echo "0000:2b:00.0" | sudo tee /sys/bus/pci/devices/0000:2b:00.0/driver/unbind'
+alias bind-6400='echo "0000:2b:00.0" | sudo tee /sys/bus/pci/drivers/amdgpu/bind'
+alias historycleaner='$HOME/scripts/alias_scripts/historycleaner.sh'
+alias nolog='unset HISTFILE'
+#alias 1time='$HOME/scripts/alias_scripts/1time.sh'
+
+
+"$HOME/.config/fastfetch/fastfetch.sh"
 PROMPT="%{$fg[yellow]%}[%D{%T}] %{$fg[blue]%}moonburst@%m: %{$fg[green]%}%~%{$reset_color%} $"
