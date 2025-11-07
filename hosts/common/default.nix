@@ -95,7 +95,7 @@ in {
 
   # Zsh configuration
   programs.zsh.enable = true;
-
+  programs.zsh.promptInit = builtins.readFile ./zshprompt.sh;
   environment.sessionVariables = {
     XDG_CURRENT_DESKTOP = "sway";
     XDG_SESSION_TYPE = "wayland";
