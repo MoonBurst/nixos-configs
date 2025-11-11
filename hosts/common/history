@@ -224,3 +224,30 @@ nupdate
 : 1762882047:0;cd ~/nixos-config\
 git add .\
 git commit -m "WIP: Adding oomox-Moon theme files for local testing."
+: 1762882052:0;nupdate
+: 1762882088:0;cd nixos-config/hosts/common/packages/oomox-moon-icons/
+: 1762882088:0;ls
+: 1762882093:0;nano default.nix
+: 1762882114:0;cd ~/nixos-config\
+git add hosts/common/packages/oomox-moon-icons/default.nix\
+git commit -m "fix: Define stdenv argument in icon package derivation."
+: 1762882117:0;nano default.nix
+: 1762882121:0;nupdate
+: 1762882151:0;nano default.nix
+: 1762882164:0;cd ~/nixos-config\
+git add hosts/common/packages/oomox-moon-icons/default.nix\
+git commit -m "fix: Simplify icon package arguments to only stdenv."
+: 1762882168:0;nupdate
+: 1762882386:0;cd nixos-config
+: 1762882389:0;1time tree
+: 1762882395:0;nix-shell -p tree
+: 1762882457:0;cd ~/nixos-config/packages\
+mkdir oomox-moon-icons
+: 1762882463:0;mv 'oomox-Moon Theme' oomox-moon-icons/
+: 1762882468:0;mv default.nix oomox-moon-icons/default.nix
+: 1762882479:0;nupdate
+tree
+: 1762882599:0;nupdate
+: 1762882606:0;cd ~/nixos-config\
+git add .\
+git commit -m "fix: Corrected relative path to icon package and commit all changes."

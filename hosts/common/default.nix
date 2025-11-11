@@ -17,10 +17,6 @@ in {
 
 
 nixpkgs.overlays = [
-    (self: super: {
-      # This is where you tell Nix how to call the package definition file
-      oomox-moon-icon-theme = super.callPackage ./packages/oomox-moon-icons {};
-    })
   ];
 
   # ====================================================================
@@ -221,9 +217,9 @@ nixpkgs.overlays = [
 environment.etc = {
     "xdg/gtk-3.0/settings.ini".text = ''
       [Settings]
-      gtk-icon-theme-name = "oomox-Moon Theme"
+      gtk-icon-theme-name = oomox-Moon Theme
     '';
-
+    
     "xdg/gtk-2.0/gtkrc".text = ''
       gtk-icon-theme-name = "oomox-Moon Theme"
     '';
@@ -307,6 +303,6 @@ environment.etc = {
 
     sherlock-launcher
     (pkgs.callPackage ../../packages/fchat-horizon.nix {})
-oomox-moon-icon-theme
+	(pkgs.callPackage ../../packages/oomox-moon-icons {})
   ];
 }

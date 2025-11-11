@@ -1,9 +1,9 @@
-{ stdenv }:
+{ stdenv }: 
 
 stdenv.mkDerivation {
   pname = "oomox-moon-icon-theme";
   version = "1.0";
-
+  
   src = ./.; 
   themeDirName = "oomox-Moon Theme"; 
 
