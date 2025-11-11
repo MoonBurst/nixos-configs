@@ -1,4 +1,4 @@
-{ stdenv, pkgs }:
+{ stdenv }:
 
 stdenv.mkDerivation {
   pname = "oomox-moon-icon-theme";
