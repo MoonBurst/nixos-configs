@@ -1,0 +1,226 @@
+: 1762619559:0;ls
+: 1762619575:0;cd .config/zsh
+: 1762619575:0;ls
+: 1762619581:0;ls history
+: 1762619584:0;cat history
+: 1762619599:0;rm history
+: 1762619600:0;ls
+: 1762619615:0;cat functions
+: 1762619619:0;cat aliases.old
+: 1762619624:0;1time
+: 1762625157:0;timer 40m oven
+: 1762625159:0;alarm 40m oven
+: 1762686185:0;nix-collect-garbage
+: 1762687056:0;sherlock
+: 1762687195:0;exec /nix/store/daamdpmaz2vjvna55ccrc30qw3qb8h6d-glibc-2.40-66/lib64/ld-linux-x86-64.so.2 /home/moonburst/.config/sherlock/scripts/sherlock-clp | ~/.config/sherlock/sherlock | xargs -r cliphist decode | wl-copy\
+
+: 1762687214:0;/home/moonburst/.config/sherlock/scripts/sherlock-clp | ~/.config/sherlock/sherlock | xargs -r cliphist decode | wl-copy
+: 1762687231:0;./.config/sherlock/scripts/sherlock-clp | ~/.config/sherlock/sherlock | xargs -r cliphist decode | wl-copy
+: 1762687244:0;sherlock-clp
+: 1762687421:0;sherlock
+: 1762687545:0;which glibc
+: 1762687560:0;which ld.so
+: 1762687591:0;readlink -f $(nix-build '<nixpkgs>' -A glibc.out)/lib/ld-linux-x86-64.so.2\
+# OR\
+readlink -f ~/.nix-profile/lib/ld-linux-x86-64.so.2
+: 1762687609:0;ls -d /nix/store/*-glibc-*/lib/ld-linux-x86-64.so.2
+: 1762687622:0;/nix/store/qlqv3dxkz86h3nih69ripkk09vmbw05j-glibc-multi-2.40-66/lib/ld-linux-x86-64.so.2 /home/moonburst/.config/sherlock/scripts/sherlock-clp | ~/.config/sherlock/sherlock | xargs -r cliphist decode | wl-copy
+: 1762687638:0;/nix/store/qlqv3dxkz86h3nih69ripkk09vmbw05j-glibc-multi-2.40-66/lib/ld-linux-x86-64.so.2 /home/moonburst/.config/sherlock/scripts/sherlock-clp | sherlock | xargs -r cliphist decode | wl-copy
+: 1762687657:0;swaymsg reload
+: 1762687667:0;sherlock
+: 1762687693:0;~/.config/sherlock/sherlock
+: 1762687699:0;cd .config/sherlock
+: 1762687699:0;ls
+: 1762687704:0;ls -a
+: 1762687713:0;./sherlock
+: 1762687737:0;sherlock
+: 1762687758:0;swaymsg reload
+: 1762690397:0;cd .local/share/themes
+: 1762690397:0;ls
+: 1762690402:0;cd ..
+: 1762690403:0;ls -a
+: 1762690406:0;cd themes
+: 1762690407:0;ls
+: 1762690412:0;cd Moon-Burst-Theme
+: 1762690413:0;ls
+: 1762702041:0;echo $CURSOR
+: 1762771738:0;nix-shell -p gnomeExtensions.snowy
+: 1762771844:0;nix-shell -p xsnow
+xsnow
+xsnow
+: 1762773343:0;cd scripts
+: 1762773344:0;cd keybinds
+: 1762773353:0;nano safekill.sh
+: 1762773402:0;xprop
+: 1762773410:0;wlprop
+: 1762773416:0;nix-shell -p wlprop
+: 1762773515:0;swaymsg reload
+: 1762773519:0;chmod +x safekill.sh
+: 1762773576:0;ls
+: 1762773601:0;swaymsg reload
+: 1762773639:0;nano safekill.sh
+: 1762773750:0;chmod +x safekill.sh
+: 1762773768:0;nano safekill.sh
+: 1762773844:0;./safekill.sh
+: 1762773853:0;cat screenshot.sh
+: 1762773859:0;nano safekill.sh
+wlprop
+swaymsg -t get_tree | jq -r '.. | select(.focused?) | (.app_id // .window_properties.class)'
+cat ~/sway-kill-debug.log
+swaymsg reload
+swaymsg reload
+: 1762773876:0;nano safekill.sh
+: 1762773912:0;./safekill.sh
+: 1762773930:0;nano safekill.sh
+: 1762773939:0;./safekill.sh
+: 1762773947:0;nano safekill.sh
+: 1762773965:0;./safekill.sh
+: 1762773988:0;nano safekill.sh
+: 1762773994:0;./safekill.sh
+: 1762774198:0;nupdate
+: 1762774201:0;cd nixos-config
+: 1762774202:0;nupdate
+: 1762774208:0;ls
+: 1762774211:0;nupdate
+: 1762774290:0;nupdate() {\
+  local HOSTNAME\
+  HOSTNAME=$(hostname)\
+  # ALTERNATIVE FIX: Remove quotes to allow tilde expansion\
+  local FLAKE_PATH=~/nixos-config \
+\
+  if [ -d "$FLAKE_PATH" ]; then\
+    echo "Building system: $HOSTNAME from $FLAKE_PATH"\
+\
+    sudo nixos-rebuild switch --flake "$FLAKE_PATH"\#"$HOSTNAME"\
+  else\
+    echo "Error: Flake path not found at $FLAKE_PATH" >&2\
+    return 1\
+  fi\
+}
+: 1762774292:0;nupdate
+: 1762790830:0;cd /tmp
+: 1762790830:0;ls
+: 1762790834:0;mkdir image
+: 1762790841:0;mv 3603652.webm image
+: 1762790842:0;cd image
+: 1762790851:0;ffmpeg -i 3603652.webm -vf "fps=10,scale=500:-1:flags=lanczos,palettegen" palette.png
+: 1762790860:0;nix-shell -p ffmpeg
+: 1762791029:0;nix-shell -p gpick
+gpick
+: 1762791029:0;nix-shell -p hyprpicker
+: 1762790851:0;ffmpeg -i 3603652.webm -vf "fps=10,scale=500:-1:flags=lanczos,palettegen" palette.png
+ffmpeg -i 3603652.webm -vf "fps=10,scale=500:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" output.gif
+convert output.gif -fuzz 5% -transparent "#461B5F" output_transparent.gif
+convert output.gif   -coalesce   -fuzz 5%   -transparent "#461B5F"   -dispose Background   -layers optimize   output_cleared.gif
+convert output.gif -coalesce -fuzz 5% -transparent "#461B5F" temp_cleared.gif
+convert temp_cleared.gif -dispose Background -layers optimize temp_final.gif
+convert output.gif -coalesce -fuzz 5% -transparent "#461B5F" -layers optimizeFrame output_cleared.gif
+convert output_cleared.gif   -coalesce   -fuzz 5%   -trim   +repage   -resize 100x100^   -gravity Center   -extent 100x100   -layers optimizeFrame   final_100x100_subject_fill.gif
+convert output_cleared.gif   -coalesce   -fuzz 5%   -trim   +repage   -resize 100x100^   -gravity Center   -background transparent   -extent 100x100   -layers optimizeFrame   final_transparent_100x100.gif
+convert final_transparent_100x100.gif   -layers optimize   -fuzz 5%   -colors 64   -filter Triangle   -quality 70   output_under_500kb.gif
+convert final_transparent_100x100.gif   -layers optimize   -fuzz 5%   -colors 64   -filter Triangle   -quality 65   output_under_500kb.gif
+convert final_transparent_100x100.gif   -layers optimize   -fuzz 5%   -colors 64   -filter Triangle   -quality 50   output_under_500kb.gif
+convert final_transparent_100x100.gif   -layers optimize   -fuzz 5%   -colors 64   -filter Triangle   -quality 70  -set delay 5 output_under_500kb.gif
+convert final_transparent_100x100.gif   -layers optimize   -fuzz 5%   -colors 32   -filter Triangle   -quality 70   output_under_500kb.gif
+: 1762795125:0;openrgb
+: 1762795219:0;lsmod | grep i2c
+: 1762795251:0;sudo udevadm control --reload-rules\
+sudo udevadm trigger
+: 1762795270:0;openrgb
+: 1762795322:0;nupdate
+: 1762795380:0;openrgb
+: 1762795440:0;nupdate
+: 1762795639:0;openrgb
+: 1762795707:0;nupdate
+: 1762797220:0;sudo systemctl restart openrgb
+: 1762797226:0;openrgb
+: 1762797317:0;nupdate
+: 1762867224:0;nix-shell -p lxappearance
+: 1762867424:0;sudo update-icon-caches /usr/share/icons/*\
+
+: 1762867437:0;sudo gtk-update-icon-cache
+: 1762867448:0;xdg-desktop-menu forceupdate
+lxappearance 
+lxappearance 
+: 1762867733:0;nix-shell -p lxappearance
+lxappearance 
+lxappearance 
+lxappearance 
+: 1762877448:0;nupdate
+: 1762877975:0;nix-shell -p papirus-icon-theme --run "bash"
+# For a GTK-based desktop like GNOME/XFCE
+gsettings set org.gnome.desktop.interface icon-theme 'Papirus-Dark'
+nemo
+: 1762878031:0;nix-shell -p xfce.xfce4-icon-theme\
+
+: 1762878226:0;nupdate
+nemo
+echo $NIX_STORE/xfce4-icon-theme-*/share/icons/xfce-base
+ICON_PATH=$(readlink -f $(nix-build "<nixpkgs>" -A xfce.xfce4-icon-theme))/share/icons/xfce-base
+echo $ICON_PATH
+nemo
+ICON_PATH=$(readlink -f $(nix-build "<nixpkgs>" -A xfce.xfce4-icon-theme))/share/icons/xfce-base
+echo $ICON_PATH
+# This brings in the icon theme AND the settings manager
+nix-shell -p xfce.xfce4-icon-theme lxappearance
+lxappearance 
+nix-shell -p themix-gui lxappearance
+: 1762878527:0;nupdate
+lxappearance 
+oomox-gui 
+nix-shell -p themix-gui lxappearance inkscape imagemagick
+themix-gui
+nix-shell -p themix-gui lxappearance papirus-icon-theme numix-icon-theme inkscape imagemagick
+: 1762880626:0;nupdate
+: 1762880696:0;cd /usr
+: 1762880697:0;ls
+: 1762880886:0;cd .config/zsh
+: 1762880887:0;ls -0a
+: 1762880889:0;ls -a
+: 1762880891:0;cat .zshrc
+: 1762880894:0;cat old.old
+: 1762880910:0;ls -a
+: 1762880916:0;cat exports.old
+: 1762880961:0;cd .
+: 1762880962:0;ls
+: 1762880964:0;cd /
+: 1762880965:0;ls -a
+: 1762880974:0;which share
+: 1762880991:0;cd /etc/share/themes
+: 1762880992:0;ls
+: 1762880993:0;ls -a
+: 1762880994:0;cd ..
+: 1762881189:0;cd .local/share/icons
+: 1762881190:0;ls
+: 1762881249:0;cd nixos-config
+: 1762881249:0;ls
+: 1762881308:4;# Run this from your terminal\
+sudo mkdir -p /etc/nixos/packages/oomox-moon-icons\
+sudo cp ~/.local/share/icons/'oomox-Moon Theme' /etc/nixos/packages/oomox-moon-icons/\
+# The folder structure should be: /etc/nixos/packages/oomox-moon-icons/oomox-Moon Theme
+: 1762881344:0;# Run this from your terminal\
+sudo mkdir -p /etc/nixos/packages/oomox-moon-icons\
+sudo cp ~/.local/share/icons/'oomox-Moon Theme' /etc/nixos/packages/oomox-moon-icons/
+: 1762881389:0;cd nixos-config/packages
+: 1762881390:0;ls
+: 1762881397:0;cd oomox-Moon\ Theme
+: 1762881403:0;nano default.nix
+: 1762881536:0;nupdate
+: 1762881641:0;ls -F ~/nixos-config/hosts/common/packages/oomox-moon-icons/
+: 1762881675:0;mkdir -p ~/nixos-config/hosts/common/packages/oomox-moon-icons
+: 1762881678:0;mv 'oomox-Moon Theme' ~/nixos-config/hosts/common/packages/oomox-moon-icons/
+: 1762881685:0;cd nixos-config/packages
+: 1762881686:0;mv 'oomox-Moon Theme' ~/nixos-config/hosts/common/packages/oomox-moon-icons/
+: 1762881716:0;nupdate
+: 1762881776:0;cd ~/nixos-config\
+git add hosts/common/packages/oomox-moon-icons\
+git commit -m "feat: Added oomox-Moon Theme package files."\
+nupdate
+: 1762881818:0;nupdate
+: 1762881929:0;ls -l ~/nixos-config/hosts/common/packages/oomox-moon-icons/default.nix
+: 1762881973:0;nupdate
+: 1762881980:0;ls -l ~/nixos-config/hosts/common/packages/oomox-moon-icons/default.nix
+: 1762882021:0;nupdate
+: 1762882047:0;cd ~/nixos-config\
+git add .\
+git commit -m "WIP: Adding oomox-Moon theme files for local testing."

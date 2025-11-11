@@ -10,7 +10,7 @@
   # MODULE IMPORTS
   # ====================================================================
   imports = [
-    # ../../modules/common/default.nix
+    ../../hosts/common/default.nix
     ./mounts.nix
   ];
 

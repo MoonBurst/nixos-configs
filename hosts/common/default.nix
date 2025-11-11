@@ -8,13 +8,19 @@
 
 in {
   imports = [
-  
+  ./packages/oomox-moon-icons
   ];
 
   time.timeZone = "America/Chicago";
   i18n.defaultLocale = "en_US.UTF-8";
 
-  nixpkgs.overlays = [
+
+
+nixpkgs.overlays = [
+    (self: super: {
+      # This is where you tell Nix how to call the package definition file
+      oomox-moon-icon-theme = super.callPackage ./packages/oomox-moon-icons {};
+    })
   ];
 
   # ====================================================================
@@ -97,6 +103,7 @@ in {
   programs.zsh.enable = true;
   programs.zsh.autosuggestions.enable=true;
   programs.zsh.syntaxHighlighting.enable=true;
+  programs.zsh.histSize=100000;
   programs.zsh.promptInit = builtins.readFile ./zshprompt.sh;
   environment.sessionVariables = {
     XDG_CURRENT_DESKTOP = "sway";
@@ -115,8 +122,7 @@ in {
     XDG_DATA_HOME = "$HOME/.local/share";
     XDG_STATE_HOME = "$HOME/.local/state";
 
-    # Zsh configuration path variables
-    ZDOTDIR = "$XDG_CONFIG_HOME/zsh";
+    ZDOTDIR = "$HOME/nixos-config/hosts/common";
     HISTFILE = "$ZDOTDIR/history";
 
     # Application-specific XDG paths
@@ -186,7 +192,7 @@ in {
   '';
 
   # ====================================================================
-  # APPIMAGE STUFF (Unchanged)
+  # APPIMAGE STUFF
   # ====================================================================
   programs.appimage = {
     enable = true;
@@ -212,7 +218,16 @@ in {
   # ====================================================================
   # ENVIRONMENT AND PACKAGES (List)
   # ====================================================================
+environment.etc = {
+    "xdg/gtk-3.0/settings.ini".text = ''
+      [Settings]
+      gtk-icon-theme-name = "oomox-Moon Theme"
+    '';
 
+    "xdg/gtk-2.0/gtkrc".text = ''
+      gtk-icon-theme-name = "oomox-Moon Theme"
+    '';
+  };
   environment.systemPackages = with pkgs; [
     # --- System Utilities/Shell
     kitty
@@ -243,6 +258,7 @@ in {
     lm_sensors
     usbutils
     cargo
+    libnotify
     # --- Btrfs Tools
     btrfs-progs
 
@@ -291,5 +307,6 @@ in {
 
     sherlock-launcher
     (pkgs.callPackage ../../packages/fchat-horizon.nix {})
+oomox-moon-icon-theme
   ];
 }

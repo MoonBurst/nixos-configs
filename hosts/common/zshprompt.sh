@@ -22,9 +22,10 @@ _comp_options+=(globdots)
 compinit
 
 nupdate() {
-local HOSTNAME
+  local HOSTNAME
   HOSTNAME=$(hostname)
-  local FLAKE_PATH="/home/moonburst/nixos-config"
+  # FIX: Use $HOME instead of a quoted tilde
+  local FLAKE_PATH="$HOME/nixos-config" 
 
   if [ -d "$FLAKE_PATH" ]; then
     echo "Building system: $HOSTNAME from $FLAKE_PATH"
@@ -35,7 +36,6 @@ local HOSTNAME
     return 1
   fi
 }
-
 
 alias grab='scripts/alias_scripts/search.sh'
 alias color='hyprpicker --format=rgb --autocopy --render-inactive'
