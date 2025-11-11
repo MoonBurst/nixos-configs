@@ -8,15 +8,13 @@
 
 in {
   imports = [
-  ./packages/oomox-moon-icons
+  
   ];
 
   time.timeZone = "America/Chicago";
   i18n.defaultLocale = "en_US.UTF-8";
 
-
-
-nixpkgs.overlays = [
+  nixpkgs.overlays = [
   ];
 
   # ====================================================================
@@ -214,16 +212,7 @@ nixpkgs.overlays = [
   # ====================================================================
   # ENVIRONMENT AND PACKAGES (List)
   # ====================================================================
-environment.etc = {
-    "xdg/gtk-3.0/settings.ini".text = ''
-      [Settings]
-      gtk-icon-theme-name = oomox-Moon Theme
-    '';
-    
-    "xdg/gtk-2.0/gtkrc".text = ''
-      gtk-icon-theme-name = "oomox-Moon Theme"
-    '';
-  };
+
   environment.systemPackages = with pkgs; [
     # --- System Utilities/Shell
     kitty
@@ -303,6 +292,5 @@ environment.etc = {
 
     sherlock-launcher
     (pkgs.callPackage ../../packages/fchat-horizon.nix {})
-	(pkgs.callPackage ../../packages/oomox-moon-icons {})
   ];
 }

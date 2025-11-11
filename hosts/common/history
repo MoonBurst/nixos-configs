@@ -261,3 +261,7 @@ git commit -m "fix: Corrected relative path to icon package and commit all chang
 : 1762882758:0;nupdate
 : 1762882835:0;cd ~/nixos-config
 : 1762882839:0;git add -A
+: 1762882842:0;git commit -m "Finalizing icon theme and fixing dirty git tree issue."
+: 1762882845:0;nupdate
+: 1762882894:0;cd nixos-config
+: 1762882896:0;git add -A
