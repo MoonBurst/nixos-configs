@@ -78,7 +78,13 @@
     # --- Desktop/Theming ---
     openrgb-with-all-plugins
     lmstudio
-  ];
+    krita
+    cura-appimage
+    kdePackages.partitionmanager
+openscad
+orca-slicer
+nicotine-plus
+    ];
 
   system.stateVersion = "25.11"; # Keep this set to your desired version
 }

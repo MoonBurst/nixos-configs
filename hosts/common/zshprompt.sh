@@ -24,18 +24,19 @@ compinit
 nupdate() {
   local HOSTNAME
   HOSTNAME=$(hostname)
-  # FIX: Use $HOME instead of a quoted tilde
   local FLAKE_PATH="$HOME/nixos-config" 
 
   if [ -d "$FLAKE_PATH" ]; then
     echo "Building system: $HOSTNAME from $FLAKE_PATH"
 
-    sudo nixos-rebuild switch --flake "$FLAKE_PATH"\#"$HOSTNAME"
+    sudo nixos-rebuild switch --flake "$FLAKE_PATH"\#"$HOSTNAME" -v
   else
     echo "Error: Flake path not found at $FLAKE_PATH" >&2
     return 1
   fi
 }
+
+
 
 alias grab='scripts/alias_scripts/search.sh'
 alias color='hyprpicker --format=rgb --autocopy --render-inactive'

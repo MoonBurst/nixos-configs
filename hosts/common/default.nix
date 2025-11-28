@@ -47,7 +47,15 @@ in {
   services.displayManager.ly.enable = true;
 
   services.displayManager.sessionPackages = [pkgs.niri];
-
+system.autoUpgrade = {
+  enable = true;
+  flags = [
+    "--print-build-logs"
+  ];
+  dates = "02:00";
+  randomizedDelaySec = "45min";
+  allowReboot = false;
+};
   #Audio: PipeWire (Full Setup) ---
   services.pipewire = {
     enable = true;
@@ -82,7 +90,7 @@ in {
     enableSSHSupport = true;
   };
   services.openssh.enable = true;
-
+services.gvfs.enable = true;
   # ====================================================================
   # PROGRAMS, SHELLS, and THEME FIXES
   # ====================================================================
@@ -103,10 +111,13 @@ in {
     XDG_CURRENT_DESKTOP = "sway";
     XDG_SESSION_TYPE = "wayland";
     XDG_SESSION_DESKTOP = "sway";
-    QT_QPA_PLATFORMTHEME = "qt5ct";
+    EDITOR = "nano";
+	TERMINAL = "kitty";
+	QT_QPA_PLATFORMTHEME = "qt5ct";
     GTK_THEME = "Moon-Burst-Theme";
     GDK_BACKEND = "wayland,x11";
     OBS_PLATFORM = "wayland";
+
     
   # ====================================================================
   # XDG RULES
@@ -244,6 +255,7 @@ in {
     usbutils
     cargo
     libnotify
+    qimgv
     # --- Btrfs Tools
     btrfs-progs
 
@@ -262,6 +274,7 @@ in {
 
     # --- Desktop/Theming
     nemo
+kdePackages.kate
     lxqt.pavucontrol-qt
     bluez-tools
     qt5.qtwayland

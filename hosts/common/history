@@ -1,267 +1,506 @@
-: 1762619559:0;ls
-: 1762619575:0;cd .config/zsh
-: 1762619575:0;ls
-: 1762619581:0;ls history
-: 1762619584:0;cat history
-: 1762619599:0;rm history
-: 1762619600:0;ls
-: 1762619615:0;cat functions
-: 1762619619:0;cat aliases.old
-: 1762619624:0;1time
-: 1762625157:0;timer 40m oven
-: 1762625159:0;alarm 40m oven
-: 1762686185:0;nix-collect-garbage
-: 1762687056:0;sherlock
-: 1762687195:0;exec /nix/store/daamdpmaz2vjvna55ccrc30qw3qb8h6d-glibc-2.40-66/lib64/ld-linux-x86-64.so.2 /home/moonburst/.config/sherlock/scripts/sherlock-clp | ~/.config/sherlock/sherlock | xargs -r cliphist decode | wl-copy\
+cd /usr
+ls
+cd .config/zsh
+ls -0a
+ls -a
+cat .zshrc
+cat old.old
+ls -a
+cat exports.old
+cd .
+ls
+cd /
+ls -a
+which share
+cd /etc/share/themes
+ls
+ls -a
+cd ..
+cd .local/share/icons
+ls
+cd nixos-config
+ls
+# Run this from your terminal\
+sudo mkdir -p /etc/nixos/packages/oomox-moon-icons\
+sudo cp ~/.local/share/icons/'oomox-Moon Theme' /etc/nixos/packages/oomox-moon-icons/\
+# The folder structure should be: /etc/nixos/packages/oomox-moon-icons/oomox-Moon Theme
+# Run this from your terminal\
+sudo mkdir -p /etc/nixos/packages/oomox-moon-icons\
+sudo cp ~/.local/share/icons/'oomox-Moon Theme' /etc/nixos/packages/oomox-moon-icons/
+cd nixos-config/packages
+ls
+cd oomox-Moon\ Theme
+nano default.nix
+nupdate
+ls -F ~/nixos-config/hosts/common/packages/oomox-moon-icons/
+mkdir -p ~/nixos-config/hosts/common/packages/oomox-moon-icons
+mv 'oomox-Moon Theme' ~/nixos-config/hosts/common/packages/oomox-moon-icons/
+cd nixos-config/packages
+mv 'oomox-Moon Theme' ~/nixos-config/hosts/common/packages/oomox-moon-icons/
+nupdate
+cd ~/nixos-config\
+git add hosts/common/packages/oomox-moon-icons\
+git commit -m "feat: Added oomox-Moon Theme package files."\
+nupdate
+nupdate
+ls -l ~/nixos-config/hosts/common/packages/oomox-moon-icons/default.nix
+nupdate
+ls -l ~/nixos-config/hosts/common/packages/oomox-moon-icons/default.nix
+nupdate
+cd ~/nixos-config\
+git add .\
+git commit -m "WIP: Adding oomox-Moon theme files for local testing."
+nupdate
+cd nixos-config/hosts/common/packages/oomox-moon-icons/
+ls
+nano default.nix
+cd ~/nixos-config\
+git add hosts/common/packages/oomox-moon-icons/default.nix\
+git commit -m "fix: Define stdenv argument in icon package derivation."
+nano default.nix
+nupdate
+nano default.nix
+cd ~/nixos-config\
+git add hosts/common/packages/oomox-moon-icons/default.nix\
+git commit -m "fix: Simplify icon package arguments to only stdenv."
+nupdate
+cd nixos-config
+1time tree
+nix-shell -p tree
+cd ~/nixos-config/packages\
+mkdir oomox-moon-icons
+mv 'oomox-Moon Theme' oomox-moon-icons/
+mv default.nix oomox-moon-icons/default.nix
+nupdate
+tree
+nupdate
+cd ~/nixos-config\
+git add .\
+git commit -m "fix: Corrected relative path to icon package and commit all changes."
+nupdate
+cd ~/nixos-config
+git add .
+git commit -m "Final structure and code correction for oomox-Moon theme package."
+git add .
+git commit -m 'test'
+git push
+nupdate
+cd ~/nixos-config
+git add -A
+git commit -m "Finalizing icon theme and fixing dirty git tree issue."
+nupdate
+cd nixos-config
+git add -A
+git commit -m "reverting"
+git push
+nupdate
+sherlock
+nupdate
+sherlock
+nix-shell -p wev
+wev
+wev
+cd /tmp
+unar anchor-linux-x64.zip
+cd /tmp
+unar anchor-linux-x64.zip
+cd /tmp
+unar soh-linux.zip
+lsusb
+cd .config/zsh
+cat exports.old
+cd ~/nixos-config/
+ls
+cd hosts/common
+ls
+nano zshprompt.sh
+nupdate
+pavucontrol-qt
+nano zshprompt.sh
+nupdate
+echo $EDITOR\
+echo $TERMINAL\
+echo $QT_QPA_PLATFORMTHEME
+swaymsg reload
+cat scripts/keybinds/safekill.sh
+swaymsg reload
+nix store diff-closures /var/run/current-system ./result
+nix store diff-closures /var/run/current-system ./result | grep "horizon"
+nvd diff /run/current-system ./result
+nix-shell -p nvd
+    nix flake update
+cd nixos-config
+    nix flake update
+nupdate
+sherlock
+nupdate
+export NIXPKGS_ALLOW_BROKEN=1
+nupdate
+nix-shell -p cura
+nupdate
+export NIXPKGS_ALLOW_BROKEN=1
+nix-shell -p cura
+cura
+nupdate
+nix-shell -p rpi-imager
+nupdate
+nix-shell -p rpi-imager
+nix-shell -p p11-kit-1
+nix-shell -p rpi-imager
+nix log /nix/store/18vpz5dj3vm4dv7ywhnybyi0s5ydhcch-rpi-imager-1.9.6.drv
+get_property could not find TARGET rpi-imager.  Perhaps it has not yet been\
+       >   created.
+nix-shell -p rpi-imager -I nixpkgs=https://github.com/NixOS/nixpkgs/archive/master.tar.gz
+lsblk -f
+nix-shell -p kdePackages.partitionmanager
+nupdate
+sudo partitionmanager
+partitionmanager
+export QT_QPA_PLATFORM=xcb
+partitionmanager
+export QT_QPA_PLATFORM=wayland-egl
+partitionmanager
+sudo partitionmanager
+export QT_QPA_PLATFORM=wayland
+partitionmanager
+export QT_QPA_PLATFORM=linuxfb
+partitionmanager
+export QT_QPA_PLATFORM=eglfs
+partitionmanager
+export QT_QPA_PLATFORM=vnc
+partitionmanager
+export QT_QPA_PLATFORM=wayland-brcm
+partitionmanager
+export QT_QPA_PLATFORM=minimal
+partitionmanager
+export QT_QPA_PLATFORM=minimalegl
+partitionmanager
+export QT_QPA_PLATFORM=
+sudo partitionmanager
+export QT_QPA_PLATFORM=wayland
+partitionmanager
+lsblk -f
+sudo mount /dev/sdc1 /mnt/usb
+lsblk -f
+sudo umount /dev/sdc1
+journalctl -f
+partitionmanager 
+partitionmanager 
+nix-shell -p gparted
+nix-shell -p rpi-imager\
 
-: 1762687214:0;/home/moonburst/.config/sherlock/scripts/sherlock-clp | ~/.config/sherlock/sherlock | xargs -r cliphist decode | wl-copy
-: 1762687231:0;./.config/sherlock/scripts/sherlock-clp | ~/.config/sherlock/sherlock | xargs -r cliphist decode | wl-copy
-: 1762687244:0;sherlock-clp
-: 1762687421:0;sherlock
-: 1762687545:0;which glibc
-: 1762687560:0;which ld.so
-: 1762687591:0;readlink -f $(nix-build '<nixpkgs>' -A glibc.out)/lib/ld-linux-x86-64.so.2\
-# OR\
-readlink -f ~/.nix-profile/lib/ld-linux-x86-64.so.2
-: 1762687609:0;ls -d /nix/store/*-glibc-*/lib/ld-linux-x86-64.so.2
-: 1762687622:0;/nix/store/qlqv3dxkz86h3nih69ripkk09vmbw05j-glibc-multi-2.40-66/lib/ld-linux-x86-64.so.2 /home/moonburst/.config/sherlock/scripts/sherlock-clp | ~/.config/sherlock/sherlock | xargs -r cliphist decode | wl-copy
-: 1762687638:0;/nix/store/qlqv3dxkz86h3nih69ripkk09vmbw05j-glibc-multi-2.40-66/lib/ld-linux-x86-64.so.2 /home/moonburst/.config/sherlock/scripts/sherlock-clp | sherlock | xargs -r cliphist decode | wl-copy
-: 1762687657:0;swaymsg reload
-: 1762687667:0;sherlock
-: 1762687693:0;~/.config/sherlock/sherlock
-: 1762687699:0;cd .config/sherlock
-: 1762687699:0;ls
-: 1762687704:0;ls -a
-: 1762687713:0;./sherlock
-: 1762687737:0;sherlock
-: 1762687758:0;swaymsg reload
-: 1762690397:0;cd .local/share/themes
-: 1762690397:0;ls
-: 1762690402:0;cd ..
-: 1762690403:0;ls -a
-: 1762690406:0;cd themes
-: 1762690407:0;ls
-: 1762690412:0;cd Moon-Burst-Theme
-: 1762690413:0;ls
-: 1762702041:0;echo $CURSOR
-: 1762771738:0;nix-shell -p gnomeExtensions.snowy
-: 1762771844:0;nix-shell -p xsnow
-xsnow
-xsnow
-: 1762773343:0;cd scripts
-: 1762773344:0;cd keybinds
-: 1762773353:0;nano safekill.sh
-: 1762773402:0;xprop
-: 1762773410:0;wlprop
-: 1762773416:0;nix-shell -p wlprop
-: 1762773515:0;swaymsg reload
-: 1762773519:0;chmod +x safekill.sh
-: 1762773576:0;ls
-: 1762773601:0;swaymsg reload
-: 1762773639:0;nano safekill.sh
-: 1762773750:0;chmod +x safekill.sh
-: 1762773768:0;nano safekill.sh
-: 1762773844:0;./safekill.sh
-: 1762773853:0;cat screenshot.sh
-: 1762773859:0;nano safekill.sh
-wlprop
-swaymsg -t get_tree | jq -r '.. | select(.focused?) | (.app_id // .window_properties.class)'
-cat ~/sway-kill-debug.log
-swaymsg reload
-swaymsg reload
-: 1762773876:0;nano safekill.sh
-: 1762773912:0;./safekill.sh
-: 1762773930:0;nano safekill.sh
-: 1762773939:0;./safekill.sh
-: 1762773947:0;nano safekill.sh
-: 1762773965:0;./safekill.sh
-: 1762773988:0;nano safekill.sh
-: 1762773994:0;./safekill.sh
-: 1762774198:0;nupdate
-: 1762774201:0;cd nixos-config
-: 1762774202:0;nupdate
-: 1762774208:0;ls
-: 1762774211:0;nupdate
-: 1762774290:0;nupdate() {\
-  local HOSTNAME\
+nix-shell -p rpi-imager -I nixpkgs=https://github.com/NixOS/nixpkgs/archive/master.tar.gz
+nupdate
+rpi-imager 
+DISPLAY=:0 sudo rpi-imager
+sudo usermod -a -G disk $USER
+rpi-imager 
+nix-shell -p rpi-imager -I nixpkgs=https://github.com/NixOS/nixpkgs/archive/master.tar.gz
+: 1763265355:0;nix-collect-garbage
+rpi-imager 
+: 1763279109:0;nix-shell -p arp-scan
+: 1763279211:0;ip addr
+: 1763279672:0;ssh pi@192.168.12.219
+: 1763279814:0;ssh-keygen -t rsa -b 4096
+: 1763280051:0;lsblk
+: 1763280090:0;sudo mount /dev/sdc2 /mnt/usb
+: 1763280256:0;ls
+: 1763280264:0;cd .ssh
+: 1763280273:0;nano octopi.pub
+: 1763280423:0;sudo umount /mnt/usb
+: 1763280438:0;lsblk
+: 1763281497:0;ssh pi@192.168.12.219
+: 1763281726:0;ssh 192.168.12.219
+: 1763281785:0;ssh-copy-id -i ~/.ssh/octopi pi@192.168.12.219
+: 1763281819:0;ssh 192.168.12.219
+: 1763281828:0;sudo ssh 192.168.12.219
+: 1763282115:0;ssh 192.168.12.219
+: 1763282425:0;ssh -vvv
+: 1763282428:0;ssh -vv
+: 1763282436:0;ssh 192.168.12.219 -vv
+: 1763282772:0;l
+: 1763282774:0;lsblk
+: 1763282780:0;sudo mount /dev/sdc2 /mnt/usb
+: 1763282896:0;cd /mnt/usb/home/pi/
+: 1763282909:0; chmod 700 .ssh/
+: 1763282919:0;chmod 600 .ssh/authorized_keys
+: 1763282975:0; cd ~/.ssh
+: 1763282981:0;cd ..
+: 1763282982:0;cd nixos-config
+: 1763282983:0;ls
+: 1763282988:0;cd hosts/common
+: 1763282989:0;ls
+: 1763282992:0;nano default.nix
+: 1763282996:0;chmod 750 .ssh
+: 1763283020:0;chmod 600 .ssh/octopi.pub
+: 1763283029:0;nupdate
+: 1763283062:0;chmod 600 .ssh/octopi
+: 1763283071:0;which kate
+: 1763283221:0;ssh-add ~/.ssh/octopi
+: 1763283260:0;sudo umount /mnt/usb
+: 1763283410:0;ssh 192.168.12.219
+: 1763283591:0;nano nixos-config/hosts/common/default.nix
+: 1763283617:0;nupdate
+: 1763283656:0;ssh-add -l
+: 1763283692:0;ssh 192.168.12.219
+: 1763283698:0;sudo ssh 192.168.12.219
+: 1763283727:0;ssh octopi.local
+: 1763283798:0;sudo ssh pi@192.168.12.219
+: 1763283808:0;ssh pi@192.168.12.219
+: 1763296206:0;pidof audacious
+: 1763296211:0;pkill audacious
+: 1763297397:0;shutdown
+: 1763312809:0;cd /tmp
+: 1763312816:0;unar Raspberry\ Pi\ 3\ \(B_B+\),\ Pi\ 2\ B,\ and\ Pi\ 1\ B+\ case\ with\ VESA\ mounts\ and\ more\ -\ 922740.zip
+: 1763315953:0;nix-collect-garbage
+arp-scan 
+arp-scan --localnet
+sudo arp-scan --localnet
+: 1763319180:0;cd .config
+: 1763327388:0;nupdate
+: 1763327631:0;kate
+: 1763327707:0;nupdate
+: 1763327756:0;kate
+: 1763327765:0;pavucontrol-qt
+: 1763327768:0;kate
+: 1763338520:0;colors
+: 1763351293:0;sherlock
+: 1763351443:0;which nemo
+: 1763351497:0;which file roller
+: 1763351498:0;which unar
+: 1763351578:0;which unzip
+: 1763351644:0;cd /tmp
+: 1763351649:0;unzip tractyl-manuform-keyboard-master.zip
+: 1763351839:0;cd /tmp/tractyl-manuform-keyboard-master
+: 1763351840:0;ls
+: 1763351885:0;kate create-models.sh
+: 1763351914:0;lein auto generate
+: 1763351921:0;nix-shell -p lein
+: 1763351932:0;pavucontrol-qt
+: 1763351994:0;nix-shell -p openscad
+openscad 
+nix-shell -p leiningen
+: 1763394593:0;nix-shell -p openscad
+: 1763394879:0;cd /tmp/tractyl-manuform-keyboard-master
+: 1763394881:0;patch /things/right.scad < 4x6.patch
+: 1763394890:0;patch -p1 /things/right.scad < 4x6.patch\
+
+: 1763394907:0;patch things/right.scad < 4x6.patch\
+
+: 1763394930:0;patch -p1 < 4x6.patch\
+
+openscad 
+nix-shell -p leiningen
+: 1763395515:0;cd tractyl-manuform-keyboard-master
+: 1763395516:0;ls
+: 1763395522:0;./create-models.sh
+: 1763395525:0;lein auto generate
+: 1763395531:0;nix-shell -p leiningen
+: 1763395810:0;cd ..
+: 1763395812:0;unzip tractyl-manuform-keyboard-master.zip
+: 1763395823:0;rm -rf tractyl-manuform-keyboard-master
+: 1763395831:0;unzip tractyl-manuform-keyboard-master.zip
+: 1763395837:0;cd tractyl-manuform-keyboard-master
+: 1763395846:0;lein auto generate
+: 1763395897:0;cd src
+: 1763395899:0;ls
+: 1763395904:0;ls -a
+: 1763395907:0;cd dactyl_keyboard
+: 1763395907:0;ls
+: 1763395927:0;rm dactyl.clj dactyl.clj.rej\
+
+: 1763395931:0;mv dactyl.clj.orig dactyl.clj\
+
+: 1763395990:0;cd /tmp
+: 1763395991:0;unzip tractyl-manuform-keyboard-master.zip
+: 1763396016:0;cd tractyl-manuform-keyboard-master
+: 1763396016:0;ls
+: 1763396020:0;cd src
+: 1763396021:0;ls
+: 1763396022:0;cd dactyl_keyboard
+: 1763396023:0;ls
+: 1763396037:0;cd..
+: 1763396038:0;cd ..
+: 1763396041:0;tree
+: 1763396046:0;nix-shell -p leiningen
+: 1763396046:0;nix-shell -p tree
+tree
+lein auto-generate
+lein auto generate
+cat create-models.sh 
+cp src/dactyl_keyboard/dactyl.clj src/dactyl_keyboard/dactyl.clj.bak
+git checkout src/dactyl_keyboard/dactyl.clj
+nano create-models.sh 
+./create-models.sh 
+rm src/dactyl_keyboard/dactyl.clj src/dactyl_keyboard/dactyl.clj.rej src/dactyl_keyboard/dactyl.clj.bak 
+cat create-models.sh 
+nano create-models.sh 
+./create-models.sh 
+lein run
+lein run src/dactyl_keyboard/dactyl.clj
+# Check that things/right.scad and things/left.scad are created
+patch src/dactyl_keyboard/dactyl.clj < 4x6.patch
+cat 4x6.patch 
+rm src/dactyl_keyboard/dactyl.clj
+rm src/dactyl_keyboard/dactyl.clj
+cd src/dactyl_keyboard/
+ls
+mv dactyl.clj.orig dactyl.clj
+cd ../../
+patch src/dactyl_keyboard/dactyl.clj < 4x6.patch
+cd /tmp
+rm -rf tractyl-manuform-keyboard-master
+cd /tmp/tractyl-manuform-keyboard-master
+patch src/dactyl_keyboard/dactyl.clj < 4x6.patch
+unzip tractyl-manuform-keyboard-master.zip 
+cd /tmp/tractyl-manuform-keyboard-master
+patch src/dactyl_keyboard/dactyl.clj < 4x6.patch
+cd src/dactyl_keyboard/
+nano dactyl.clj
+: 1763396609:0;cd /tmp/tractyl-manuform-keyboard-master
+: 1763396613:0;nix-shell -p leiningen
+lein auto generate
+patch src/dactyl_keyboard/dactyl.clj < 4x6.patch
+lein run src/dactyl_keyboard/dactyl.clj
+lein run src/dactyl_keyboard/dactyl.clj
+patch src/dactyl_keyboard/dactyl.clj < 4x6.patch
+nix-shell -p openscad
+: 1763397628:0;unzip tractyl-manuform-keyboard-master.zip 
+: 1763397635:0;cd /tmp
+: 1763397636:0;unzip tractyl-manuform-keyboard-master.zip 
+: 1763397641:0;cd tractyl-manuform-keyboard-master
+: 1763397655:0;nix-shell -p openscad leiningen
+: 1763398266:0;which cura
+: 1763399091:0;git clone https://github.com/Bastardkb/Charybdis.git
+: 1763403061:0;nupdate
+: 1763403081:0;pavucontrol-qt
+: 1763403124:0;export | grep QT\
+
+: 1763403207:0;export | grep QT\
+pgrep pavucontrol
+: 1763403224:0;pgrep pavucontrol
+: 1763403235:0;cat /proc/184390/environ | tr '\0' '\n' | grep QT\
+
+: 1763403326:0;nix-shell -p easyeffects
+easyeffects 
+: 1763406845:0;cd tractyl-manuform-keyboard-master
+: 1763406863:0;nix-shell -p openscad leiningen
+: 1763407769:0;cd tractyl-manuform-keyboard-master
+: 1763407769:0;ls
+: 1763407781:0;patch src/dactyl_keyboard/dactyl.clj < 4x6.patch
+lein run src/dactyl_keyboard/dactyl.clj
+patch src/dactyl_keyboard/dactyl.clj < 4x6.patch
+patch src/dactyl_keyboard/dactyl.clj < 4x6.patch
+nix-shell -p openscad
+: 1763407803:0;patch -p1 < 4x6.patch
+: 1763407807:0;patch -p0 < 4x6.patch
+: 1763408202:0;nix-shell -p openscad leiningen
+: 1763423054:0;cd tractyl-manuform-keyboard-master
+: 1763423059:0;patch -p0 < 4x6.patch
+: 1763423130:0;patch --strip < 4x6.patch
+: 1763423134:0;patch -strip < 4x6.patch
+: 1763423143:0;patch -p1 < 4x6.patch
+: 1763445500:0;cd tractyl-manuform-keyboard-master
+: 1763445552:0;nix-shell -p openscad leiningen
+: 1763445704:0;openscad 
+: 1763445710:0;nix-shell -p openscad
+: 1763570275:0;nupdate
+: 1763570692:0;cd tractyl-manuform-keyboard-master
+: 1763570698:0;cd things
+: 1763570698:0;ls
+: 1763570718:0;openscad
+: 1763593945:0;nupdate
+: 1763622627:0;cd ..
+: 1763622635:0;rm -rf Tabletop\ Simulator
+: 1763622644:0;cd ~/.local/share
+: 1763622644:0;ls
+: 1763622653:0;rm -rf Tabletop\ Simulator
+: 1763670967:0;    sudo nix-channel --update nixos
+: 1763671022:0;cd nixos-config
+: 1763671022:0;ls
+: 1763671027:0;cd hosts/common
+: 1763671027:0;ls
+: 1763671031:0;cat zshprompt.sh
+: 1763671039:0;nano zshprompt.sh
+: 1763671064:0;cat zshprompt.sh
+: 1763671118:0;  local HOSTNAME\
   HOSTNAME=$(hostname)\
-  # ALTERNATIVE FIX: Remove quotes to allow tilde expansion\
-  local FLAKE_PATH=~/nixos-config \
+  local FLAKE_PATH="$HOME/nixos-config" \
 \
   if [ -d "$FLAKE_PATH" ]; then\
     echo "Building system: $HOSTNAME from $FLAKE_PATH"\
 \
-    sudo nixos-rebuild switch --flake "$FLAKE_PATH"\#"$HOSTNAME"\
+    sudo nixos-rebuild switch --flake "$FLAKE_PATH"\#"$HOSTNAME" -v\
   else\
     echo "Error: Flake path not found at $FLAKE_PATH" >&2\
     return 1\
-  fi\
-}
-: 1762774292:0;nupdate
-: 1762790830:0;cd /tmp
-: 1762790830:0;ls
-: 1762790834:0;mkdir image
-: 1762790841:0;mv 3603652.webm image
-: 1762790842:0;cd image
-: 1762790851:0;ffmpeg -i 3603652.webm -vf "fps=10,scale=500:-1:flags=lanczos,palettegen" palette.png
-: 1762790860:0;nix-shell -p ffmpeg
-: 1762791029:0;nix-shell -p gpick
-gpick
-: 1762791029:0;nix-shell -p hyprpicker
-: 1762790851:0;ffmpeg -i 3603652.webm -vf "fps=10,scale=500:-1:flags=lanczos,palettegen" palette.png
-ffmpeg -i 3603652.webm -vf "fps=10,scale=500:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" output.gif
-convert output.gif -fuzz 5% -transparent "#461B5F" output_transparent.gif
-convert output.gif   -coalesce   -fuzz 5%   -transparent "#461B5F"   -dispose Background   -layers optimize   output_cleared.gif
-convert output.gif -coalesce -fuzz 5% -transparent "#461B5F" temp_cleared.gif
-convert temp_cleared.gif -dispose Background -layers optimize temp_final.gif
-convert output.gif -coalesce -fuzz 5% -transparent "#461B5F" -layers optimizeFrame output_cleared.gif
-convert output_cleared.gif   -coalesce   -fuzz 5%   -trim   +repage   -resize 100x100^   -gravity Center   -extent 100x100   -layers optimizeFrame   final_100x100_subject_fill.gif
-convert output_cleared.gif   -coalesce   -fuzz 5%   -trim   +repage   -resize 100x100^   -gravity Center   -background transparent   -extent 100x100   -layers optimizeFrame   final_transparent_100x100.gif
-convert final_transparent_100x100.gif   -layers optimize   -fuzz 5%   -colors 64   -filter Triangle   -quality 70   output_under_500kb.gif
-convert final_transparent_100x100.gif   -layers optimize   -fuzz 5%   -colors 64   -filter Triangle   -quality 65   output_under_500kb.gif
-convert final_transparent_100x100.gif   -layers optimize   -fuzz 5%   -colors 64   -filter Triangle   -quality 50   output_under_500kb.gif
-convert final_transparent_100x100.gif   -layers optimize   -fuzz 5%   -colors 64   -filter Triangle   -quality 70  -set delay 5 output_under_500kb.gif
-convert final_transparent_100x100.gif   -layers optimize   -fuzz 5%   -colors 32   -filter Triangle   -quality 70   output_under_500kb.gif
-: 1762795125:0;openrgb
-: 1762795219:0;lsmod | grep i2c
-: 1762795251:0;sudo udevadm control --reload-rules\
-sudo udevadm trigger
-: 1762795270:0;openrgb
-: 1762795322:0;nupdate
-: 1762795380:0;openrgb
-: 1762795440:0;nupdate
-: 1762795639:0;openrgb
-: 1762795707:0;nupdate
-: 1762797220:0;sudo systemctl restart openrgb
-: 1762797226:0;openrgb
-: 1762797317:0;nupdate
-: 1762867224:0;nix-shell -p lxappearance
-: 1762867424:0;sudo update-icon-caches /usr/share/icons/*\
+  fi
+: 1763671153:0;cd ..
+: 1763671154:0;    sudo nixos-rebuild switch --upgrade -v
+: 1763671515:0;nupdate
+: 1763671585:0;    nix flake metadata --json /path/to/your/flake | jq .resolved.path
+: 1763671629:0;readlink -f /run/current-system\
 
-: 1762867437:0;sudo gtk-update-icon-cache
-: 1762867448:0;xdg-desktop-menu forceupdate
-lxappearance 
-lxappearance 
-: 1762867733:0;nix-shell -p lxappearance
-lxappearance 
-lxappearance 
-lxappearance 
-: 1762877448:0;nupdate
-: 1762877975:0;nix-shell -p papirus-icon-theme --run "bash"
-# For a GTK-based desktop like GNOME/XFCE
-gsettings set org.gnome.desktop.interface icon-theme 'Papirus-Dark'
-nemo
-: 1762878031:0;nix-shell -p xfce.xfce4-icon-theme\
+: 1763671695:0;nupdate
+: 1763671770:0;cd /home/moonburst/nixos-config\
+sudo nixos-rebuild switch --flake .#moonbeauty\
 
-: 1762878226:0;nupdate
-nemo
-echo $NIX_STORE/xfce4-icon-theme-*/share/icons/xfce-base
-ICON_PATH=$(readlink -f $(nix-build "<nixpkgs>" -A xfce.xfce4-icon-theme))/share/icons/xfce-base
-echo $ICON_PATH
-nemo
-ICON_PATH=$(readlink -f $(nix-build "<nixpkgs>" -A xfce.xfce4-icon-theme))/share/icons/xfce-base
-echo $ICON_PATH
-# This brings in the icon theme AND the settings manager
-nix-shell -p xfce.xfce4-icon-theme lxappearance
-lxappearance 
-nix-shell -p themix-gui lxappearance
-: 1762878527:0;nupdate
-lxappearance 
-oomox-gui 
-nix-shell -p themix-gui lxappearance inkscape imagemagick
-themix-gui
-nix-shell -p themix-gui lxappearance papirus-icon-theme numix-icon-theme inkscape imagemagick
-: 1762880626:0;nupdate
-: 1762880696:0;cd /usr
-: 1762880697:0;ls
-: 1762880886:0;cd .config/zsh
-: 1762880887:0;ls -0a
-: 1762880889:0;ls -a
-: 1762880891:0;cat .zshrc
-: 1762880894:0;cat old.old
-: 1762880910:0;ls -a
-: 1762880916:0;cat exports.old
-: 1762880961:0;cd .
-: 1762880962:0;ls
-: 1762880964:0;cd /
-: 1762880965:0;ls -a
-: 1762880974:0;which share
-: 1762880991:0;cd /etc/share/themes
-: 1762880992:0;ls
-: 1762880993:0;ls -a
-: 1762880994:0;cd ..
-: 1762881189:0;cd .local/share/icons
-: 1762881190:0;ls
-: 1762881249:0;cd nixos-config
-: 1762881249:0;ls
-: 1762881308:4;# Run this from your terminal\
-sudo mkdir -p /etc/nixos/packages/oomox-moon-icons\
-sudo cp ~/.local/share/icons/'oomox-Moon Theme' /etc/nixos/packages/oomox-moon-icons/\
-# The folder structure should be: /etc/nixos/packages/oomox-moon-icons/oomox-Moon Theme
-: 1762881344:0;# Run this from your terminal\
-sudo mkdir -p /etc/nixos/packages/oomox-moon-icons\
-sudo cp ~/.local/share/icons/'oomox-Moon Theme' /etc/nixos/packages/oomox-moon-icons/
-: 1762881389:0;cd nixos-config/packages
-: 1762881390:0;ls
-: 1762881397:0;cd oomox-Moon\ Theme
-: 1762881403:0;nano default.nix
-: 1762881536:0;nupdate
-: 1762881641:0;ls -F ~/nixos-config/hosts/common/packages/oomox-moon-icons/
-: 1762881675:0;mkdir -p ~/nixos-config/hosts/common/packages/oomox-moon-icons
-: 1762881678:0;mv 'oomox-Moon Theme' ~/nixos-config/hosts/common/packages/oomox-moon-icons/
-: 1762881685:0;cd nixos-config/packages
-: 1762881686:0;mv 'oomox-Moon Theme' ~/nixos-config/hosts/common/packages/oomox-moon-icons/
-: 1762881716:0;nupdate
-: 1762881776:0;cd ~/nixos-config\
-git add hosts/common/packages/oomox-moon-icons\
-git commit -m "feat: Added oomox-Moon Theme package files."\
-nupdate
-: 1762881818:0;nupdate
-: 1762881929:0;ls -l ~/nixos-config/hosts/common/packages/oomox-moon-icons/default.nix
-: 1762881973:0;nupdate
-: 1762881980:0;ls -l ~/nixos-config/hosts/common/packages/oomox-moon-icons/default.nix
-: 1762882021:0;nupdate
-: 1762882047:0;cd ~/nixos-config\
-git add .\
-git commit -m "WIP: Adding oomox-Moon theme files for local testing."
-: 1762882052:0;nupdate
-: 1762882088:0;cd nixos-config/hosts/common/packages/oomox-moon-icons/
-: 1762882088:0;ls
-: 1762882093:0;nano default.nix
-: 1762882114:0;cd ~/nixos-config\
-git add hosts/common/packages/oomox-moon-icons/default.nix\
-git commit -m "fix: Define stdenv argument in icon package derivation."
-: 1762882117:0;nano default.nix
-: 1762882121:0;nupdate
-: 1762882151:0;nano default.nix
-: 1762882164:0;cd ~/nixos-config\
-git add hosts/common/packages/oomox-moon-icons/default.nix\
-git commit -m "fix: Simplify icon package arguments to only stdenv."
-: 1762882168:0;nupdate
-: 1762882386:0;cd nixos-config
-: 1762882389:0;1time tree
-: 1762882395:0;nix-shell -p tree
-: 1762882457:0;cd ~/nixos-config/packages\
-mkdir oomox-moon-icons
-: 1762882463:0;mv 'oomox-Moon Theme' oomox-moon-icons/
-: 1762882468:0;mv default.nix oomox-moon-icons/default.nix
-: 1762882479:0;nupdate
-tree
-: 1762882599:0;nupdate
-: 1762882606:0;cd ~/nixos-config\
-git add .\
-git commit -m "fix: Corrected relative path to icon package and commit all changes."
-: 1762882612:0;nupdate
-: 1762882717:0;cd ~/nixos-config
-: 1762882719:0;git add .
-: 1762882723:0;git commit -m "Final structure and code correction for oomox-Moon theme package."
-: 1762882734:0;git add .
-: 1762882739:0;git commit -m 'test'
-: 1762882743:0;git push
-: 1762882758:0;nupdate
-: 1762882835:0;cd ~/nixos-config
-: 1762882839:0;git add -A
-: 1762882842:0;git commit -m "Finalizing icon theme and fixing dirty git tree issue."
-: 1762882845:0;nupdate
-: 1762882894:0;cd nixos-config
-: 1762882896:0;git add -A
+: 1763672478:0;nupdate
+: 1763672712:0;journalctl -u nixos-upgrade.service
+: 1763673093:0;hostname
+: 1763765345:0;nupdate
+: 1763765435:0;lsblk -f
+: 1763765462:0;sudo mount /dev/sda /mnt/tmp_btrfs_check
+: 1763765476:0;sudo mount /dev/sda1 /mnt/tmp_btrfs_check
+: 1763765508:0;sudo mount -t btrfs /dev/sda /mnt/tmp_btrfs_check
+: 1763765527:0;sudo mount -U f0315a7f-23e8-4d02-8bd3-207795137f48 /mnt/temp_btrfs_check
+: 1763765547:0;ls -ld /mnt/temp_btrfs_check
+: 1763765564:0;sudo mount -U f0315a7f-23e8-4d02-8bd3-207795137f48 /mnt/temp_btrfs_check
+: 1763765567:0;sudo mount -t btrfs /dev/sda /mnt/temp_btrfs_check
+: 1763765571:0;dmesg | tail
+: 1763765574:0;sudo dmesg | tail
+: 1763798960:0;nupdate
+: 1763799039:0;nix-shell -p nheko
+: 1763800096:0;nix-shell -p schildichat-desktop-wayland 
+: 1763800099:0;nix-shell -p schildichat-desktop-wayland
+: 1763800105:0;nix-shell -p schildichat-desktop
+: 1763800220:0;nix-shell -p Quaternion
+: 1763800230:0;nix-shell -p NeoChat
+: 1763800262:2;nix-shell -p quaternion
+: 1763800310:0;nix-shell -p kdePackages.neochat\
+
+: 1763819662:0;lsblk -f
+: 1763819685:0;sudo mount /dev/sdc3 /mnt/usb
+: 1763819693:0;cd /mnt/usb
+: 1763819693:0;ls
+: 1763819728:0;grep -r "greengate*" .
+: 1763819933:0;cd /mnt
+: 1763819936:0;lsblk -f
+: 1763819971:0;sudo umount /mnt/usb
+: 1763819982:0;lsblk -f
+: 1763820046:0;sudo mount /dev/sdc1 /mnt/usb
+: 1763820102:0;sudo umount /mnt/usb
+: 1763838280:0;nix-shell -p inkscape
+: 1763838532:0;pkill waybar
+: 1763838542:0;./.config/waybar/waybar.sh
+inkscape 
+: 1763842781:0;nix-shell -p inkscape
+: 1763844318:0;alarm 25m
+: 1763844323:0;alarm 25m oven
+: 1763845459:0;swaymsg reload
+: 1763929001:0;nano
+: 1763933379:0;nupdate
+: 1763950973:0;pkill waybar
+: 1763950976:0;./.config/waybar/waybar.sh
+: 1764057761:0;alarm 25m oven
+: 1764062484:0;journalctl -f
+: 1764101456:0;pass hyperbeam.com
+: 1764142406:0;1time tree
+: 1764142414:0;nix-shell -p qimgv
+qimgv sparkle-png-24.png 
+: 1764150869:0;ls /usr/share/applications/qimgv.desktop
+: 1764150873:0;qimgv
+: 1764150876:0;nupdate
+: 1764291347:0;which vesktop
+: 1764297549:0;cd nixos-config
+: 1764297557:0;git add .
