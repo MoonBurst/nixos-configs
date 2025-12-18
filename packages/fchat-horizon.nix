@@ -113,9 +113,9 @@ stdenv.mkDerivation rec {
     pnpm build
     # using alternative method
     #pnpm exec electron-builder -- \
-    #   --dir \
-    #   -c.electronDist=${if stdenv.hostPlatform.isDarwin then "." else electron.dist} \
-    #   -c.electronVersion=${electron.version}
+    #    --dir \
+    #    -c.electronDist=${if stdenv.hostPlatform.isDarwin then "." else electron.dist} \
+    #    -c.electronVersion=${electron.version}
     popd
   '';
 
@@ -155,7 +155,7 @@ stdenv.mkDerivation rec {
     # to be fixed: $out/share/lib/${pname}/resources/app.asar
     makeWrapper ${electron}/bin/electron $out/bin/${pname} \
       --add-flags $out/share/lib/${pname} \
-      --add-flags "--password-store=gnome-libsecret" \
+     --add-flags "--password-store=gnome-libsecret" \
       --add-flags "\''${NIXOS_OZONE_WL:+\''${WAYLAND_DISPLAY:+--ozone-platform-hint=auto --enable-features=WaylandWindowDecorations --enable-wayland-ime=true}}" \
       --set-default ELECTRON_FORCE_IS_PACKAGED 1 \
       --set-default ELECTRON_IS_DEV 0 \

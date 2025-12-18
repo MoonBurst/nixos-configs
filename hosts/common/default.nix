@@ -45,17 +45,8 @@ in {
 
   #--- Display Manager
   services.displayManager.ly.enable = true;
-
   services.displayManager.sessionPackages = [pkgs.niri];
-system.autoUpgrade = {
-  enable = true;
-  flags = [
-    "--print-build-logs"
-  ];
-  dates = "02:00";
-  randomizedDelaySec = "45min";
-  allowReboot = false;
-};
+
   #Audio: PipeWire (Full Setup) ---
   services.pipewire = {
     enable = true;
@@ -90,7 +81,18 @@ system.autoUpgrade = {
     enableSSHSupport = true;
   };
   services.openssh.enable = true;
-services.gvfs.enable = true;
+  services.gvfs.enable = true;
+
+nix.gc = {
+  automatic = true;
+  dates = "weekly";
+  options = "--delete-older-than 14d";
+};
+
+nix.optimise = {
+  automatic = true;
+  dates = [ "weekly" ];
+};
   # ====================================================================
   # PROGRAMS, SHELLS, and THEME FIXES
   # ====================================================================
@@ -107,7 +109,7 @@ services.gvfs.enable = true;
   programs.zsh.syntaxHighlighting.enable=true;
   programs.zsh.histSize=100000;
   programs.zsh.promptInit = builtins.readFile ./zshprompt.sh;
-  environment.sessionVariables = {
+  environment.sessionVariables = rec {
     XDG_CURRENT_DESKTOP = "sway";
     XDG_SESSION_TYPE = "wayland";
     XDG_SESSION_DESKTOP = "sway";
@@ -118,7 +120,7 @@ services.gvfs.enable = true;
     GDK_BACKEND = "wayland,x11";
     OBS_PLATFORM = "wayland";
 
-    
+
   # ====================================================================
   # XDG RULES
   # ====================================================================
@@ -128,20 +130,20 @@ services.gvfs.enable = true;
     XDG_STATE_HOME = "$HOME/.local/state";
 
     ZDOTDIR = "$HOME/nixos-config/hosts/common";
-    HISTFILE = "$ZDOTDIR/history";
+    HISTFILE = "${ZDOTDIR}/history";
 
     # Application-specific XDG paths
-    CARGO_HOME = "$XDG_DATA_HOME/cargo";
-    DOTNET_CLI_HOME = "$XDG_DATA_HOME/dotnet";
-    GOPATH = "$XDG_DATA_HOME/go";
-    GRADLE_USER_HOME = "$XDG_DATA_HOME/gradle";
-    GNUPGHOME = "$XDG_DATA_HOME/gnupg";
-    GTK2_RC_FILES = "$XDG_CONFIG_HOME/gtk-2.0/gtkrc";
-    NPM_CONFIG_CACHE = "$XDG_CACHE_HOME/npm";
-    NPM_CONFIG_INIT_MODULE = "$XDG_CONFIG_HOME/npm/config/npm-init.js";
-    NUGET_PACKAGES = "$XDG_CACHE_HOME/NuGetPackages";
-    PASSWORD_STORE_DIR = "$XDG_DATA_HOME/pass";
-    RUSTUP_HOME = "$XDG_DATA_HOME/rustup";
+    CARGO_HOME = "${XDG_DATA_HOME}/cargo";
+    DOTNET_CLI_HOME = "${XDG_DATA_HOME}/dotnet";
+    GOPATH = "${XDG_DATA_HOME}/go";
+    GRADLE_USER_HOME = "${XDG_DATA_HOME}/gradle";
+    GNUPGHOME = "${XDG_DATA_HOME}/gnupg";
+    GTK2_RC_FILES = "${XDG_CONFIG_HOME}/gtk-2.0/gtkrc";
+    NPM_CONFIG_CACHE = "${XDG_CACHE_HOME}/npm";
+    NPM_CONFIG_INIT_MODULE = "${XDG_CONFIG_HOME}/npm/config/npm-init.js";
+    NUGET_PACKAGES = "${XDG_CACHE_HOME}/NuGetPackages";
+    PASSWORD_STORE_DIR = "${XDG_DATA_HOME}/pass";
+    RUSTUP_HOME = "${XDG_DATA_HOME}/rustup";
   };
 
   # ====================================================================
@@ -260,6 +262,7 @@ services.gvfs.enable = true;
     btrfs-progs
 
     # --- Wayland Utilities
+    quickshell
     waybar
     grim
     slurp
@@ -274,7 +277,7 @@ services.gvfs.enable = true;
 
     # --- Desktop/Theming
     nemo
-kdePackages.kate
+    kdePackages.kate
     lxqt.pavucontrol-qt
     bluez-tools
     qt5.qtwayland
@@ -305,5 +308,6 @@ kdePackages.kate
 
     sherlock-launcher
     (pkgs.callPackage ../../packages/fchat-horizon.nix {})
+#    (pkgs.callPackage ../../packages/datacorn.nix {})
   ];
 }

@@ -1,294 +1,3 @@
-cd /usr
-ls
-cd .config/zsh
-ls -0a
-ls -a
-cat .zshrc
-cat old.old
-ls -a
-cat exports.old
-cd .
-ls
-cd /
-ls -a
-which share
-cd /etc/share/themes
-ls
-ls -a
-cd ..
-cd .local/share/icons
-ls
-cd nixos-config
-ls
-# Run this from your terminal\
-sudo mkdir -p /etc/nixos/packages/oomox-moon-icons\
-sudo cp ~/.local/share/icons/'oomox-Moon Theme' /etc/nixos/packages/oomox-moon-icons/\
-# The folder structure should be: /etc/nixos/packages/oomox-moon-icons/oomox-Moon Theme
-# Run this from your terminal\
-sudo mkdir -p /etc/nixos/packages/oomox-moon-icons\
-sudo cp ~/.local/share/icons/'oomox-Moon Theme' /etc/nixos/packages/oomox-moon-icons/
-cd nixos-config/packages
-ls
-cd oomox-Moon\ Theme
-nano default.nix
-nupdate
-ls -F ~/nixos-config/hosts/common/packages/oomox-moon-icons/
-mkdir -p ~/nixos-config/hosts/common/packages/oomox-moon-icons
-mv 'oomox-Moon Theme' ~/nixos-config/hosts/common/packages/oomox-moon-icons/
-cd nixos-config/packages
-mv 'oomox-Moon Theme' ~/nixos-config/hosts/common/packages/oomox-moon-icons/
-nupdate
-cd ~/nixos-config\
-git add hosts/common/packages/oomox-moon-icons\
-git commit -m "feat: Added oomox-Moon Theme package files."\
-nupdate
-nupdate
-ls -l ~/nixos-config/hosts/common/packages/oomox-moon-icons/default.nix
-nupdate
-ls -l ~/nixos-config/hosts/common/packages/oomox-moon-icons/default.nix
-nupdate
-cd ~/nixos-config\
-git add .\
-git commit -m "WIP: Adding oomox-Moon theme files for local testing."
-nupdate
-cd nixos-config/hosts/common/packages/oomox-moon-icons/
-ls
-nano default.nix
-cd ~/nixos-config\
-git add hosts/common/packages/oomox-moon-icons/default.nix\
-git commit -m "fix: Define stdenv argument in icon package derivation."
-nano default.nix
-nupdate
-nano default.nix
-cd ~/nixos-config\
-git add hosts/common/packages/oomox-moon-icons/default.nix\
-git commit -m "fix: Simplify icon package arguments to only stdenv."
-nupdate
-cd nixos-config
-1time tree
-nix-shell -p tree
-cd ~/nixos-config/packages\
-mkdir oomox-moon-icons
-mv 'oomox-Moon Theme' oomox-moon-icons/
-mv default.nix oomox-moon-icons/default.nix
-nupdate
-tree
-nupdate
-cd ~/nixos-config\
-git add .\
-git commit -m "fix: Corrected relative path to icon package and commit all changes."
-nupdate
-cd ~/nixos-config
-git add .
-git commit -m "Final structure and code correction for oomox-Moon theme package."
-git add .
-git commit -m 'test'
-git push
-nupdate
-cd ~/nixos-config
-git add -A
-git commit -m "Finalizing icon theme and fixing dirty git tree issue."
-nupdate
-cd nixos-config
-git add -A
-git commit -m "reverting"
-git push
-nupdate
-sherlock
-nupdate
-sherlock
-nix-shell -p wev
-wev
-wev
-cd /tmp
-unar anchor-linux-x64.zip
-cd /tmp
-unar anchor-linux-x64.zip
-cd /tmp
-unar soh-linux.zip
-lsusb
-cd .config/zsh
-cat exports.old
-cd ~/nixos-config/
-ls
-cd hosts/common
-ls
-nano zshprompt.sh
-nupdate
-pavucontrol-qt
-nano zshprompt.sh
-nupdate
-echo $EDITOR\
-echo $TERMINAL\
-echo $QT_QPA_PLATFORMTHEME
-swaymsg reload
-cat scripts/keybinds/safekill.sh
-swaymsg reload
-nix store diff-closures /var/run/current-system ./result
-nix store diff-closures /var/run/current-system ./result | grep "horizon"
-nvd diff /run/current-system ./result
-nix-shell -p nvd
-    nix flake update
-cd nixos-config
-    nix flake update
-nupdate
-sherlock
-nupdate
-export NIXPKGS_ALLOW_BROKEN=1
-nupdate
-nix-shell -p cura
-nupdate
-export NIXPKGS_ALLOW_BROKEN=1
-nix-shell -p cura
-cura
-nupdate
-nix-shell -p rpi-imager
-nupdate
-nix-shell -p rpi-imager
-nix-shell -p p11-kit-1
-nix-shell -p rpi-imager
-nix log /nix/store/18vpz5dj3vm4dv7ywhnybyi0s5ydhcch-rpi-imager-1.9.6.drv
-get_property could not find TARGET rpi-imager.  Perhaps it has not yet been\
-       >   created.
-nix-shell -p rpi-imager -I nixpkgs=https://github.com/NixOS/nixpkgs/archive/master.tar.gz
-lsblk -f
-nix-shell -p kdePackages.partitionmanager
-nupdate
-sudo partitionmanager
-partitionmanager
-export QT_QPA_PLATFORM=xcb
-partitionmanager
-export QT_QPA_PLATFORM=wayland-egl
-partitionmanager
-sudo partitionmanager
-export QT_QPA_PLATFORM=wayland
-partitionmanager
-export QT_QPA_PLATFORM=linuxfb
-partitionmanager
-export QT_QPA_PLATFORM=eglfs
-partitionmanager
-export QT_QPA_PLATFORM=vnc
-partitionmanager
-export QT_QPA_PLATFORM=wayland-brcm
-partitionmanager
-export QT_QPA_PLATFORM=minimal
-partitionmanager
-export QT_QPA_PLATFORM=minimalegl
-partitionmanager
-export QT_QPA_PLATFORM=
-sudo partitionmanager
-export QT_QPA_PLATFORM=wayland
-partitionmanager
-lsblk -f
-sudo mount /dev/sdc1 /mnt/usb
-lsblk -f
-sudo umount /dev/sdc1
-journalctl -f
-partitionmanager 
-partitionmanager 
-nix-shell -p gparted
-nix-shell -p rpi-imager\
-
-nix-shell -p rpi-imager -I nixpkgs=https://github.com/NixOS/nixpkgs/archive/master.tar.gz
-nupdate
-rpi-imager 
-DISPLAY=:0 sudo rpi-imager
-sudo usermod -a -G disk $USER
-rpi-imager 
-nix-shell -p rpi-imager -I nixpkgs=https://github.com/NixOS/nixpkgs/archive/master.tar.gz
-: 1763265355:0;nix-collect-garbage
-rpi-imager 
-: 1763279109:0;nix-shell -p arp-scan
-: 1763279211:0;ip addr
-: 1763279672:0;ssh pi@192.168.12.219
-: 1763279814:0;ssh-keygen -t rsa -b 4096
-: 1763280051:0;lsblk
-: 1763280090:0;sudo mount /dev/sdc2 /mnt/usb
-: 1763280256:0;ls
-: 1763280264:0;cd .ssh
-: 1763280273:0;nano octopi.pub
-: 1763280423:0;sudo umount /mnt/usb
-: 1763280438:0;lsblk
-: 1763281497:0;ssh pi@192.168.12.219
-: 1763281726:0;ssh 192.168.12.219
-: 1763281785:0;ssh-copy-id -i ~/.ssh/octopi pi@192.168.12.219
-: 1763281819:0;ssh 192.168.12.219
-: 1763281828:0;sudo ssh 192.168.12.219
-: 1763282115:0;ssh 192.168.12.219
-: 1763282425:0;ssh -vvv
-: 1763282428:0;ssh -vv
-: 1763282436:0;ssh 192.168.12.219 -vv
-: 1763282772:0;l
-: 1763282774:0;lsblk
-: 1763282780:0;sudo mount /dev/sdc2 /mnt/usb
-: 1763282896:0;cd /mnt/usb/home/pi/
-: 1763282909:0; chmod 700 .ssh/
-: 1763282919:0;chmod 600 .ssh/authorized_keys
-: 1763282975:0; cd ~/.ssh
-: 1763282981:0;cd ..
-: 1763282982:0;cd nixos-config
-: 1763282983:0;ls
-: 1763282988:0;cd hosts/common
-: 1763282989:0;ls
-: 1763282992:0;nano default.nix
-: 1763282996:0;chmod 750 .ssh
-: 1763283020:0;chmod 600 .ssh/octopi.pub
-: 1763283029:0;nupdate
-: 1763283062:0;chmod 600 .ssh/octopi
-: 1763283071:0;which kate
-: 1763283221:0;ssh-add ~/.ssh/octopi
-: 1763283260:0;sudo umount /mnt/usb
-: 1763283410:0;ssh 192.168.12.219
-: 1763283591:0;nano nixos-config/hosts/common/default.nix
-: 1763283617:0;nupdate
-: 1763283656:0;ssh-add -l
-: 1763283692:0;ssh 192.168.12.219
-: 1763283698:0;sudo ssh 192.168.12.219
-: 1763283727:0;ssh octopi.local
-: 1763283798:0;sudo ssh pi@192.168.12.219
-: 1763283808:0;ssh pi@192.168.12.219
-: 1763296206:0;pidof audacious
-: 1763296211:0;pkill audacious
-: 1763297397:0;shutdown
-: 1763312809:0;cd /tmp
-: 1763312816:0;unar Raspberry\ Pi\ 3\ \(B_B+\),\ Pi\ 2\ B,\ and\ Pi\ 1\ B+\ case\ with\ VESA\ mounts\ and\ more\ -\ 922740.zip
-: 1763315953:0;nix-collect-garbage
-arp-scan 
-arp-scan --localnet
-sudo arp-scan --localnet
-: 1763319180:0;cd .config
-: 1763327388:0;nupdate
-: 1763327631:0;kate
-: 1763327707:0;nupdate
-: 1763327756:0;kate
-: 1763327765:0;pavucontrol-qt
-: 1763327768:0;kate
-: 1763338520:0;colors
-: 1763351293:0;sherlock
-: 1763351443:0;which nemo
-: 1763351497:0;which file roller
-: 1763351498:0;which unar
-: 1763351578:0;which unzip
-: 1763351644:0;cd /tmp
-: 1763351649:0;unzip tractyl-manuform-keyboard-master.zip
-: 1763351839:0;cd /tmp/tractyl-manuform-keyboard-master
-: 1763351840:0;ls
-: 1763351885:0;kate create-models.sh
-: 1763351914:0;lein auto generate
-: 1763351921:0;nix-shell -p lein
-: 1763351932:0;pavucontrol-qt
-: 1763351994:0;nix-shell -p openscad
-openscad 
-nix-shell -p leiningen
-: 1763394593:0;nix-shell -p openscad
-: 1763394879:0;cd /tmp/tractyl-manuform-keyboard-master
-: 1763394881:0;patch /things/right.scad < 4x6.patch
-: 1763394890:0;patch -p1 /things/right.scad < 4x6.patch\
-
-: 1763394907:0;patch things/right.scad < 4x6.patch\
-
-: 1763394930:0;patch -p1 < 4x6.patch\
-
 openscad 
 nix-shell -p leiningen
 : 1763395515:0;cd tractyl-manuform-keyboard-master
@@ -504,3 +213,542 @@ qimgv sparkle-png-24.png
 : 1764291347:0;which vesktop
 : 1764297549:0;cd nixos-config
 : 1764297557:0;git add .
+: 1764297571:0;git commit -m "update git to current"
+: 1764297578:0;git push
+: 1764297750:0;git remote -v
+: 1764297783:0;git log --oneline -5
+: 1764305436:0;nix-channel --list
+: 1764315309:0;cd Music
+: 1764315309:0;ls
+: 1764315322:0;play ponyphonic\ -\ Heart\ in\ a\ Cloud\ -\ 12\ The\ Moon\ Rises.flac
+: 1764315681:0;play 01-01\ -\ Majo.flac
+: 1764315722:0;nix-shell -p spek
+spek
+: 1764319925:0;cd nixos-config
+: 1764319928:0;git push
+: 1764355142:0;sudo nix-channel --list\
+
+: 1764355650:0;sudo nixos-rebuild switch --upgrade
+: 1764355856:0;sherlock
+: 1764355859:0;sherlock --version
+: 1764355970:0;uname
+: 1764355974:0;uname -r
+: 1764356090:0;sudo nixos-rebuild switch --upgrade
+: 1764356110:0;sherlock --version
+: 1764356113:0;sherlock
+: 1764356125:0;which sherlock
+: 1764356127:0;sherlock
+: 1764357165:0;sudo nix-channel --list\
+
+: 1764357212:0;nixos-version\
+
+: 1764357226:0;sudo nix-channel --remove nixos\
+sudo nix-channel --update\
+# The list should now be empty:\
+sudo nix-channel --list\
+
+: 1764357240:0;sudo nix-channel --remove nixos\
+sudo nix-channel --update\
+sudo nix-channel --list\
+
+: 1764357247:0;sudo nix-channel --list\
+
+: 1764357294:0;nupdate
+: 1764357312:0;sudo nix-channel --list\
+
+: 1764357359:0;nix-collect-garbage
+: 1764361024:0;nix-channel --list
+: 1764365205:0;cd Music/Music.lossless/Music/Should\ all\ be\ lossless/JubyPhonic
+: 1764365208:0;play 01-01\ -\ Majo.flac
+: 1764370462:0;nixos-version
+: 1764370593:0;nupdate
+: 1764370665:0;nixos-version
+: 1764370709:0;nix-channel --list
+: 1764371726:0;sherlock --version
+: 1764371729:0;steam --version
+: 1764371817:0;# Get the path to the Xorg libraries\
+XORG_PATH=$(nix-store -q /run/current-system/sw | grep xorg-libX11)\
+\
+# List all installed packages that depend on Xorg libraries\
+nix-store --query --referrers-closure "$XORG_PATH" | cut -d- -f2- | sort | uniq\
+
+: 1764371866:0;env | grep -E -i 'x11|wayland'
+: 1764381176:0;cd /etc/nixos
+: 1764381177:0;ls
+: 1764381181:0;cd hosts
+: 1764381182:0;ls
+: 1764381184:0;cd moonbeauty
+: 1764381185:0;ls
+: 1764381287:0;nupdate
+: 1764381835:0;cd ~/
+: 1764381838:0;cd nixos-config
+: 1764381839:0;tree
+: 1764381843:0;nix-shell -p tree
+: 1764382222:0;journalctl -f
+: 1764382236:0;pkill waybar
+: 1764382237:0;journalctl -f
+: 1764382429:0;nix-channel --list
+: 1764384793:0;nupdate
+: 1764386288:0;journalctl -f
+: 1764386322:0;nix-shell -p magic-wormhole
+: 1764386611:0;./.config/waybar/waybar.sh
+tree
+sudo nixos-rebuild switch --flake .config#moonbeauty
+sudo nixos-rebuild switch --flake .config#moonbeauty
+sudo nixos-rebuild switch --flake .#moonbeauty
+sudo nixos-rebuild switch --flake #moonbeauty
+sudo nixos-rebuild switch --flake .#moonbeauty
+sudo nixos-rebuild switch --flake .#moonbeauty
+sudo nixos-rebuild switch --flake .#moonbeauty
+sudo nixos-rebuild switch --flake .#moonbeauty
+sudo nixos-rebuild switch --flake .#moonbeauty
+sudo nixos-rebuild switch --flake .#moonbeauty
+: 1764460903:0;nupdate
+: 1764505860:0;sherlock --version
+: 1764505862:0;sherlock
+: 1764505865:0;nupdate
+: 1764518660:0;nix flake update
+: 1764518664:0;cd nixos-config
+: 1764518665:0;nix flake update
+: 1764520312:0;uname -r
+: 1764546128:0;nix-shell -p gnome-weather
+gnome-weather 
+: 1764595971:0;ssh dad
+: 1764654436:0;pass f-list.net
+: 1764662451:0;cd /mnt/nvme1tb/arch-home/Games/ProjectIgnis/DBeditor
+: 1764662462:0;cd ..
+: 1764662466:0;./datacorn
+: 1764662470:0;./datacorn-qt6
+: 1764680184:0;pass f-list.net
+: 1764681973:0;nupdate
+: 1764683046:0;nix-shell -p magic-wormhole
+magic-wormhole 
+: 1764687976:0;lsblk -f
+: 1764688143:0;cd /mnt
+: 1764688164:0;cp -r 3TBHDD/Windows\ files nvme1tb
+: 1764746020:0;timer 25m oven
+: 1764746023:0;alarm 25m oven
+: 1764768923:0;lsblk -f
+: 1764783188:0;./scripts/cron_scripts/reminder.sh
+: 1764783281:0;nupdate
+: 1764783292:0;journalctl -f
+: 1764784559:0;nupdate
+: 1764788166:0;cd /mn
+: 1764788167:0;cd /mnt
+: 1764788168:0;ls
+: 1764790306:0;cd scripts/cron_scripts
+: 1764790309:0;./music-backup.sh
+: 1764790313:0;./pass_copy.sh
+: 1764790372:0;./reminder.sh
+: 1764790376:0;./wallpaper
+: 1764790383:0;./wallpaper.sh
+: 1764790440:0;swaymsg -t get_outputs
+: 1764790457:0;./wallpaper.sh
+: 1764790600:0;xlsclients
+: 1764792440:0;cd .config/dunst/custom/cageheart
+: 1764792452:0;cd ..
+: 1764792459:0;nano dunstrc
+: 1764793306:0;cd .config/dunst/custom
+: 1764793309:0;cd cageheart
+: 1764793316:0;cat cageheart.sh
+: 1764793320:0;cd ..
+: 1764793324:0;cd luster_dawn
+: 1764793333:0;cat luster_dawn.sh
+: 1764793385:0;cd ..
+: 1764793387:0;cd cageheart
+: 1764793388:0;ls
+: 1764818832:0;pkill waybar
+: 1764818837:0;./.config/waybar/waybar.sh
+: 1764832663:0;spek
+: 1764832669:0;nix-shell -p spek
+: 1764855178:0;nupdate
+: 1764869402:0;qs
+: 1764943909:0;alarm 25m oven
+: 1764946335:0;nupdate
+: 1764950784:0;./scripts/cron_scripts/reminder.sh
+: 1764951878:0;nupdate
+: 1764954137:0;which cron
+: 1764955264:0;nupdate
+: 1764955291:0;watch cat /tmp/cron_debug.txt
+: 1764955739:0;nupdate
+: 1764956008:0;journalctl -u cron.service --since "5 minutes ago"
+: 1764956064:0;nupdate
+: 1764957113:0;cd scripts/cron_scripts
+: 1764960803:0;systemctl status cron.service
+: 1764962404:0;nupdate
+: 1764962578:0;cd /tmp
+: 1764962588:0;watch cat cron_debug.txt
+: 1764962666:0;journalctl -u cron.service --since "10 minutes ago"\
+
+: 1764962802:0;nupdate
+: 1764962844:0;journalctl -u cron.service --since "1 minute ago"
+: 1764963126:0;nupdate
+: 1764964522:0;cd /mnt/nvme1tb
+: 1764964523:0;ls
+: 1764964527:0;cd pass
+: 1764964528:0;ls
+: 1765029858:0;cd .local/share/applications
+: 1765029859:0;ls
+: 1765029862:0;rm test.desktop
+: 1765029863:0;ls
+: 1765040105:0;qs
+: 1765040244:0;colors
+: 1765040247:0;color
+: 1765040250:0;colors
+: 1765040273:0;qs
+: 1765040307:0;qs ~/bar.qml
+: 1765040313:0;qs
+: 1765040323:0;cd .config
+: 1765040326:0;mkdir quickshell
+: 1765040336:0;mv bar.qml .config/quickshell/
+: 1765040340:0;qs
+: 1765040382:0;cd .config/quickshell
+: 1765040392:0;qs -c bar
+: 1765040398:0;qs -c bar.qml
+: 1765040405:0;qs -c ~/.config/quickshell/bar.qml
+: 1765040411:0;ls
+: 1765040424:0;qs -c bar\
+
+: 1765040426:0;qs -c bar
+: 1765040442:0;qs --config /home/moonburst/.config/quickshell/bar.qml\
+
+: 1765040462:0;which quickshell
+: 1765040483:0;cd .con
+: 1765040486:0;cd .config
+: 1765040489:0;rm -rf quickshell
+: 1765048240:0;qs
+: 1765048559:0;colors
+: 1765049262:0;qs
+: 1765054379:0;pass f-list.net
+: 1765054566:0;cd $XDG_CONFIG_HOME/quickshell/caelestia\
+git pull
+: 1765054599:0;git clone https://github.com/caelestia-dots/shell.git
+: 1765054672:0;qs
+: 1765055068:0;mkdir -p ~/.config/quickshell\
+cd ~/.config/quickshell\
+git clone https://github.com/chpock/ck.dashboard.git
+: 1765055075:0;qs -c ck.dashboard
+: 1765055129:0;qs -c ck.dashboard/shell.qml
+: 1765055134:0;qs
+: 1765055157:0;qs -c ck.dashboard/shell.qml
+: 1765055162:0;cd ..
+: 1765055163:0;qs -c ck.dashboard/shell.qml
+: 1765055171:0;qs -c ck.dashboard
+: 1765055185:0;nix-shell -p QtGraphs
+: 1765055202:0;nix-shell -p qt6-charts
+: 1765055225:0;nix-shell -p python313Packages.pyqt6-charts\
+
+: 1765055171:0;qs -c ck.dashboard
+: 1765060377:0;qs
+: 1765064592:0;pkill waybar
+: 1765064597:0;./.config/waybar/waybar.sh
+: 1765137562:0;alarm 25m oven
+: 1765141221:0;journalctl -f
+: 1765146440:0;pkill waybar
+: 1765146443:0;./.config/waybar/waybar.sh
+: 1765192535:0;cd /tmp
+: 1765192560:0;magick conver griffon.png resize 400x400 griffon2.png
+: 1765192565:0;magick convert griffon.png resize 400x400 griffon2.png
+: 1765192573:0;magick griffon.png resize 400x400 griffon2.png
+: 1765192610:0;magick griffon.png -resize 400x400 resized_griffon.png
+: 1765296887:0;alarm 25m oven
+: 1765304027:0;lsblk -f
+: 1765304083:0;sudo smartctl -a /dev/nvme0n1p1\
+
+: 1765304093:0;nix-shell -p smartctl
+: 1765304123:0;sudo btrfs check --readonly /dev/nvme0n1p1
+: 1765304151:0;sudo partitionmanager
+: 1765304168:0;lsblk -f
+: 1765304194:0;nupdate
+: 1765305607:0;lsblk -f
+: 1765305635:0;journalctl -f
+: 1765306286:0;lsblk 0f
+: 1765306288:0;lsblk -f
+: 1765306308:0;sudo -E partitionmanager
+: 1765306316:0;sudo -e partitionmanager
+: 1765306320:0;sudo partitionmanager
+: 1765306341:0;export $(dbus-launch)
+: 1765306342:0;sudo partitionmanager
+: 1765306349:0;partitionmanager
+: 1765306362:0;journalctl -f
+: 1765306373:0;journalctl | grep kernel
+: 1765306380:0;journalctl | grep nvme
+: 1765306433:0;partitionmanager
+: 1765306438:0;lsblk -f
+: 1765306489:0;dmesg | grep -i nvme\
+dmesg | grep -i pcie\
+
+: 1765306491:0;sudo dmesg | grep -i nvme\
+dmesg | grep -i pcie\
+
+: 1765306499:0;sudo dmesg | grep -i nvme\
+sudo dmesg | grep -i pcie\
+
+: 1765306521:0;lspci\
+# or a more detailed view\
+lspci -v\
+
+: 1765306532:0;sudo nvme list\
+
+: 1765306554:0;nix-shell -p nvme-cli
+: 1765306650:0;nupdate
+: 1765306532:0;sudo nvme list\
+sudo nvme list
+fdisk -l
+sudo fdisk -l
+sudo fdisk -l
+sudo fdisk -l
+: 1765306740:0;lspci -v\
+
+: 1765306745:0;nix-shell lspci
+: 1765306750:0;nix-shell -p lspci
+: 1765306803:0;journalctl -f
+: 1765306957:0;lsblk -f
+: 1765324348:0;nix-shell -p cmatrix
+: 1765382487:0;nmtui
+: 1765398168:0;pkill waybar
+: 1765398171:0;./.config/waybar/waybar.sh
+: 1765407864:0;journalctl -f
+: 1765407868:0;journalctl
+: 1765407955:0;./.config/waybar/waybar.sh
+: 1765408208:0;journalctl -f
+: 1765459061:0;nupdate
+: 1765460388:0;gpg --list-secret-keys
+: 1765460487:0;pass f-list.net
+: 1765460555:0;pass list
+: 1765460603:0;echo $PASSWORD_STORE_DIR
+: 1765460622:0;killall gpg-agent\
+# Now try the command again:\
+gpg --list-secret-keys --keyid-format LONG\
+
+: 1765460637:0;pass f-list.net
+: 1765460664:0;nupdate
+: 1765460685:0;killall gpg-agent\
+# Now try the command again:\
+gpg --list-secret-keys --keyid-format LONG\
+
+: 1765460696:0;killall gpg-agent\
+gpg --list-secret-keys --keyid-format LONG\
+
+: 1765460700:0;pass f-list.net
+: 1765460835:0;nupdate
+: 1765460863:0;pass f-list.net
+: 1765460869:0;killall gpg-agent\
+gpg --list-secret-keys --keyid-format LONG\
+
+: 1765460873:0;pass f-list.net
+: 1765460983:0;echo $GNUPGHOME
+: 1765461141:0;nupdate
+: 1765461157:0;echo $GNUPGHOME
+: 1765461198:0;gpg --homedir /home/moonburst/.local/share/gnupg --list-secret-keys
+: 1765461201:0;pass f-list.net
+: 1765461251:0;echo $GNUPGHOME
+: 1765461299:0;echo $GNUPGHOME\
+echo $PASSWORD_STORE_DIR\
+
+: 1765461306:0;ls /etc/pam.d/\
+
+: 1765461365:0;pass f-list.net
+: 1765462288:0;nupdate
+: 1765462392:0;pass f-list.net
+: 1765462500:0;echo $GNUPGHOME\
+echo $PASSWORD_STORE_DIR\
+
+: 1765462534:0;nupdate
+: 1765462581:0;echo $GNUPGHOME\
+echo $PASSWORD_STORE_DIR\
+
+: 1765462623:0;killall gpg-agent\
+
+: 1765462627:0;pass show animecubedgaming.com\
+
+: 1765462641:0;# Check the ID of the key used to encrypt the file\
+gpg --list-packets "/home/moonburst/.local/share/pass/animecubedgaming.com.gpg" | grep "key id"\
+\
+# Check your owned secret keys\
+gpg --list-secret-keys --keyid-format LONG\
+
+: 1765462670:0;pass list
+: 1765462722:0;ls -F "/home/moonburst/.local/share/pass/"
+: 1765462726:0;PASSWORD_STORE_DIR="/home/moonburst/.local/share/pass" pass list\
+
+: 1765462748:0;ZDOTDIR = "$HOME/nixos-config/hosts/common";\
+
+: 1765462952:0;nupdate
+: 1765462968:0;echo $PASSWORD_STORE_DIR
+: 1765462982:0;nupdate
+: 1765463001:0;echo $PASSWORD_STORE_DIR
+: 1765463308:0;PASSWORD_STORE_DIR="/home/moonburst/.local/share/pass" pass list\
+
+: 1765463343:0;nupdate
+: 1765463361:0;pass list
+: 1765463381:0;PASSWORD_STORE_DIR="/home/moonburst/.local/share/pass" pass f-list.net
+: 1765463403:0;nupdate
+: 1765463416:0;PASSWORD_STORE_DIR="/home/moonburst/.local/share/pass" pass f-list.net
+: 1765463419:0;pass f-list.net
+: 1765463468:0;echo $PASSWORD_STORE_DIR
+: 1765463485:0;# Ensure you are in your home directory first\
+cd ~\
+\
+# Move GPG configuration back to default location\
+mv .local/share/gnupg .gnupg\
+\
+# Move Password Store back to default location\
+mv .local/share/pass .password-store\
+
+: 1765463487:0;pass f-list.net
+: 1765463505:0;nupdate
+: 1765463519:0;gpg --list-secret-keys
+: 1765463526:0;pass list\
+
+: 1765463531:0;pass f-list.net
+: 1765463590:0;pass list
+: 1765463592:0;pass f-list.net
+: 1765463599:0;find ~ -type f -name "*.asc"\
+find ~ -type f -name "*.key"\
+find ~ -type f -name "*.gpg"\
+
+: 1765463651:0;find ~ -type f -name "*.asc"
+: 1765463683:0;gpg --import /home/moonburst/.gnupg/gnupg/my_private_key.asc\
+
+: 1765463693:0;gpg --import /home/moonburst/.local/share/Trash/files/.3.gnupg/my_private_key.asc\
+
+: 1765463715:0;gpg --full-generate-key
+: 1765463834:0;gpg --import /home/moonburst/.local/share/gnupg/my_private_key.asc
+: 1765463837:0;ls -F "/home/moonburst/.local/share/pass/"
+: 1765463840:0;pass f-list.net
+: 1765463922:0;nupdate
+: 1765463939:0;pass f-list.net
+: 1765463990:0;file
+: 1765464037:0;gpg --import /mnt/nvme1tb/arch-home/.local/share/gnupg/my_private_key.asc
+: 1765464042:0;gpg --import /mnt/nvme1tb/arch-home/.local/share/gnupg/my_public_key.asc
+: 1765464052:0;gpg --import /mnt/nvme1tb/arch-home/.local/share/gnupg/trustdb.gpg
+: 1765464057:0;gpg --import /mnt/nvme1tb/arch-home/.local/share/gnupg/pubring.kbx
+: 1765464061:0;gpg --import /mnt/nvme1tb/arch-home/.local/share/gnupg/pubring.kbx\~
+: 1765464069:0;gpg --import /mnt/nvme1tb/arch-home/.local/share/gnupg/private-keys-v1.d/074CA20CFBF447D27D7312EDA8DD8728E3306FA7.key
+: 1765464232:0;gpg --import ~/.local/share/gnupg/my_public_key.asc
+: 1765464267:0;gpg --import ~/.local/share/pass/.gpg-id
+: 1765464319:0;cd /mnt/nvme1tb
+: 1765464321:0;cd arch-home
+: 1765464330:0;find ~ -type f -name "*.asc"\
+find ~ -type f -name "*.key"\
+find ~ -type f -name "*.gpg"\
+
+: 1765464366:0;gpg --import /home/moonburst/.local/share/gnupg/trustdb.gpg
+: 1765464371:0;gpg --import /home/moonburst/.local/share/gnupg/crls.d/DIR.txt
+: 1765464379:0;gpg --import /home/moonburst/.local/share/gnupg/trustdb.gpg
+: 1765464383:0;gpg --import /home/moonburst/.local/share/gnupg/random_seed
+: 1765464481:0;pass f-list.net
+: 1765464502:0;gpg --list-secret-keys --keyid-format LONG\
+
+: 1765464567:0;pass f-list.net
+: 1765464971:0;gpg --list-secret-keys --keyid-format LONG\
+
+: 1765510981:0;zip -r Pictures.zip Pictures
+: 1765511710:0;nix-shell -p magic-wormhole
+: 1765560360:0;alarm 8h nellis
+: 1765562752:0;nmcli
+: 1765562756:0;nmtui
+: 1765565893:0;alarm 25m oven
+: 1765571070:0;nix-shell -p arp
+: 1765571093:0;for i in {1..254}; do ping -c 1 -W 1 192.168.1.$i &> /dev/null & done
+: 1765571225:0;nix-shell -p nmap
+: 1765573103:0;niri
+: 1765592193:0;alarm 50m nellis
+: 1765670412:0;journalctl -f
+: 1765670574:0;sherlock
+: 1765682007:0;systemctl --user restart wireplumber pipewire pipewire-pulse\
+
+: 1765735345:0;cd Games/ProjectIgnis
+: 1765735346:0;ls
+: 1765735349:0;nix-shell -p kdePackages.libqtpas
+: 1765735581:0;nix-shell -p qt6-base
+: 1765736404:0;nix-shell -p sqlite
+: 1765736529:0;nix-shell -p edopro
+: 1765736553:0;nupdate
+: 1765737009:0;journalctl -f
+: 1765738961:0;nupdate
+: 1765748783:0;swaymsg reload
+: 1765748988:0;nupdate
+: 1765749184:0;swaymsg reload
+: 1765749707:0;wtype '[color=blue]\"[/color]'
+: 1765749717:0;wtype 'test'
+: 1765749728:0;wtype '[color=blue]'
+: 1765749734:0;wtype '\[color=blue]'
+: 1765749744:0;wtype [color=blue]
+: 1765749749:0;wtype "[color=blue]"
+: 1765749774:0;wtype 'test'
+: 1765749777:0;wtype '[]'
+: 1765750126:0;cd scripts/keybinds
+: 1765750127:0;ls
+: 1765750131:0;cat blue_quotes.sh
+: 1765750136:0;./blue_quotes.sh
+: 1765750835:0;krita /tmp/picture.png
+: 1765787926:0;nupdate
+: 1765788327:0;pkill audacious
+: 1765788331:0;audacious
+: 1765825219:0;nupdate
+: 1765856075:0;curl -L https://github.com/Fchat-Horizon/Horizon/releases/latest/download/F-Chat.Horizon-linux-arm64.AppImage > F-Chat.Horizon-linux-arm64.AppImage
+: 1765856104:0;~/
+: 1765856107:0;ls
+: 1765856152:0;./F-Chat.Horizon-linux-arm64.AppImage
+: 1765856215:0;curl -L https://github.com/Fchat-Horizon/Horizon/releases/latest/download/F-Chat.Horizon-linux-x86_64.AppImage > F-Chat.Horizon-linux-x86_64.AppImage
+: 1765856231:0;./F-Chat.Horizon-linux-x86_64.AppImage
+: 1765856314:0;nupdate
+: 1765856338:0;uhorizon
+: 1765856359:0;nupdate
+: 1765856377:0;uhorizon
+: 1765861968:0;curl -s -H "X-Api-Key: xi_OouyWaY-X7RsBrEFAwXmVXEsNA6GOX06nbRgIkak" http://192.168.12.219/api/job | jq '.progress.completion'\
+
+: 1765862073:0;pkill waybar
+: 1765862077:0;./.config/waybar/waybar.sh
+: 1765862535:0;pkill waybar
+: 1765862537:0;./.config/waybar/waybar.sh
+: 1765862558:0;curl -s -H \"X-Api-Key: xi_OouyWaY-X7RsBrEFAwXmVXEsNA6GOX06nbRgIkak\" 192.168.12.219 | jq --unbuffered --compact-output '{text: (.progress.completion | @printf \"%.1f%%\")}
+: 1765862567:0;./.config/waybar/waybar.sh
+: 1765862603:0;curl -s -H "X-Api-Key: xi_OouyWaY-X7RsBrEFAwXmVXEsNA6GOX06nbRgIkak" http://192.168.12.219/api/job | jq '.progress.completion'
+: 1765862613:0;pkill waybar
+: 1765862614:0;curl -s -H "X-Api-Key: xi_OouyWaY-X7RsBrEFAwXmVXEsNA6GOX06nbRgIkak" http://192.168.12.219/api/job | jq '.progress.completion'
+: 1765862649:0;./.config/waybar/waybar.sh
+: 1765862699:0;curl -s -H "X-Api-Key: xi_OouyWaY-X7RsBrEFAwXmVXEsNA6GOX06nbRgIkak" http://192.168.12.219/api/job | jq '.progress.completion'
+: 1765863190:0;pkill waybar
+: 1765863191:0;./.config/waybar/waybar.sh
+: 1765863206:0;pkill waybar
+: 1765863207:0;./.config/waybar/waybar.sh
+: 1765863238:0;pkill waybar
+: 1765863238:0;./.config/waybar/waybar.sh
+: 1765946374:0;alarm 25m oven
+: 1765965049:0;journalctl -f
+: 1766053898:0;du -sh ~/.cache/vivaldi
+: 1766053939:0;cd .cache/vivaldi
+: 1766053940:0;ls
+: 1766053943:0;cd Default
+: 1766053943:0;ls
+: 1766053947:0;tree
+: 1766054170:0;nupdate
+: 1766054470:0;findmnt /home/moonburst/.cache/vivaldi
+: 1766054544:0;sudo mount -t tmpfs -o size=3G,mode=1777 tmpfs /home/moonburst/.cache/vivaldi\
+
+: 1766054549:0;findmnt /home/moonburst/.cache/vivaldi
+: 1766054844:0;nupdate
+: 1766055943:1;systemctl status home-moonburst-.cache-vivaldi.mount\
+
+: 1766055959:0;df -h /home/moonburst/.cache/vivaldi\
+
+: 1766058247:0;nupdate
+: 1766058667:0;pidof gamescope
+: 1766058722:0;pgrep -a gamescope\
+
+: 1766058798:0;nupdate
+: 1766058899:0;pidof steam
+: 1766058927:0;pgrep -a gamescope\
+
+: 1766058936:0;pidof steam
+: 1766058940:0;pidof gamescope
+: 1766058970:0;which gamescope
+: 1766059176:0;nupdate
+: 1766059234:0;cd nixos-config
+: 1766059236:0;git add .
+: 1766059243:0;git push -m updating
+: 1766059249:0;git push -m "updating"
+: 1766059253:0;git add .

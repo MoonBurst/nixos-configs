@@ -27,35 +27,43 @@
   hardware.i2c.enable = true;
 
   # STEAM STUFF
-  programs.gamescope.capSysNice = true;
-  programs.gamemode.enable = true;
   hardware.steam-hardware.enable = true;
-  programs.steam.enable = true;
-  programs.steam.dedicatedServer.openFirewall = true;
+  programs.gamemode.enable = true;
+  programs.gamescope = {
+    enable = true;
+    capSysNice = true;
+  };
+  programs.steam = {
+    enable = true;
+    dedicatedServer.openFirewall = true;
+    package = pkgs.steam.override {
+      extraArgs = "gamescope -W 2560 -H 1440 -r 165 --adaptive-sync --force-grab-cursor --rt --backend wayland  --immediate --%command%";
+    };
+    gamescopeSession.enable = true;
+  };
 
   # ====================================================================
   # CRON JOBS
   # ====================================================================
   services.cron = {
-    enable = false; # Set to true when ready to activate these jobs
+    enable = true;
     systemCronJobs = [
       # backs up music
-      "0 12 * * * ~/scripts/cron_scripts/music-backup.sh >/dev/null 2>&1"
+      "0 12 * * * moonburst ~/scripts/cron_scripts/music-backup.sh"
       # backs up passwords
-      "0 0 * * 0 ~/scripts/cron_scripts/pass_copy.sh >/dev/null 2>&1"
+      "0 0 * * 0 moonburst ~/scripts/cron_scripts/pass_copy.sh"
       # pushes a backup to nextcloud
-      "0 4 1 * * ~/scripts/cron_scripts/nextcloud_upload.sh >/dev/null 2>&1"
+      "0 4 1 * * moonburst ~/scripts/cron_scripts/nextcloud_upload.sh"
       # moves .desktop files from home folder to .local/share/applications (mostly for steam games)
-      "0 */4 * * * ~/scripts/cron_scripts/mv-.desktop-to-applications.sh >/dev/null 2>&1"
+      "0 */4 * * * moonburst ~/scripts/cron_scripts/mv-.desktop-to-applications.sh"
       # reminders
-      "0 */4 * * * ~/scripts/cron_scripts/reminder.sh >/dev/null 2>&1"
+      "0 */4 * * * moonburst ~/scripts/cron_scripts/reminder.sh"
       # github update
-      "0 0 * * 0 /run/current-system/sw/bin/bash ~/scripts/github/github-updater.sh >> ~/scripts/github-updater.log >/dev/null 2>&1"
+#      "0 0 * * 0 /run/current-system/sw/bin/bash ~/scripts/github/github-updater.sh >> ~/scripts/github-updater.log >/dev/null 2>&1"
       # wallpaper switching
-      "*/30 * * * * ~/scripts/cron_scripts/wallpaper.sh  >/dev/null 2>&1"
+      "*/30 * * * * moonburst ~/scripts/cron_scripts/wallpaper.sh "
     ];
   };
-
   # ====================================================================
   # ENVIRONMENT AND PACKAGES
   # ====================================================================
@@ -69,7 +77,6 @@
     wget
     curl
     # --- Gaming/GPU/Emulation ---
-    gamescope
     mesa
     protonup-qt
     obs-studio
@@ -84,7 +91,10 @@
 openscad
 orca-slicer
 nicotine-plus
+jami
+edopro
+
     ];
 
-  system.stateVersion = "25.11"; # Keep this set to your desired version
+  system.stateVersion = "25.11";
 }

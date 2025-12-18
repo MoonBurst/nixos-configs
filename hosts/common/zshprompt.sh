@@ -56,6 +56,7 @@ alias unbind-6400='echo "0000:2b:00.0" | sudo tee /sys/bus/pci/devices/0000:2b:0
 alias bind-6400='echo "0000:2b:00.0" | sudo tee /sys/bus/pci/drivers/amdgpu/bind'
 alias historycleaner='$HOME/scripts/alias_scripts/historycleaner.sh'
 alias nolog='unset HISTFILE'
+alias uhorizon='curl -L https://github.com/Fchat-Horizon/Horizon/releases/latest/download/F-Chat.Horizon-linux-x86_64.AppImage > F-Chat.Horizon-linux-x86_64.AppImage'
 #alias 1time='$HOME/scripts/alias_scripts/1time.sh'
 
 

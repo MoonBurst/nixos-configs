@@ -1,9 +1,9 @@
 {
-  "version" = "1.34.2";
+  "version" = "1.35.4";
   # "revision" = "development";
   "hashes" = {
-    "desktopSrcHash" = "sha256-GkNHUiRSMfgJGoBiQic3edQPxP/zF9ZWO97iaYNGwZg=";
-    "desktopPkgRootHash" = "sha256-XOeW7fj2UT9fmgYpnF+SguuTAhstdY9rYsOJ/rpNN1g=";
-    "desktopPkgAppHash" = "sha256-74awcILuNxnfx6jc7IXG62MMgf9eMwcgbmHggXdg+YU=";
+    "desktopSrcHash" = "sha256-nTAkE1aAMzY5wOyNs3IvO3x2M70GG1gsheM+UZ1HEtU=";
+    "desktopPkgRootHash" = "sha256-GVhgFhiGbRy+fQuoGXTe6zLz/VvJNN/3qiPF4dje+M4=";
+    "desktopPkgAppHash" = "sha256-/FL2QGwl7603svwbFtGLEPSM5f6/vVEQItu77e0D8Qk=";
   };
 }
