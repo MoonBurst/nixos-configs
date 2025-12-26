@@ -4,6 +4,7 @@
   pkgs,
   lib,
   niri-flake,
+  cypkgs,
   ...
 }: {
   # ====================================================================
@@ -27,20 +28,12 @@
   hardware.i2c.enable = true;
 
   # STEAM STUFF
-  hardware.steam-hardware.enable = true;
-  programs.gamemode.enable = true;
-  programs.gamescope = {
-    enable = true;
-    capSysNice = true;
-  };
-  programs.steam = {
-    enable = true;
-    dedicatedServer.openFirewall = true;
-    package = pkgs.steam.override {
-      extraArgs = "gamescope -W 2560 -H 1440 -r 165 --adaptive-sync --force-grab-cursor --rt --backend wayland  --immediate --%command%";
-    };
-    gamescopeSession.enable = true;
-  };
+programs.gamescope.capSysNice = true;
+programs.gamemode.enable = true;
+hardware.steam-hardware.enable = true;
+programs.steam.enable = true;
+programs.steam.dedicatedServer.openFirewall = true;
+
 
   # ====================================================================
   # CRON JOBS
@@ -64,6 +57,7 @@
       "*/30 * * * * moonburst ~/scripts/cron_scripts/wallpaper.sh "
     ];
   };
+
   # ====================================================================
   # ENVIRONMENT AND PACKAGES
   # ====================================================================
@@ -77,6 +71,7 @@
     wget
     curl
     # --- Gaming/GPU/Emulation ---
+    gamescope
     mesa
     protonup-qt
     obs-studio
@@ -93,7 +88,7 @@ orca-slicer
 nicotine-plus
 jami
 edopro
-
+vicinae
     ];
 
   system.stateVersion = "25.11";

@@ -3,6 +3,7 @@
   pkgs,
   lib,
   niri-flake,
+  cypkgs,
   ...
 }: let
 
@@ -93,6 +94,60 @@ nix.optimise = {
   automatic = true;
   dates = [ "weekly" ];
 };
+
+
+  # ====================================================================
+  # AUTO UPDATER
+  # ====================================================================
+# Automatic System Upgrades
+# Automatic System Upgrades
+system.autoUpgrade = {
+  enable = true;
+  flake = "path:/home/moonburst/nixos-config#${config.networking.hostName}";
+  flags = [ "--update-input" "nixpkgs" "-v" ];
+  dates = "11:00";
+  randomizedDelaySec = "30min";
+  allowReboot = false;
+};
+
+# Failure Notification Service
+systemd.services."notify-update-failure" = {
+  description = "Capture logs and send critical desktop notification on upgrade failure";
+  script = ''
+    LOG_FILE="/home/moonburst/UPDATE_FAILED.txt"
+    USER_NAME="moonburst"
+    USER_ID=$(id -u "$USER_NAME")
+
+    # 1. Capture the logs
+    echo "--- NIXOS AUTO-UPDATE FAILED ON $(date) ---" > "$LOG_FILE"
+    /run/current-system/sw/bin/journalctl -u nixos-upgrade.service -n 50 --no-pager >> "$LOG_FILE"
+    chown "$USER_NAME":users "$LOG_FILE"
+
+    # 2. Send Critical Desktop Notification
+    # Using 'critical' ensures the message persists until dismissed
+    if [ -S "/run/user/$USER_ID/bus" ]; then
+      /run/current-system/sw/bin/systemd-run \
+        --user --machine="$USER_NAME@.host" \
+        /run/current-system/sw/bin/notify-send -u critical \
+        "SYSTEM UPDATE FAILED" \
+        "Logs saved to $LOG_FILE"
+    fi
+  '';
+  serviceConfig.Type = "oneshot";
+};
+
+# Link the Notification to the Upgrade Service
+systemd.services.nixos-upgrade.unitConfig.OnFailure = "notify-update-failure.service";
+
+# Automatic Cleanup: Remove error file if a subsequent update succeeds
+systemd.services.nixos-upgrade.postStop = ''
+  if [ "$SERVICE_RESULT" = "success" ]; then
+    rm -f /home/moonburst/UPDATE_FAILED.txt
+  fi
+'';
+
+
+
   # ====================================================================
   # PROGRAMS, SHELLS, and THEME FIXES
   # ====================================================================
@@ -119,6 +174,7 @@ nix.optimise = {
     GTK_THEME = "Moon-Burst-Theme";
     GDK_BACKEND = "wayland,x11";
     OBS_PLATFORM = "wayland";
+
 
 
   # ====================================================================
@@ -222,11 +278,14 @@ nix.optimise = {
     #put programs here
   ];
 
+
+
   # ====================================================================
   # ENVIRONMENT AND PACKAGES (List)
   # ====================================================================
 
   environment.systemPackages = with pkgs; [
+
     # --- System Utilities/Shell
     kitty
     fastfetch
@@ -258,8 +317,12 @@ nix.optimise = {
     cargo
     libnotify
     qimgv
+    olm
+    nheko
+    element-desktop
     # --- Btrfs Tools
     btrfs-progs
+    btrfs-assistant
 
     # --- Wayland Utilities
     quickshell
@@ -269,6 +332,7 @@ nix.optimise = {
     wl-clipboard
     satty
     wtype
+    wlrctl
     playerctl
     dunst
     swaylock
@@ -306,8 +370,16 @@ nix.optimise = {
     pass
     geany
 
+
     sherlock-launcher
     (pkgs.callPackage ../../packages/fchat-horizon.nix {})
+    (pkgs.callPackage ../../packages/sherlock-clipboard.nix {})
 #    (pkgs.callPackage ../../packages/datacorn.nix {})
   ];
+
+              nixpkgs.config.permittedInsecurePackages = [
+                "olm-3.2.16"
+              ];
+
 }
+

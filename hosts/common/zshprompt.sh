@@ -24,12 +24,16 @@ compinit
 nupdate() {
   local HOSTNAME
   HOSTNAME=$(hostname)
-  local FLAKE_PATH="$HOME/nixos-config" 
+  local FLAKE_PATH="$HOME/nixos-config"
+  local ERROR_FILE="$HOME/UPDATE_FAILED.txt"
 
   if [ -d "$FLAKE_PATH" ]; then
     echo "Building system: $HOSTNAME from $FLAKE_PATH"
 
-    sudo nixos-rebuild switch --flake "$FLAKE_PATH"\#"$HOSTNAME" -v
+    if sudo nixos-rebuild switch --flake "$FLAKE_PATH"#"$HOSTNAME" -v; then
+      rm -f "$ERROR_FILE"
+      echo "Update successful. Error file removed."
+    fi
   else
     echo "Error: Flake path not found at $FLAKE_PATH" >&2
     return 1

@@ -15,7 +15,15 @@
       url = "github:YaLTeR/niri";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+#Sherlock clipboard
+        cypkgs = {
+      url = "github:cybardev/nix-channel?ref=main";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
   };
+
+
 
   outputs = {
     self,
