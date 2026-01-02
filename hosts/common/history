@@ -1,281 +1,3 @@
-echo $PASSWORD_STORE_DIR\
-
-killall gpg-agent\
-
-pass show animecubedgaming.com\
-
-# Check the ID of the key used to encrypt the file\
-gpg --list-packets "/home/moonburst/.local/share/pass/animecubedgaming.com.gpg" | grep "key id"\
-\
-# Check your owned secret keys\
-gpg --list-secret-keys --keyid-format LONG\
-
-pass list
-ls -F "/home/moonburst/.local/share/pass/"
-PASSWORD_STORE_DIR="/home/moonburst/.local/share/pass" pass list\
-
-ZDOTDIR = "$HOME/nixos-config/hosts/common";\
-
-nupdate
-echo $PASSWORD_STORE_DIR
-nupdate
-echo $PASSWORD_STORE_DIR
-PASSWORD_STORE_DIR="/home/moonburst/.local/share/pass" pass list\
-
-nupdate
-pass list
-PASSWORD_STORE_DIR="/home/moonburst/.local/share/pass" pass f-list.net
-nupdate
-PASSWORD_STORE_DIR="/home/moonburst/.local/share/pass" pass f-list.net
-pass f-list.net
-echo $PASSWORD_STORE_DIR
-# Ensure you are in your home directory first\
-cd ~\
-\
-# Move GPG configuration back to default location\
-mv .local/share/gnupg .gnupg\
-\
-# Move Password Store back to default location\
-mv .local/share/pass .password-store\
-
-pass f-list.net
-nupdate
-gpg --list-secret-keys
-pass list\
-
-pass f-list.net
-pass list
-pass f-list.net
-find ~ -type f -name "*.asc"\
-find ~ -type f -name "*.key"\
-find ~ -type f -name "*.gpg"\
-
-find ~ -type f -name "*.asc"
-gpg --import /home/moonburst/.gnupg/gnupg/my_private_key.asc\
-
-gpg --import /home/moonburst/.local/share/Trash/files/.3.gnupg/my_private_key.asc\
-
-gpg --full-generate-key
-gpg --import /home/moonburst/.local/share/gnupg/my_private_key.asc
-ls -F "/home/moonburst/.local/share/pass/"
-pass f-list.net
-nupdate
-pass f-list.net
-file
-gpg --import /mnt/nvme1tb/arch-home/.local/share/gnupg/my_private_key.asc
-gpg --import /mnt/nvme1tb/arch-home/.local/share/gnupg/my_public_key.asc
-gpg --import /mnt/nvme1tb/arch-home/.local/share/gnupg/trustdb.gpg
-gpg --import /mnt/nvme1tb/arch-home/.local/share/gnupg/pubring.kbx
-gpg --import /mnt/nvme1tb/arch-home/.local/share/gnupg/pubring.kbx\~
-gpg --import /mnt/nvme1tb/arch-home/.local/share/gnupg/private-keys-v1.d/074CA20CFBF447D27D7312EDA8DD8728E3306FA7.key
-gpg --import ~/.local/share/gnupg/my_public_key.asc
-gpg --import ~/.local/share/pass/.gpg-id
-cd /mnt/nvme1tb
-cd arch-home
-find ~ -type f -name "*.asc"\
-find ~ -type f -name "*.key"\
-find ~ -type f -name "*.gpg"\
-
-gpg --import /home/moonburst/.local/share/gnupg/trustdb.gpg
-gpg --import /home/moonburst/.local/share/gnupg/crls.d/DIR.txt
-gpg --import /home/moonburst/.local/share/gnupg/trustdb.gpg
-gpg --import /home/moonburst/.local/share/gnupg/random_seed
-pass f-list.net
-gpg --list-secret-keys --keyid-format LONG\
-
-pass f-list.net
-gpg --list-secret-keys --keyid-format LONG\
-
-zip -r Pictures.zip Pictures
-nix-shell -p magic-wormhole
-alarm 8h nellis
-nmcli
-nmtui
-alarm 25m oven
-nix-shell -p arp
-for i in {1..254}; do ping -c 1 -W 1 192.168.1.$i &> /dev/null & done
-nix-shell -p nmap
-niri
-alarm 50m nellis
-journalctl -f
-sherlock
-systemctl --user restart wireplumber pipewire pipewire-pulse\
-
-cd Games/ProjectIgnis
-ls
-nix-shell -p kdePackages.libqtpas
-nix-shell -p qt6-base
-nix-shell -p sqlite
-nix-shell -p edopro
-nupdate
-journalctl -f
-nupdate
-swaymsg reload
-nupdate
-swaymsg reload
-wtype '[color=blue]\"[/color]'
-wtype 'test'
-wtype '[color=blue]'
-wtype '\[color=blue]'
-wtype [color=blue]
-wtype "[color=blue]"
-wtype 'test'
-wtype '[]'
-cd scripts/keybinds
-ls
-cat blue_quotes.sh
-./blue_quotes.sh
-krita /tmp/picture.png
-nupdate
-pkill audacious
-audacious
-nupdate
-curl -L https://github.com/Fchat-Horizon/Horizon/releases/latest/download/F-Chat.Horizon-linux-arm64.AppImage > F-Chat.Horizon-linux-arm64.AppImage
-~/
-ls
-./F-Chat.Horizon-linux-arm64.AppImage
-curl -L https://github.com/Fchat-Horizon/Horizon/releases/latest/download/F-Chat.Horizon-linux-x86_64.AppImage > F-Chat.Horizon-linux-x86_64.AppImage
-./F-Chat.Horizon-linux-x86_64.AppImage
-nupdate
-uhorizon
-nupdate
-uhorizon
-curl -s -H "X-Api-Key: xi_OouyWaY-X7RsBrEFAwXmVXEsNA6GOX06nbRgIkak" http://192.168.12.219/api/job | jq '.progress.completion'\
-
-pkill waybar
-./.config/waybar/waybar.sh
-pkill waybar
-./.config/waybar/waybar.sh
-curl -s -H \"X-Api-Key: xi_OouyWaY-X7RsBrEFAwXmVXEsNA6GOX06nbRgIkak\" 192.168.12.219 | jq --unbuffered --compact-output '{text: (.progress.completion | @printf \"%.1f%%\")}
-./.config/waybar/waybar.sh
-curl -s -H "X-Api-Key: xi_OouyWaY-X7RsBrEFAwXmVXEsNA6GOX06nbRgIkak" http://192.168.12.219/api/job | jq '.progress.completion'
-pkill waybar
-curl -s -H "X-Api-Key: xi_OouyWaY-X7RsBrEFAwXmVXEsNA6GOX06nbRgIkak" http://192.168.12.219/api/job | jq '.progress.completion'
-./.config/waybar/waybar.sh
-curl -s -H "X-Api-Key: xi_OouyWaY-X7RsBrEFAwXmVXEsNA6GOX06nbRgIkak" http://192.168.12.219/api/job | jq '.progress.completion'
-pkill waybar
-./.config/waybar/waybar.sh
-pkill waybar
-./.config/waybar/waybar.sh
-pkill waybar
-./.config/waybar/waybar.sh
-alarm 25m oven
-journalctl -f
-du -sh ~/.cache/vivaldi
-cd .cache/vivaldi
-ls
-cd Default
-ls
-tree
-nupdate
-findmnt /home/moonburst/.cache/vivaldi
-sudo mount -t tmpfs -o size=3G,mode=1777 tmpfs /home/moonburst/.cache/vivaldi\
-
-findmnt /home/moonburst/.cache/vivaldi
-nupdate
-systemctl status home-moonburst-.cache-vivaldi.mount\
-
-df -h /home/moonburst/.cache/vivaldi\
-
-nupdate
-pidof gamescope
-pgrep -a gamescope\
-
-nupdate
-pidof steam
-pgrep -a gamescope\
-
-pidof steam
-pidof gamescope
-which gamescope
-nupdate
-cd nixos-config
-git add .
-git push -m updating
-git push -m "updating"
-git add .
-git commit -m "update git to current"
-git push -m "updating"
-pidof gamescope
-which steam
-nupdate
-pidof gamescope
-which steam
-pidof gamescope
-which gamescope
-nupdate
-pidof gamescope
-nupdate
-pidof gamescope
-nupdate
-steam
-which gamescope
-nupdate
-steam
-pidof gamescope
-nupdate
-clear
-steam
-pgrep -a gamescope
-watch pgrep -a gamescope
-nupdate
-steam
-nupdate
-steam
-nupdate
-steam
-nupdate
-steam
-alarm 25m oven
-nupdate
-exec MESA_VK_DEVICE_SELECT=1002:743f DRI_PRIME=pci-0000:2b:00.0 steam -nochatui -silent gamescope -W 2560 -H 1440 -r 165 --adaptive-sync --force-grab-cursor --rt;\
-
- steam -nochatui -silent gamescope -W 2560 -H 1440 -r 165 --adaptive-sync --force-grab-cursor --rt\
-
-MESA_VK_DEVICE_SELECT=1002:743f DRI_PRIME=pci-0000:2b:00.0 gamescope -W 2560 -H 1440 -r 165 --adaptive-sync --force-grab-cursor -e -- steam -nochatui -silent\
-
-MESA_VK_DEVICE_SELECT=1002:743f DRI_PRIME=pci-0000:2b:00.0 gamescope -W 2560 -H 1440 -r 165 --adaptive-sync --force-grab-cursor -e -- steam -nochatui\
-
- gamescope -W 2560 -H 1440 -r 165 --adaptive-sync --force-grab-cursor -e -- steam -nochatui\
-
-MESA_VK_DEVICE_SELECT=1002:743f gamescope -W 2560 -H 1440 -r 165\
-
-steam
-steam -gamescope
-exec MESA_VK_DEVICE_SELECT=1002:743f DRI_PRIME=pci-0000:2b:00.0 gamescope -W 2560 -H 1440 -r 165 --adaptive-sync --force-grab-cursor -e -- steam -nochatui -silent\
-
-MESA_VK_DEVICE_SELECT=1002:743f DRI_PRIME=pci-0000:2b:00.0 gamescope -W 2560 -H 1440 -r 165 --adaptive-sync --force-grab-cursor -e -- steam -nochatui -silent\
-
-MESA_VK_DEVICE_SELECT=1002:743f DRI_PRIME=pci-0000:2b:00.0 gamescope -W 2560 -H 1440 -e -- steam -vgui\
-
-exec gamescope -W 1920 -H 1080 -b -e -- steam
-lspci -v\
-
-nix-shell -p lspci
-gamescope -W 1920 -H 1080 -b -e -- steam\
-
-which gamescope
-gamescope -W 1920 -H 1080  -- steam\
-
-gamescope -W 1920 -H 1080 -e -- steam\
-
-gamescope -W 1920 -H 1080 -b -- $@\
-
-env STEAM_GAME_WRAPPER="gamescope -W 1920 -H 1080 -b -e --" steam\
-
-env STEAM_GAME_WRAPPER="LD_PRELOAD=\"\" gamescope -W 2560 -H 1440 -r 165 --adaptive-sync --force-grab-cursor --rt --" steam\
-
-nano ~/.local/bin/steam-gamescope-wrapper\
-
-mkdir -p ~/.config/steam\
-
-nano ~/.config/steam/steam-gs-wrapper\
-
-chmod +x ~/.config/steam/steam-gs-wrapper\
-
-env STEAM_COMPAT_INVOKER="$HOME/.config/steam/steam-gs-wrapper" steam
-cd .config/steam
-ls
 ./steam-gs-wrapper
 ls
 nano steam-gs-wrapper
@@ -462,147 +184,930 @@ rm config
 rm config.old
 journalctl -f
 nupdate
-: 1766264114:0;journalctl -f
-: 1766282621:0;lsblk -f
-: 1766282642:0;sudo umount /dev/sdb2
-: 1766282649:0;lsblk -f
-: 1766285920:0;sudo mount /dev/sdb2 /mnt/3TBHDD
-: 1766285932:0;lsblk -f
-: 1766299185:0;nix-shell -p vesktop
+journalctl -f
+lsblk -f
+sudo umount /dev/sdb2
+lsblk -f
+sudo mount /dev/sdb2 /mnt/3TBHDD
+lsblk -f
+nix-shell -p vesktop
 vesktop
-: 1766299266:0;nupdate
-: 1766299294:0;vesktop
-: 1766299837:0;nmtui
-: 1766310375:0;which mangohud
-: 1766310387:0;which bash
-: 1766382083:0;killall gamescope
-: 1766382092:0;killall gamescope-wl
-: 1766382101:0;killall gamescopereaper
-: 1766382520:0;vicinae server & disown
-: 1766382531:0;vicinae toggle
-: 1766383251:0;sherlock
-: 1766383260:0;vicinae toggle
-: 1766390345:0;nix-shell -p nheko
-: 1766390418:0;nix-shell -p element-desktop
-: 1766390533:0;nupdate
-: 1766390418:0;nix-shell -p element-desktop
-: 1766390769:0;pidof nheko
-: 1766390775:0;pkill 2870521
-: 1766390779:0;pidof nheko
-: 1766390783:0;pkill 2870521
-: 1766391447:0;pass matrix.org
-: 1766392875:0;nix-shell -p seahorse
-: 1766393385:0;pass matrix.org
+nupdate
+vesktop
+nmtui
+which mangohud
+which bash
+killall gamescope
+killall gamescope-wl
+killall gamescopereaper
+vicinae server & disown
+vicinae toggle
+sherlock
+vicinae toggle
+nix-shell -p nheko
+nix-shell -p element-desktop
+nupdate
+nix-shell -p element-desktop
+pidof nheko
+pkill 2870521
+pidof nheko
+pkill 2870521
+pass matrix.org
+nix-shell -p seahorse
+pass matrix.org
 seahorse --help
 seahorse
 seahorse
-: 1766394697:0;nix-shell -p firefox
-: 1766394922:0;nix-shell -p element-desktop
-: 1766396603:0;pass matrix.org
-: 1766396924:0;nupdate
-: 1766511210:0;btrfs-assistant
-: 1766511215:0;sudo btrfs-assistant
-: 1766511220:0;btrfs-assistant
-: 1766511274:0;btrfs-assistant-launcher
-: 1766511400:0;lsblk -f
-: 1766528662:0;uname -r
-: 1766528692:0;nupdate
-: 1766553020:0;ly
-: 1766575336:0;sherlock
-: 1766577055:0;systemctl list-units --type=service | grep ly\
+nix-shell -p firefox
+nix-shell -p element-desktop
+pass matrix.org
+nupdate
+btrfs-assistant
+sudo btrfs-assistant
+btrfs-assistant
+btrfs-assistant-launcher
+lsblk -f
+uname -r
+nupdate
+ly
+sherlock
+systemctl list-units --type=service | grep ly\
 
-: 1766577061:0;systemctl list-units --type=service | grep "ly"\
+systemctl list-units --type=service | grep "ly"\
 
-: 1766577074:0;systemctl list-units --type=service | grep Active
-: 1766577086:0;systemctl list-unit | grep Active
-: 1766577089:0;systemctl list-units | grep Active
-: 1766577093:0;systemctl status | grep Active
-: 1766577098:0;systemctl status
-: 1766586722:0;alarm 25m oven
-: 1766611676:0;pavucontrol-qt
-: 1766615970:0;pass matrix.org
-: 1766669456:0;MESA_LOADER_DRIVER_OVERRIDE=zink glxinfo | grep "renderer string"\
+systemctl list-units --type=service | grep Active
+systemctl list-unit | grep Active
+systemctl list-units | grep Active
+systemctl status | grep Active
+systemctl status
+alarm 25m oven
+pavucontrol-qt
+pass matrix.org
+MESA_LOADER_DRIVER_OVERRIDE=zink glxinfo | grep "renderer string"\
 
-: 1766669466:0;nix-shell -p glxinfo
-: 1766671801:0;cd nixos-config
-: 1766671802:0;ls
-: 1766671804:0;cd hosts
-: 1766671805:0;ls
-: 1766671861:0;nupdate
-: 1766671894:0;journalctl -u nixos-upgrade.service -f
-: 1766671936:0;systemctl list-timers nixos-upgrade.timer
-: 1766671945:0;systemctl list-timers nixos-upgrade.timer --all
-: 1766671969:0;journalctl -u nixos-upgrade.service -n 50
-: 1766671983:0;systemctl status nixos-upgrade.timer\
+nix-shell -p glxinfo
+cd nixos-config
+ls
+cd hosts
+ls
+nupdate
+journalctl -u nixos-upgrade.service -f
+systemctl list-timers nixos-upgrade.timer
+systemctl list-timers nixos-upgrade.timer --all
+journalctl -u nixos-upgrade.service -n 50
+systemctl status nixos-upgrade.timer\
 
-: 1766671994:0;sudo systemctl start nixos-upgrade.service
-: 1766672108:0;nupdate
-: 1766672181:0;journalctl -u nixos-upgrade.service -f
-: 1766672392:0;cd nixos-config
-: 1766672393:0;ls
-: 1766672395:0;cat flake.
-: 1766672397:0;cat flake.nix
-: 1766672513:0;nupdate
-: 1766672695:0;cat flake.nix
-: 1766674754:0;nupdate
-: 1766674829:0;journalctl -u nixos-upgrade.service -f
-: 1766674978:0;nupdate
-: 1766676497:0;notify-send
-: 1766676505:0;sudo systemctl start notify-update-failure.service
-: 1766676591:0;nupdate
-: 1766677000:0;which notify-send
-: 1766677256:0;sudo loginctl enable-linger moonburst\
+sudo systemctl start nixos-upgrade.service
+nupdate
+journalctl -u nixos-upgrade.service -f
+cd nixos-config
+ls
+cat flake.
+cat flake.nix
+nupdate
+cat flake.nix
+nupdate
+journalctl -u nixos-upgrade.service -f
+nupdate
+notify-send
+sudo systemctl start notify-update-failure.service
+nupdate
+which notify-send
+sudo loginctl enable-linger moonburst\
 
-: 1766677327:0;nupdate
-: 1766678386:0;journalctl -u nixos-upgrade.service -f
-: 1766678571:0;notify-send test test
-: 1766678576:0;notify-send test test --urgant
-: 1766678579:0;notify-send test test --urgent
-: 1766678597:0;notify-send test test -u urgent
-: 1766678602:0;notify-send test test -u critical
-: 1766678642:0;nupdate
-: 1766678668:0; /run/current-system/sw/bin/systemd-run \\
+nupdate
+journalctl -u nixos-upgrade.service -f
+notify-send test test
+notify-send test test --urgant
+notify-send test test --urgent
+notify-send test test -u urgent
+notify-send test test -u critical
+nupdate
+ /run/current-system/sw/bin/systemd-run \\
         --user --machine="$USER_NAME@.host" \\
         /run/current-system/sw/bin/notify-send -u critical \ 
-: 1766678669:0; /run/current-system/sw/bin/systemd-run \\
+ /run/current-system/sw/bin/systemd-run \\
         --user --machine="$USER_NAME@.host" \\
         /run/current-system/sw/bin/notify-send -u critical 
-: 1766678679:0;      /run/current-system/sw/bin/systemd-run \\
+      /run/current-system/sw/bin/systemd-run \\
         --user --machine="$USER_NAME@.host" \\
         /run/current-system/sw/bin/notify-send -u critical \\
         "SYSTEM UPDATE FAILED" \\
         "Logs saved to $LOG_FILE"
-: 1766678820:0;    if [ -S "/run/user/$USER_ID/bus" ]; then\
+    if [ -S "/run/user/$USER_ID/bus" ]; then\
       sudo -u "$USER_NAME" DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$USER_ID/bus" \\
         /run/current-system/sw/bin/notify-send -u critical \\
         "SYSTEM UPDATE FAILED" "Check $LOG_FILE"\
     fi\
 
-: 1766678833:0;    if [ -S "/run/user/$USER_ID/bus" ]; then\
+    if [ -S "/run/user/$USER_ID/bus" ]; then\
       sudo -u "$USER_NAME" DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$USER_ID/bus" \\
         /run/current-system/sw/bin/notify-send -u critical \\
         "SYSTEM UPDATE FAILED" "Check file.txt"\
     fi\
 
-: 1766678849:0;\
+\
       sudo -u "$USER_NAME" DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$USER_ID/bus" \\
         /run/current-system/sw/bin/notify-send -u critical \\
         "SYSTEM UPDATE FAILED" "Check file.txt"\
     \
 
-: 1766678855:0;\
+\
    "$USER_NAME" DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$USER_ID/bus" \\
         /run/current-system/sw/bin/notify-send -u critical \\
         "SYSTEM UPDATE FAILED" "Check file.txt"\
     \
 
-: 1766678861:0;\
+\
  DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$USER_ID/bus" \\
         /run/current-system/sw/bin/notify-send -u critical \\
         "SYSTEM UPDATE FAILED" "Check file.txt"\
     \
 
-: 1766678889:0;nupdate
-: 1766679346:0;lsblk -f
-: 1766742697:0;cd nixos-config
-: 1766742699:0;git add .
+nupdate
+lsblk -f
+cd nixos-config
+git add .
+git commit -m "adding auto-updates"
+git push -m "updating"
+git push -m
+git push
+uname -r
+which linux
+uname -a
+sudo nix-env --list-generations --profile /nix/var/nix/profiles/system
+cat /boot/loader/entries/nixos-generation-$(readlink /nix/var/nix/profiles/system | cut -d- -f3).conf
+nvd diff /run/booted-system /nix/var/nix/profiles/system | grep linux
+ls -l /nix/var/nix/profiles/system/kernel-modules/lib/modules
+readlink -f /nix/var/nix/profiles/system/kernel
+nupdate
+journalctl -f
+nmtui
+nix search "proton
+nix search "proton"
+nix search proton
+pavucontrol-qt
+cd .config/sway
+ls
+zip -r sway.zip
+cd ..
+zip -r sway.zip sway
+ls
+echo $PASSWORD_STORE_DIR
+pass hyperbeam.com
+lsblk -f
+lsblk
+nix-shell -p smartctl
+smartctl --all -H /dev/nvme0n1
+sudo btrfs scrub start /mnt/nvme1tb
+sudo btrfs scrub status /
+btrfs-assistant-launcher
+sudo btrfs scrub status /
+cd /mnt/nvme1tb
+ls
+nix-shell -p smartmontools
+cd /mnt/nvme1tb
+ls
+ls -a
+lsblk -f
+sudo smartctl -a /dev/nvme1n1
+sudo fsck /dev/nvme1n1p1
+echo 1 | sudo tee /sys/class/nvme/nvme1/reset_controller
+lspci | grep -i nvme
+lspci | grep -i nvme
+nix-shell -p 
+lspci | grep -i nvme
+nix-shell -p pciutils nvme-cli
+PORT=$(basename $(dirname $(readlink "/sys/bus/pci/devices/0000:25:00.0")))\
+echo "Upstream Port: $PORT"\
+
+nix-shell -p pciutils --run '\
+  DEV="0000:25:00.0"\
+  PORT_PATH=$(readlink -f /sys/bus/pci/devices/$DEV/..)\
+  PORT=$(basename $PORT_PATH)\
+  echo "Target Device: $DEV"\
+  echo "Upstream Port: $PORT"\
+  \
+  # Step 2: Remove the device from the OS\
+  echo 1 | sudo tee /sys/bus/pci/devices/$DEV/remove\
+  \
+  # Step 3: Trigger Secondary Bus Reset (Hot Reset)\
+  # This flips bit 0x40 in the BRIDGE_CONTROL register\
+  BC=$(setpci -s $PORT BRIDGE_CONTROL)\
+  sudo setpci -s $PORT BRIDGE_CONTROL=$(printf "%04x" $((0x$BC | 0x40)))\
+  sleep 0.01\
+  sudo setpci -s $PORT BRIDGE_CONTROL=$BC\
+  sleep 0.5\
+  \
+  # Step 4: Rescan the bus\
+  echo 1 | sudo tee /sys/bus/pci/rescan\
+'\
+
+# Force a rescan of the entire bus first\
+echo 1 | sudo tee /sys/bus/pci/rescan\
+\
+# Manually trigger the Secondary Bus Reset on the bridge (replace XX:XX.X)\
+sudo nix-shell -p pciutils --run 'setpci -s XX:XX.X BRIDGE_CONTROL=0x40; sleep 0.1; setpci -s XX:XX.X BRIDGE_CONTROL=0x00'\
+\
+# Rescan again\
+echo 1 | sudo tee /sys/bus/pci/rescan\
+
+nix-shell -p pciutils --run "lspci -tv"\
+
+nix-shell -p pciutils --run "\
+  sudo setpci -s 20:00.2 BRIDGE_CONTROL=0x40; \
+  sleep 0.2; \
+  sudo setpci -s 20:00.2 BRIDGE_CONTROL=0x00; \
+  echo 1 | sudo tee /sys/bus/pci/rescan\
+"\
+
+lsblk -f
+lsblk
+nix-shell -p fluffychat
+fluffychat
+nix-shell -p discordchatexporter-desktop\
+
+discordchatexporter 
+nmtui
+ls -l
+ls -l nixos-config
+cd nixos-config
+ls -l
+find . -type l
+cd ..
+find . -type l
+find . -type l nixos-config
+lsblk -f
+cd /mnt
+ls
+cd usb
+ls
+sudo mount /dev/sda /mnt/usb
+ls
+partitionmanager
+lsblk -f
+cat /sys/devices/virtual/dmi/id/board_manufacturer\
+cat /sys/devices/virtual/dmi/id/board_name\
+cat /sys/devices/virtual/dmi/id/board_version\
+
+lsblk 0f
+lsblk -f
+nix-shell -p gparted
+swaymsg exec partitionmanager
+sudo env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR partitionmanager\
+
+gparted
+ps aux | grep -E "polkit|agent"
+exec /run/current-system/sw/libexec/polkit-gnome-authentication-agent-1
+partitionmanager
+lsblk -f
+# Finds and executes the GNOME polkit agent from the nix store
+$(find $GSETTINGS_SCHEMAS_PATH/../../ -name polkit-gnome-authentication-agent-1) &
+polkit-gnome
+polkit-gnome-authentication-agent-1
+ps aux | grep polkit-gnome
+partitionmanager
+lsblk -f
+nix-shell -p polkit_gnome\
+
+exec /run/current-system/sw/libexec/polkit-gnome-authentication-agent-1
+partitionmanager
+sudo env WAYLAND_DISPLAY=$WAYLAND_DISPLAY XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR partitionmanager
+partitionmanager
+ps aux | grep polkit-gnome
+# Finds and executes the GNOME polkit agent from the nix store
+$(find $GSETTINGS_SCHEMAS_PATH/../../ -name polkit-gnome-authentication-agent-1) &
+ps aux | grep polkit-gnome
+partitionmanager
+exec /run/current-system/sw/libexec/polkit-gnome-authentication-agent-1
+sudo env WAYLAND_DISPLAY=$WAYLAND_DISPLAY XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR partitionmanager
+exec /run/current-system/sw/libexec/polkit-gnome-authentication-agent-1
+partitionmanager
+lsblk -f
+sudo fdisk -l /dev/sda\
+
+sudo btrfs filesystem show /dev/sda
+sudo mount -o degraded /dev/sda /mnt/usb
+lsblk -f
+journalctl -f
+git clone https://github.com/Dieterbe/waybar-system-health.git
+ls
+cd waybar-system-health
+ls
+cat README.md
+pkill waybar
+./.config/waybar/waybar.sh
+nix-shell -p python3
+nupdate
+./.config/waybar/waybar.sh
+pkill waybar
+nupdate
+./.config/waybar/waybar.sh
+cd waybar-system-health
+ls
+./waybar-system-health.py
+pkill waybar
+./.config/waybar/waybar.sh
+cd waybar-system-health
+nano waybar-system-health.py
+which python3
+nano waybar-system-health.py
+pkill waybar
+./.config/waybar/waybar.sh
+cd ..
+./.config/waybar/waybar.sh
+realpath ~/waybar-system-health/waybar-system-health.py
+pkill waybar
+./.config/waybar/waybar.sh
+nupdate
+pkill waybar
+./.config/waybar/waybar.sh
+which smartctl
+sudo /run/current-system/sw/bin/smartctl --scan-open
+nupdate
+pkill waybar
+./.config/waybar/waybar.sh
+sudo /run/current-system/sw/bin/smartctl --scan-open
+cd waybar-system-health
+./waybar-system-health.py
+sudo journalctl --vacuum-time=1s
+./waybar-system-health.py
+nupdate
+./waybar-system-health.py
+pkill waybar
+./.config/waybar/waybar.sh
+./waybar-system-health.py
+cd .config/waybar
+ls
+# Create the directory\
+mkdir -p ~/.config/waybar/system-health\
+\
+# Move the script there\
+mv ~/waybar-system-health/waybar-system-health.py ~/.config/waybar/system-health/\
+\
+# Create the disk config inside that folder\
+cat <<EOF > ~/.config/waybar/system-health/disk.json\
+[\
+  {\
+    "path": "/",\
+    "warn": 80,\
+    "critical": 90\
+  }\
+]\
+EOF\
+\
+# Create the ignore file inside that folder\
+echo "smart:/dev/sda" > ~/.config/waybar/system-health/ignore\
+
+nupdate
+sudo journalctl --vacuum-time=1s
+WAYBAR_SYSTEM_HEALTH_DISK=~/.config/waybar/system-health/disk.json WAYBAR_SYSTEM_HEALTH_IGNORE=~/.config/waybar/system-health/ignore python3 ~/.config/waybar/system-health/waybar-system-health.py\
+
+# Ensure the target directory exists\
+mkdir -p ~/.config/waybar/system-health\
+\
+# Move everything (including the 'modules' folder) into that directory\
+# This assumes your original download is still in ~/waybar-system-health\
+cp -r ~/waybar-system-health/* ~/.config/waybar/system-health/
+pkill waybar
+./.config/waybar/waybar.sh
+pkill waybar
+WAYBAR_SYSTEM_HEALTH_DISK=~/.config/waybar/system-health/disk.json WAYBAR_SYSTEM_HEALTH_IGNORE=~/.config/waybar/system-health/ignore python3 ~/.config/waybar/system-health/waybar-system-health.py
+systemctl --user reset-failed
+nupdate
+sudo journalctl --vacuum-time=1s
+WAYBAR_SYSTEM_HEALTH_DISK=~/.config/waybar/system-health/disk.json WAYBAR_SYSTEM_HEALTH_IGNORE=~/.config/waybar/system-health/ignore python3 ~/.config/waybar/system-health/waybar-system-health.py
+sudo journalctl --rotate\
+sudo journalctl --vacuum-time=1s\
+
+nupdate
+WAYBAR_SYSTEM_HEALTH_DISK=~/.config/waybar/system-health/disk.json WAYBAR_SYSTEM_HEALTH_IGNORE=~/.config/waybar/system-health/ignore python3 ~/.config/waybar/system-health/waybar-system-health.py
+sudo journalctl --rotate\
+sudo journalctl --vacuum-time=1s\
+sudo systemctl restart systemd-journald\
+
+WAYBAR_SYSTEM_HEALTH_DISK=~/.config/waybar/system-health/disk.json WAYBAR_SYSTEM_HEALTH_IGNORE=~/.config/waybar/system-health/ignore python3 ~/.config/waybar/system-health/waybar-system-health.py
+nupdate
+sudo journalctl --rotate\
+sudo journalctl --vacuum-time=1s\
+
+# Overwrite/Update the ignore file\
+cat <<EOF > ~/.config/waybar/system-health/ignore\
+smart:/dev/sda\
+smart:/dev/sdb\
+EOF\
+
+WAYBAR_SYSTEM_HEALTH_DISK=~/.config/waybar/system-health/disk.json WAYBAR_SYSTEM_HEALTH_IGNORE=~/.config/waybar/system-health/ignore python3 ~/.config/waybar/system-health/waybar-system-health.py\
+
+cat ~/.config/waybar/system-health/ignore\
+# It should list smart:/dev/sda and smart:/dev/sdb\
+
+sudo journalctl --rotate\
+sudo journalctl --vacuum-time=1s\
+sudo systemctl restart systemd-journald\
+
+WAYBAR_SYSTEM_HEALTH_DISK=~/.config/waybar/system-health/disk.json WAYBAR_SYSTEM_HEALTH_IGNORE=~/.config/waybar/system-health/ignore python3 ~/.config/waybar/system-health/waybar-system-health.py\
+
+newgrp disk\
+WAYBAR_SYSTEM_HEALTH_DISK=~/.config/waybar/system-health/disk.json WAYBAR_SYSTEM_HEALTH_IGNORE=~/.config/waybar/system-health/ignore python3 ~/.config/waybar/system-health/waybar-system-health.py\
+
+"exec": "sh -c 'WAYBAR_SYSTEM_HEALTH_DISK=$HOME/.config/waybar/system-health/disk.json WAYBAR_SYSTEM_HEALTH_IGNORE=$HOME/.config/waybar/system-health/ignore python3 $HOME/.config/waybar/system-health/waybar-system-health.py'"\
+
+newgrp disk\
+WAYBAR_SYSTEM_HEALTH_DISK=~/.config/waybar/system-health/disk.json WAYBAR_SYSTEM_HEALTH_IGNORE=~/.config/waybar/system-health/ignore python3 ~/.config/waybar/system-health/waybar-system-health.py\
+
+sh -c 'WAYBAR_SYSTEM_HEALTH_DISK=$HOME/.config/waybar/system-health/disk.json WAYBAR_SYSTEM_HEALTH_IGNORE=$HOME/.config/waybar/system-health/ignore python3 $HOME/.config/waybar/system-health/waybar-system-health.py'"
+sh -c 'WAYBAR_SYSTEM_HEALTH_DISK=$HOME/.config/waybar/system-health/disk.json WAYBAR_SYSTEM_HEALTH_IGNORE=$HOME/.config/waybar/system-health/ignore python3 $HOME/.config/waybar/system-health/waybar-system-health.py'
+echo "journal:.*" >> ~/.config/waybar/system-health/ignore\
+
+newgrp disk\
+
+WAYBAR_SYSTEM_HEALTH_DISK=~/.config/waybar/system-health/disk.json WAYBAR_SYSTEM_HEALTH_IGNORE=~/.config/waybar/system-health/ignore python3 ~/.config/waybar/system-health/waybar-system-health.py\
+
+echo "btrfs:.*" >> ~/.config/waybar/system-health/ignore
+WAYBAR_SYSTEM_HEALTH_DISK=~/.config/waybar/system-health/disk.json WAYBAR_SYSTEM_HEALTH_IGNORE=~/.config/waybar/system-health/ignore python3 ~/.config/waybar/system-health/waybar-system-health.py\
+
+sudo WAYBAR_SYSTEM_HEALTH_DISK=$HOME/.config/waybar/system-health/disk.json WAYBAR_SYSTEM_HEALTH_IGNORE=$HOME/.config/waybar/system-health/ignore python3 $HOME/.config/waybar/system-health/waybar-system-health.py\
+
+echo "btrfs:.*" >> ~/.config/waybar/system-health/ignore\
+echo "Btrfs:.*" >> ~/.config/waybar/system-health/ignore\
+
+sudo WAYBAR_SYSTEM_HEALTH_DISK=$HOME/.config/waybar/system-health/disk.json WAYBAR_SYSTEM_HEALTH_IGNORE=$HOME/.config/waybar/system-health/ignore python3 $HOME/.config/waybar/system-health/waybar-system-health.py\
+
+pkill waybar
+./.config/waybar/waybar.sh
+cd .config/waybar/system-health
+ls
+nano ignore
+./.config/waybar/waybar.sh
+cd .config/waybar/system-health
+ls
+./waybar-system-health.py
+nano ignore
+WAYBAR_SYSTEM_HEALTH_DISK=$HOME/.config/waybar/system-health/disk.json WAYBAR_SYSTEM_HEALTH_IGNORE=$HOME/.config/waybar/system-health/ignore ./waybar-system-health.py\
+
+pkill waybar
+cd ~/
+./.config/waybar/waybar.sh
+./waybar-system-health.py
+cd .config/waybar/system-health
+./waybar-system-health.py
+nano modules/btrfs.py
+WAYBAR_SYSTEM_HEALTH_DISK=$HOME/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=$HOME/.config/waybar/system-health/ignore \\
+python3 $HOME/.config/waybar/system-health/waybar-system-health.py\
+
+pkill waybar
+./.config/waybar/waybar.sh
+sudo journalctl --rotate && sudo journalctl --vacuum-time=1s
+WAYBAR_SYSTEM_HEALTH_DISK=$HOME/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=$HOME/.config/waybar/system-health/ignore \\
+python3 $HOME/.config/waybar/system-health/waybar-system-health.py\
+
+lsblk -f
+sudo journalctl --rotate && sudo journalctl --vacuum-time=1s
+sudo nixos-rebuild switch --upgrade
+sudo smartctl -a /dev/sdb
+echo "smart:/dev/sdb:Airflow_Temperature_Cel" >> ~/.config/waybar/system-health/ignore\
+echo "smart:/dev/sdb:Power_On_Hours" >> ~/.config/waybar/system-health/ignore\
+
+WAYBAR_SYSTEM_HEALTH_DISK=$HOME/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=$HOME/.config/waybar/system-health/ignore \\
+python3 $HOME/.config/waybar/system-health/waybar-system-health.py\
+
+# Overwrite the ignore file with a broader rule\
+echo "smart:/dev/sdb" > ~/.config/waybar/system-health/ignore\
+
+sudo journalctl --rotate\
+sudo journalctl --vacuum-time=1s\
+sudo systemctl restart systemd-journald\
+
+WAYBAR_SYSTEM_HEALTH_DISK=$HOME/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=$HOME/.config/waybar/system-health/ignore \\
+python3 $HOME/.config/waybar/system-health/waybar-system-health.py\
+
+echo "journal:.*" >> ~/.config/waybar/system-health/ignore\
+
+WAYBAR_SYSTEM_HEALTH_DISK=$HOME/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=$HOME/.config/waybar/system-health/ignore \\
+python3 $HOME/.config/waybar/system-health/waybar-system-health.py\
+
+echo "journal:.*" >> ~/.config/waybar/system-health/ignore
+WAYBAR_SYSTEM_HEALTH_DISK=$HOME/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=$HOME/.config/waybar/system-health/ignore \\
+python3 $HOME/.config/waybar/system-health/waybar-system-health.py\
+
+echo "btrfs:.*" >> ~/.config/waybar/system-health/ignore\
+
+WAYBAR_SYSTEM_HEALTH_DISK=$HOME/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=$HOME/.config/waybar/system-health/ignore \\
+python3 $HOME/.config/waybar/system-health/waybar-system-health.py\
+
+nupdate
+WAYBAR_SYSTEM_HEALTH_DISK=$HOME/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=$HOME/.config/waybar/system-health/ignore \\
+python3 $HOME/.config/waybar/system-health/waybar-system-health.py\
+
+pkill waybar
+./.config/waybar/waybar.sh
+newgrp disk\
+
+pkill waybar
+./.config/waybar/waybar.sh
+/run/wrappers/bin/btrfs scrub status /\
+
+nupdate
+pkill waybar
+./.config/waybar/waybar.sh
+/run/wrappers/bin/btrfs scrub status /\
+
+sudo /run/wrappers/bin/btrfs scrub status /\
+
+pkill waybar
+/run/wrappers/bin/btrfs scrub status /\
+
+newgrp disk\
+
+/run/wrappers/bin/btrfs scrub status /\
+
+cd .config/waybar/system-health
+./waybar-system-health.py
+newgrp disk
+WAYBAR_SYSTEM_HEALTH_DISK=$HOME/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=$HOME/.config/waybar/system-health/ignore \\
+python3 $HOME/.config/waybar/system-health/waybar-system-health.py\
+
+sudo journalctl --rotate && sudo journalctl --vacuum-time=1s\
+
+: 1767308910:0;WAYBAR_SYSTEM_HEALTH_DISK=$HOME/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=$HOME/.config/waybar/system-health/ignore \\
+python3 $HOME/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767309054:0;nupdate
+: 1767309075:0;WAYBAR_SYSTEM_HEALTH_DISK=$HOME/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=$HOME/.config/waybar/system-health/ignore \\
+python3 $HOME/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767309096:0;sudo systemctl restart nscd
+: 1767309139:0;nupdate
+: 1767309154:0;sudo dmesg | grep -i btrfs
+: 1767309187:0;/run/current-system/sw/bin/btrfs scrub status *
+: 1767309222:0;sudo -n btrfs scrub status /\
+
+: 1767309230:0;sudo -k && sudo -n btrfs scrub status /
+: 1767309235:0;sudo -l\
+
+: 1767309255:0;sudo -n btrfs scrub status /\
+
+: 1767309358:0;nupdate
+: 1767309394:0;sudo -k && sudo -n btrfs scrub status /
+: 1767309399:0;WAYBAR_SYSTEM_HEALTH_DISK=$HOME/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=$HOME/.config/waybar/system-health/ignore \\
+python3 $HOME/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767309411:0;pkill waybar
+: 1767309415:0;./.config/waybar/waybar.sh
+: 1767309437:0;nupdate
+: 1767309454:0;pkill waybar
+: 1767309455:0;./.config/waybar/waybar.sh
+: 1767309577:0;nupdate
+: 1767309621:0;WAYBAR_SYSTEM_HEALTH_DISK=$HOME/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=$HOME/.config/waybar/system-health/ignore \\
+python3 $HOME/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767309626:0;pkill waybar
+: 1767309627:0;./.config/waybar/waybar.sh
+: 1767309655:0;sudo -k && sudo -n /home/moonburst/.config/waybar/system-health/waybar-system-health.py
+: 1767309669:0;sudo -l | grep "waybar-system-health.py"\
+
+: 1767309684:0;sudo -E /home/moonburst/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767309734:0;smartctl --scan-open
+: 1767309736:0;sudo smartctl --scan-open
+: 1767309745:0;smartctl -a
+: 1767309747:0;sudo smartctl -a
+: 1767309751:0;sudo smartctl -h
+: 1767309891:0;nupdate
+: 1767309918:0;pkill waybar
+: 1767309919:0;./.config/waybar/waybar.sh
+: 1767310036:0;btrfs scrub status /
+: 1767310071:0;nupdate
+: 1767310085:0;btrfs scrub status /
+: 1767310091:0;btrfs scrub start /
+: 1767310215:0;systemctl status btrfs-scrub-root.service
+: 1767310237:0;systemctl status btrfs-scrub--.service\
+
+: 1767310262:0;sudo systemctl start btrfs-scrub--.service
+: 1767310267:0;pkill waybar
+: 1767310269:0;./.config/waybar/waybar.sh
+: 1767310276:0;cd .config/waybar/system-health
+: 1767310279:0;./waybar-system-health.py
+: 1767310317:0;sudo smartctl -a /dev/sdb
+: 1767310326:0;lsblk -f
+: 1767310792:0;nano ~/.config/waybar/system-health/ignore\
+
+: 1767310803:0;ls -l /dev/disk/by-id | grep sdb\
+
+: 1767310845:0;cd .config/waybar/system-health
+: 1767310847:0;./waybar-system-health.py
+: 1767310857:0;pkill waybar
+: 1767310861:0;./.config/waybar/waybar.sh
+: 1767310878:0;./waybar-system-health.py
+: 1767310901:0;sudo -E /home/moonburst/.config/waybar/system-health/waybar-system-health.py
+: 1767310920:0;nano ~/.config/waybar-system-health/ignore\
+
+: 1767310936:0;nano ~/.config/waybar-system-health/ignore
+: 1767310947:0;cd .config/waybar/system-health/
+: 1767310949:0;nano ignore
+: 1767310961:0;sudo -E /home/moonburst/.config/waybar/system-health/waybar-system-health.py
+: 1767310972:0;sudo journalctl --vacuum-time=1s\
+
+: 1767310981:0;nano ~/.config/waybar/system-health/disk.json\
+
+: 1767310987:0;lsblk -f
+: 1767311055:0;sudo journalctl --vacuum-time=1s\
+
+: 1767311065:0;sudo -E /home/moonburst/.config/waybar/system-health/waybar-system-health.py
+: 1767311088:0;sudo -E \\
+WAYBAR_SYSTEM_HEALTH_DISK=$HOME/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=$HOME/.config/waybar/system-health/ignore \\
+/home/moonburst/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767311112:0;sudo journalctl --vacuum-time=1s\
+
+: 1767311116:0;sudo -E \\
+WAYBAR_SYSTEM_HEALTH_DISK=$HOME/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=$HOME/.config/waybar/system-health/ignore \\
+WAYBAR_SYSTEM_HEALTH_NO_USER=1 \\
+/home/moonburst/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767311145:0;unit: --user\
+
+: 1767311183:0;sudo -E \\
+WAYBAR_SYSTEM_HEALTH_DISK=$HOME/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=$HOME/.config/waybar/system-health/ignore \\
+/home/moonburst/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767311258:0;sudo -E \\
+WAYBAR_SYSTEM_HEALTH_DISK=$HOME/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=$HOME/.config/waybar/system-health/ignore \\
+WAYBAR_SYSTEM_HEALTH_NO_USER=1 \\
+/home/moonburst/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767311294:0;sudo systemctl restart nsncd
+: 1767311298:0;sudo systemctl start nsncd
+: 1767311316:0;sudo systemctl status nsncd\
+
+: 1767311365:0;systemctl --all | grep -iE "nscd|nsncd|name-service"\
+
+: 1767311387:0;echo "journal:Failed to start Name Service Cache Daemon" >> ~/.config/waybar/system-health/ignore\
+
+: 1767311400:0;sudo -E \\
+WAYBAR_SYSTEM_HEALTH_DISK=$HOME/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=$HOME/.config/waybar/system-health/ignore \\
+/home/moonburst/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767312397:0;nupdate
+: 1767312424:0;sudo -k && sudo -n smartctl --scan-open\
+
+: 1767312464:0;pkill waybar
+: 1767312466:0;./.config/waybar/waybar.sh
+: 1767312605:0;nupdate
+: 1767312615:0;pkill waybar
+: 1767312649:0;./.config/waybar/waybar.sh
+: 1767312686:0;nupdate
+: 1767312689:0;pkill waybar
+: 1767312699:0;sudo -k && sudo -n /home/moonburst/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767312785:0;sudo -k && sudo -n -E /home/moonburst/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767312845:0;nupdate
+: 1767312859:0;sudo -k
+: 1767312865:0;sudo -n smartctl --scan-open
+: 1767312871:0;sudo -n -E /home/moonburst/.config/waybar/system-health/waybar-system-health.py
+: 1767312877:0;./.config/waybar/waybar.sh
+: 1767312894:0;sudo -E \\
+WAYBAR_SYSTEM_HEALTH_DISK=/home/moonburst/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=/home/moonburst/.config/waybar/system-health/ignore \\
+/home/moonburst/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767313010:0;clear
+: 1767313011:0;sudo -E \\
+WAYBAR_SYSTEM_HEALTH_DISK=/home/moonburst/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=/home/moonburst/.config/waybar/system-health/ignore \\
+/home/moonburst/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767313085:0;sudo -E \\
+WAYBAR_SYSTEM_HEALTH_SKIP=unit \\
+WAYBAR_SYSTEM_HEALTH_DISK=/home/moonburst/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=/home/moonburst/.config/waybar/system-health/ignore \\
+/home/moonburst/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767313107:0;sudo -E \\
+WAYBAR_SYSTEM_HEALTH_SKIP_UNITS=1 \\
+WAYBAR_SYSTEM_HEALTH_DISK=/home/moonburst/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=/home/moonburst/.config/waybar/system-health/ignore \\
+/home/moonburst/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767313152:0;cd .config/waybar/system-health/
+: 1767313157:0;./waybar-system-health.py
+: 1767313185:0;pkill waybar
+: 1767313193:0;./.config/waybar/waybar.sh
+: 1767313217:0;pkill waybar
+: 1767313220:0;./.config/waybar/waybar.sh
+: 1767313234:0;./waybar-system-health.py
+: 1767313243:0;sudo systemctl restart systemd-journald\
+
+: 1767313249:0;./waybar-system-health.py
+: 1767313361:0;sudo -E WAYBAR_SYSTEM_HEALTH_DISK=/home/moonburst/.config/waybar/system-health/disk.json WAYBAR_SYSTEM_HEALTH_IGNORE=/home/moonburst/.config/waybar/system-health/ignore /home/moonburst/.config/waybar/system-health/waybar-system-health.py
+: 1767313397:0;sudo smartctl -A /dev/sdb
+: 1767313457:0;sudo -E WAYBAR_SYSTEM_HEALTH_DISK=/home/moonburst/.config/waybar/system-health/disk.json WAYBAR_SYSTEM_HEALTH_IGNORE=/home/moonburst/.config/waybar/system-health/ignore /home/moonburst/.config/waybar/system-health/waybar-system-health.py
+: 1767313541:0;nupdate
+: 1767313553:0;sudo journalctl --rotate\
+sudo journalctl --vacuum-time=1s\
+
+: 1767313559:0;sudo -E WAYBAR_SYSTEM_HEALTH_NO_USER=1 WAYBAR_SYSTEM_HEALTH_DISK=... /path/to/script.py\
+
+: 1767313574:0;sudo -E WAYBAR_SYSTEM_HEALTH_NO_USER=1 WAYBAR_SYSTEM_HEALTH_DISK=... /home/moonburst/.config/waybar/system-health/waybar-system-health.py
+: 1767313602:0;sudo -E \\
+WAYBAR_SYSTEM_HEALTH_DISK=/home/moonburst/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=/home/moonburst/.config/waybar/system-health/ignore \\
+WAYBAR_SYSTEM_HEALTH_NO_USER=1 \\
+/home/moonburst/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767313622:0;# Rotates the journal to move active logs to archive and clears them\
+sudo journalctl --rotate\
+sudo journalctl --vacuum-time=1s\
+
+: 1767313632:0;sudo -E WAYBAR_SYSTEM_HEALTH_NO_USER=1 WAYBAR_SYSTEM_HEALTH_DISK=/home/moonburst/.config/waybar/system-health/disk.json WAYBAR_SYSTEM_HEALTH_IGNORE=/home/moonburst/.config/waybar/system-health/ignore /home/moonburst/.config/waybar/system-health/waybar-system-health.py
+: 1767313672:0;sudo -E \\
+WAYBAR_SYSTEM_HEALTH_DISK=/home/moonburst/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=/home/moonburst/.config/waybar/system-health/ignore \\
+/home/moonburst/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767313713:0;sudo -E \\
+WAYBAR_SYSTEM_HEALTH_SKIP_UNITS=1 \\
+WAYBAR_SYSTEM_HEALTH_DISK=/home/moonburst/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=/home/moonburst/.config/waybar/system-health/ignore \\
+/home/moonburst/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767313732:0;pkill waybar
+: 1767313735:0;./.config/waybar/waybar.sh
+: 1767313772:0;pkill waybar
+: 1767313773:0;./.config/waybar/waybar.sh
+: 1767313808:0;sudo -E \\
+WAYBAR_SYSTEM_HEALTH_SKIP_UNITS=1 \\
+WAYBAR_SYSTEM_HEALTH_DISK=/home/moonburst/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=/home/moonburst/.config/waybar/system-health/ignore \\
+/home/moonburst/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767313841:0;clear
+: 1767313841:0;sudo -E \\
+WAYBAR_SYSTEM_HEALTH_SKIP=unit \\
+WAYBAR_SYSTEM_HEALTH_DISK=/home/moonburst/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=/home/moonburst/.config/waybar/system-health/ignore \\
+/home/moonburst/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767313879:0;sudo -E \\
+WAYBAR_SYSTEM_HEALTH_DISK=/home/moonburst/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=/home/moonburst/.config/waybar/system-health/ignore \\
+/home/moonburst/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767313919:0;sudo -E \\
+WAYBAR_SYSTEM_HEALTH_SKIP=unit \\
+WAYBAR_SYSTEM_HEALTH_DISK=/home/moonburst/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=/home/moonburst/.config/waybar/system-health/ignore \\
+/home/moonburst/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767313932:0;sudo -E \\
+WAYBAR_SYSTEM_HEALTH_DISK=/home/moonburst/.config/waybar/system-health/disk.json \\
+WAYBAR_SYSTEM_HEALTH_IGNORE=/home/moonburst/.config/waybar/system-health/ignore \\
+/home/moonburst/.config/waybar/system-health/waybar-system-health.py | sed 's/\\u26a0 Units:warn/\\u2713 System Healthy/g; s/"class": "warn"/"class": "healthy"/g'\
+
+: 1767313956:0;pkill waybar
+: 1767313958:0;./.config/waybar/waybar.sh
+: 1767314048:0;pkill waybar
+: 1767314048:0;./.config/waybar/waybar.sh
+: 1767314060:0;pkill waybar
+: 1767314060:0;./.config/waybar/waybar.sh
+: 1767314107:0;pkill waybar
+: 1767314108:0;./.config/waybar/waybar.sh
+: 1767314118:0;pkill waybar
+: 1767314119:0;./.config/waybar/waybar.sh
+: 1767314135:0;pkill waybar
+: 1767314135:0;./.config/waybar/waybar.sh
+: 1767314173:0;pkill waybar
+: 1767314174:0;./.config/waybar/waybar.sh
+: 1767314209:0;lsblk -f
+: 1767314271:0;./.config/waybar/system-health/waybar-system-health.py
+: 1767314359:0;sudo -E WAYBAR_SYSTEM_HEALTH_DISK=$HOME/.config/waybar/system-health/disk.json \\
+python3 $HOME/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767314440:0;cat .config/waybar/system-health/disk.json
+: 1767314472:0;mkdir -p ~/.config/waybar-system-health\
+
+: 1767314475:0;ln -sf ~/.config/waybar/system-health/disk.json ~/.config/waybar-system-health/disk.json\
+ln -sf ~/.config/waybar/system-health/ignore ~/.config/waybar-system-health/ignore\
+
+: 1767314480:0;python3 ~/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767314507:0;sudo -E python3 ~/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767314542:0;chmod 644 ~/.config/waybar/system-health/ignore\
+
+: 1767314543:0;sudo -E python3 ~/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767314547:0;sudo journalctl --rotate\
+sudo journalctl --vacuum-time=1s\
+
+: 1767314549:0;sudo -E python3 ~/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767314611:0;# Rotates the journal to move active logs to archive and clears them\
+sudo journalctl --rotate\
+sudo journalctl --vacuum-time=1s\
+
+: 1767314631:0;sudo -E python3 ~/.config/waybar/system-health/waybar-system-health.py\
+
+: 1767314729:0;pkill waybar
+: 1767314730:0;./.config/waybar/system-health/waybar-system-health.py
+: 1767314738:0;./.config/waybar/waybar.sh
+: 1767314756:0;./.config/waybar/system-health/waybar-system-health.py
+: 1767314939:0;btrfs scrub status
+: 1767314942:0;btrfs scrub status /
+: 1767315251:0;nupdate
+: 1767315288:0;systemctl --user start health-check-notify.service\
+
+: 1767315345:0;systemctl --user start health-check-notify.service\
+systemctl --user status health-check-notify.service\
+
+: 1767315365:0;systemctl --user daemon-reload\
+
+: 1767315368:0;systemctl --user list-unit-files | grep health-check-notify\
+
+: 1767315371:0;systemctl --user start health-check-notify.service\
+
+: 1767315396:0;# This scans the system-wide user unit directory\
+systemctl --user start /etc/systemd/user/health-check-notify.service\
+
+: 1767315400:0;find /etc/systemd/user/ -name "*health-check-notify*"\
+
+: 1767315404:0;sudo loginctl enable-linger moonburst\
+
+: 1767315426:0;ls /etc/systemd/user/health-check-notify.service\
+
+: 1767315440:0;ls /run/current-system/sw/lib/systemd/user/health-check-notify.service\
+
+: 1767315455:0;nix repl -f /etc/nixos/configuration.nix\
+# Or if using Flakes:\
+nix repl\
+:lf .\
+nixosConfigurations.<hostname>.config.systemd.user.services.health-check-notify\
+
+: 1767315664:0;nupdate
+: 1767315701:0;systemctl --user daemon-reload\
+
+: 1767315704:0;systemctl --user start health-check-notify.service\
+
+: 1767315719:0;journalctl --user -u health-check-notify.service -n 50 --no-pager\
+
+: 1767315833:0;pkill waybar
+: 1767315839:0;./.config/waybar/waybar.sh
+: 1767315940:0;./.config/waybar/system-health/waybar-system-health.py
+: 1767316019:0;smartctl -a
+: 1767316022:0;smartctl
+: 1767316025:0;smartctl -h
+: 1767316139:0;nupdate
+: 1767316291:0;smartctl --scan
+: 1767316345:0;nupdate
+: 1767316383:0;sudo systemctl start smart-health-check.service
+: 1767316423:0;sudo smartctl -a /dev/sdb\
+
+: 1767316527:0;nupdate
+: 1767316546:0;sudo systemctl start smart-health-check.service
+: 1767316625:0;nupdate
+: 1767316640:0;sudo systemctl start smart-health-check.service
+: 1767316734:0;cd nixos-config
+: 1767316744:0;cd .config/waybar/
+: 1767316752:0;rm -rf system-health
+: 1767316844:0;sudo smartctl -l error /dev/sdb
+: 1767316865:0;sudo smartctl -l error /dev/sdb2
+: 1767316867:0;sudo smartctl -l error /dev/sdb
+: 1767316874:0;sudo smartctl -l error /dev/sdX
+: 1767316884:0;sudo smartctl -l error /dev/sdb
+: 1767316895:0;sudo smartctl /dev/sdb
+: 1767316901:0;sudo smartctl -a
+: 1767316903:0;sudo smartctl -a /dev/sdb\
+
+: 1767317128:0;nupdate
+: 1767317220:0;sudo systemctl start smart-health-check.service
+: 1767317235:0;nupdate
+: 1767317250:0;sudo systemctl start smart-health-check.service
+: 1767317336:0;nupdate
+: 1767317351:0;sudo systemctl start smart-health-check.service
+: 1767317539:0;nupdate
+: 1767317554:0;sudo systemctl start smart-health-check.service
+: 1767317634:0;nupdate
+: 1767317649:0;sudo journalctl -u smart-health-check.service -n 50\
+
+: 1767317681:0;cd nixos-config
+: 1767317688:0;git add .

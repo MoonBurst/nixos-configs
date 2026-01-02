@@ -9,7 +9,7 @@
 
 in {
   imports = [
-  
+
   ];
 
   time.timeZone = "America/Chicago";
@@ -66,7 +66,7 @@ in {
 	xdg-desktop-portal-wlr
 	xdg-desktop-portal-gtk
     #xdg-desktop-portal-gnome
-      
+
     ];
 
     config = {
@@ -95,11 +95,16 @@ nix.optimise = {
   dates = [ "weekly" ];
 };
 
+services.btrfs.autoScrub = {
+  enable = true;
+  interval = "monthly";
+  fileSystems = [ "/" ];
+};
+
 
   # ====================================================================
   # AUTO UPDATER
   # ====================================================================
-# Automatic System Upgrades
 # Automatic System Upgrades
 system.autoUpgrade = {
   enable = true;
@@ -118,13 +123,10 @@ systemd.services."notify-update-failure" = {
     USER_NAME="moonburst"
     USER_ID=$(id -u "$USER_NAME")
 
-    # 1. Capture the logs
     echo "--- NIXOS AUTO-UPDATE FAILED ON $(date) ---" > "$LOG_FILE"
     /run/current-system/sw/bin/journalctl -u nixos-upgrade.service -n 50 --no-pager >> "$LOG_FILE"
     chown "$USER_NAME":users "$LOG_FILE"
 
-    # 2. Send Critical Desktop Notification
-    # Using 'critical' ensures the message persists until dismissed
     if [ -S "/run/user/$USER_ID/bus" ]; then
       /run/current-system/sw/bin/systemd-run \
         --user --machine="$USER_NAME@.host" \
@@ -145,6 +147,75 @@ systemd.services.nixos-upgrade.postStop = ''
     rm -f /home/moonburst/UPDATE_FAILED.txt
   fi
 '';
+
+
+  # ====================================================================
+  # S.M.A.R.T MONITORING
+  # ====================================================================
+
+systemd.services.smart-health-check = {
+  description = "Check SMART disk health and notify moonburst";
+  serviceConfig = {
+    Type = "oneshot";
+    ExecStart = let
+      # --- CHANGE THIS VALUE TO ADJUST RECENCY ---
+      thresholdHours = 12;
+
+      checkScript = pkgs.writeShellScript "check-smart" ''
+        USER_NAME="moonburst"
+        USER_ID=$(id -u $USER_NAME)
+        # Use the Nix variable inside the shell script
+        THRESHOLD=${toString thresholdHours}
+
+        DISKS=$(${pkgs.smartmontools}/bin/smartctl --scan | awk '{print $1}')
+
+        for DISK in $DISKS; do
+          CURRENT_HOURS=$(${pkgs.smartmontools}/bin/smartctl -A "$DISK" | grep "Power_On_Hours" | awk '{print $10}')
+          LAST_ERROR_HOUR=$(${pkgs.smartmontools}/bin/smartctl -l error "$DISK" | grep "error occurred at" | head -n 1 | awk '{print $NF}')
+          PENDING_SECTORS=$(${pkgs.smartmontools}/bin/smartctl -A "$DISK" | grep "Current_Pending_Sector" | awk '{print $10}')
+          [ -z "$PENDING_SECTORS" ] && PENDING_SECTORS=0
+
+          IS_RECENT=false
+          if [ -n "$CURRENT_HOURS" ] && [ -n "$LAST_ERROR_HOUR" ]; then
+            DIFF=$((CURRENT_HOURS - LAST_ERROR_HOUR))
+            # Use the threshold variable here
+            if [ "$DIFF" -ge 0 ] && [ "$DIFF" -le "$THRESHOLD" ]; then
+              IS_RECENT=true
+            fi
+          fi
+
+          HEALTH_OUT=$(${pkgs.smartmontools}/bin/smartctl -H "$DISK")
+          EXIT_CODE=$?
+          STATUS=$(echo "$HEALTH_OUT" | grep "test result" | awk -F': ' '{print $2}')
+          HIGH_RISK_MASK=$((8 | 16))
+
+          if [ "$STATUS" != "PASSED" ] || [ $((EXIT_CODE & HIGH_RISK_MASK)) -ne 0 ] || [ "$IS_RECENT" = true ] || [ "$PENDING_SECTORS" -gt 0 ]; then
+            sudo -u $USER_NAME \
+              DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$USER_ID/bus \
+              ${pkgs.libnotify}/bin/notify-send -u critical "SMART Monitor ALERT" \
+              "Disk $DISK risk! Status: $STATUS | Recent Err: $IS_RECENT (within $THRESHOLD hrs)"
+          fi
+        done
+      '';
+    in "${checkScript}";
+  };
+  path = [ pkgs.smartmontools pkgs.libnotify pkgs.gawk pkgs.bash pkgs.sudo ];
+};
+
+#Timer for above
+systemd.timers.smart-health-check = {
+  wantedBy = [ "timers.target" ];
+  timerConfig = {
+    OnBootSec = "2min";
+    OnUnitActiveSec = "4h";
+    Unit = "smart-health-check.service";
+  };
+};
+
+
+
+
+
 
 
 
@@ -223,7 +294,8 @@ systemd.services.nixos-upgrade.postStop = ''
     shell = pkgs.zsh;
   };
 
-  # ====================================================================
+
+#====================================================================
   # FONTS (Unchanged)
   # ====================================================================
   fonts = {
@@ -318,7 +390,6 @@ systemd.services.nixos-upgrade.postStop = ''
     libnotify
     qimgv
     olm
-    nheko
     element-desktop
     # --- Btrfs Tools
     btrfs-progs
@@ -338,6 +409,8 @@ systemd.services.nixos-upgrade.postStop = ''
     swaylock
     swayidle
     swaybg
+    python3
+    smartmontools
 
     # --- Desktop/Theming
     nemo
