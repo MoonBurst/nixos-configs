@@ -1,2 +1,73 @@
 : 1767384428:0;cd nixos-config
 : 1767384432:0;git add .
+: 1767384440:0;git commit -m "cleaning"
+: 1767384443:0;git push
+: 1767393302:0;nupdate
+: 1767393373:0;cd nixos-config
+: 1767393374:0;git add .
+: 1767393380:0;nupdate
+: 1767393487:0;mv ~/.config/waybar ~/.config/waybar.bak\
+
+: 1767393492:0;pkill waybar
+: 1767393497:0;waybar
+: 1767393549:0;nupdate
+: 1767393571:0;waybar
+: 1767393624:0;nupdate
+: 1767393650:0;waybar
+: 1767393682:0;nupdate
+: 1767393696:0;waybar
+: 1767393726:0;nupdate
+: 1767393741:0;waybar
+: 1767393778:0;nupdate
+: 1767393797:0;waybar
+: 1767393941:0;chmod +x /home/moonburst/.config/waybar.bak/modules/*.sh
+: 1767393947:0;/home/moonburst/.config/waybar.bak/modules/cpu_readout.sh
+: 1767393826:19;nupdate
+: 1767393981:1;waybar
+: 1767393985:0;nupdate
+: 1767393998:0;waybar
+: 1767394071:0;nupdate
+: 1767394134:0;waybar
+: 1767394171:0;/home/moonburst/.config/waybar.bak/modules/cpu_readout.sh\
+/home/moonburst/.config/waybar.bak/modules/gpu_readout.sh 0\
+/home/moonburst/.config/waybar.bak/modules/ram_readout.sh\
+
+: 1767394204:0;nupdate
+: 1767394246:0;waybar
+: 1767394302:0;nupdate
+: 1767394316:0;waybar
+: 1767394400:0;nupdate
+: 1767394482:0;waybar
+: 1767394671:0;while true; do /home/moonburst/.config/waybar.bak/modules/cpu_readout.sh; sleep 1; done &\
+while true; do /home/moonburst/.config/waybar.bak/modules/gpu_readout.sh 0; sleep 1; done &\
+while true; do /home/moonburst/.config/waybar.bak/modules/ram_readout.sh; sleep 1; done &\
+
+: 1767394676:0;waybar
+: 1767394718:0;nupdate
+: 1767394786:0;waybar
+: 1767394793:0;while true; do /home/moonburst/.config/waybar.bak/modules/cpu_readout.sh; sleep 1; done &\
+while true; do /home/moonburst/.config/waybar.bak/modules/gpu_readout.sh 0; sleep 1; done &\
+while true; do /home/moonburst/.config/waybar.bak/modules/ram_readout.sh; sleep 1; done &\
+
+: 1767394796:0;waybar
+: 1767394835:0;nupdate
+: 1767395000:0;waybar
+: 1767395011:0;cat /tmp/waybar_cpu_readout\
+# Expected output: A number like 55\
+
+: 1767395179:0;nupdate
+: 1767395214:0;waybar
+: 1767395251:0;cd .config/waybar
+: 1767395252:0;ls
+: 1767395256:0;cd .config
+: 1767395262:0;mv waybar.bak waybar/
+: 1767395282:0;./.config/waybar/waybar.sh
+: 1767395349:0;cd nixos-config/hosts/moonbeauty
+: 1767395351:0;rm waybar.nix
+: 1767395387:0;nupdate
+: 1767460755:0;cat UPDATE_FAILED.txt
+: 1767460771:0;nupdate
+: 1767460944:0;cat UPDATE_FAILED.txt
+: 1767462635:0;sudo nix-channel --update && sudo nixos-rebuild switch
+: 1767462667:0;cd nixos-config
+: 1767462669:0;git add .
