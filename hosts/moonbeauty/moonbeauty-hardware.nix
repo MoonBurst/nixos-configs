@@ -19,16 +19,39 @@
     "fbcon=rotate:2" #--rotates screen
     "amdgpu.ppfeaturemask=0xffffffff" #--needed for corectrl
     "cma=512M"
+
+    #VM stuff
+  "amd_iommu=on"
+  "iommu=pt"
+  "vfio-pci.ids=1002:743f,1002:ab28" # RX 6400 Video and Audio IDs
   ];
   boot.initrd.kernelModules = [ 
     "amdgpu" 
   ];
-  
-  boot.initrd.availableKernelModules = [ "nvme" "xhci_pci" "ahci" "usbhid" "usb_storage" "sd_mod" ];
-  boot.kernelModules = [ "kvm-amd"  "i2c-dev" "i2c-piix4" ];
-  boot.extraModulePackages = [ ];
+
+  boot.initrd.availableKernelModules = [ "nvme" "xhci_pci" "ahci" "usbhid" "usb_storage" "sd_mod" "vfio_pci" "vfio" "vfio_iommu_type1"];
+  boot.kernelModules = [ "kvm-amd"  "i2c-dev" "i2c-piix4" "kvmfr" "vendor-reset"];
+boot.extraModulePackages = with config.boot.kernelPackages; [
+  kvmfr
+  vendor-reset
+];
+
+boot.extraModprobeConfig = ''
+  softdep amdgpu pre: vfio-pci vendor-reset
+
+  options kvmfr static_size_mb=64
+'';
+virtualisation.libvirtd.qemu.verbatimConfig = ''
+  cgroup_device_acl = [
+      "/dev/null", "/dev/full", "/dev/zero",
+      "/dev/random", "/dev/urandom",
+      "/dev/ptmx", "/dev/kvm", "/dev/rtc",
+      "/dev/hpet", "/dev/kvmfr0"
+  ]
+'';
 
 
+#This is for the latest kernel
   boot.kernelPackages = pkgs.linuxPackages_latest;
   # ====================================================================
   #  FILE SYSTEM

@@ -267,6 +267,7 @@ programs.dconf.enable = true;
       "render"
       "corectrl"
       "i2c"
+      "libvirtd"
     ];
 
     shell = pkgs.zsh;
@@ -369,6 +370,8 @@ programs.dconf.enable = true;
     qimgv
     olm
     element-desktop
+    steam-run
+    zenity
     # --- Btrfs Tools
     btrfs-progs
     btrfs-assistant
@@ -400,6 +403,7 @@ programs.dconf.enable = true;
 
     # --- Applications/Communication
     sox
+    mpv
     audacious
     vivaldi
     vesktop
@@ -423,7 +427,6 @@ programs.dconf.enable = true;
 
 
     sherlock-launcher
-    (pkgs.callPackage ../../packages/fchat-horizon.nix {})
     (pkgs.callPackage ../../packages/sherlock-clipboard.nix {})
 #    (pkgs.callPackage ../../packages/datacorn.nix {})
   ];

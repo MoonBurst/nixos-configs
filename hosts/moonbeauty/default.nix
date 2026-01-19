@@ -33,7 +33,15 @@ programs.gamemode.enable = true;
 hardware.steam-hardware.enable = true;
 programs.steam.enable = true;
 programs.steam.dedicatedServer.openFirewall = true;
-
+#VM STUFF
+virtualisation.libvirtd.enable = true;
+programs.virt-manager.enable = true;
+systemd.tmpfiles.rules = [
+  "f /dev/shm/looking-glass 0660 moonburst qemu-libvirtd -"
+];
+services.udev.extraRules = ''
+  SUBSYSTEM=="kvmfr", OWNER="moonburst", GROUP="kvm", MODE="0660"
+'';
 
   # ====================================================================
   # CRON JOBS
@@ -70,25 +78,27 @@ programs.steam.dedicatedServer.openFirewall = true;
     corectrl
     wget
     curl
-    # --- Gaming/GPU/Emulation ---
-    gamescope
-    mesa
-    protonup-qt
-    obs-studio
-    obs-cli
-    mangohud
-    # --- Desktop/Theming ---
     openrgb-with-all-plugins
-    lmstudio
-    krita
-    cura-appimage
-    kdePackages.partitionmanager
-openscad
-orca-slicer
-nicotine-plus
-jami
-edopro
-vicinae
+    # --- Gaming/GPU/Emulation ---
+    gamescope#for steam
+    mesa#GPU driverrs
+    protonup-qt#for steam
+    obs-studio#obs
+    obs-cli#obs
+    mangohud#system use/FPS counter
+    # --- Desktop/Theming ---
+    lmstudio#AI LLM
+    krita#image editor
+kdePackages.partitionmanager#partition manager
+
+cura-appimage#3d printer
+openscad#3d printer
+orca-slicer#3d printer
+nicotine-plus#music downloader
+jami#chat client
+vicinae#launcher
+dnsmasq#VM related
+looking-glass-client#VM related
     ];
 
   system.stateVersion = "25.11";

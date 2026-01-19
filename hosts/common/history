@@ -1,73 +1,560 @@
-: 1767384428:0;cd nixos-config
-: 1767384432:0;git add .
-: 1767384440:0;git commit -m "cleaning"
-: 1767384443:0;git push
-: 1767393302:0;nupdate
-: 1767393373:0;cd nixos-config
-: 1767393374:0;git add .
-: 1767393380:0;nupdate
-: 1767393487:0;mv ~/.config/waybar ~/.config/waybar.bak\
+cd nixos-config
+git add .
+git commit -m "cleaning"
+git push
+nupdate
+cd nixos-config
+git add .
+nupdate
+mv ~/.config/waybar ~/.config/waybar.bak\
 
-: 1767393492:0;pkill waybar
-: 1767393497:0;waybar
-: 1767393549:0;nupdate
-: 1767393571:0;waybar
-: 1767393624:0;nupdate
-: 1767393650:0;waybar
-: 1767393682:0;nupdate
-: 1767393696:0;waybar
-: 1767393726:0;nupdate
-: 1767393741:0;waybar
-: 1767393778:0;nupdate
-: 1767393797:0;waybar
-: 1767393941:0;chmod +x /home/moonburst/.config/waybar.bak/modules/*.sh
-: 1767393947:0;/home/moonburst/.config/waybar.bak/modules/cpu_readout.sh
-: 1767393826:19;nupdate
-: 1767393981:1;waybar
-: 1767393985:0;nupdate
-: 1767393998:0;waybar
-: 1767394071:0;nupdate
-: 1767394134:0;waybar
-: 1767394171:0;/home/moonburst/.config/waybar.bak/modules/cpu_readout.sh\
+pkill waybar
+waybar
+nupdate
+waybar
+nupdate
+waybar
+nupdate
+waybar
+nupdate
+waybar
+nupdate
+waybar
+chmod +x /home/moonburst/.config/waybar.bak/modules/*.sh
+/home/moonburst/.config/waybar.bak/modules/cpu_readout.sh
+nupdate
+waybar
+nupdate
+waybar
+nupdate
+waybar
+/home/moonburst/.config/waybar.bak/modules/cpu_readout.sh\
 /home/moonburst/.config/waybar.bak/modules/gpu_readout.sh 0\
 /home/moonburst/.config/waybar.bak/modules/ram_readout.sh\
 
-: 1767394204:0;nupdate
-: 1767394246:0;waybar
-: 1767394302:0;nupdate
-: 1767394316:0;waybar
-: 1767394400:0;nupdate
-: 1767394482:0;waybar
-: 1767394671:0;while true; do /home/moonburst/.config/waybar.bak/modules/cpu_readout.sh; sleep 1; done &\
+nupdate
+waybar
+nupdate
+waybar
+nupdate
+waybar
+while true; do /home/moonburst/.config/waybar.bak/modules/cpu_readout.sh; sleep 1; done &\
 while true; do /home/moonburst/.config/waybar.bak/modules/gpu_readout.sh 0; sleep 1; done &\
 while true; do /home/moonburst/.config/waybar.bak/modules/ram_readout.sh; sleep 1; done &\
 
-: 1767394676:0;waybar
-: 1767394718:0;nupdate
-: 1767394786:0;waybar
-: 1767394793:0;while true; do /home/moonburst/.config/waybar.bak/modules/cpu_readout.sh; sleep 1; done &\
+waybar
+nupdate
+waybar
+while true; do /home/moonburst/.config/waybar.bak/modules/cpu_readout.sh; sleep 1; done &\
 while true; do /home/moonburst/.config/waybar.bak/modules/gpu_readout.sh 0; sleep 1; done &\
 while true; do /home/moonburst/.config/waybar.bak/modules/ram_readout.sh; sleep 1; done &\
 
-: 1767394796:0;waybar
-: 1767394835:0;nupdate
-: 1767395000:0;waybar
-: 1767395011:0;cat /tmp/waybar_cpu_readout\
+waybar
+nupdate
+waybar
+cat /tmp/waybar_cpu_readout\
 # Expected output: A number like 55\
 
-: 1767395179:0;nupdate
-: 1767395214:0;waybar
-: 1767395251:0;cd .config/waybar
-: 1767395252:0;ls
-: 1767395256:0;cd .config
-: 1767395262:0;mv waybar.bak waybar/
-: 1767395282:0;./.config/waybar/waybar.sh
-: 1767395349:0;cd nixos-config/hosts/moonbeauty
-: 1767395351:0;rm waybar.nix
-: 1767395387:0;nupdate
-: 1767460755:0;cat UPDATE_FAILED.txt
-: 1767460771:0;nupdate
-: 1767460944:0;cat UPDATE_FAILED.txt
-: 1767462635:0;sudo nix-channel --update && sudo nixos-rebuild switch
-: 1767462667:0;cd nixos-config
-: 1767462669:0;git add .
+nupdate
+waybar
+cd .config/waybar
+ls
+cd .config
+mv waybar.bak waybar/
+./.config/waybar/waybar.sh
+cd nixos-config/hosts/moonbeauty
+rm waybar.nix
+nupdate
+cat UPDATE_FAILED.txt
+nupdate
+cat UPDATE_FAILED.txt
+sudo nix-channel --update && sudo nixos-rebuild switch
+cd nixos-config
+git add .
+git commit -m "removing waybar from nix"
+git push
+cd .config/vesktop
+ls
+cd themes
+ls
+sudo nix-collect-garbage -d\
+sudo nix-store --optimize\
+sudo nix-store --verify --check-contents --repair\
+
+nupdate
+nix-shell -p vesktop
+vesktop
+nupdate
+nix log /nix/store/r92d5armia9vf10bmbn0bzw7rr7frqk5-vesktop-1.6.3.drv
+nupdate
+nix log /nix/store/r92d5armia9vf10bmbn0bzw7rr7frqk5-vesktop-1.6.3.drv
+nupdate
+swaymsg reload
+cat UPDATE_FAILED.txt
+nupdate
+sudo nix-channel --update
+nupdate
+cd nixos-config
+ls
+cd hosts
+ls
+cd common
+ls
+cat zshprompt.sh
+cd nixos-config/
+ls
+nix flake update 
+nupdate
+cd scripts/
+cd alias_scripts
+ls
+cd ..
+cd found_chat_logs
+ls
+cd ..
+ls
+./ADL-Checker.sh
+curl https://chat.f-list.net/adl/2026-01-04/equestria.txt
+watch curl https://chat.f-list.net/adl/2026-01-04/equestria.txt
+watch curl https://chat.f-list.net/adl/2026-01-04/equestria.txt | tail -n 20
+curl -s https://chat.f-list.net/adl/2026-01-04/equestria.txt
+watch curl -s https://chat.f-list.net/adl/2026-01-04/equestria.txt
+curl https://chat.f-list.net/adl/2026-01-04/equestria.txt | tail -n 20
+watch 10 curl https://chat.f-list.net/adl/2026-01-04/equestria.txt | tail -n 20
+watch -n 10 "curl -s https://chat.f-list.net/adl/2026-01-04/equestria.txt | tail -n 20"\
+
+pass amazon.com
+watch -n 10 "curl -s https://chat.f-list.net/adl/2026-01-05/equestria.txt | tail -n 20"\
+
+cd /tmp
+unzip 2Ship-Mion-Charlie-Linux.zip
+cd /tmp
+unzip 2ship-linux.zip
+watch -n 10 "curl -s https://chat.f-list.net/adl/2026-01-05/equestria.txt | tail -n 20"\
+
+nmtui
+alarm 25m "oven"
+nix-channel update
+nix-channel --help
+nix-channel names
+nix-channel --names
+nix-channel -names
+nix-channel -name
+nix-channel --help
+nix-channel --list
+nix-channel update nixos https://nixos.org/channels/nixos-unstable
+sudo nix-channel --update nixos
+nupdate
+nix-channel --list
+sudo nix-channel --update
+nix-channel --list
+watch -n 10 "curl -s https://chat.f-list.net/adl/2026-01-07/equestria.txt | tail -n 20"\
+
+nupdate
+watch -n 10 "curl -s https://chat.f-list.net/adl/2026-01-05/equestria.txt | tail -n 20"\
+
+watch -n 10 "curl -s https://chat.f-list.net/adl/2026-01-07/equestria.txt | tail -n 20"\
+
+nmuti
+nmtui
+syncthing
+journalctl -b -1
+journalctl -k
+journalctl -k -b -1
+nix-shell -p spek
+syncthing --reset-database
+syncthing --reset-deltas
+syncthing --reset-database\
+
+syncthing --reset-database
+nmtui
+syncthing
+spek
+nmtui
+free -m
+slabtop -sc
+sudo slabtop -sc
+df -h
+grep -i huge /proc/meminfo
+ipcs -m --human
+sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+nupdate
+sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+pkill audacity
+pidof audacious
+pkill audacious
+nix-shell -p aimp
+nix-shell -p mpv
+lm-studio
+journalctl -f
+nix-shell -p schildichat
+journalctl -f
+sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+lm-studio
+cd scripts/
+ls
+cd cron_scripts
+ls
+nano reminder_dates.txt
+sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+cd Games/ProjectIgnis
+./EDOPro
+alarm 25m "oven"
+nix-channel --list
+nupdate
+nix-channel --list
+sudo nix-channel --remove nixos
+sudo nix-channel --remove nixos-unstable
+nix-channel --add https://channels.nixos.org/nixos-25.11 nixos
+nupdate
+nix-channel --remove unstable
+nix-channel --list
+nix-channel --update
+nupdate
+nix-channel --list
+nix-channel --update
+nix-collect-garbage -d
+nupdate
+nmtui
+nupdate
+nix-channel --add https://channels.nixos.org/nixos-unstable nixos
+nix-channel --list
+nix-channel --update
+nupdate
+nix-env -qaP | grep -i geforce\
+
+nix-shell -p appimage-run --run "appimage-run ~/Games/ProjectIgnis/EDOpro"\
+
+nupdate
+cd Games/ProjectIgnis
+ls
+nix-shell -p appimage-run --run "appimage-run ~/Games/ProjectIgnis/EDOpro"\
+
+nupdate
+cd Games/ProjectIgnis
+./EDOPro
+nupdate
+./EDOPro
+cd Games/ProjectIgnis
+./EDOPro
+# This unsets the wayland variable for just this session\
+WAYLAND_DISPLAY= appimage-run ~/Games/ProjectIgnis/EDOPro\
+
+xxd ~/Games/ProjectIgnis/EDOPro | head -1\
+
+file ~/Games/ProjectIgnis/EDOPro\
+
+nix-shell -p file
+cd .local/share
+ls
+rm -rf edopro
+nupdate
+cd Games/ProjectIgnis
+ls
+cd sound
+ls
+play activate
+cd Games/ProjectIgnis
+./EDOPro
+steam-run EDOPro
+steam-run ~/Games/ProjectIgnis/EDOPro
+file ~/Games/ProjectIgnis/EDOPro
+nix-shell -p steam-run
+NIXPKGS_ALLOW_UNFREE=1 nix-shell -p steam-run --run "steam-run ~/Games/ProjectIgnis/EDOPro"
+cd .local/share/applications
+nano edopro.desktop
+cd .local/share/applications
+cat edopro.desktop
+cat hyperbeam.desktop
+cat userapp-cura-UBO4F3.desktop
+nupdate
+sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+steam-run ~/Games/RJ237469\ -\ Black\ Souls\ II/Game.exe
+nupdate
+watch -n 10 "curl -s https://chat.f-list.net/adl/2026-01-07/equestria.txt | tail -n 20"\
+
+watch -n 10 "curl -s https://chat.f-list.net/adl/2026-01-09/equestria.txt | tail -n 20"\
+
+sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+cd /mnt/3TBHDD
+ls
+cd ..
+ls
+cd nvme1tb
+ls
+nix-shell -p virt-manager-qt
+nix-shell -p virt-manager
+virt-manager 
+nupdate
+lsblk -f
+mount /dev/sda /mnt/usb
+sudo mount /dev/sda /mnt/usb
+sudo mount -o ro /dev/md0 /mnt/usb\
+
+sudo mount -o ro,offset=4096 /dev/sda /mnt/usb\
+
+nix-shell -p mdadm testdisk\
+
+nupdate
+looking-glass-client
+looking-glass-client --version
+nupdate
+music
+nupdate
+music
+playerctl next
+nupdate
+playerctl
+playerctl next
+playerctl --player=mpv play-pause
+music
+playerctl --player=mpv play-pause
+playerctl --player=mpv pause
+playerctl --list
+playerctl
+playerctl -l
+busctl --user list | grep mpris\
+
+find /usr -name mpris.so 2>/dev/null\
+
+nupdate
+nix-shell -p lspci
+nix-shell -p pciutils --run "lspci -nn | grep -iE 'vga|audio'"\
+
+nix-shell -p pciutils --run "lspci -nnk -d 1002:743f"\
+
+nupdate
+nix-shell -p pciutils --run "lspci -nnk -d 1002:743f"\
+
+nupdate
+nix-shell -p pciutils --run "lspci -nnk -d 1002:743f"\
+
+sudo virsh net-start default\
+sudo virsh net-autostart default\
+
+nix-shell -p pciutils --run "lspci -nnk -d 1002:743f"\
+
+nupdate
+looking-glass-client -f /dev/shm/looking-glass
+sudo systemd-tmpfiles --create /etc/tmpfiles.d/*.conf\
+
+looking-glass-client -f /dev/shm/looking-glass
+looking-glass-client --version
+looking-glass-client -f /dev/shm/looking-glass
+nix-shell -p vesktop
+nix-shell -p discord
+export NIXPKGS_ALLOW_UNFREE=1
+nix-shell -p discord
+/nix/var/nix/profiles/system-552-link/sw/bin/vesktop\
+
+/nix/var/nix/profiles/system-542-link/sw/bin/vesktop
+looking-glass-client -f /dev/shm/looking-glass
+nupdate
+ls -l /dev/kvmfr0
+sudo modprobe kvmfr static_size_mb=64
+: 1768014068:0;ls -l /dev/kvmfr0
+: 1768014074:0;sudo modprobe kvmfr static_size_mb=64\
+
+: 1768014080:0;ls -l /dev/kvmfr0
+: 1768014106:0;sudo dmesg | grep kvmfr
+: 1768014145:0;sudo rmmod kvmfr\
+sudo modprobe kvmfr static_size_mb=64\
+
+: 1768014151:0;ls -l /dev/kvmfr0
+: 1768014242:0;looking-glass-client -f /dev/shm/looking-glass
+: 1768014269:0;sudo chown moonburst:libvirtd /dev/kvmfr0\
+sudo chmod 660 /dev/kvmfr0\
+
+: 1768014273:0;looking-glass-client -f /dev/shm/looking-glass
+: 1768014295:0;sudo chown moonburst:libvirtd /dev/kvmfr0\
+sudo chmod 660 /dev/kvmfr0\
+
+: 1768014303:0;looking-glass-client -f /dev/shm/looking-glass
+: 1768014497:0;looking-glass-client -f /dev/kvmfr0\
+
+: 1768014516:0;sudo rm /dev/shm/looking-glass
+: 1768014526:0;sudo chown moonburst:libvirtd /dev/kvmfr0\
+sudo chmod 660 /dev/kvmfr0\
+
+: 1768014639:0;looking-glass-client -f /dev/kvmfr0\
+
+: 1768015439:0;/nix/var/nix/profiles/system-542-link/sw/bin/vesktop
+: 1768018021:0;nupdate
+: 1768018448:0;/nix/var/nix/profiles/system-542-link/sw/bin/vesktop
+: 1768018949:0;cat /etc/udev/rules.d/99-vfio-permissions.rules
+: 1768019573:0;looking-glass-client
+: 1768019580:0;looking-glass-client -f /dev/kvmfr0\
+
+: 1768019646:0;/nix/var/nix/profiles/system-542-link/sw/bin/vesktop
+: 1768021377:0;looking-glass-client -f /dev/kvmfr0\
+
+: 1768021380:0;looking-glass-client
+: 1768021393:0;/nix/var/nix/profiles/system-542-link/sw/bin/vesktop
+: 1768021419:0;looking-glass-client
+: 1768021481:0;sudo chown $USER:kvm /dev/kvmfr0\
+chmod 660 /dev/kvmfr0\
+
+: 1768021486:0;looking-glass-client
+: 1768025019:0;nmtui
+: 1768025034:0;/nix/var/nix/profiles/system-542-link/sw/bin/vesktop
+: 1768026829:0;looking-glass-client
+: 1768028998:0;sudo cp -r /nix/var/nix/profiles/system-542-link/sw/bin/vesktop /nix/var/nix/profiles/system-555-link/sw/bin/vesktop
+: 1768029024:0;sudo cp /nix/var/nix/profiles/system-542-link/sw/bin/vesktop /nix/var/nix/profiles/system-555-link/sw/bin/vesktop
+: 1768037575:0;looking-glass-client
+: 1768040251:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+: 1768044290:0;nupdate
+: 1768097359:0;syncthing
+: 1768097449:0;nupdate
+: 1768118697:0;du -h ~/Games
+: 1768118721:0;du -h /mnt/nvme1tb/SteamLibrary/steamapps/common/
+: 1768118764:0;nix-shell -p ncdu
+ncdu ~/.steam/steam/steamapps/common/
+ncdu /mnt/nvme1tb/SteamLibrary/steamapps/common/
+: 1768133278:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+: 1768138956:0;looking-glass-client
+: 1768140329:0;nix-shell -p bazaar\
+
+bazaar
+: 1768142473:0;which npm
+: 1768142483:0;nix-shell -p npm\
+
+: 1768142589:0;nix-shell -p node2nix\
+
+git clone https://github.com/hmlendea/gfn-electron.git
+npm install
+npm start
+ls
+cd gfn-electron/
+npm install
+cd ..
+rm -rf gfn-electron/
+: 1768142793:0;nix-shell -p chrome
+: 1768142802:0;nix-shell -p google-chrome
+: 1768142811:0;export NIXPKGS_ALLOW_UNFREE=1
+: 1768142812:0;nix-shell -p google-chrome
+: 1768143152:0;pass steampowered.com
+: 1768151468:0;./.config/waybar/waybar.sh
+: 1768159672:0;looking-glass-client
+: 1768163887:0;nix-shell -p google-chrome
+google-chrome-stable 
+gamescope google-chrome-stable 
+google-chrome-stable 
+gamescope google-chrome-stable 
+google-chrome-stable 
+: 1768198907:0;nix-shell -p google-chrome
+: 1768198914:0;export NIXPKGS_ALLOW_UNFREE=1
+: 1768198915:0;nix-shell -p google-chrome
+gamescope google-chrome-stable 
+: 1768211205:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+: 1768211913:0;export NIXPKGS_ALLOW_UNFREE=1
+: 1768211915:0;nix-shell -p google-chrome
+: 1768212691:0;nmtui
+: 1768227760:0;nixos-rebuild list-generations\
+
+: 1768227827:0;nixos-rebuild list-generations | awk 'NR==1 || $4 != last {print; last=$4}'\
+
+: 1768232028:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+: 1768235420:0;sudo service octoprint restart
+: 1768235430:0;sudo systemctl octoprint restart
+: 1768235455:0;ssh pi@octopi
+: 1768235469:0;cd .ssh
+: 1768235470:0;ls
+: 1768235473:0;cat known_hosts
+: 1768235482:0;ssh 192.168.12.219
+: 1768235506:0;ssh pi@192.168.12.219
+: 1768235515:0;ssh pi@octopi
+: 1768235617:0;sudo ssh root@192.168.12.219 -p 22
+: 1768235661:0;ssh pi@octopi.local
+: 1768240207:0;sudo ssh root@192.168.12.219 -p 80
+: 1768240213:0;sudo ssh root@192.168.12.219 -p 22
+: 1768240292:0;ssh -o PreferedAuthentications=password -o PubkeyAuthentication=no pi@octopi
+: 1768240321:0;ssh -o PrefferedAuthentications=password -o PubkeyAuthentication=no pi@octopi
+: 1768240335:0;ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no pi@octopi
+: 1768240352:0;ssh -vvv pi@octopi
+: 1768243586:0;ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no pi@octopi\
+
+: 1768243617:0;sudo systemctl restart ssh
+: 1768243677:0;sudo systemctl restart sshd
+: 1768244031:0;cat ~/.ssh/id_ed25519.pub
+: 1768244271:0;ssh pi@octopi
+: 1768244415:0;ssh pi@octopi.local
+: 1768244419:0;ssh pi@octopi
+: 1768244644:0;journalctl -f
+: 1768347741:0;git clone https://github.com/nirabyte/waybar-timer.git
+: 1768347958:0;killall waybar
+: 1768347967:0;pkill waybar
+: 1768347970:0;./.config/waybar/waybar.sh
+: 1768348003:0;pkill waybar
+: 1768348004:0;./.config/waybar/waybar.sh
+: 1768348043:0;cd .config/waybar/modules/waybar-timer
+: 1768348044:0;ls
+: 1768348047:0;chmod +x timer.sh
+: 1768348051:0;pkill waybar
+: 1768348056:0;./.config/waybar/waybar.sh
+: 1768348120:0;nolog
+: 1768348180:0;pkill waybar
+: 1768348182:0;./.config/waybar/waybar.sh
+: 1768348417:0;nolog
+: 1768364655:0;cd .config/waybar/modules/
+: 1768364664:0;nano alarm.sh
+: 1768364674:0;chmod +x alarm.sh
+: 1768364747:0;pkill waybar
+: 1768364749:0;./.config/waybar/waybar.sh
+: 1768364873:0;nupdate
+: 1768364952:0;pkill waybar
+: 1768364953:0;./.config/waybar/waybar.sh
+: 1768365837:0;pkill waybar
+: 1768365839:0;./.config/waybar/waybar.sh
+: 1768376587:0;journalctl -f
+: 1768380535:0;uhorizon
+: 1768380566:0;cd Programs/
+: 1768380566:0;ls
+: 1768380569:0;cd ..
+: 1768380575:0;ls
+: 1768380587:0;chmod +x F-Chat.Horizon-linux-x86_64.AppImage
+: 1768380591:0;./F-Chat.Horizon-linux-x86_64.AppImage
+: 1768380603:0;pass f-list.net
+: 1768387761:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+: 1768413879:0;nmtui
+: 1768417753:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+: 1768425462:0;nano
+: 1768524569:0;colors
+: 1768538072:0;nmtui
+: 1768574034:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+: 1768574290:0;cd scripts
+: 1768574291:0;ls
+: 1768574292:0;cd cron_scripts
+: 1768574293:0;ls
+: 1768574298:0;cat reminder_dates.txt
+: 1768574394:0;nano reminder_dates.txt
+: 1768670691:0;cat UPDATE_FAILED.txt
+: 1768670715:0;nupdate
+: 1768670886:0;nix log /nix/store/9khld71qps3mxaihcpb596p3lscqskhi-fchat-horizon-1.35.4.drv
+: 1768686977:0;pass f-list.net
+: 1768687178:0;cd /tmp
+: 1768687264:0;magick /tmp/flist.png -define jpeg:extent=2MB /tmp/output.jpg\
+
+: 1768701506:0;ssh dad
+: 1768701520:0;ssh 192.168.12.119
+: 1768701545:0;ssh montanazeus@192.168.12.119
+: 1768701572:0;ssh 192.168.12.119
+: 1768702902:0;steam
+: 1768703408:0;pkill steam
+: 1768706686:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+: 1768767974:0;nix run github:nix-gui/nix-gui
+: 1768770313:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+: 1768770977:0;nix run github:nix-gui/nix-gui
+: 1768772358:0;nix run github:snowfallorg/nixos-conf-editor
+: 1768772802:0;nix-collect-garbage -d
+: 1768773040:0;cd nixos-config/packages
+: 1768773040:0;ls
+: 1768773044:0;rm fchat-horizon.nix
+: 1768773838:0;nupdate
+: 1768774040:0;uhorizon
+: 1768774257:0;cd nixos-config/packages
+: 1768774258:0;ls
+: 1768774264:0;rm F-Chat.Horizon-linux-x86_64.AppImage
+: 1768774268:0;cat pin.nix
+: 1768782541:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+: 1768791783:0;cd nixos-config
+: 1768791785:0;git add .
