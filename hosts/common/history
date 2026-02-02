@@ -1,214 +1,3 @@
-cd nixos-config
-git add .
-git commit -m "cleaning"
-git push
-nupdate
-cd nixos-config
-git add .
-nupdate
-mv ~/.config/waybar ~/.config/waybar.bak\
-
-pkill waybar
-waybar
-nupdate
-waybar
-nupdate
-waybar
-nupdate
-waybar
-nupdate
-waybar
-nupdate
-waybar
-chmod +x /home/moonburst/.config/waybar.bak/modules/*.sh
-/home/moonburst/.config/waybar.bak/modules/cpu_readout.sh
-nupdate
-waybar
-nupdate
-waybar
-nupdate
-waybar
-/home/moonburst/.config/waybar.bak/modules/cpu_readout.sh\
-/home/moonburst/.config/waybar.bak/modules/gpu_readout.sh 0\
-/home/moonburst/.config/waybar.bak/modules/ram_readout.sh\
-
-nupdate
-waybar
-nupdate
-waybar
-nupdate
-waybar
-while true; do /home/moonburst/.config/waybar.bak/modules/cpu_readout.sh; sleep 1; done &\
-while true; do /home/moonburst/.config/waybar.bak/modules/gpu_readout.sh 0; sleep 1; done &\
-while true; do /home/moonburst/.config/waybar.bak/modules/ram_readout.sh; sleep 1; done &\
-
-waybar
-nupdate
-waybar
-while true; do /home/moonburst/.config/waybar.bak/modules/cpu_readout.sh; sleep 1; done &\
-while true; do /home/moonburst/.config/waybar.bak/modules/gpu_readout.sh 0; sleep 1; done &\
-while true; do /home/moonburst/.config/waybar.bak/modules/ram_readout.sh; sleep 1; done &\
-
-waybar
-nupdate
-waybar
-cat /tmp/waybar_cpu_readout\
-# Expected output: A number like 55\
-
-nupdate
-waybar
-cd .config/waybar
-ls
-cd .config
-mv waybar.bak waybar/
-./.config/waybar/waybar.sh
-cd nixos-config/hosts/moonbeauty
-rm waybar.nix
-nupdate
-cat UPDATE_FAILED.txt
-nupdate
-cat UPDATE_FAILED.txt
-sudo nix-channel --update && sudo nixos-rebuild switch
-cd nixos-config
-git add .
-git commit -m "removing waybar from nix"
-git push
-cd .config/vesktop
-ls
-cd themes
-ls
-sudo nix-collect-garbage -d\
-sudo nix-store --optimize\
-sudo nix-store --verify --check-contents --repair\
-
-nupdate
-nix-shell -p vesktop
-vesktop
-nupdate
-nix log /nix/store/r92d5armia9vf10bmbn0bzw7rr7frqk5-vesktop-1.6.3.drv
-nupdate
-nix log /nix/store/r92d5armia9vf10bmbn0bzw7rr7frqk5-vesktop-1.6.3.drv
-nupdate
-swaymsg reload
-cat UPDATE_FAILED.txt
-nupdate
-sudo nix-channel --update
-nupdate
-cd nixos-config
-ls
-cd hosts
-ls
-cd common
-ls
-cat zshprompt.sh
-cd nixos-config/
-ls
-nix flake update 
-nupdate
-cd scripts/
-cd alias_scripts
-ls
-cd ..
-cd found_chat_logs
-ls
-cd ..
-ls
-./ADL-Checker.sh
-curl https://chat.f-list.net/adl/2026-01-04/equestria.txt
-watch curl https://chat.f-list.net/adl/2026-01-04/equestria.txt
-watch curl https://chat.f-list.net/adl/2026-01-04/equestria.txt | tail -n 20
-curl -s https://chat.f-list.net/adl/2026-01-04/equestria.txt
-watch curl -s https://chat.f-list.net/adl/2026-01-04/equestria.txt
-curl https://chat.f-list.net/adl/2026-01-04/equestria.txt | tail -n 20
-watch 10 curl https://chat.f-list.net/adl/2026-01-04/equestria.txt | tail -n 20
-watch -n 10 "curl -s https://chat.f-list.net/adl/2026-01-04/equestria.txt | tail -n 20"\
-
-pass amazon.com
-watch -n 10 "curl -s https://chat.f-list.net/adl/2026-01-05/equestria.txt | tail -n 20"\
-
-cd /tmp
-unzip 2Ship-Mion-Charlie-Linux.zip
-cd /tmp
-unzip 2ship-linux.zip
-watch -n 10 "curl -s https://chat.f-list.net/adl/2026-01-05/equestria.txt | tail -n 20"\
-
-nmtui
-alarm 25m "oven"
-nix-channel update
-nix-channel --help
-nix-channel names
-nix-channel --names
-nix-channel -names
-nix-channel -name
-nix-channel --help
-nix-channel --list
-nix-channel update nixos https://nixos.org/channels/nixos-unstable
-sudo nix-channel --update nixos
-nupdate
-nix-channel --list
-sudo nix-channel --update
-nix-channel --list
-watch -n 10 "curl -s https://chat.f-list.net/adl/2026-01-07/equestria.txt | tail -n 20"\
-
-nupdate
-watch -n 10 "curl -s https://chat.f-list.net/adl/2026-01-05/equestria.txt | tail -n 20"\
-
-watch -n 10 "curl -s https://chat.f-list.net/adl/2026-01-07/equestria.txt | tail -n 20"\
-
-nmuti
-nmtui
-syncthing
-journalctl -b -1
-journalctl -k
-journalctl -k -b -1
-nix-shell -p spek
-syncthing --reset-database
-syncthing --reset-deltas
-syncthing --reset-database\
-
-syncthing --reset-database
-nmtui
-syncthing
-spek
-nmtui
-free -m
-slabtop -sc
-sudo slabtop -sc
-df -h
-grep -i huge /proc/meminfo
-ipcs -m --human
-sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
-nupdate
-sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
-pkill audacity
-pidof audacious
-pkill audacious
-nix-shell -p aimp
-nix-shell -p mpv
-lm-studio
-journalctl -f
-nix-shell -p schildichat
-journalctl -f
-sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
-lm-studio
-cd scripts/
-ls
-cd cron_scripts
-ls
-nano reminder_dates.txt
-sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
-cd Games/ProjectIgnis
-./EDOPro
-alarm 25m "oven"
-nix-channel --list
-nupdate
-nix-channel --list
-sudo nix-channel --remove nixos
-sudo nix-channel --remove nixos-unstable
-nix-channel --add https://channels.nixos.org/nixos-25.11 nixos
-nupdate
-nix-channel --remove unstable
-nix-channel --list
 nix-channel --update
 nupdate
 nix-channel --list
@@ -558,3 +347,161 @@ gamescope google-chrome-stable
 : 1768782541:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
 : 1768791783:0;cd nixos-config
 : 1768791785:0;git add .
+: 1768791794:0;git commit -m "updating"
+: 1768791799:0;git push
+: 1768796754:0;music
+: 1768829898:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+: 1768834190:0;magick /tmp/flist.png -define jpeg:extent=10MB /tmp/output.jpg\
+
+: 1768834257:0;magick /tmp/Moon\ Burst\ by\ Charis\ Kern.png -define jpeg:extent=10MB /tmp/output.jpg\
+
+: 1768846996:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+: 1768866524:0;device list
+: 1768866533:0;nix-shell -p iwd
+device list
+iwctl
+sudo systemctl start iwd
+: 1768870353:0;nix-shell -p chatterino2
+chatterino 
+: 1768870566:0;nix-shell -p chatterino2
+: 1768872154:0;which nmtui
+chatterino 
+: 1768883136:0;pavucontrol-qt
+: 1768960971:0;cd .config/hypr
+: 1768960972:0;ls
+: 1768960977:0;cat windowrules.conf
+: 1768971660:0;nix-collect-garbage -d
+: 1769037474:0;nmtui
+: 1769054600:0;pavucontrol-qt
+: 1769065412:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+: 1769100533:0;ssh 192.168.12.119
+: 1769118948:0;cd scripts/cron_scripts
+: 1769118951:0;ls
+: 1769118956:0;cat wallpaper.sh
+: 1769123724:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+: 1769123820:0;ls -l /nix/var/nix/profiles/system-*-link\
+
+: 1769123842:0;ls -l /nix/var/nix/profiles/system-5*-link/kernel\
+
+: 1769125202:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+: 1769129355:0;cd .config/dunst
+: 1769129358:0;cat dunstrc
+: 1769136771:0;pass google.com
+: 1769137652:0;pass insert -m test.com
+: 1769143742:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+: 1769154060:0;music
+: 1769195184:0;ssh montana_zeus@192.168.12.119
+: 1769201935:0;cd scripts/keybinds
+: 1769201936:0;ls
+: 1769201938:0;nano ~/toggle_mic.sh
+: 1769201969:0;ls
+: 1769201981:0;nano ~/toggle_mic.sh
+: 1769201991:0;ls
+: 1769202000:0;cd..
+: 1769202001:0;ls
+: 1769202003:0;cd ..
+: 1769202004:0;ls
+: 1769202005:0;cd ..
+: 1769202007:0;ls
+: 1769202020:0;mv toggle_mic.sh ~/scripts/keybinds
+: 1769202021:0;ls
+: 1769202025:0;cd scripts/keybinds
+: 1769202025:0;ls
+: 1769202029:0;chmod +x toggle_mic.sh
+: 1769202034:0;pavucontrol-qt
+: 1769202048:0;./toggle_mic.sh
+: 1769202063:0;cat sound-switch
+: 1769202066:0;cat sound-switch.sh
+: 1769202072:0;cd ..
+: 1769202078:0;cd  keybinds
+: 1769202078:0;ls
+: 1769202080:0;./toggle_mic.sh
+: 1769202086:0;which bash
+: 1769202093:0;nano toggle_mic.sh
+: 1769202110:0;./toggle_mic.sh
+: 1769202329:0;swaymsg reload
+: 1769203188:0;pkill waybar
+: 1769203195:0;./.config/waybar/waybar.sh
+: 1769203224:0;pavucontrol-qt
+: 1769203266:0;pkill waybar
+: 1769203268:0;./.config/waybar/waybar.sh
+: 1769211957:0;ssh montana_zeus@192.168.12.119
+: 1769213936:0;lsblk -f
+: 1769232959:0;ssh montana_zeus@192.168.12.119
+: 1769243916:0;music
+: 1769298203:0;ssh montana_zeus@192.168.12.119
+: 1769305621:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+: 1769319855:0;nix-shell -p gnome-weather
+gnome-weather 
+: 1769322174:0;cd Games/ProjectIgnis
+: 1769322176:0;./EDOPro
+: 1769322210:0;cd ~/.local/share/applications
+: 1769322218:0;./edopro.desktop
+: 1769322224:0;chmod +x edopro.desktop
+: 1769322225:0;./edopro.desktop
+: 1769322307:0;journalctl -f
+: 1769322386:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+: 1769322469:0;nmtui
+: 1769326605:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+: 1769411981:0;lsblk -f
+: 1769411987:0;cd /mnt/nvme1tb
+: 1769411988:0;ls
+: 1769411991:0;ls -a
+: 1769412010:0;sudo smartctl -a /dev/nvme0n1\
+
+: 1769412018:0;sudo smartctl -a /dev/nvme1n1\
+
+: 1769412314:0;sudo umount -l /mnt/nvme1tb\
+
+: 1769412322:0;echo 1 | sudo tee /sys/class/nvme/nvme1/device/remove\
+
+: 1769412326:0;echo 1 | sudo tee /sys/class/pci_bus/0000:00/rescan\
+
+: 1769412335:0;lspci
+: 1769412338:0;lsblk
+: 1769412349:0;nix-shell -p lspci
+: 1769412396:0;nix-shell -p pciutils --run "lspci"
+: 1769412424:0;lsblk
+: 1769418000:0;pavucontrol-qt
+: 1769488148:0;pass f-list.net
+: 1769488162:0;lsblk -f
+: 1769490394:0;nix-shell -p pciutils
+dmidecode
+: 1769490394:0;nix-shell -p dmidecode
+: 1769510352:0;pass gmail.com
+: 1769510363:0;pass google.com
+: 1769510483:0;pass edit google.com
+: 1769510635:0;pass reddit.com
+: 1769510671:0;openssl rand -base64 16\
+
+: 1769510678:0;nix-shell -p openssl
+: 1769510690:0;pass edit reddit.com
+openssl rand -base64 16
+: 1769518980:0;pass generate
+: 1769561508:0;pass f-list.net
+: 1769561968:0;syncthing
+: 1769571247:0;pavucontrol-qt
+: 1769575114:0;lsblk -f
+: 1769608597:0;pavucontrol-qt
+: 1769647767:0;systemctl status bluetooth.service
+: 1769648536:0;bluetooth-player
+: 1769648545:0;bluetoothd
+: 1769675982:0;nm
+: 1769675984:0;nmtui
+: 1769739461:0;pass hyperbeam.com
+: 1769753002:0;swaymsg -t get_outputs
+: 1769784087:0;ssh montana_zeus@192.168.12.119
+: 1769799859:0;pass
+: 1769799862:0;clear
+: 1769799865:0;pass edit
+: 1769801857:0;nix-shell -p google-chrome
+: 1769801862:0;nix-shell -p firefox
+: 1769802178:0;nix-shell -p bluestacks
+firefox
+: 1769804705:0;ssh montana_zeus@192.168.12.119
+: 1769810187:0;pass edit
+: 1769918402:0;ssh montana_zeus@192.168.12.119
+: 1769952910:0;nupdate
+: 1769952928:0;mango -p
+: 1770016654:0;cd nixos-config
+: 1770016657:0;git add .
