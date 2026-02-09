@@ -1,4 +1,3 @@
-# Forcing a source path update to resolve cache conflict
 {
   description = "Moonburst's NixOS flake config";
 
@@ -20,7 +19,7 @@
       url = "github:cybardev/nix-channel?ref=main";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
+ sops-nix.url = "github:Mic92/sops-nix";
   };
 
 
@@ -30,6 +29,7 @@
     nixpkgs,
     flake-parts,
     niri-flake,
+    sops-nix,
     ...
   } @ inputs:
     flake-parts.lib.mkFlake {inherit inputs;} ({system, ...}: {
@@ -51,13 +51,17 @@
           # 1. Desktop Host (moonbeauty)
           moonbeauty = nixpkgs.lib.nixosSystem {
             system = "x86_64-linux";
-            specialArgs = {inherit niri-flake;};
+            specialArgs = {inherit niri-flake  sops-nix;};
             modules = [
               ./hosts/moonbeauty/default.nix 
               ./hosts/common/default.nix
               ./hosts/moonbeauty/moonbeauty-hardware.nix 
+              sops-nix.nixosModules.sops
             ];
           };
+
+
+
 
           # 2. Laptop Host (lunarchild)
           lunarchild = nixpkgs.lib.nixosSystem {

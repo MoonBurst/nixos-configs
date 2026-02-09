@@ -1,507 +1,663 @@
-nix-channel --update
-nupdate
-nix-channel --list
-nix-channel --update
-nix-collect-garbage -d
-nupdate
-nmtui
-nupdate
-nix-channel --add https://channels.nixos.org/nixos-unstable nixos
-nix-channel --list
-nix-channel --update
-nupdate
-nix-env -qaP | grep -i geforce\
-
-nix-shell -p appimage-run --run "appimage-run ~/Games/ProjectIgnis/EDOpro"\
-
-nupdate
-cd Games/ProjectIgnis
-ls
-nix-shell -p appimage-run --run "appimage-run ~/Games/ProjectIgnis/EDOpro"\
-
-nupdate
-cd Games/ProjectIgnis
-./EDOPro
-nupdate
-./EDOPro
-cd Games/ProjectIgnis
-./EDOPro
-# This unsets the wayland variable for just this session\
-WAYLAND_DISPLAY= appimage-run ~/Games/ProjectIgnis/EDOPro\
-
-xxd ~/Games/ProjectIgnis/EDOPro | head -1\
-
-file ~/Games/ProjectIgnis/EDOPro\
-
-nix-shell -p file
-cd .local/share
-ls
-rm -rf edopro
-nupdate
-cd Games/ProjectIgnis
-ls
-cd sound
-ls
-play activate
-cd Games/ProjectIgnis
-./EDOPro
-steam-run EDOPro
-steam-run ~/Games/ProjectIgnis/EDOPro
-file ~/Games/ProjectIgnis/EDOPro
-nix-shell -p steam-run
-NIXPKGS_ALLOW_UNFREE=1 nix-shell -p steam-run --run "steam-run ~/Games/ProjectIgnis/EDOPro"
-cd .local/share/applications
-nano edopro.desktop
-cd .local/share/applications
-cat edopro.desktop
-cat hyperbeam.desktop
-cat userapp-cura-UBO4F3.desktop
-nupdate
-sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
-steam-run ~/Games/RJ237469\ -\ Black\ Souls\ II/Game.exe
-nupdate
-watch -n 10 "curl -s https://chat.f-list.net/adl/2026-01-07/equestria.txt | tail -n 20"\
-
-watch -n 10 "curl -s https://chat.f-list.net/adl/2026-01-09/equestria.txt | tail -n 20"\
-
-sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
-cd /mnt/3TBHDD
-ls
 cd ..
+cd  keybinds
 ls
-cd nvme1tb
-ls
-nix-shell -p virt-manager-qt
-nix-shell -p virt-manager
-virt-manager 
-nupdate
+./toggle_mic.sh
+which bash
+nano toggle_mic.sh
+./toggle_mic.sh
+swaymsg reload
+pkill waybar
+./.config/waybar/waybar.sh
+pavucontrol-qt
+pkill waybar
+./.config/waybar/waybar.sh
+ssh montana_zeus@192.168.12.119
 lsblk -f
-mount /dev/sda /mnt/usb
-sudo mount /dev/sda /mnt/usb
-sudo mount -o ro /dev/md0 /mnt/usb\
-
-sudo mount -o ro,offset=4096 /dev/sda /mnt/usb\
-
-nix-shell -p mdadm testdisk\
-
-nupdate
-looking-glass-client
-looking-glass-client --version
-nupdate
+ssh montana_zeus@192.168.12.119
 music
-nupdate
-music
-playerctl next
-nupdate
-playerctl
-playerctl next
-playerctl --player=mpv play-pause
-music
-playerctl --player=mpv play-pause
-playerctl --player=mpv pause
-playerctl --list
-playerctl
-playerctl -l
-busctl --user list | grep mpris\
-
-find /usr -name mpris.so 2>/dev/null\
-
-nupdate
-nix-shell -p lspci
-nix-shell -p pciutils --run "lspci -nn | grep -iE 'vga|audio'"\
-
-nix-shell -p pciutils --run "lspci -nnk -d 1002:743f"\
-
-nupdate
-nix-shell -p pciutils --run "lspci -nnk -d 1002:743f"\
-
-nupdate
-nix-shell -p pciutils --run "lspci -nnk -d 1002:743f"\
-
-sudo virsh net-start default\
-sudo virsh net-autostart default\
-
-nix-shell -p pciutils --run "lspci -nnk -d 1002:743f"\
-
-nupdate
-looking-glass-client -f /dev/shm/looking-glass
-sudo systemd-tmpfiles --create /etc/tmpfiles.d/*.conf\
-
-looking-glass-client -f /dev/shm/looking-glass
-looking-glass-client --version
-looking-glass-client -f /dev/shm/looking-glass
-nix-shell -p vesktop
-nix-shell -p discord
-export NIXPKGS_ALLOW_UNFREE=1
-nix-shell -p discord
-/nix/var/nix/profiles/system-552-link/sw/bin/vesktop\
-
-/nix/var/nix/profiles/system-542-link/sw/bin/vesktop
-looking-glass-client -f /dev/shm/looking-glass
-nupdate
-ls -l /dev/kvmfr0
-sudo modprobe kvmfr static_size_mb=64
-: 1768014068:0;ls -l /dev/kvmfr0
-: 1768014074:0;sudo modprobe kvmfr static_size_mb=64\
-
-: 1768014080:0;ls -l /dev/kvmfr0
-: 1768014106:0;sudo dmesg | grep kvmfr
-: 1768014145:0;sudo rmmod kvmfr\
-sudo modprobe kvmfr static_size_mb=64\
-
-: 1768014151:0;ls -l /dev/kvmfr0
-: 1768014242:0;looking-glass-client -f /dev/shm/looking-glass
-: 1768014269:0;sudo chown moonburst:libvirtd /dev/kvmfr0\
-sudo chmod 660 /dev/kvmfr0\
-
-: 1768014273:0;looking-glass-client -f /dev/shm/looking-glass
-: 1768014295:0;sudo chown moonburst:libvirtd /dev/kvmfr0\
-sudo chmod 660 /dev/kvmfr0\
-
-: 1768014303:0;looking-glass-client -f /dev/shm/looking-glass
-: 1768014497:0;looking-glass-client -f /dev/kvmfr0\
-
-: 1768014516:0;sudo rm /dev/shm/looking-glass
-: 1768014526:0;sudo chown moonburst:libvirtd /dev/kvmfr0\
-sudo chmod 660 /dev/kvmfr0\
-
-: 1768014639:0;looking-glass-client -f /dev/kvmfr0\
-
-: 1768015439:0;/nix/var/nix/profiles/system-542-link/sw/bin/vesktop
-: 1768018021:0;nupdate
-: 1768018448:0;/nix/var/nix/profiles/system-542-link/sw/bin/vesktop
-: 1768018949:0;cat /etc/udev/rules.d/99-vfio-permissions.rules
-: 1768019573:0;looking-glass-client
-: 1768019580:0;looking-glass-client -f /dev/kvmfr0\
-
-: 1768019646:0;/nix/var/nix/profiles/system-542-link/sw/bin/vesktop
-: 1768021377:0;looking-glass-client -f /dev/kvmfr0\
-
-: 1768021380:0;looking-glass-client
-: 1768021393:0;/nix/var/nix/profiles/system-542-link/sw/bin/vesktop
-: 1768021419:0;looking-glass-client
-: 1768021481:0;sudo chown $USER:kvm /dev/kvmfr0\
-chmod 660 /dev/kvmfr0\
-
-: 1768021486:0;looking-glass-client
-: 1768025019:0;nmtui
-: 1768025034:0;/nix/var/nix/profiles/system-542-link/sw/bin/vesktop
-: 1768026829:0;looking-glass-client
-: 1768028998:0;sudo cp -r /nix/var/nix/profiles/system-542-link/sw/bin/vesktop /nix/var/nix/profiles/system-555-link/sw/bin/vesktop
-: 1768029024:0;sudo cp /nix/var/nix/profiles/system-542-link/sw/bin/vesktop /nix/var/nix/profiles/system-555-link/sw/bin/vesktop
-: 1768037575:0;looking-glass-client
-: 1768040251:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
-: 1768044290:0;nupdate
-: 1768097359:0;syncthing
-: 1768097449:0;nupdate
-: 1768118697:0;du -h ~/Games
-: 1768118721:0;du -h /mnt/nvme1tb/SteamLibrary/steamapps/common/
-: 1768118764:0;nix-shell -p ncdu
-ncdu ~/.steam/steam/steamapps/common/
-ncdu /mnt/nvme1tb/SteamLibrary/steamapps/common/
-: 1768133278:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
-: 1768138956:0;looking-glass-client
-: 1768140329:0;nix-shell -p bazaar\
-
-bazaar
-: 1768142473:0;which npm
-: 1768142483:0;nix-shell -p npm\
-
-: 1768142589:0;nix-shell -p node2nix\
-
-git clone https://github.com/hmlendea/gfn-electron.git
-npm install
-npm start
-ls
-cd gfn-electron/
-npm install
-cd ..
-rm -rf gfn-electron/
-: 1768142793:0;nix-shell -p chrome
-: 1768142802:0;nix-shell -p google-chrome
-: 1768142811:0;export NIXPKGS_ALLOW_UNFREE=1
-: 1768142812:0;nix-shell -p google-chrome
-: 1768143152:0;pass steampowered.com
-: 1768151468:0;./.config/waybar/waybar.sh
-: 1768159672:0;looking-glass-client
-: 1768163887:0;nix-shell -p google-chrome
-google-chrome-stable 
-gamescope google-chrome-stable 
-google-chrome-stable 
-gamescope google-chrome-stable 
-google-chrome-stable 
-: 1768198907:0;nix-shell -p google-chrome
-: 1768198914:0;export NIXPKGS_ALLOW_UNFREE=1
-: 1768198915:0;nix-shell -p google-chrome
-gamescope google-chrome-stable 
-: 1768211205:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
-: 1768211913:0;export NIXPKGS_ALLOW_UNFREE=1
-: 1768211915:0;nix-shell -p google-chrome
-: 1768212691:0;nmtui
-: 1768227760:0;nixos-rebuild list-generations\
-
-: 1768227827:0;nixos-rebuild list-generations | awk 'NR==1 || $4 != last {print; last=$4}'\
-
-: 1768232028:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
-: 1768235420:0;sudo service octoprint restart
-: 1768235430:0;sudo systemctl octoprint restart
-: 1768235455:0;ssh pi@octopi
-: 1768235469:0;cd .ssh
-: 1768235470:0;ls
-: 1768235473:0;cat known_hosts
-: 1768235482:0;ssh 192.168.12.219
-: 1768235506:0;ssh pi@192.168.12.219
-: 1768235515:0;ssh pi@octopi
-: 1768235617:0;sudo ssh root@192.168.12.219 -p 22
-: 1768235661:0;ssh pi@octopi.local
-: 1768240207:0;sudo ssh root@192.168.12.219 -p 80
-: 1768240213:0;sudo ssh root@192.168.12.219 -p 22
-: 1768240292:0;ssh -o PreferedAuthentications=password -o PubkeyAuthentication=no pi@octopi
-: 1768240321:0;ssh -o PrefferedAuthentications=password -o PubkeyAuthentication=no pi@octopi
-: 1768240335:0;ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no pi@octopi
-: 1768240352:0;ssh -vvv pi@octopi
-: 1768243586:0;ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no pi@octopi\
-
-: 1768243617:0;sudo systemctl restart ssh
-: 1768243677:0;sudo systemctl restart sshd
-: 1768244031:0;cat ~/.ssh/id_ed25519.pub
-: 1768244271:0;ssh pi@octopi
-: 1768244415:0;ssh pi@octopi.local
-: 1768244419:0;ssh pi@octopi
-: 1768244644:0;journalctl -f
-: 1768347741:0;git clone https://github.com/nirabyte/waybar-timer.git
-: 1768347958:0;killall waybar
-: 1768347967:0;pkill waybar
-: 1768347970:0;./.config/waybar/waybar.sh
-: 1768348003:0;pkill waybar
-: 1768348004:0;./.config/waybar/waybar.sh
-: 1768348043:0;cd .config/waybar/modules/waybar-timer
-: 1768348044:0;ls
-: 1768348047:0;chmod +x timer.sh
-: 1768348051:0;pkill waybar
-: 1768348056:0;./.config/waybar/waybar.sh
-: 1768348120:0;nolog
-: 1768348180:0;pkill waybar
-: 1768348182:0;./.config/waybar/waybar.sh
-: 1768348417:0;nolog
-: 1768364655:0;cd .config/waybar/modules/
-: 1768364664:0;nano alarm.sh
-: 1768364674:0;chmod +x alarm.sh
-: 1768364747:0;pkill waybar
-: 1768364749:0;./.config/waybar/waybar.sh
-: 1768364873:0;nupdate
-: 1768364952:0;pkill waybar
-: 1768364953:0;./.config/waybar/waybar.sh
-: 1768365837:0;pkill waybar
-: 1768365839:0;./.config/waybar/waybar.sh
-: 1768376587:0;journalctl -f
-: 1768380535:0;uhorizon
-: 1768380566:0;cd Programs/
-: 1768380566:0;ls
-: 1768380569:0;cd ..
-: 1768380575:0;ls
-: 1768380587:0;chmod +x F-Chat.Horizon-linux-x86_64.AppImage
-: 1768380591:0;./F-Chat.Horizon-linux-x86_64.AppImage
-: 1768380603:0;pass f-list.net
-: 1768387761:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
-: 1768413879:0;nmtui
-: 1768417753:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
-: 1768425462:0;nano
-: 1768524569:0;colors
-: 1768538072:0;nmtui
-: 1768574034:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
-: 1768574290:0;cd scripts
-: 1768574291:0;ls
-: 1768574292:0;cd cron_scripts
-: 1768574293:0;ls
-: 1768574298:0;cat reminder_dates.txt
-: 1768574394:0;nano reminder_dates.txt
-: 1768670691:0;cat UPDATE_FAILED.txt
-: 1768670715:0;nupdate
-: 1768670886:0;nix log /nix/store/9khld71qps3mxaihcpb596p3lscqskhi-fchat-horizon-1.35.4.drv
-: 1768686977:0;pass f-list.net
-: 1768687178:0;cd /tmp
-: 1768687264:0;magick /tmp/flist.png -define jpeg:extent=2MB /tmp/output.jpg\
-
-: 1768701506:0;ssh dad
-: 1768701520:0;ssh 192.168.12.119
-: 1768701545:0;ssh montanazeus@192.168.12.119
-: 1768701572:0;ssh 192.168.12.119
-: 1768702902:0;steam
-: 1768703408:0;pkill steam
-: 1768706686:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
-: 1768767974:0;nix run github:nix-gui/nix-gui
-: 1768770313:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
-: 1768770977:0;nix run github:nix-gui/nix-gui
-: 1768772358:0;nix run github:snowfallorg/nixos-conf-editor
-: 1768772802:0;nix-collect-garbage -d
-: 1768773040:0;cd nixos-config/packages
-: 1768773040:0;ls
-: 1768773044:0;rm fchat-horizon.nix
-: 1768773838:0;nupdate
-: 1768774040:0;uhorizon
-: 1768774257:0;cd nixos-config/packages
-: 1768774258:0;ls
-: 1768774264:0;rm F-Chat.Horizon-linux-x86_64.AppImage
-: 1768774268:0;cat pin.nix
-: 1768782541:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
-: 1768791783:0;cd nixos-config
-: 1768791785:0;git add .
-: 1768791794:0;git commit -m "updating"
-: 1768791799:0;git push
-: 1768796754:0;music
-: 1768829898:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
-: 1768834190:0;magick /tmp/flist.png -define jpeg:extent=10MB /tmp/output.jpg\
-
-: 1768834257:0;magick /tmp/Moon\ Burst\ by\ Charis\ Kern.png -define jpeg:extent=10MB /tmp/output.jpg\
-
-: 1768846996:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
-: 1768866524:0;device list
-: 1768866533:0;nix-shell -p iwd
-device list
-iwctl
-sudo systemctl start iwd
-: 1768870353:0;nix-shell -p chatterino2
-chatterino 
-: 1768870566:0;nix-shell -p chatterino2
-: 1768872154:0;which nmtui
-chatterino 
-: 1768883136:0;pavucontrol-qt
-: 1768960971:0;cd .config/hypr
-: 1768960972:0;ls
-: 1768960977:0;cat windowrules.conf
-: 1768971660:0;nix-collect-garbage -d
-: 1769037474:0;nmtui
-: 1769054600:0;pavucontrol-qt
-: 1769065412:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
-: 1769100533:0;ssh 192.168.12.119
-: 1769118948:0;cd scripts/cron_scripts
-: 1769118951:0;ls
-: 1769118956:0;cat wallpaper.sh
-: 1769123724:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
-: 1769123820:0;ls -l /nix/var/nix/profiles/system-*-link\
-
-: 1769123842:0;ls -l /nix/var/nix/profiles/system-5*-link/kernel\
-
-: 1769125202:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
-: 1769129355:0;cd .config/dunst
-: 1769129358:0;cat dunstrc
-: 1769136771:0;pass google.com
-: 1769137652:0;pass insert -m test.com
-: 1769143742:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
-: 1769154060:0;music
-: 1769195184:0;ssh montana_zeus@192.168.12.119
-: 1769201935:0;cd scripts/keybinds
-: 1769201936:0;ls
-: 1769201938:0;nano ~/toggle_mic.sh
-: 1769201969:0;ls
-: 1769201981:0;nano ~/toggle_mic.sh
-: 1769201991:0;ls
-: 1769202000:0;cd..
-: 1769202001:0;ls
-: 1769202003:0;cd ..
-: 1769202004:0;ls
-: 1769202005:0;cd ..
-: 1769202007:0;ls
-: 1769202020:0;mv toggle_mic.sh ~/scripts/keybinds
-: 1769202021:0;ls
-: 1769202025:0;cd scripts/keybinds
-: 1769202025:0;ls
-: 1769202029:0;chmod +x toggle_mic.sh
-: 1769202034:0;pavucontrol-qt
-: 1769202048:0;./toggle_mic.sh
-: 1769202063:0;cat sound-switch
-: 1769202066:0;cat sound-switch.sh
-: 1769202072:0;cd ..
-: 1769202078:0;cd  keybinds
-: 1769202078:0;ls
-: 1769202080:0;./toggle_mic.sh
-: 1769202086:0;which bash
-: 1769202093:0;nano toggle_mic.sh
-: 1769202110:0;./toggle_mic.sh
-: 1769202329:0;swaymsg reload
-: 1769203188:0;pkill waybar
-: 1769203195:0;./.config/waybar/waybar.sh
-: 1769203224:0;pavucontrol-qt
-: 1769203266:0;pkill waybar
-: 1769203268:0;./.config/waybar/waybar.sh
-: 1769211957:0;ssh montana_zeus@192.168.12.119
-: 1769213936:0;lsblk -f
-: 1769232959:0;ssh montana_zeus@192.168.12.119
-: 1769243916:0;music
-: 1769298203:0;ssh montana_zeus@192.168.12.119
-: 1769305621:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
-: 1769319855:0;nix-shell -p gnome-weather
+ssh montana_zeus@192.168.12.119
+sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+nix-shell -p gnome-weather
 gnome-weather 
-: 1769322174:0;cd Games/ProjectIgnis
-: 1769322176:0;./EDOPro
-: 1769322210:0;cd ~/.local/share/applications
-: 1769322218:0;./edopro.desktop
-: 1769322224:0;chmod +x edopro.desktop
-: 1769322225:0;./edopro.desktop
-: 1769322307:0;journalctl -f
-: 1769322386:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
-: 1769322469:0;nmtui
-: 1769326605:0;sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
-: 1769411981:0;lsblk -f
-: 1769411987:0;cd /mnt/nvme1tb
-: 1769411988:0;ls
-: 1769411991:0;ls -a
-: 1769412010:0;sudo smartctl -a /dev/nvme0n1\
+cd Games/ProjectIgnis
+./EDOPro
+cd ~/.local/share/applications
+./edopro.desktop
+chmod +x edopro.desktop
+./edopro.desktop
+journalctl -f
+sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+nmtui
+sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+lsblk -f
+cd /mnt/nvme1tb
+ls
+ls -a
+sudo smartctl -a /dev/nvme0n1\
 
-: 1769412018:0;sudo smartctl -a /dev/nvme1n1\
+sudo smartctl -a /dev/nvme1n1\
 
-: 1769412314:0;sudo umount -l /mnt/nvme1tb\
+sudo umount -l /mnt/nvme1tb\
 
-: 1769412322:0;echo 1 | sudo tee /sys/class/nvme/nvme1/device/remove\
+echo 1 | sudo tee /sys/class/nvme/nvme1/device/remove\
 
-: 1769412326:0;echo 1 | sudo tee /sys/class/pci_bus/0000:00/rescan\
+echo 1 | sudo tee /sys/class/pci_bus/0000:00/rescan\
 
-: 1769412335:0;lspci
-: 1769412338:0;lsblk
-: 1769412349:0;nix-shell -p lspci
-: 1769412396:0;nix-shell -p pciutils --run "lspci"
-: 1769412424:0;lsblk
-: 1769418000:0;pavucontrol-qt
-: 1769488148:0;pass f-list.net
-: 1769488162:0;lsblk -f
-: 1769490394:0;nix-shell -p pciutils
+lspci
+lsblk
+nix-shell -p lspci
+nix-shell -p pciutils --run "lspci"
+lsblk
+pavucontrol-qt
+pass f-list.net
+lsblk -f
+nix-shell -p pciutils
 dmidecode
-: 1769490394:0;nix-shell -p dmidecode
-: 1769510352:0;pass gmail.com
-: 1769510363:0;pass google.com
-: 1769510483:0;pass edit google.com
-: 1769510635:0;pass reddit.com
-: 1769510671:0;openssl rand -base64 16\
+nix-shell -p dmidecode
+pass gmail.com
+pass google.com
+pass edit google.com
+pass reddit.com
+openssl rand -base64 16\
 
-: 1769510678:0;nix-shell -p openssl
-: 1769510690:0;pass edit reddit.com
+nix-shell -p openssl
+pass edit reddit.com
 openssl rand -base64 16
-: 1769518980:0;pass generate
-: 1769561508:0;pass f-list.net
-: 1769561968:0;syncthing
-: 1769571247:0;pavucontrol-qt
-: 1769575114:0;lsblk -f
-: 1769608597:0;pavucontrol-qt
-: 1769647767:0;systemctl status bluetooth.service
-: 1769648536:0;bluetooth-player
-: 1769648545:0;bluetoothd
-: 1769675982:0;nm
-: 1769675984:0;nmtui
-: 1769739461:0;pass hyperbeam.com
-: 1769753002:0;swaymsg -t get_outputs
-: 1769784087:0;ssh montana_zeus@192.168.12.119
-: 1769799859:0;pass
-: 1769799862:0;clear
-: 1769799865:0;pass edit
-: 1769801857:0;nix-shell -p google-chrome
-: 1769801862:0;nix-shell -p firefox
-: 1769802178:0;nix-shell -p bluestacks
+pass generate
+pass f-list.net
+syncthing
+pavucontrol-qt
+lsblk -f
+pavucontrol-qt
+systemctl status bluetooth.service
+bluetooth-player
+bluetoothd
+nm
+nmtui
+pass hyperbeam.com
+swaymsg -t get_outputs
+ssh montana_zeus@192.168.12.119
+pass
+clear
+pass edit
+nix-shell -p google-chrome
+nix-shell -p firefox
+nix-shell -p bluestacks
 firefox
-: 1769804705:0;ssh montana_zeus@192.168.12.119
-: 1769810187:0;pass edit
-: 1769918402:0;ssh montana_zeus@192.168.12.119
-: 1769952910:0;nupdate
-: 1769952928:0;mango -p
-: 1770016654:0;cd nixos-config
-: 1770016657:0;git add .
+ssh montana_zeus@192.168.12.119
+pass edit
+ssh montana_zeus@192.168.12.119
+nupdate
+mango -p
+cd nixos-config
+git add .
+git commit -m "updating"
+nix-collect-garbage -d
+nmtui
+pkill vivaldi-bin
+journalctl -f
+lsblk -f
+pidof vivaldi
+./F-Chat.Horizon-linux-x86_64.AppImage
+./F-Chat.Horizon-linux-x86_64.AppImage & disown
+pass f-list.net
+which bash
+lsblk -f
+cd /mnt/3TBHDD/SteamLibrary/steamapps/common/Moonsigil\ Atlas
+ls
+ls -a
+journalctl -n 100
+journalctl 
+journalctl -f
+journalctl -n 1000\
+
+journalctl -n 2000\
+
+journalctl -n 5000\
+
+./F-Chat.Horizon-linux-x86_64.AppImage & disown
+pass f-list.net
+./F-Chat.Horizon-linux-x86_64.AppImage & disown
+pass f-list.net
+journalctl -f
+uhorizon
+sudo journalctl --disk-usage\
+
+sudo journalctl --rotate\
+sudo journalctl --vacuum-time=1s\
+
+sudo journalctl --disk-usage\
+
+pass f-list.net
+nupdate
+sudo noisetorch
+sudo noisetorch --help
+sudo noisetorch -l
+nano ~/.config/pipewire/pipewire.conf.d/99-input-denoising.conf
+cd .config/
+ls
+systemctl --user status pipewire-pulse.service
+nupdate
+pavucontrol-qt
+journalctl --user -u pipewire -n 50
+journalctl --user -u pipewire -n 50\
+
+nupdate
+pavucontrol-qt
+journalctl --user -u pipewire -n 50\
+
+pavucontrol-qt
+pw-cli list-objects | grep "Noise Canceling Source"
+journalctl --user -u pipewire -n 50\
+
+lsusb -t
+journalctl --user -u pipewire -n 50\
+
+systemctl --user restart pipewire.service\
+systemctl --user restart pipewire-pulse.service\
+
+journalctl --user -u pipewire -n 50\
+
+pw-cli list-objects | grep "Noise Canceling Source"\
+
+systemctl --user restart pipewire.service\
+systemctl --user restart pipewire-pulse.service\
+
+nupdate && systemctl --user restart pipewire.service\
+systemctl --user restart pipewire-pulse.service\
+
+vesktop
+pavucontrol-qt
+nupdate && systemctl --user restart pipewire.service\
+systemctl --user restart pipewire-pulse.service\
+
+pavucontrol-qt
+systemctl --user restart pipewire.service\
+systemctl --user restart pipewire-pulse.service\
+
+ip addr
+systemctl --user restart pipewire pipewire-pulse wireplumber\
+
+pavucontrol-qt
+nupdate && systemctl --user restart pipewire.service\
+systemctl --user restart pipewire-pulse.service\
+
+.config/waybar/waybar.sh
+systemctl --user restart pipewire
+pavucontrol-qt
+nupdate && systemctl --user restart pipewire.service\
+systemctl --user restart pipewire-pulse.service\
+
+systemctl --user restart pipewire pipewire-pulse wireplumber\
+
+nupdate && systemctl --user restart pipewire.service\
+systemctl --user restart pipewire-pulse.service\
+
+.config/waybar/waybar.sh
+pw-dump | grep "rnnoise"\
+
+pass battle.net
+systemctl --user status pipewire-pulse\
+
+pactl list sources short\
+
+pw-loopback -c rnnoise_source\
+
+pkill vesktop
+nmtui
+pw-loopback -c rnnoise_source\
+
+lsusb -tv\
+
+journalctl -f
+.config/waybar/waybar.sh
+echo '1-6' | sudo tee /sys/bus/usb/drivers/usb/unbind\
+
+echo '1-2' | sudo tee /sys/bus/usb/drivers/usb/unbind\
+
+echo '1-2' | sudo tee /sys/bus/usb/drivers/usb/bind\
+
+dmesg | tail -n 20\
+
+sudo dmesg | tail -n 20\
+
+lsusb -tv\
+
+pkill waybar
+.config/waybar/waybar.sh
+lsusb -tv\
+
+echo '1-6' | sudo tee /sys/bus/usb/drivers/usb/bind\
+
+lsusb -tv\
+
+watch lsusb -tv\
+
+: 1770403623:0;journalctl -f
+: 1770404320:0;pass f-list.net
+: 1770404397:0;pavucontrol-qt
+: 1770415538:0;nix-shell -p dealve-tui
+: 1770415564:0;nix search nixpkgs dealve\
+
+: 1770415737:0;journalctl -f
+: 1770449034:0;pavucontrol-qt
+: 1770456423:0;nupdate
+: 1770456625:0;pavucontrol-qt
+: 1770456657:0;nolog
+: 1770456722:0;pavucontrol-qt
+: 1770456881:0;nupdate
+: 1770457004:0;nolog
+: 1770457653:0;nupdate
+: 1770457735:0;nolog
+: 1770458109:0;btrfs-assistant
+: 1770458113:0;btrfs-assistant-bin
+: 1770458117:0;btrfs-assistant-launcher
+: 1770458346:0;btrfs-assistant
+: 1770458371:0;pkttyagent &\
+
+: 1770458374:0;btrfs-assistant-launcher
+: 1770458381:0;btrfs-assistant
+: 1770458416:0;export $(dbus-launch)
+: 1770458418:0;btrfs-assistant-launcher
+: 1770458452:0;dbus-run-session btrfs-assistant-launcher
+: 1770458457:0;dbus-run-session btrfs-assistant
+: 1770458479:0;loginctl list-sessions
+: 1770458603:0;sudo btrfs-assistant-bin
+: 1770458609:0;sudo btrfs-assistant
+: 1770462767:0;swaymsg exit
+: 1770462792:0;pkill vesktop
+: 1770462834:0;pavucontrol-qt
+: 1770462866:0;pass f-list.net
+: 1770462966:0;nolog
+: 1770463020:0;colors
+: 1770463024:0;color
+: 1770463087:0;ls /usr/lib/qt/plugins/platformthemes/
+: 1770462968:0;echo "GTK Theme: $(gsettings get org.gnome.desktop.interface gtk-theme)"; echo "Qt Platform: $QT_QPA_PLATFORMTHEME"; echo "Qt Style: $QT_STYLE_OVERRIDE"
+: 1770462985:0;echo "GTK Theme: $(grep -h "gtk-theme-name" ~/.config/gtk-3.0/settings.ini ~/.gtkrc-2.0 2>/dev/null | cut -d'=' -f2 | tr -d '\" ' | head -n 1)"; echo "Qt Platform: $QT_QPA_PLATFORMTHEME"; echo "Qt Style: $QT_STYLE_OVERRIDE"\
+
+: 1770463121:0;ls /run/current-system/sw/lib/qt-6/plugins/platformthemes/ 2>/dev/null\
+ls /run/current-system/sw/lib/qt-5/plugins/platformthemes/ 2>/dev/null\
+
+: 1770463319:19;nupdate
+: 1770463351:0;source /etc/set-environment
+: 1770463358:0;ls /run/current-system/sw/lib/qt-6/plugins/platformthemes/ 2>/dev/null\
+ls /run/current-system/sw/lib/qt-5/plugins/platformthemes/ 2>/dev/null\
+
+: 1770463367:0;echo "GTK Theme: $(grep -h "gtk-theme-name" ~/.config/gtk-3.0/settings.ini ~/.gtkrc-2.0 2>/dev/null | cut -d'=' -f2 | tr -d '\" ' | head -n 1)"; echo "Qt Platform: $QT_QPA_PLATFORMTHEME"; echo "Qt Style: $QT_STYLE_OVERRIDE"\
+
+: 1770463385:0;nupdate
+: 1770463687:0;source /etc/set-environment
+: 1770463842:0;nupdate
+: 1770463862:0;source /etc/set-environment
+: 1770463911:0;nupdate
+: 1770463998:0;QT_STYLE_OVERRIDE=  nicotine
+: 1770464133:0;nupdate
+: 1770464302:0;QT_STYLE_OVERRIDE=  nicotine
+: 1770464362:0;cd .local/share/themes
+: 1770464363:0;ls
+: 1770464375:0;mv Moon-Burst-Theme Moon-Burst-Theme.old
+: 1770464457:0;cd .local/share/themes
+: 1770464466:0;mv Moon-Burst-Theme.old Moon-Burst-Theme
+: 1770464530:0;nix-shell -p lxappearance
+: 1770464722:0;cd .local/share/themes
+: 1770464724:0;mv Moon-Burst-Theme.old Moon-Burst-Theme
+: 1770464804:0;nupdate
+: 1770464909:0;ldd $(which nicotine) | grep -E "libgtk|libQt"
+: 1770464923:0;ldd $(which nicotine-plus) | grep -E "libgtk|libQt"
+: 1770465010:0;pass f-list.net
+: 1770466149:0;GTK_DEBUG=interactive nicotine-plus
+: 1770466376:0;GTK_DEBUG=interactive
+: 1770466380:0;GTK_DEBUG=interactive nicotine-plus
+: 1770466909:0;GTK_DEBUG=interactive nemo
+: 1770466992:0;GTK_DEBUG=interactive nicotine-plus
+: 1770468531:0;GTK_DEBUG=interactive ~/F-Chat.Horizon-linux-x86_64.AppImage
+: 1770468681:0;GTK_DEBUG=interactive nicotine-plus
+: 1770487949:0;nupdate
+: 1770488329:0;rm -rf ~/.cache/thumbnails/*\
+pkill nemo\
+
+: 1770490556:0;GTK_DEBUG=interactive nemo
+: 1770490586:0;GTK_DEBUG=interactive nicotine-plus
+: 1770491336:0;pavucontrol-qt
+: 1770492187:0;nupdate
+: 1770492246:0;systemctl --user restart pipewire pipewire-pulse wireplumber
+: 1770492435:0;# Record for 5 seconds into test.wav using your new source\
+pw-cat -r --target="Echo-Cancel Source" test.wav -d 5\
+
+: 1770492492:0;nix-shell -p pipewire-audio-clients
+: 1770492799:0;nupdate
+: 1770493246:0;systemctl --user restart pipewire pipewire-pulse wireplumber
+: 1770493257:0;pavucontrol-qt
+: 1770493425:0;nupdate
+: 1770493458:0;systemctl --user restart pipewire pipewire-pulse wireplumber
+: 1770493584:0;nupdate
+: 1770493651:0;systemctl --user restart pipewire pipewire-pulse wireplumber
+: 1770494404:0;pidof audacious
+: 1770494408:0;pkill 143423
+: 1770494410:0;pidof audacious
+: 1770494416:0;pkill 143423
+: 1770494456:0;pidof audacious
+: 1770494465:0;pkill 1527806
+: 1770494467:0;pidof audacious
+: 1770494476:0;pkill 1527806
+: 1770494477:0;pidof audacious
+: 1770494487:0;killall audacious
+: 1770494490:0;pkill 1527806
+: 1770495085:0;journalctl -f
+: 1770495869:0;sudo btrfs-assistant
+: 1770495892:0;sudo -E btrfs-assistant
+: 1770495905:0;pkexec btrfs-assistant
+: 1770495927:0;sudo QT_QPA_PLATFORM=xcb btrfs-assistant\
+# OR\
+sudo QT_QPA_PLATFORM=wayland btrfs-assistant\
+
+: 1770495931:0;sudo env XDG_RUNTIME_DIR=/run/user/$(id -u) btrfs-assistant\
+
+: 1770495935:0;btrfs-assistant-launcher
+: 1770495946:0;nix-shell -p btrfs-assistant qt6.qtwayland --run "sudo btrfs-assistant"
+: 1770497157:0;sudo journalctl --dmesg --no-pager | grep 'BTRFS warning.*path:' | sed -e 's/^.*path: //g' | sort -u
+: 1770498950:0;sudo journalctl --dmesg --no-pager
+: 1770504058:0;for dev in $(lsblk -dno KNNAME | grep -v 'loop'); do smartctl -t long /dev/$dev; done && \\
+while true; do \\
+  clear; \\
+  remaining=0; \\
+  for dev in $(lsblk -dno KNNAME | grep -v 'loop'); do \\
+    echo "--- /dev/$dev Progress ---"; \\
+    status=$(smartctl -c /dev/$dev | grep -iE "progress|remaining|status"); \\
+    echo "$status"; \\
+    [[ "$status" == *"progress"* ]] && ((remaining++)); \\
+  done; \\
+  [[ $remaining -eq 0 ]] && break; \\
+  sleep 30; \\
+done && \\
+(for dev in $(lsblk -dno KNNAME | grep -v 'loop'); do \\
+  echo -e "\n=== HEALTH REPORT: /dev/$dev ==="; \\
+  smartctl -a /dev/$dev; \\
+done) | nc termbin.com 9999\
+
+: 1770504104:0;for dev in $(lsblk -dno KNNAME | grep -v 'loop'); do smartctl -t long /dev/$dev; done && while true; do clear; for dev in $(lsblk -dno KNNAME | grep -v 'loop'); do echo "--- /dev/$dev Progress ---"; smartctl -c /dev/$dev | grep -iE "progress|remaining|status"; done; sleep 30; done\
+
+: 1770504121:0;for dev in $(lsblk -dno NAME | grep -v 'loop'); do smartctl -t long /dev/$dev; done && while true; do clear; for dev in $(lsblk -dno NAME | grep -v 'loop'); do echo "--- /dev/$dev Progress ---"; smartctl -c /dev/$dev | grep -iE "progress|remaining|status"; done; sleep 30; done\
+
+: 1770504135:0;for dev in $(lsblk -dpno NAME | grep -v 'loop'); do smartctl -t long "$dev"; done && while true; do clear; for dev in $(lsblk -dpno NAME | grep -v 'loop'); do echo "--- $dev Progress ---"; smartctl -c "$dev" | grep -iE "progress|remaining|status"; done; sleep 30; done\
+
+: 1770504764:0;sudo bash -c 'for dev in $(lsblk -dpno NAME | grep -v "loop"); do smartctl -t long "$dev"; done && while true; do clear; for dev in $(lsblk -dpno NAME | grep -v "loop"); do echo "--- $dev Progress ---"; smartctl -c "$dev" | grep -iE "progress|remaining|status"; done; sleep 30; done'\
+
+: 1770505597:0;lsblk -f
+: 1770508009:0;ls /etc/
+: 1770508013:0;ls /etc/os-release
+: 1770508029:0;cat /etc/os-release
+: 1770508115:0;pass f-list.net
+: 1770511639:0;pavucontrol-qt
+: 1770511757:0;nupdate
+: 1770511879:0;pavucontrol-qt
+: 1770511942:0;gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'\
+
+: 1770511955:0;nix-shell -p glib --run "gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'"\
+
+: 1770511968:0;export GTK_THEME=Adwaita:dark
+: 1770511971:0;pavucontrol-qt
+: 1770511987:0;nix-shell -p pavucontrol
+: 1770512052:0;nupdate
+pavucontrol
+: 1770512524:0;nupdate
+: 1770517465:0;.config/waybar/waybar.sh
+: 1770517691:0;smartctl -a /dev/nvme0n1
+: 1770517698:0;smartctl -a /dev/sda
+: 1770517799:0;sudo smartctl -a /dev/sda
+: 1770556579:0;pavucontrol
+: 1770580158:0;sudo smartctl -a /dev/nvme1n1 > nvmetest.txt
+: 1770580309:0;sudo smartctl -t long  /dev/nvme1n1 > nvmetest.txt
+: 1770580379:0;smartctl -d sat -a -t long /dev/nvme> nvme_test.txt
+: 1770580402:0;smartctl -d sat -a -t long /dev/nvme0n1> nvme_test.txt
+: 1770580412:0;sudo smartctl -d sat -a -t long /dev/nvme0n1> nvme_test.txt
+: 1770580504:0;smartctl man
+: 1770580509:0;smartctl -h
+: 1770581102:0;watch cat nvmetest.txt
+: 1770587520:0;grep . /sys/block/**/device/timeout
+: 1770587531:0;grep . /sys/block/sda/device/timeout
+: 1770587567:0;grep . /sys/block/sdb/device/timeout
+: 1770587571:0;grep . /sys/block/nvme/device/timeout
+: 1770587577:0;grep . /sys/block/nvme0n1 /device/timeout
+: 1770587579:0;grep . /sys/block/nvme0n1/device/timeout
+: 1770587600:0;grep . /sys/block/nvme1n1/device/timeout
+: 1770589817:0;smartctl -l scterc /dev/sda
+: 1770589818:0;smartctl -l scterc /dev/sdb
+: 1770589820:0;sudo smartctl -l scterc /dev/sdb
+: 1770589829:0;sudo smartctl -l scterc /dev/sda
+: 1770589838:0;lsblk -f
+: 1770590728:0;systemctl list-timers | grep btrfs
+: 1770593175:0;nmtui
+: 1770594282:0;nupdate
+: 1770594863:0;lsblk -f
+: 1770594875:0;sudo mkfs.btrfs -L "BackupDrive" /dev/sdb
+: 1770594925:0;sudo mkfs.btrfs -f -L "main_backup_drive" /dev/sdb
+: 1770594944:0;lsblk -f /dev/sdb
+: 1770595032:0;lsblk -f
+: 1770595069:0;sudo btrfs subvolume list /
+: 1770595164:0;pwd
+: 1770595245:0;lsblk -f
+: 1770595799:0;sudo mkdir -p /mnt/main_backup
+: 1770595810:0;sudo mount UUID=42f626e1-0d16-4feb-9286-c5690454e5bf /mnt/main_backup
+: 1770595876:0;nupdate
+: 1770595903:0;cd /mnt
+: 1770595904:0;ls
+: 1770595912:0;lsblk -f
+: 1770595925:0;nupdate
+: 1770596177:0;lsblk 0f
+: 1770596179:0;lsblk -f
+: 1770596194:0;mkdir /mnt/main_backup/test
+: 1770596197:0;sudo mkdir /mnt/main_backup/test
+: 1770596204:0;rm /mnt/main_backup/test
+: 1770596207:0;sudo rm /mnt/main_backup/test
+: 1770596221:0;sudo rm -r /mnt/main_backup/test
+: 1770597186:0;lsblk -f
+: 1770597424:0;ssh-keygen -f ssh_key -t ed25519 -C "Borg Backup"
+: 1770597642:0;cat .ssh/id_ed25519
+: 1770597648:0;cat .ssh/id_ed25519.pub
+: 1770597874:0;sudo su -
+: 1770598239:0;sudo su
+: 1770598677:0;cd .ssh
+: 1770598678:0;ls -a
+: 1770598722:0;cd ..
+: 1770598722:0;ls
+: 1770598731:0;rm ssh_key ssh_key.pub
+: 1770598743:0;ls
+: 1770598791:0;lsblk -f
+: 1770599180:0;nupdate
+: 1770600433:0;vorta
+: 1770600517:0;sudo chown moonburst:users /mnt/main_backup
+: 1770602447:0;lsblk -f
+: 1770603012:0;borg create --dry-run --list /mnt/main_backup::testrun /home/moonburst\
+
+: 1770603854:0;cd Games
+: 1770603854:0;ls
+: 1770603861:0;nano card\ ideas
+: 1770603953:0;nix-shell -p ncdu
+: 1770604326:0;git gc --aggressive --prune=now
+: 1770604553:0;lsblk -f
+: 1770605142:0;# You might need 'sudo' if you used the NixOS service wrapper\
+borg mount /mnt/main_backup::home-2026-02-08 /tmp/mybackupview
+: 1770605220:0;sudo chown moonburst:users /tmp/mybackupview\
+borg mount /mnt/main_backup::home-2026-02-08 /tmp/mybackupview
+: 1770605231:0;mkdir /tmp/mybackupview
+: 1770605233:0;sudo chown moonburst:users /tmp/mybackupview\
+borg mount /mnt/main_backup::home-2026-02-08 /tmp/mybackupview
+: 1770605265:0;borg list /mnt/main_backup
+: 1770605282:0;borg mount /mnt/main_backup::moonbeauty-2026-02-08-203528 /tmp/mybackupview
+: 1770605335:0;lsblk -f
+: 1770605351:0;borg info /mnt/main_backup::moonbeauty-2026-02-08-203528
+: 1770605419:0;cd /tmp/mybackupview/home/moonburst
+: 1770605419:0;ls
+: 1770605428:0;cp She\ Is\ The\ Light\ \(Original\ Song\).flac /mnt
+: 1770605431:0;sudo cp She\ Is\ The\ Light\ \(Original\ Song\).flac /mnt
+: 1770605506:0;borg umount /tmp/mybackupview
+ncdu
+# or specify the path:
+ncdu /home/moonburst
+ncdu /home/moonburst
+ncdu /home/moonburst
+ncdu /home/moonburst
+: 1770607062:0;borg list /mnt/main_backup
+: 1770608701:0;vorta
+: 1770609413:0;nix shell nixpkgs#age -c age-keygen -o ~/.config/sops/age/keys.txt
+: 1770609472:0;nix run nixpkgs\#ssh-to-age -- -private-key -i ~/.ssh/private > ~/.config/sops/age/keys.txt
+: 1770609519:0;nupdate
+: 1770609587:0;nix run nixpkgs#ssh-to-age -- -private-key -i ~/.ssh/private > ~/.config/sops/age/keys.txt
+: 1770609613:0;sops
+: 1770609620:0;mkdir -p ~/.config/sops/age\
+
+: 1770609634:0;nix run nixpkgs#ssh-to-age -- -private-key -i ~/.ssh/id_ed25519 > ~/.config/sops/age/keys.txt\
+
+: 1770609732:0;cat ~/.config/sops/age/keys.txt
+: 1770609764:0;nix run nixpkgs#age -- -y ~/.config/sops/age/keys.txt
+: 1770609786:0;nix run nixpkgs#age -- --decrypt -y ~/.config/sops/age/keys.txt
+: 1770610198:0;cat ~/.config/sops/age/keys.txt | nix run nixpkgs#age -- -y
+: 1770610224:0;nix run nixpkgs#ssh-to-age -- -list -private-key -i ~/.config/sops/age/keys.txt\
+
+: 1770610235:0;nix-shell -p age --run "age-keygen -y ~/.config/sops/age/keys.txt"\
+
+: 1770610379:0;cd nixos-config
+: 1770610380:0;ls
+: 1770610542:0;nix-shell -p age --run "age-keygen -y ~/.config/sops/age/keys.txt"\
+
+: 1770610653:0;nolog
+: 1770612531:0;git add .
+: 1770612545:0;nupdate
+: 1770612604:0;git add .
+: 1770612614:0;sudo -k
+: 1770612618:0;sudo ls /
+: 1770612635:0;nupdate
+: 1770612709:0;git add .
+: 1770612734:0;sudo -k
+: 1770612738:0;sudo ls /
+: 1770612749:0;nupdate
+: 1770612820:0;export SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt\
+nix run nixpkgs#sops -- secrets.yaml\
+
+: 1770612847:0;export SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt\
+nix run nixpkgs#sops -- ./secrets.yaml\
+
+: 1770612874:0;cd ~/nixos-config\
+
+: 1770612877:0;export SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt\
+nix run nixpkgs#sops -- ./secrets.yaml\
+
+: 1770613105:0;cd .config/sops/age/
+: 1770613106:0;ls
+: 1770613141:0;vorta
+: 1770613203:0;lsblk -f
+: 1770613252:0;sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/example_key) \\
+  borg init --encryption=repokey-blake2 /mnt/main_backup
+: 1770613314:0;# WARNING: This permanently deletes all existing backups in that folder!\
+sudo rm -rf /path/to/your/repo\
+
+: 1770613317:0;sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/example_key) \\
+  borg init --encryption=repokey-blake2 /mnt/main_backup
+: 1770613323:0;cd /mnt
+: 1770613324:0;ls
+: 1770613328:0;ls main_backup
+: 1770613332:0;rm -rf main_backup
+: 1770613334:0;sudo rm -rf main_backup
+: 1770613360:0;cd /mnt
+: 1770613365:0; rm -rf main_backup
+: 1770613368:0;sudo  rm -rf main_backup
+: 1770613399:0;cd main_backup
+: 1770613399:0;ls
+: 1770613401:0;ls -a
+: 1770613405:0;cd ..
+: 1770613411:0;sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/example_key) \\
+  borg init --encryption=repokey-blake2 /mnt/main_backup/\
+
+: 1770613596:0;nupdate
+: 1770613648:0;# Replace 'my-backup' with your actual job name from your config\
+sudo systemctl start borgbackup-job-my-backup.service\
+
+: 1770613654:0;sudo journalctl -fu borgbackup-job-my-backup.service\
+
+: 1770613666:0;# Run a dry run to see exactly what would be included\
+sudo borg-job-my-backup create --dry-run --list /mnt/main_backup/::test-archive /home/moonburst\
+
+: 1770613697:0;sudo borg-job-my-backup list
+: 1770613721:0;journalctl -u borgbackup-job-my-backup.service -f\
+
+: 1770613822:0;nupdate
+: 1770613839:0;sudo journalctl -u borgbackup-job-my-backup.service -f
+: 1770613864:0;nupdate
+: 1770613884:0;sudo systemctl start borgbackup-job-my-backup.service\
+sudo journalctl -u borgbackup-job-my-backup.service -f
+: 1770613908:0;nupdate
+: 1770613921:0;cd nixos-config
+: 1770613924:0;sudo nixos-rebuild switch --flake .#moonbeauty\
+sudo systemctl start borgbackup-job-my-backup.service\
+sudo journalctl -u borgbackup-job-my-backup.service -f\
+
+: 1770613957:0;git add .\
+sudo nixos-rebuild switch --flake .#moonbeauty\
+sudo systemctl start borgbackup-job-my-backup.service\
+sudo journalctl -u borgbackup-job-my-backup.service -f\
+
+: 1770614090:0;vorta
+: 1770614293:0;sudo borg-job-my-backup list\
+
+: 1770614433:0;vorta
+: 1770614636:0;sudo borg-job-my-backup list\
+
+: 1770614747:0;# This deletes all archives starting with the old name\
+sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/example_key) \\
+  borg delete --glob-archives 'my-backup-*' /mnt/main_backup/\
+
+: 1770614755:0;sudo borg-job-my-backup list\
+
+: 1770614794:0;systemctl status borgbackup-job-MoonBeauty-Backup
+: 1770614803:0;nupdate
+: 1770614831:0;systemctl status borgbackup-job-MoonBeauty-Backup
+: 1770614837:0;sudo borg-job-my-backup list\
+
+: 1770614843:0;sudo borg-job-MoonBeauty-Backup list\
+
+: 1770614851:0;# This deletes all archives starting with the old name\
+sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/example_key) \\
+  borg delete --glob-archives 'my-backup-*' /mnt/main_backup/\
+
+: 1770614854:0;sudo borg-job-MoonBeauty-Backup list\
+
+: 1770614906:0;# We use your SOPS secret for the passphrase\
+sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/example_key) \\
+  borg prune --list --dry-run --keep-daily=7 /mnt/main_backup/\
+
+: 1770614973:0;# We use your SOPS secret for the passphrase\
+sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/example_key) \\
+  borg prune --list --dry-run --keep-daily=7 /mnt/main_backup/\
+sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/example_key) \\
+  borg rename /mnt/main_backup/::moonbeauty-my-backup-2026-02-08T23:12:52 MoonBeauty-Backup-2026-02-08\
+
+: 1770614981:0;# We use your SOPS secret for the passphrase\
+sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/example_key) \\
+  borg prune --list --dry-run --keep-daily=7 /mnt/main_backup/\
+sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/example_key) \\
+  borg rename /mnt/main_backup/::moonbeauty-my-backup-2026-02-08 MoonBeauty-Backup-2026-02-08\
+
+: 1770614995:0;# This will keep the 7 most recent backups in the repo, \
+# even if some are named 'my-backup' and some are 'MoonBeauty'\
+sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/example_key) \\
+  borg prune --list --keep-daily=7 /mnt/main_backup/\
+\
+# Always run this after pruning to actually shrink the files on disk\
+sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/example_key) \\
+  borg compact /mnt/main_backup/\
+
+: 1770615005:0;sudo borg-job-MoonBeauty-Backup list
+: 1770615406:0;lsblk -f
+: 1770615478:0;journalctl -f
+: 1770615500:0;sudo journalctl -u borgbackup-job-MoonBeauty-Backup.service -f
+: 1770615530:0;systemctl list-timers borgbackup-job-MoonBeauty-Backup.timer\
+
+: 1770615620:0;nupdate
+: 1770615643:0;touch test.txt
+: 1770615644:0;ls
+: 1770615651:0;cat test.txt
+: 1770615695:0;sudo journalctl -u borgbackup-job-MoonBeauty-Backup.service -f | grep ".steam"
+: 1770615862:0;lsblk -f
+: 1770617722:0;cd nixos-config
+: 1770617724:0;git add .
