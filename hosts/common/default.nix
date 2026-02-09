@@ -23,7 +23,17 @@ in {
   # ====================================================================
   networking.networkmanager.enable = true;
   hardware.bluetooth.enable = true;
+  # ====================================================================
+  # SOPS
+  # ====================================================================
+sops = {
+  defaultSopsFile = ../../secrets.yaml;
+  age.keyFile = "/home/moonburst/.config/sops/age/keys.txt";
 
+  secrets.example_key = {
+    neededForUsers = true;
+  };
+};
   # ====================================================================
   # SERVICES AND HARDWARE
   # ====================================================================
@@ -48,14 +58,56 @@ in {
   services.displayManager.ly.enable = true;
   services.displayManager.sessionPackages = [pkgs.niri];
 
-  #Audio: PipeWire (Full Setup) ---
+  # Audio: PipeWire (Full Setup)
+security.rtkit.enable = true;
   services.pipewire = {
     enable = true;
     alsa.enable = true;
     alsa.support32Bit = true;
     pulse.enable = true;
     jack.enable = true;
-  };
+
+    extraConfig.pipewire."10-quantum-size" = {
+      "context.properties" = {
+        "default.clock.min-quantum" = 512;
+      };
+    };
+
+    extraConfig.pipewire."99-input-denoising" = {
+      "context.modules" = [
+        {
+          name = "libpipewire-module-filter-chain";
+          args = {
+            "node.description" = "Noise Suppressed Source";
+            "media.name" = "Noise Suppressed Source";
+            "filter.graph" = {
+              nodes = [
+                {
+                  type = "ladspa";
+                  name = "rnnoise";
+                  plugin = "${pkgs.rnnoise-plugin}/lib/ladspa/librnnoise_ladspa.so";
+                  label = "noise_suppressor_mono";
+                  control = {
+                    "VAD Threshold (%)" = 95.0;
+                    "VAD Grace Period (ms)" = 200;
+                    "Retroactive VAD Grace (ms)" = 200;
+                  };
+                }
+              ];
+            };
+            "capture.props" = {
+              "node.name" = "capture.rnnoise_source";
+              "node.passive" = true;
+            };
+            "playback.props" = {
+              "node.name" = "rnnoise_source";
+              "media.class" = "Audio/Source";
+            };
+          };
+        }
+      ];
+    };
+};
 
   # --- XDG Portal Configuration (SCREENCAPTURE FIX) ---
   xdg.portal = {
@@ -98,7 +150,12 @@ nix.optimise = {
 services.btrfs.autoScrub = {
   enable = true;
   interval = "monthly";
-  fileSystems = [ "/" ];
+  fileSystems = [
+    "/"
+    "/mnt/3TBHDD"
+    "/mnt/nvme1tb"
+    "/mnt/backup"
+  ];
 };
 
 
@@ -199,12 +256,12 @@ services.smartd = {
     enable = true;
     wrapperFeatures.gtk = true;
   };
-programs.dconf.profiles.user.databases = [{
+  programs.dconf.profiles.user.databases = [{
   settings."org/gnome/desktop/interface".color-scheme = "prefer-dark";
   settings."org/gnome/desktop/interface".gtk-theme = "Moon-Burst-Theme";
   lockAll = true; # This prevents user-level overrides from taking effect
-}];
-programs.dconf.enable = true;
+  }];
+
 
 
   # Zsh configuration
@@ -255,10 +312,11 @@ programs.dconf.enable = true;
   # USER CONFIGURATION
   # ====================================================================
   users.users.moonburst = {
-    isNormalUser = true;
-    description = "MoonBurst";
-    home = "/home/moonburst";
-    extraGroups = [
+  hashedPasswordFile = config.sops.secrets.example_key.path;
+  isNormalUser = true;
+  description = "MoonBurst";
+  home = "/home/moonburst";
+  extraGroups = [
       "networkmanager"
       "wheel"
       "audio"
@@ -337,98 +395,102 @@ programs.dconf.enable = true;
 
   environment.systemPackages = with pkgs; [
 
-    # --- System Utilities/Shell
-    kitty
-    fastfetch
-    gnome-system-monitor
-    s-tui
-    nano
-    git
-    github-cli
-    gnupg
-    jq
-    bc
-    rsync
-    rclone
-    procps
-    psmisc
-    gawk
-    ripgrep
-    dict
-    libsecret
-    kdePackages.polkit-kde-agent-1
-    linux-firmware
-    nix-prefetch-github
-    unar
-    zip
-    unzip
-    cliphist
-    lm_sensors
-    usbutils
-    cargo
-    libnotify
-    qimgv
-    olm
-    element-desktop
-    steam-run
-    zenity
+    kitty # gpu-accelerated terminal
+    fastfetch # system info display
+    gnome-system-monitor # graphical task manager
+    s-tui # cpu stress/monitor tool
+    nano # basic text editor
+    git # version control system
+    github-cli # github command line
+    gnupg # encryption/signing tool
+    jq # json processor
+    bc # cli calculator
+    rsync # file sync utility
+    rclone # cloud storage sync
+    procps # process management tools
+    psmisc # process utilities (killall)
+    gawk # pattern scanning/processing
+    ripgrep # fast text search
+    dict # dictionary client
+    libsecret # password storage library
+    kdePackages.polkit-kde-agent-1 # auth dialog agent
+    linux-firmware # hardware driver binaries
+    nix-prefetch-github # nix hash fetcher
+    unar # archive extractor
+    zip # zip compressor
+    unzip # zip extractor
+    cliphist # clipboard history manager
+    lm_sensors # hardware temp monitor
+    usbutils # usb device info
+    cargo # rust build system
+    libnotify # notification library
+    qimgv # fast image viewer
+    olm # matrix encryption library
+    element-desktop # matrix chat client
+    steam-run # run binaries in fhs
+    zenity # cli dialog boxes
+    webp-pixbuf-loader # webp image thumbnails
+    gdk-pixbuf # gtk image library
+    rnnoise-plugin # mic noise suppression
+    lsp-plugins # audio signal processing
     # --- Btrfs Tools
-    btrfs-progs
-    btrfs-assistant
+    btrfs-progs # btrfs filesystem tools
+    btrfs-assistant # btrfs gui manager
 
     # --- Wayland Utilities
-    quickshell
-    waybar
-    grim
-    slurp
-    wl-clipboard
-    satty
-    wtype
-    wlrctl
-    playerctl
-    dunst
-    swaylock
-    swayidle
-    swaybg
-    python3
-    smartmontools
+    waybar # wayland status bar
+    grim # wayland screenshot tool
+    slurp # region selector tool
+    wl-clipboard # wayland clipboard utility
+    satty # screenshot editor
+    wtype # virtual keystroke tool
+    wlrctl # wayland compositor tool
+    playerctl # media player controller
+    dunst # notification daemon
+    swaylock # wayland screen locker
+    swayidle # idle management daemon
+    swaybg # wallpaper setter
+    python3 # python interpreter
+    smartmontools # drive health monitor
 
     # --- Desktop/Theming
-    nemo
-    kdePackages.kate
-    lxqt.pavucontrol-qt
-    bluez-tools
-    qt5.qtwayland
-    qt6Packages.qt6ct
+    nemo # gtk file manager
+    kdePackages.kate # advanced text editor
+    pavucontrol # audio volume mixer
+    bluez-tools # bluetooth cli tools
+    qt5.qtwayland # qt5 wayland support
+    qt6Packages.qt6ct # qt6 configuration tool
 
     # --- Applications/Communication
-    sox
-    mpv
-    audacious
-    vivaldi
-    vesktop
-    evolution
-    authenticator
+    sox # audio processing tool
+    mpv # versatile media player
+    audacious # lightweight audio player
+    vivaldi # feature-rich web browser
+    vesktop # optimized discord client
+    evolution # email/calendar suite
+    authenticator # 2fa code generator
 
     # --- Screencasting / Portals / Compositor Fixes
-    niri
-    obs-studio
-    pipewire
-    xdg-desktop-portal
-   #xdg-desktop-portal-gnome
-    xdg-desktop-portal-gtk
-    xdg-desktop-portal-wlr
-    xdg-utils
+    niri # scrollable tiling compositor
+    obs-studio # screen recording/streaming
+    pipewire # modern audio/video server
+    xdg-desktop-portal # desktop integration portal
+    #xdg-desktop-portal-gnome # gnome portal backend
+    xdg-desktop-portal-gtk # gtk portal backend
+    xdg-desktop-portal-wlr # wlroots portal backend
+    xdg-utils # desktop integration tools
 
     # --- Other Tools
-    syncthing
-    pass
-    geany
+    syncthing # p2p file sync
+    pass # unix password manager
+    sops #secrets manager
 
 
     sherlock-launcher
     (pkgs.callPackage ../../packages/sherlock-clipboard.nix {})
 #    (pkgs.callPackage ../../packages/datacorn.nix {})
+
+
   ];
 
               nixpkgs.config.permittedInsecurePackages = [
@@ -436,4 +498,3 @@ programs.dconf.enable = true;
               ];
 
 }
-

@@ -5,6 +5,7 @@
   lib,
   niri-flake,
   cypkgs,
+  sops-nix,
   ...
 }: {
   # ====================================================================
@@ -14,6 +15,63 @@
     ../../hosts/common/default.nix
     ./mounts.nix
   ];
+  # ====================================================================
+  # SOPS
+  # ====================================================================
+ sops = {
+    defaultSopsFile = ../../secrets.yaml; # Adjust path to find your secrets.yaml
+    defaultSopsFormat = "yaml";
+
+    age.keyFile = "/home/moonburst/.config/sops/age/keys.txt";
+
+    # This exposes the secret at /run/secrets/example_key
+    secrets.example_key = { };
+  };
+  # ====================================================================
+  # BORG BACKUP
+  # ====================================================================
+  services.borgbackup.jobs."MoonBeauty-Backup" = {
+  paths = [ "/home/moonburst" ];
+  repo = "/mnt/main_backup/";
+  extraCreateArgs = "--stats --list --filter=AME";  #shows up in journalctl
+  exclude = [
+    # Custom Rules
+    "*/.steam"
+    "*/.cache"
+    "*/.var"
+    "*/.local/share/Steam"
+    "*/.lmstudio"
+    "*/.git/objects"
+    "*/Games"
+
+    # Trash & Temp
+    "*/.local/share/Trash"
+    "*/.Trash*"
+    "**/.tmp"
+    "**/*.swp"
+    "**/*.bak"
+
+    # Browser Caches (Simplified patterns)
+    "*/.cache/mozilla/firefox"
+    "*/.cache/google-chrome"
+    "*/.cache/BraveSoftware"
+    "*/.config/chromium/*/Service Worker/CacheStorage"
+
+    # Development Artefacts
+    "**/node_modules"
+    "**/.npm"
+    "**/__pycache__"
+    "**/.venv"
+    "**/.cargo"
+    "**/.rustup"
+    "**/.gradle"
+  ];
+
+  encryption = {
+    mode = "repokey-blake2";
+    passCommand = "cat ${config.sops.secrets.example_key.path}";
+  };
+};
 
   # ====================================================================
   # NETWORKING
@@ -50,9 +108,9 @@ services.udev.extraRules = ''
     enable = true;
     systemCronJobs = [
       # backs up music
-      "0 12 * * * moonburst ~/scripts/cron_scripts/music-backup.sh"
+#      "0 12 * * * moonburst ~/scripts/cron_scripts/music-backup.sh"
       # backs up passwords
-      "0 0 * * 0 moonburst ~/scripts/cron_scripts/pass_copy.sh"
+#      "0 0 * * 0 moonburst ~/scripts/cron_scripts/pass_copy.sh"
       # pushes a backup to nextcloud
       "0 4 1 * * moonburst ~/scripts/cron_scripts/nextcloud_upload.sh"
       # moves .desktop files from home folder to .local/share/applications (mostly for steam games)
@@ -65,6 +123,7 @@ services.udev.extraRules = ''
       "*/30 * * * * moonburst ~/scripts/cron_scripts/wallpaper.sh "
     ];
   };
+
 
   # ====================================================================
   # ENVIRONMENT AND PACKAGES
@@ -99,6 +158,7 @@ jami#chat client
 vicinae#launcher
 dnsmasq#VM related
 looking-glass-client#VM related
+borgbackup
     ];
 
   system.stateVersion = "25.11";
