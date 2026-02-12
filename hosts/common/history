@@ -1,568 +1,3 @@
-cd ..
-cd  keybinds
-ls
-./toggle_mic.sh
-which bash
-nano toggle_mic.sh
-./toggle_mic.sh
-swaymsg reload
-pkill waybar
-./.config/waybar/waybar.sh
-pavucontrol-qt
-pkill waybar
-./.config/waybar/waybar.sh
-ssh montana_zeus@192.168.12.119
-lsblk -f
-ssh montana_zeus@192.168.12.119
-music
-ssh montana_zeus@192.168.12.119
-sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
-nix-shell -p gnome-weather
-gnome-weather 
-cd Games/ProjectIgnis
-./EDOPro
-cd ~/.local/share/applications
-./edopro.desktop
-chmod +x edopro.desktop
-./edopro.desktop
-journalctl -f
-sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
-nmtui
-sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
-lsblk -f
-cd /mnt/nvme1tb
-ls
-ls -a
-sudo smartctl -a /dev/nvme0n1\
-
-sudo smartctl -a /dev/nvme1n1\
-
-sudo umount -l /mnt/nvme1tb\
-
-echo 1 | sudo tee /sys/class/nvme/nvme1/device/remove\
-
-echo 1 | sudo tee /sys/class/pci_bus/0000:00/rescan\
-
-lspci
-lsblk
-nix-shell -p lspci
-nix-shell -p pciutils --run "lspci"
-lsblk
-pavucontrol-qt
-pass f-list.net
-lsblk -f
-nix-shell -p pciutils
-dmidecode
-nix-shell -p dmidecode
-pass gmail.com
-pass google.com
-pass edit google.com
-pass reddit.com
-openssl rand -base64 16\
-
-nix-shell -p openssl
-pass edit reddit.com
-openssl rand -base64 16
-pass generate
-pass f-list.net
-syncthing
-pavucontrol-qt
-lsblk -f
-pavucontrol-qt
-systemctl status bluetooth.service
-bluetooth-player
-bluetoothd
-nm
-nmtui
-pass hyperbeam.com
-swaymsg -t get_outputs
-ssh montana_zeus@192.168.12.119
-pass
-clear
-pass edit
-nix-shell -p google-chrome
-nix-shell -p firefox
-nix-shell -p bluestacks
-firefox
-ssh montana_zeus@192.168.12.119
-pass edit
-ssh montana_zeus@192.168.12.119
-nupdate
-mango -p
-cd nixos-config
-git add .
-git commit -m "updating"
-nix-collect-garbage -d
-nmtui
-pkill vivaldi-bin
-journalctl -f
-lsblk -f
-pidof vivaldi
-./F-Chat.Horizon-linux-x86_64.AppImage
-./F-Chat.Horizon-linux-x86_64.AppImage & disown
-pass f-list.net
-which bash
-lsblk -f
-cd /mnt/3TBHDD/SteamLibrary/steamapps/common/Moonsigil\ Atlas
-ls
-ls -a
-journalctl -n 100
-journalctl 
-journalctl -f
-journalctl -n 1000\
-
-journalctl -n 2000\
-
-journalctl -n 5000\
-
-./F-Chat.Horizon-linux-x86_64.AppImage & disown
-pass f-list.net
-./F-Chat.Horizon-linux-x86_64.AppImage & disown
-pass f-list.net
-journalctl -f
-uhorizon
-sudo journalctl --disk-usage\
-
-sudo journalctl --rotate\
-sudo journalctl --vacuum-time=1s\
-
-sudo journalctl --disk-usage\
-
-pass f-list.net
-nupdate
-sudo noisetorch
-sudo noisetorch --help
-sudo noisetorch -l
-nano ~/.config/pipewire/pipewire.conf.d/99-input-denoising.conf
-cd .config/
-ls
-systemctl --user status pipewire-pulse.service
-nupdate
-pavucontrol-qt
-journalctl --user -u pipewire -n 50
-journalctl --user -u pipewire -n 50\
-
-nupdate
-pavucontrol-qt
-journalctl --user -u pipewire -n 50\
-
-pavucontrol-qt
-pw-cli list-objects | grep "Noise Canceling Source"
-journalctl --user -u pipewire -n 50\
-
-lsusb -t
-journalctl --user -u pipewire -n 50\
-
-systemctl --user restart pipewire.service\
-systemctl --user restart pipewire-pulse.service\
-
-journalctl --user -u pipewire -n 50\
-
-pw-cli list-objects | grep "Noise Canceling Source"\
-
-systemctl --user restart pipewire.service\
-systemctl --user restart pipewire-pulse.service\
-
-nupdate && systemctl --user restart pipewire.service\
-systemctl --user restart pipewire-pulse.service\
-
-vesktop
-pavucontrol-qt
-nupdate && systemctl --user restart pipewire.service\
-systemctl --user restart pipewire-pulse.service\
-
-pavucontrol-qt
-systemctl --user restart pipewire.service\
-systemctl --user restart pipewire-pulse.service\
-
-ip addr
-systemctl --user restart pipewire pipewire-pulse wireplumber\
-
-pavucontrol-qt
-nupdate && systemctl --user restart pipewire.service\
-systemctl --user restart pipewire-pulse.service\
-
-.config/waybar/waybar.sh
-systemctl --user restart pipewire
-pavucontrol-qt
-nupdate && systemctl --user restart pipewire.service\
-systemctl --user restart pipewire-pulse.service\
-
-systemctl --user restart pipewire pipewire-pulse wireplumber\
-
-nupdate && systemctl --user restart pipewire.service\
-systemctl --user restart pipewire-pulse.service\
-
-.config/waybar/waybar.sh
-pw-dump | grep "rnnoise"\
-
-pass battle.net
-systemctl --user status pipewire-pulse\
-
-pactl list sources short\
-
-pw-loopback -c rnnoise_source\
-
-pkill vesktop
-nmtui
-pw-loopback -c rnnoise_source\
-
-lsusb -tv\
-
-journalctl -f
-.config/waybar/waybar.sh
-echo '1-6' | sudo tee /sys/bus/usb/drivers/usb/unbind\
-
-echo '1-2' | sudo tee /sys/bus/usb/drivers/usb/unbind\
-
-echo '1-2' | sudo tee /sys/bus/usb/drivers/usb/bind\
-
-dmesg | tail -n 20\
-
-sudo dmesg | tail -n 20\
-
-lsusb -tv\
-
-pkill waybar
-.config/waybar/waybar.sh
-lsusb -tv\
-
-echo '1-6' | sudo tee /sys/bus/usb/drivers/usb/bind\
-
-lsusb -tv\
-
-watch lsusb -tv\
-
-: 1770403623:0;journalctl -f
-: 1770404320:0;pass f-list.net
-: 1770404397:0;pavucontrol-qt
-: 1770415538:0;nix-shell -p dealve-tui
-: 1770415564:0;nix search nixpkgs dealve\
-
-: 1770415737:0;journalctl -f
-: 1770449034:0;pavucontrol-qt
-: 1770456423:0;nupdate
-: 1770456625:0;pavucontrol-qt
-: 1770456657:0;nolog
-: 1770456722:0;pavucontrol-qt
-: 1770456881:0;nupdate
-: 1770457004:0;nolog
-: 1770457653:0;nupdate
-: 1770457735:0;nolog
-: 1770458109:0;btrfs-assistant
-: 1770458113:0;btrfs-assistant-bin
-: 1770458117:0;btrfs-assistant-launcher
-: 1770458346:0;btrfs-assistant
-: 1770458371:0;pkttyagent &\
-
-: 1770458374:0;btrfs-assistant-launcher
-: 1770458381:0;btrfs-assistant
-: 1770458416:0;export $(dbus-launch)
-: 1770458418:0;btrfs-assistant-launcher
-: 1770458452:0;dbus-run-session btrfs-assistant-launcher
-: 1770458457:0;dbus-run-session btrfs-assistant
-: 1770458479:0;loginctl list-sessions
-: 1770458603:0;sudo btrfs-assistant-bin
-: 1770458609:0;sudo btrfs-assistant
-: 1770462767:0;swaymsg exit
-: 1770462792:0;pkill vesktop
-: 1770462834:0;pavucontrol-qt
-: 1770462866:0;pass f-list.net
-: 1770462966:0;nolog
-: 1770463020:0;colors
-: 1770463024:0;color
-: 1770463087:0;ls /usr/lib/qt/plugins/platformthemes/
-: 1770462968:0;echo "GTK Theme: $(gsettings get org.gnome.desktop.interface gtk-theme)"; echo "Qt Platform: $QT_QPA_PLATFORMTHEME"; echo "Qt Style: $QT_STYLE_OVERRIDE"
-: 1770462985:0;echo "GTK Theme: $(grep -h "gtk-theme-name" ~/.config/gtk-3.0/settings.ini ~/.gtkrc-2.0 2>/dev/null | cut -d'=' -f2 | tr -d '\" ' | head -n 1)"; echo "Qt Platform: $QT_QPA_PLATFORMTHEME"; echo "Qt Style: $QT_STYLE_OVERRIDE"\
-
-: 1770463121:0;ls /run/current-system/sw/lib/qt-6/plugins/platformthemes/ 2>/dev/null\
-ls /run/current-system/sw/lib/qt-5/plugins/platformthemes/ 2>/dev/null\
-
-: 1770463319:19;nupdate
-: 1770463351:0;source /etc/set-environment
-: 1770463358:0;ls /run/current-system/sw/lib/qt-6/plugins/platformthemes/ 2>/dev/null\
-ls /run/current-system/sw/lib/qt-5/plugins/platformthemes/ 2>/dev/null\
-
-: 1770463367:0;echo "GTK Theme: $(grep -h "gtk-theme-name" ~/.config/gtk-3.0/settings.ini ~/.gtkrc-2.0 2>/dev/null | cut -d'=' -f2 | tr -d '\" ' | head -n 1)"; echo "Qt Platform: $QT_QPA_PLATFORMTHEME"; echo "Qt Style: $QT_STYLE_OVERRIDE"\
-
-: 1770463385:0;nupdate
-: 1770463687:0;source /etc/set-environment
-: 1770463842:0;nupdate
-: 1770463862:0;source /etc/set-environment
-: 1770463911:0;nupdate
-: 1770463998:0;QT_STYLE_OVERRIDE=  nicotine
-: 1770464133:0;nupdate
-: 1770464302:0;QT_STYLE_OVERRIDE=  nicotine
-: 1770464362:0;cd .local/share/themes
-: 1770464363:0;ls
-: 1770464375:0;mv Moon-Burst-Theme Moon-Burst-Theme.old
-: 1770464457:0;cd .local/share/themes
-: 1770464466:0;mv Moon-Burst-Theme.old Moon-Burst-Theme
-: 1770464530:0;nix-shell -p lxappearance
-: 1770464722:0;cd .local/share/themes
-: 1770464724:0;mv Moon-Burst-Theme.old Moon-Burst-Theme
-: 1770464804:0;nupdate
-: 1770464909:0;ldd $(which nicotine) | grep -E "libgtk|libQt"
-: 1770464923:0;ldd $(which nicotine-plus) | grep -E "libgtk|libQt"
-: 1770465010:0;pass f-list.net
-: 1770466149:0;GTK_DEBUG=interactive nicotine-plus
-: 1770466376:0;GTK_DEBUG=interactive
-: 1770466380:0;GTK_DEBUG=interactive nicotine-plus
-: 1770466909:0;GTK_DEBUG=interactive nemo
-: 1770466992:0;GTK_DEBUG=interactive nicotine-plus
-: 1770468531:0;GTK_DEBUG=interactive ~/F-Chat.Horizon-linux-x86_64.AppImage
-: 1770468681:0;GTK_DEBUG=interactive nicotine-plus
-: 1770487949:0;nupdate
-: 1770488329:0;rm -rf ~/.cache/thumbnails/*\
-pkill nemo\
-
-: 1770490556:0;GTK_DEBUG=interactive nemo
-: 1770490586:0;GTK_DEBUG=interactive nicotine-plus
-: 1770491336:0;pavucontrol-qt
-: 1770492187:0;nupdate
-: 1770492246:0;systemctl --user restart pipewire pipewire-pulse wireplumber
-: 1770492435:0;# Record for 5 seconds into test.wav using your new source\
-pw-cat -r --target="Echo-Cancel Source" test.wav -d 5\
-
-: 1770492492:0;nix-shell -p pipewire-audio-clients
-: 1770492799:0;nupdate
-: 1770493246:0;systemctl --user restart pipewire pipewire-pulse wireplumber
-: 1770493257:0;pavucontrol-qt
-: 1770493425:0;nupdate
-: 1770493458:0;systemctl --user restart pipewire pipewire-pulse wireplumber
-: 1770493584:0;nupdate
-: 1770493651:0;systemctl --user restart pipewire pipewire-pulse wireplumber
-: 1770494404:0;pidof audacious
-: 1770494408:0;pkill 143423
-: 1770494410:0;pidof audacious
-: 1770494416:0;pkill 143423
-: 1770494456:0;pidof audacious
-: 1770494465:0;pkill 1527806
-: 1770494467:0;pidof audacious
-: 1770494476:0;pkill 1527806
-: 1770494477:0;pidof audacious
-: 1770494487:0;killall audacious
-: 1770494490:0;pkill 1527806
-: 1770495085:0;journalctl -f
-: 1770495869:0;sudo btrfs-assistant
-: 1770495892:0;sudo -E btrfs-assistant
-: 1770495905:0;pkexec btrfs-assistant
-: 1770495927:0;sudo QT_QPA_PLATFORM=xcb btrfs-assistant\
-# OR\
-sudo QT_QPA_PLATFORM=wayland btrfs-assistant\
-
-: 1770495931:0;sudo env XDG_RUNTIME_DIR=/run/user/$(id -u) btrfs-assistant\
-
-: 1770495935:0;btrfs-assistant-launcher
-: 1770495946:0;nix-shell -p btrfs-assistant qt6.qtwayland --run "sudo btrfs-assistant"
-: 1770497157:0;sudo journalctl --dmesg --no-pager | grep 'BTRFS warning.*path:' | sed -e 's/^.*path: //g' | sort -u
-: 1770498950:0;sudo journalctl --dmesg --no-pager
-: 1770504058:0;for dev in $(lsblk -dno KNNAME | grep -v 'loop'); do smartctl -t long /dev/$dev; done && \\
-while true; do \\
-  clear; \\
-  remaining=0; \\
-  for dev in $(lsblk -dno KNNAME | grep -v 'loop'); do \\
-    echo "--- /dev/$dev Progress ---"; \\
-    status=$(smartctl -c /dev/$dev | grep -iE "progress|remaining|status"); \\
-    echo "$status"; \\
-    [[ "$status" == *"progress"* ]] && ((remaining++)); \\
-  done; \\
-  [[ $remaining -eq 0 ]] && break; \\
-  sleep 30; \\
-done && \\
-(for dev in $(lsblk -dno KNNAME | grep -v 'loop'); do \\
-  echo -e "\n=== HEALTH REPORT: /dev/$dev ==="; \\
-  smartctl -a /dev/$dev; \\
-done) | nc termbin.com 9999\
-
-: 1770504104:0;for dev in $(lsblk -dno KNNAME | grep -v 'loop'); do smartctl -t long /dev/$dev; done && while true; do clear; for dev in $(lsblk -dno KNNAME | grep -v 'loop'); do echo "--- /dev/$dev Progress ---"; smartctl -c /dev/$dev | grep -iE "progress|remaining|status"; done; sleep 30; done\
-
-: 1770504121:0;for dev in $(lsblk -dno NAME | grep -v 'loop'); do smartctl -t long /dev/$dev; done && while true; do clear; for dev in $(lsblk -dno NAME | grep -v 'loop'); do echo "--- /dev/$dev Progress ---"; smartctl -c /dev/$dev | grep -iE "progress|remaining|status"; done; sleep 30; done\
-
-: 1770504135:0;for dev in $(lsblk -dpno NAME | grep -v 'loop'); do smartctl -t long "$dev"; done && while true; do clear; for dev in $(lsblk -dpno NAME | grep -v 'loop'); do echo "--- $dev Progress ---"; smartctl -c "$dev" | grep -iE "progress|remaining|status"; done; sleep 30; done\
-
-: 1770504764:0;sudo bash -c 'for dev in $(lsblk -dpno NAME | grep -v "loop"); do smartctl -t long "$dev"; done && while true; do clear; for dev in $(lsblk -dpno NAME | grep -v "loop"); do echo "--- $dev Progress ---"; smartctl -c "$dev" | grep -iE "progress|remaining|status"; done; sleep 30; done'\
-
-: 1770505597:0;lsblk -f
-: 1770508009:0;ls /etc/
-: 1770508013:0;ls /etc/os-release
-: 1770508029:0;cat /etc/os-release
-: 1770508115:0;pass f-list.net
-: 1770511639:0;pavucontrol-qt
-: 1770511757:0;nupdate
-: 1770511879:0;pavucontrol-qt
-: 1770511942:0;gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'\
-
-: 1770511955:0;nix-shell -p glib --run "gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'"\
-
-: 1770511968:0;export GTK_THEME=Adwaita:dark
-: 1770511971:0;pavucontrol-qt
-: 1770511987:0;nix-shell -p pavucontrol
-: 1770512052:0;nupdate
-pavucontrol
-: 1770512524:0;nupdate
-: 1770517465:0;.config/waybar/waybar.sh
-: 1770517691:0;smartctl -a /dev/nvme0n1
-: 1770517698:0;smartctl -a /dev/sda
-: 1770517799:0;sudo smartctl -a /dev/sda
-: 1770556579:0;pavucontrol
-: 1770580158:0;sudo smartctl -a /dev/nvme1n1 > nvmetest.txt
-: 1770580309:0;sudo smartctl -t long  /dev/nvme1n1 > nvmetest.txt
-: 1770580379:0;smartctl -d sat -a -t long /dev/nvme> nvme_test.txt
-: 1770580402:0;smartctl -d sat -a -t long /dev/nvme0n1> nvme_test.txt
-: 1770580412:0;sudo smartctl -d sat -a -t long /dev/nvme0n1> nvme_test.txt
-: 1770580504:0;smartctl man
-: 1770580509:0;smartctl -h
-: 1770581102:0;watch cat nvmetest.txt
-: 1770587520:0;grep . /sys/block/**/device/timeout
-: 1770587531:0;grep . /sys/block/sda/device/timeout
-: 1770587567:0;grep . /sys/block/sdb/device/timeout
-: 1770587571:0;grep . /sys/block/nvme/device/timeout
-: 1770587577:0;grep . /sys/block/nvme0n1 /device/timeout
-: 1770587579:0;grep . /sys/block/nvme0n1/device/timeout
-: 1770587600:0;grep . /sys/block/nvme1n1/device/timeout
-: 1770589817:0;smartctl -l scterc /dev/sda
-: 1770589818:0;smartctl -l scterc /dev/sdb
-: 1770589820:0;sudo smartctl -l scterc /dev/sdb
-: 1770589829:0;sudo smartctl -l scterc /dev/sda
-: 1770589838:0;lsblk -f
-: 1770590728:0;systemctl list-timers | grep btrfs
-: 1770593175:0;nmtui
-: 1770594282:0;nupdate
-: 1770594863:0;lsblk -f
-: 1770594875:0;sudo mkfs.btrfs -L "BackupDrive" /dev/sdb
-: 1770594925:0;sudo mkfs.btrfs -f -L "main_backup_drive" /dev/sdb
-: 1770594944:0;lsblk -f /dev/sdb
-: 1770595032:0;lsblk -f
-: 1770595069:0;sudo btrfs subvolume list /
-: 1770595164:0;pwd
-: 1770595245:0;lsblk -f
-: 1770595799:0;sudo mkdir -p /mnt/main_backup
-: 1770595810:0;sudo mount UUID=42f626e1-0d16-4feb-9286-c5690454e5bf /mnt/main_backup
-: 1770595876:0;nupdate
-: 1770595903:0;cd /mnt
-: 1770595904:0;ls
-: 1770595912:0;lsblk -f
-: 1770595925:0;nupdate
-: 1770596177:0;lsblk 0f
-: 1770596179:0;lsblk -f
-: 1770596194:0;mkdir /mnt/main_backup/test
-: 1770596197:0;sudo mkdir /mnt/main_backup/test
-: 1770596204:0;rm /mnt/main_backup/test
-: 1770596207:0;sudo rm /mnt/main_backup/test
-: 1770596221:0;sudo rm -r /mnt/main_backup/test
-: 1770597186:0;lsblk -f
-: 1770597424:0;ssh-keygen -f ssh_key -t ed25519 -C "Borg Backup"
-: 1770597642:0;cat .ssh/id_ed25519
-: 1770597648:0;cat .ssh/id_ed25519.pub
-: 1770597874:0;sudo su -
-: 1770598239:0;sudo su
-: 1770598677:0;cd .ssh
-: 1770598678:0;ls -a
-: 1770598722:0;cd ..
-: 1770598722:0;ls
-: 1770598731:0;rm ssh_key ssh_key.pub
-: 1770598743:0;ls
-: 1770598791:0;lsblk -f
-: 1770599180:0;nupdate
-: 1770600433:0;vorta
-: 1770600517:0;sudo chown moonburst:users /mnt/main_backup
-: 1770602447:0;lsblk -f
-: 1770603012:0;borg create --dry-run --list /mnt/main_backup::testrun /home/moonburst\
-
-: 1770603854:0;cd Games
-: 1770603854:0;ls
-: 1770603861:0;nano card\ ideas
-: 1770603953:0;nix-shell -p ncdu
-: 1770604326:0;git gc --aggressive --prune=now
-: 1770604553:0;lsblk -f
-: 1770605142:0;# You might need 'sudo' if you used the NixOS service wrapper\
-borg mount /mnt/main_backup::home-2026-02-08 /tmp/mybackupview
-: 1770605220:0;sudo chown moonburst:users /tmp/mybackupview\
-borg mount /mnt/main_backup::home-2026-02-08 /tmp/mybackupview
-: 1770605231:0;mkdir /tmp/mybackupview
-: 1770605233:0;sudo chown moonburst:users /tmp/mybackupview\
-borg mount /mnt/main_backup::home-2026-02-08 /tmp/mybackupview
-: 1770605265:0;borg list /mnt/main_backup
-: 1770605282:0;borg mount /mnt/main_backup::moonbeauty-2026-02-08-203528 /tmp/mybackupview
-: 1770605335:0;lsblk -f
-: 1770605351:0;borg info /mnt/main_backup::moonbeauty-2026-02-08-203528
-: 1770605419:0;cd /tmp/mybackupview/home/moonburst
-: 1770605419:0;ls
-: 1770605428:0;cp She\ Is\ The\ Light\ \(Original\ Song\).flac /mnt
-: 1770605431:0;sudo cp She\ Is\ The\ Light\ \(Original\ Song\).flac /mnt
-: 1770605506:0;borg umount /tmp/mybackupview
-ncdu
-# or specify the path:
-ncdu /home/moonburst
-ncdu /home/moonburst
-ncdu /home/moonburst
-ncdu /home/moonburst
-: 1770607062:0;borg list /mnt/main_backup
-: 1770608701:0;vorta
-: 1770609413:0;nix shell nixpkgs#age -c age-keygen -o ~/.config/sops/age/keys.txt
-: 1770609472:0;nix run nixpkgs\#ssh-to-age -- -private-key -i ~/.ssh/private > ~/.config/sops/age/keys.txt
-: 1770609519:0;nupdate
-: 1770609587:0;nix run nixpkgs#ssh-to-age -- -private-key -i ~/.ssh/private > ~/.config/sops/age/keys.txt
-: 1770609613:0;sops
-: 1770609620:0;mkdir -p ~/.config/sops/age\
-
-: 1770609634:0;nix run nixpkgs#ssh-to-age -- -private-key -i ~/.ssh/id_ed25519 > ~/.config/sops/age/keys.txt\
-
-: 1770609732:0;cat ~/.config/sops/age/keys.txt
-: 1770609764:0;nix run nixpkgs#age -- -y ~/.config/sops/age/keys.txt
-: 1770609786:0;nix run nixpkgs#age -- --decrypt -y ~/.config/sops/age/keys.txt
-: 1770610198:0;cat ~/.config/sops/age/keys.txt | nix run nixpkgs#age -- -y
-: 1770610224:0;nix run nixpkgs#ssh-to-age -- -list -private-key -i ~/.config/sops/age/keys.txt\
-
-: 1770610235:0;nix-shell -p age --run "age-keygen -y ~/.config/sops/age/keys.txt"\
-
-: 1770610379:0;cd nixos-config
-: 1770610380:0;ls
-: 1770610542:0;nix-shell -p age --run "age-keygen -y ~/.config/sops/age/keys.txt"\
-
-: 1770610653:0;nolog
-: 1770612531:0;git add .
-: 1770612545:0;nupdate
-: 1770612604:0;git add .
-: 1770612614:0;sudo -k
-: 1770612618:0;sudo ls /
-: 1770612635:0;nupdate
-: 1770612709:0;git add .
-: 1770612734:0;sudo -k
-: 1770612738:0;sudo ls /
-: 1770612749:0;nupdate
-: 1770612820:0;export SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt\
-nix run nixpkgs#sops -- secrets.yaml\
-
-: 1770612847:0;export SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt\
-nix run nixpkgs#sops -- ./secrets.yaml\
-
-: 1770612874:0;cd ~/nixos-config\
-
-: 1770612877:0;export SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt\
-nix run nixpkgs#sops -- ./secrets.yaml\
-
-: 1770613105:0;cd .config/sops/age/
-: 1770613106:0;ls
-: 1770613141:0;vorta
-: 1770613203:0;lsblk -f
-: 1770613252:0;sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/example_key) \\
-  borg init --encryption=repokey-blake2 /mnt/main_backup
-: 1770613314:0;# WARNING: This permanently deletes all existing backups in that folder!\
-sudo rm -rf /path/to/your/repo\
-
-: 1770613317:0;sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/example_key) \\
-  borg init --encryption=repokey-blake2 /mnt/main_backup
-: 1770613323:0;cd /mnt
-: 1770613324:0;ls
-: 1770613328:0;ls main_backup
-: 1770613332:0;rm -rf main_backup
-: 1770613334:0;sudo rm -rf main_backup
-: 1770613360:0;cd /mnt
-: 1770613365:0; rm -rf main_backup
-: 1770613368:0;sudo  rm -rf main_backup
-: 1770613399:0;cd main_backup
 : 1770613399:0;ls
 : 1770613401:0;ls -a
 : 1770613405:0;cd ..
@@ -661,3 +96,515 @@ sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/example_key) \\
 : 1770615862:0;lsblk -f
 : 1770617722:0;cd nixos-config
 : 1770617724:0;git add .
+: 1770617733:0;git commit -m "updating for borg and sops"
+: 1770617780:0;git push
+: 1770618791:0;nupdate
+: 1770619861:0;lsblk -f
+: 1770620088:0;cd nixos-config
+: 1770620089:0;ls
+: 1770620110:0;cat secrets.yaml
+: 1770620183:0;cd ~/.config/sops/age
+: 1770620184:0;ls
+: 1770620186:0;cat keys.txt
+: 1770620632:0;pass boardgame-online.com
+: 1770657093:0;cat UPDATE_FAILED.txt
+: 1770657104:0;nupdate
+: 1770657206:0;nix log /nix/store/h4ky63q99kk38gxczv3fand3xd1li3ns-ly-1.3.1.drv
+: 1770662453:0;nix-shell -p freenet
+: 1770669831:0;nupdate > test.txt
+: 1770672124:0;lsblk 0f
+: 1770672126:0;lsblk -f
+: 1770672358:0;cd /mnt/nvme1tb
+: 1770672359:0;ls
+: 1770672361:0;ls -a
+ncdu /home/moonburst/
+: 1770675616:0;nix-shell -p ncdu
+ncdu /mnt/
+: 1770679325:0;nupdate
+: 1770682997:0;git restore flake.lock
+: 1770683793:0;cd .config
+: 1770683794:0;ls
+freenet 
+freenet 
+freenet 
+freenet 
+freenet 
+: 1770691589:0;lsblk -f
+: 1770691773:0;nupdate
+: 1770691919:0;lsblk -f
+: 1770692129:0;nix-shell -p wormhole-rs
+: 1770692956:0;ls
+: 1770692963:0;sha256sum list
+: 1770693063:0;nix-shell -p croc
+wormhole-rs --help
+: 1770759870:0;cd /mnt/3TBHDD
+: 1770759877:0;mkdir Sonata_Backup
+: 1770761611:0;lsblk -f
+croc
+croc --help
+croc out /mnt/3TBHDD/Sonata_Backup/ 8514-think-symbol-music
+croc out /mnt/3TBHDD/Sonata_Backup/
+croc --classic
+exit
+: 1770761926:0;nix-shell -p croc
+: 1770762284:0;cd /mnt/3TBHDD/Sonata_Backup
+: 1770762287:0;touch test.txt
+: 1770762288:0;ls
+croc out /mnt/3TBHDD/Sonata_Backup/ 8514-think-symbol-music
+croc out /mnt/3TBHDD/Sonata_Backup/
+curl https://getcroc.schollz.com | bash
+croc --no-local --out /mnt/3TBHDD/Sonata_Backup/ --yes 2654-next-mimic-support
+croc --no-local --out /mnt/3TBHDD/Sonata_Backup/ --yes
+croc -no-local --out /mnt/3TBHDD/Sonata_Backup/ --yes
+croc --no-local 2654-next-mimic-support
+croc 
+croc --no-local recieve
+croc --no-local --out /mnt/3TBHDD/Sonata_Backup/
+croc --no-local --out /mnt/3TBHDD/Sonata_Backup/ 2654-next-mimic-support
+nix-shell -p croc --run "croc --version"
+croc --out /mnt/3TBHDD/Sonata_Backup/ receive --no-local 2654-next-mimic-support
+croc receive --no-local 2654-next-mimic-support
+croc --out /mnt/3TBHDD/Sonata_Backup/ receive 2654-next-mimic-support
+exit
+: 1770762317:0;nix-shell -p croc --run "croc --out /mnt/3TBHDD/Sonata_Backup/ receive 2654-next-mimic-support"
+: 1770762351:0;nix-shell -p croc 
+: 1770762427:0;ls
+: 1770762429:0;rm test.txt
+croc --relay "croc.schollz.com:9009" receive --no-local [code-phrase]
+croc --relay "croc.schollz.com:9009" receive --no-local 2654-next-mimic-support
+exit
+: 1770762583:0;nix-shell -p magic-wormhole
+: 1770771993:0;nupdate
+: 1770772203:0;cd nixos-config
+: 1770772204:0;ls
+: 1770772225:0;nix flake update
+: 1770772279:0;nupdate
+: 1770775085:0;nix flake update nixpkgs
+: 1770775090:0;nupdate
+: 1770775693:0;sudo nix-store --verify --check-contents --repair
+: 1770776340:0;nix flake update
+: 1770776345:0;sudo nixos-rebuild switch --flake .
+: 1770776361:0;sudo nix-collect-garbage -d
+: 1770776439:0;sudo nixos-rebuild switch --upgrade
+: 1770776604:0;nolog
+wormhole receive 60-decadence-rhythm
+sha256sum stump_backup.tar.gz 
+: 1770790813:0;nupdate
+: 1770790950:0;nix-channel --update
+: 1770790990:0;nupdate
+: 1770792319:0;nix log /nix/store/h4ky63q99kk38gxczv3fand3xd1li3ns-ly-1.3.1.drv
+: 1770792352:0;sudo nix-channel --update
+: 1770834205:0;lsblk -f
+: 1770834339:0;borg list
+: 1770834344:0;borg list /mnt/main_backup
+: 1770834371:0;borg list
+: 1770834457:0;borg list /mnt/main_backup
+: 1770834511:0;sudo borg list /mnt/main_backup
+: 1770834645:0;sudo borg list /mnt/main_backup::MoonBeauty-Backup-2026-02-11T00:00:01
+: 1770834679:0;sudo borg list --short /mnt/main_backup::moonbeauty-MoonBeauty-Backup-2026-02-11T00:00:01
+: 1770834987:0;find ~ -type d -name "Nextcloud"
+: 1770835001:0;find ~ -ipath "*nextcloud*"
+: 1770835024:0;cat scripts/cron_scripts/nextcloud_upload.sh
+: 1770835076:0;cat Sync/.nextcloudsync.log
+: 1770835089:0;cat Music/Music.lossless/Music/.nextcloudsync.log
+: 1770835266:0;cd /mnt
+: 1770835274:0;mkdir nextcloud
+: 1770835325:0;rclone mount nextcloud /mnt/nextcloud --vfs-cache-mode full &
+: 1770835351:0;rclone mount nextcloud: /mnt/nextcloud --vfs-cache-mode full &
+: 1770835357:0;ls
+: 1770835369:0;sudo mkdir nextcloud
+: 1770835374:0;rclone mount nextcloud: /mnt/nextcloud --vfs-cache-mode full &
+: 1770835376:0;ls
+: 1770835398:0;rclone listremotes
+: 1770835417:0;rclone mount NextCloud: /mnt/nextcloud --vfs-cache-mode full &\
+
+: 1770835435:0;sudo chown moonburst:users /mnt/nextcloud\
+sudo chmod 755 /mnt/nextcloud\
+
+: 1770835437:0;rclone mount NextCloud: /mnt/nextcloud --vfs-cache-mode full &\
+
+: 1770835712:0;lsblk 0f
+: 1770835714:0;lsblk -f
+: 1770835796:0;nupdate
+: 1770835883:0;cd /mnt/nextcloud/pass
+: 1770835884:0;ls
+: 1770835987:0;nupdate
+: 1770836016:0; cd /mnt/main_backup
+: 1770836016:0;ls
+: 1770836034:0;cd /mnt/nextcloud
+: 1770836040:0;mkdir backups
+: 1770836048:0;borg init --encryption=repokey-blake2 /mnt/nextcloud/backups
+: 1770836912:0;cd .config/borg
+: 1770836912:0;ls
+: 1770836943:0;cd /etc
+: 1770836943:0;ls
+: 1770836950:0;ls -a
+: 1770837018:0;sudo borg info /mnt/main_backup
+: 1770837089:0;grep -r "passphraseFile" /etc/nixos/
+: 1770837111:0;sudo grep -r "passphraseFile" /etc/nixos/\
+
+: 1770837139:0;systemctl cat borgbackup-job-MoonBeauty-Backup.service | grep -E "BORG_PASSPHRASE|pass"
+: 1770837148:0;sudo grep -rE "passCommand|passphrase" /etc/nixos/
+: 1770837271:0;borg init --encryption=repokey-blake2 /mnt/nextcloud/backups
+: 1770837303:0;sudo borg delete /mnt/nextcloud/backups
+: 1770837319:0;# Replace 'example_key' with the actual name of your secret in Nix\
+export BORG_PASSCOMMAND="cat /run/secrets/example_key"\
+\
+sudo -E borg init --encryption=repokey-blake2 /mnt/nextcloud/backups\
+
+: 1770837355:0;fusermount -u /mnt/nextcloud
+: 1770837361:0;rclone mount NextCloud: /mnt/nextcloud --vfs-cache-mode full --allow-other &
+: 1770837382:0;sudo chown -R moonburst:users /mnt/nextcloud/backups\
+sudo chmod -R 755 /mnt/nextcloud/backups
+: 1770837422:0;# Replace 'example_key' with the actual name of your secret in Nix\
+export BORG_PASSCOMMAND="cat /run/secrets/example_key"\
+\
+sudo -E borg init --encryption=repokey-blake2 /mnt/nextcloud/backups\
+
+: 1770837446:0;rm -r nextcloud/backups
+: 1770837459:0;cd /mnt/nextcloud
+: 1770837460:0;ls
+: 1770837498:0;mkdir backups
+: 1770837503:0;cd nextcloud
+: 1770837504:0;mkdir backups
+: 1770837507:0;ls
+: 1770837535:0;# Replace 'example_key' with the actual name of your secret in Nix\
+export BORG_PASSCOMMAND="cat /run/secrets/example_key"\
+\
+sudo -E borg init --encryption=repokey-blake2 /mnt/nextcloud/backups\
+
+: 1770837542:0;ls
+: 1770837588:7;rclone purge NextCloud:backups/lock.exclusive\
+rclone purge NextCloud:backups/lock.roster\
+
+: 1770837618:0;rclone purge NextCloud:backups/lock.exclusive\
+
+: 1770837647:0;# Force unmount the hung drive\
+sudo fusermount -uz /mnt/nextcloud\
+\
+# Clear rclone's local cache folder (this is safe; it just removes temp data)\
+rm -rf ~/.cache/rclone/vfs/NextCloud\
+
+: 1770837663:0;sudo fusermount -uz /mnt/nextcloud\
+rm -rf ~/.cache/rclone/vfs/NextCloud\
+
+: 1770837672:0;rclone mount NextCloud: /mnt/nextcloud --vfs-cache-mode full --allow-other --dir-cache-time 1s
+: 1770837704:0;cd ~
+: 1770837706:0;# Force unmount any stuck sessions\
+sudo fusermount -uz /mnt/nextcloud\
+\
+# Re-create the folder if it was accidentally deleted\
+sudo mkdir -p /mnt/nextcloud\
+sudo chown moonburst:users /mnt/nextcloud\
+
+: 1770837713:0;rclone mount NextCloud: /mnt/nextcloud --vfs-cache-mode full --allow-other --dir-cache-time 1s &\
+
+: 1770837717:0;ls /mnt/nextcloud
+: 1770837721:0;ls
+: 1770837746:0;# Replace 'example_key' with the actual name of your secret in Nix\
+export BORG_PASSCOMMAND="cat /run/secrets/example_key"\
+\
+sudo -E borg init --encryption=repokey-blake2 /mnt/nextcloud/backups\
+
+: 1770837801:0;export BORG_PASSCOMMAND="cat /run/secrets/example_key"
+: 1770837813:0;sudo -E borg list /mnt/nextcloud
+: 1770837825:0;sudo -E borg list /mnt/nextcloud/backups
+: 1770837854:0;nupdate
+: 1770837871:0;systemctl cat borgbackup-job-MoonBeauty-Nextcloud.service | grep -E "BORG_PASSCOMMAND|pass"
+: 1770837894:0;# Set the environment variable to use the SOPS secret\
+export BORG_PASSCOMMAND="cat /run/secrets/example_key"\
+\
+# List the repo; -E ensures sudo sees your exported variable\
+sudo -E borg list /mnt/nextcloud/backups\
+
+: 1770837903:0;sudo borg info /mnt/nextcloud/backups
+: 1770837921:0;ls /mnt/nextcloud\
+
+: 1770837938:0;export BORG_PASSCOMMAND="cat /run/secrets/example_key"\
+sudo -E borg init --encryption=repokey-blake2 /mnt/nextcloud/backups
+: 1770837949:0;cd /mnt/nextcloud
+: 1770837950:0;ls
+: 1770837954:0;rm -r borg_repo
+: 1770837959:0;ls
+: 1770837976:0;sudo -E borg info /mnt/nextcloud/backups
+: 1770838045:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
+: 1770838049:0;sudo journalctl -fu borgbackup-job-MoonBeauty-Nextcloud.service
+: 1770838068:0;nupdate
+: 1770838116:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
+: 1770838120:0;sudo journalctl -fu borgbackup-job-MoonBeauty-Nextcloud.service
+: 1770838133:0;sudo systemctl restart borgbackup-job-MoonBeauty-Nextcloud.service
+: 1770838134:0;sudo journalctl -fu borgbackup-job-MoonBeauty-Nextcloud.service
+: 1770838188:0;nupdate
+: 1770838208:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
+: 1770838210:0;sudo journalctl -fu borgbackup-job-MoonBeauty-Nextcloud.service
+: 1770838241:0;ls /mnt/nextcloud
+: 1770838243:0;ls
+: 1770838263:0;nupdate
+: 1770838283:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
+: 1770838289:0;sudo journalctl -fu borgbackup-job-MoonBeauty-Nextcloud.service
+: 1770838379:0;export BORG_PASSCOMMAND="cat /run/secrets/example_key"\
+sudo -E borg list /mnt/nextcloud/backups\
+
+: 1770838416:0;ls /mnt/nextcloud
+: 1770838434:0;# Force unmount the old one\
+fusermount -u /mnt/nextcloud\
+\
+# Start it with --allow-other\
+rclone mount NextCloud: /mnt/nextcloud --vfs-cache-mode full --allow-other &\
+
+: 1770838455:0;sudo fusermount -uz /mnt/nextcloud\
+
+: 1770838484:0;# Find and kill any running rclone mount processes\
+pkill -f "rclone mount NextCloud:"\
+
+: 1770838491:0;# -z is 'lazy' unmount; it detaches the mountpoint even if it's busy\
+sudo umount -l /mnt/nextcloud\
+
+: 1770838492:0;sudo umount -l /mnt/nextcloud
+: 1770838503:0;cd ~\
+
+: 1770838513:0;sudo rm -rf /mnt/nextcloud/*
+: 1770838516:0;rclone mount NextCloud: /mnt/nextcloud --vfs-cache-mode full --allow-other --dir-cache-time 10s &
+: 1770838524:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service\
+# Watch it live\
+sudo journalctl -fu borgbackup-job-MoonBeauty-Nextcloud.service\
+
+: 1770838534:0;cd /mnt
+: 1770838535:0;cd nextcloud
+: 1770838536:0;ls
+: 1770838547:0;cd backups
+: 1770838548:0;ls
+: 1770838551:0;cd ..
+: 1770838585:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service\
+# Watch it live\
+sudo journalctl -fu borgbackup-job-MoonBeauty-Nextcloud.service\
+
+: 1770838588:0;# 1. Stop the rclone process\
+pkill -f "rclone mount NextCloud:"\
+\
+# 2. Force unmount the hung directory\
+sudo umount -l /mnt/nextcloud\
+\
+# 3. CRITICAL: Wipe the rclone cache for this remote\
+rm -rf ~/.cache/rclone/vfs/NextCloud\
+
+: 1770838598:0;# Remove the stuck lock directory\
+rclone purge NextCloud:backups/lock.exclusive\
+\
+# Remove the stuck roster file\
+rclone deletefile NextCloud:backups/lock.roster\
+
+: 1770838616:0;rclone mount NextCloud: /mnt/nextcloud \\
+  --vfs-cache-mode full \\
+  --allow-other \\
+  --vfs-cache-max-age 1h \\
+  --vfs-backlog 10 \\
+  --dir-cache-time 5s &\
+
+: 1770838623:0;export BORG_PASSCOMMAND="cat /run/secrets/example_key"\
+sudo -E borg break-lock /mnt/nextcloud/backups
+: 1770838643:0;cd ~\
+
+: 1770838646:0;sudo fusermount -uz /mnt/nextcloud\
+sudo rm -rf /mnt/nextcloud/*\
+
+: 1770838668:0;rclone mount NextCloud: /mnt/nextcloud \\
+  --vfs-cache-mode full \\
+  --allow-other \\
+  --vfs-cache-max-age 1h \\
+  --dir-cache-time 5s &\
+
+: 1770838672:0;rclone purge NextCloud:backups/lock.exclusive\
+rclone deletefile NextCloud:backups/lock.roster\
+
+: 1770838689:0;cd /mnt
+: 1770838691:0;cd nextcloud
+: 1770838691:0;ls
+: 1770838753:0;rclone delete NextCloud: --rmdirs
+: 1770838791:0;cd /mnt/nextcloud
+: 1770838791:0;ls
+: 1770838824:0;cd .config/rclone
+: 1770838825:0;ls
+: 1770838827:0;cat rclone.conf
+: 1770838884:0;pass valeindustries.net
+: 1770838908:0;ls
+: 1770838942:0;clear
+: 1770838943:0;ls
+: 1770839014:0;rclone purge NextCloud: --rmdirs
+: 1770839088:0;lsblk -f
+: 1770839239:0;nix-shell -p ncdu
+: 1770839421:0;nupdate
+: 1770839508:0;sudo -E borg info /mnt/main_backup
+: 1770839573:0;mkdir /tmp/borgmount
+: 1770839598:0;borg mount /mnt/main_backup /tmp/borgmount
+: 1770839603:0;sudo borg mount /mnt/main_backup /tmp/borgmount
+: 1770840104:0;rm -rf .local/share/freenet
+: 1770840788:0;ls
+: 1770841793:0;nupdate
+: 1770841857:0;cd /mnt/nextcloud
+: 1770841861:0;ls
+: 1770841886:0;mkdir -p /mnt/nextcloud/backups
+: 1770841892:0;export BORG_PASSCOMMAND="cat /run/secrets/example_key"\
+\
+sudo -E borg init --encryption=repokey-blake2 /mnt/nextcloud/backups\
+
+: 1770841958:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
+: 1770841961:0;sudo journalctl -fu borgbackup-job-MoonBeauty-Nextcloud.service\
+
+: 1770841976:0;export BORG_PASSCOMMAND="cat /run/secrets/example_key"
+: 1770841976:0;sudo -E borg list /mnt/nextcloud/backups
+: 1770842006:0;sudo journalctl -fu borgbackup-job-MoonBeauty-Nextcloud.service\
+
+: 1770842073:0;export BORG_PASSCOMMAND="cat /run/secrets/example_key"
+: 1770842073:0;sudo -E borg list /mnt/nextcloud/backups
+: 1770842096:0;cd /mnt/nextcloud
+: 1770842096:0;ls
+: 1770842099:0;cd backups
+: 1770842100:0;ls
+: 1770842191:0;sudo -E borg list --progress --debug /mnt/nextcloud/backups
+: 1770842264:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service\
+
+: 1770842292:0;export BORG_PASSCOMMAND="cat /run/secrets/example_key"\
+sudo -E borg list /mnt/nextcloud/backups\
+
+: 1770843142:0;sudo -E borg create --stats --progress /mnt/nextcloud/backups::Test-$(date +%s) /etc/hostname\
+
+: 1770843402:0;nupdate
+: 1770843444:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
+: 1770843449:0;sudo journalctl -fu borgbackup-job-MoonBeauty-Nextcloud.service\
+
+: 1770843685:0;sudo -E borg create --stats --progress /mnt/nextcloud/backups::Test-$(date +%s) /etc/hostname\
+
+: 1770845803:0;journalctl -f
+: 1770849074:0;cd /mnt/nextcloud
+: 1770849075:0;ls
+: 1770849192:0;cd .config/
+: 1770849196:0;ls
+: 1770849201:0;cd sops/age
+: 1770849202:0;ls
+: 1770849476:0;cat keys.txt
+: 1770849688:0;cd ..
+: 1770849690:0;cd borg
+: 1770849691:0;ls
+: 1770849694:0;ls -a
+: 1770849695:0;cd security
+: 1770849696:0;ls
+: 1770849702:0;cd ..
+: 1770849703:0;ls
+: 1770849867:0;pass google.com
+: 1770850688:0;nupdate
+ncdu ~/
+ncdu /mnt/main_backup/
+ncdu /mnt/main_backup/
+ncdu /tmp/borgmount 
+sudo ncdu /tmp/borgmount 
+: 1770851907:0;SOPS_AGE_KEY_FILE=~/.config/sops/age/new_name.txt sops -d your_secrets.yaml
+: 1770851915:0;SOPS_AGE_KEY_FILE=~/.config/sops/age/moon_keys.txt sops -d your_secrets.yaml
+: 1770851919:0;SOPS_AGE_KEY_FILE=~/.config/sops/age/moon_keys.txt sops -d secrets.yaml
+: 1770851922:0;cd nixos-config
+: 1770851923:0;SOPS_AGE_KEY_FILE=~/.config/sops/age/moon_keys.txt sops -d secrets.yaml
+: 1770851942:0;sudo cat /run/secrets/borg_passphrase
+: 1770851995:0;journalctl -u sops-nix
+: 1770852002:0;ls -la /run/secrets/
+: 1770852004:0;sudo ls -la /run/secrets/
+: 1770852062:0;cd nixos-config
+: 1770852063:0;ls
+: 1770852065:0;nano secrets.yaml
+: 1770852101:0;sudo ls -l /run/secrets/\
+
+: 1770852142:0;sudo ls -la /run/secrets/example_key
+: 1770852153:0;sops secrets.yaml\
+
+: 1770852161:0;sops secrets.yaml
+: 1770852164:0;cd nixos-config
+: 1770852165:0;sops secrets.yaml
+: 1770852215:0;SOPS_AGE_KEY_FILE=~/.config/sops/age/moon_keys.txt sops secrets.yaml\
+
+: 1770852412:0;nupdate
+: 1770852517:0;sops secrets.yaml\
+
+: 1770852635:0;cd nixos-config
+: 1770852636:0;sops secrets.yaml\
+
+: 1770852720:0;cd /run/secrets
+: 1770852721:0;ls
+: 1770852723:0;ls -a
+: 1770852724:0;sudo ls -a
+: 1770853297:0;cd /rsec
+: 1770853300:0;cd /run/secrets
+: 1770853302:0;ls -a
+: 1770853304:0;sudo ls -a
+: 1770853327:0;sops -d $(nix-instantiate --eval -E '(import <nixpkgs> {}).config.sops.defaultSopsFile' | tr -d '"')\
+
+: 1770853358:0;cd nixos-config
+: 1770853360:0;git add .
+: 1770853363:0;nupdate
+: 1770853379:0;sops -d $(nix-instantiate --eval -E '(import <nixpkgs> {}).config.sops.defaultSopsFile' | tr -d '"')\
+
+: 1770853418:0;sops -d secrets.yaml | grep sops_key
+: 1770853519:0;cat ${config.sops.secrets.sops_key.path}
+: 1770853673:0;cd /run/secrets
+: 1770853677:0;sudo ls -a
+: 1770853755:0;# Point to your key\
+export SOPS_AGE_KEY_FILE=~/.config/sops/age/moon_keys.txt\
+\
+# Decrypt and look for the label\
+sops -d secrets.yaml | grep sops_key\
+
+: 1770853772:0;cd nixos-config
+: 1770853774:0;# Point to your key\
+export SOPS_AGE_KEY_FILE=~/.config/sops/age/moon_keys.txt\
+\
+# Decrypt and look for the label\
+sops -d secrets.yaml | grep sops_key\
+
+: 1770853786:0;sudo ls -a
+: 1770853861:0;cd ~/nixos-config
+: 1770853864:0;sops -d secrets.yaml | grep sops_key
+: 1770853869:0;sops -d secrets.yaml 
+: 1770853947:0;journalctl -u sops-nix.service
+: 1770853979:0;grep -r "example_key" ~/nixos-config
+: 1770854002:0;grep -r "sops_key" ~/nixos-config
+: 1770854026:0;cd ~/nixos-config\
+git add .\
+
+: 1770854029:0;sudo nixos-rebuild switch --flake .\
+
+: 1770854042:0;sudo ls -l /run/secrets/
+: 1770854063:0;ls -l /run/secrets/example_key
+: 1770854070:0;sudo rm -rf /run/secrets\
+
+: 1770854074:0;sudo nixos-rebuild switch --flake .\
+
+: 1770854090:0;ls -l /run/secrets/
+: 1770854215:0;ls ~/.config/sops/age/
+: 1770854223:0;ls ~/nixos-config
+: 1770854228:0;sudo ls -l /run/secrets/
+: 1770854258:0;sudo ls -l /run/secrets/sops_key\
+
+: 1770854267:0;sudo ls -l /run/secrets/
+: 1770854270:0;nupdate
+: 1770854282:0;sudo ls -l /run/secrets/
+: 1770854290:0;sudo ls /run/secrets/
+: 1770854294:0;sudo ls -a /run/secrets/
+: 1770854299:0;sudo ls -a /run/
+: 1770854304:0;cd /run
+: 1770854304:0;ls
+: 1770854308:0;cd secrets
+: 1770854308:0;ls
+: 1770854332:0;sudo ls -l /run/secrets/sops_key\
+
+: 1770854362:0;cd nixos-config
+: 1770854364:0;git add .
+: 1770854385:0;sudo nixos-rebuild switch --flake .\
+
+: 1770854410:0;sudo ls -a /run/secrets/
+: 1770854477:0;git add .
+: 1770854482:0;nupdate
+: 1770854496:0;sudo ls -a /run/secrets/
+: 1770854527:0;nix-instantiate --eval -E '(import ./. {}).nixosConfigurations.moonbeauty.config.sops.age.keyFile'
+: 1770854540:0;nix eval .#nixosConfigurations.moonbeauty.config.sops.defaultSopsFile
+: 1770854563:0;sudo /run/current-system/activate\
+
+: 1770854567:0;sudo ls -a /run/secrets/
+: 1770854597:0;git add .

@@ -31,7 +31,7 @@
 
   boot.initrd.availableKernelModules = [ "nvme" "xhci_pci" "ahci" "usbhid" "usb_storage" "sd_mod" "vfio_pci" "vfio" "vfio_iommu_type1"];
   boot.kernelModules = [ "kvm-amd"  "i2c-dev" "i2c-piix4" "kvmfr" "vendor-reset"];
-boot.extraModulePackages = with config.boot.kernelPackages; [
+  boot.extraModulePackages = with config.boot.kernelPackages; [
   kvmfr
   vendor-reset
 ];
