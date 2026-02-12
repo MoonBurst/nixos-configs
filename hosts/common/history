@@ -639,3 +639,40 @@ sops -d secrets.yaml | grep sops_key\
 git commit -m "force sync"\
 sudo nixos-rebuild switch --flake . --force\
 
+: 1770854860:0;nupdate
+: 1770854869:0;nix eval .#nixosConfigurations.moonbeauty.config.sops.secrets\
+
+: 1770854887:0;cd /run/secrets
+: 1770854901:0;sudo ls -la /run/secrets-for-users/
+: 1770854940:0;cd /run
+: 1770854940:0;ls
+: 1770854943:0;cd secrets
+: 1770854943:0;ls
+: 1770854950:0;cd secrets-for-users
+: 1770854951:0;ls
+: 1770854954:0;sudo ls
+: 1770854966:0;sudo cat /run/secrets-for-users/sops_key\
+
+: 1770855106:0;nupdate
+: 1770855147:0;sudo ls -l /run/secrets/sops_key\
+
+: 1770855154:0;cd /run
+: 1770855155:0;ls
+: 1770855157:0;cd secrets
+: 1770855194:0;nupdate
+: 1770855231:0;sudo systemctl stop nixos-rebuild-switch-to-configuration.service\
+sudo systemctl reset-failed nixos-rebuild-switch-to-configuration.service\
+
+: 1770855246:0;cd ~/nixos-config\
+git add .\
+
+: 1770855251:0;nupdate
+: 1770855270:0;sudo ls -l /run/secrets/sops_key\
+
+: 1770855306:0;sudo cat /run/secrets/sops_key\
+
+: 1770855314:0;sudo BORG_PASSCOMMAND="cat /run/secrets/sops_key" borg info /mnt/main_backup
+: 1770855348:0;journalctl -f
+: 0:0;
+: 1770855743:0;cd nixos-config/
+: 1770855746:0;git add .
