@@ -29,10 +29,7 @@ in {
 sops = {
   defaultSopsFile = ../../secrets.yaml;
   age.keyFile = "/home/moonburst/.config/sops/age/moon_keys.txt";
-
-  secrets.sops_key = {
-    neededForUsers = true;
-  };
+  secrets.sops_key = {};
 };
   # ====================================================================
   # SERVICES AND HARDWARE
