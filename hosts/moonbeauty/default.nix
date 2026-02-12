@@ -22,10 +22,10 @@
     defaultSopsFile = ../../secrets.yaml; # Adjust path to find your secrets.yaml
     defaultSopsFormat = "yaml";
 
-    age.keyFile = "/home/moonburst/.config/sops/age/keys.txt";
+    age.keyFile = "/home/moonburst/.config/sops/age/moon_keys.txt";
 
-    # This exposes the secret at /run/secrets/example_key
-    secrets.example_key = { };
+    # This exposes the secret at /run/secrets/sops_key
+    secrets.sops_key = { };
   };
   # ====================================================================
   # BORG BACKUP
@@ -38,7 +38,11 @@
     # Custom Rules
     "*/.steam"
     "*/.cache"
+    "*/.config/sops"
+    "*/.config/vesktop/sessionData"
+    "*/.config/horizon-electron/Partitions"
     "*/.var"
+    "*/.local/share/cargo"
     "*/.local/share/Steam"
     "*/.lmstudio"
     "*/.git/objects"
@@ -69,7 +73,57 @@
 
   encryption = {
     mode = "repokey-blake2";
-    passCommand = "cat ${config.sops.secrets.example_key.path}";
+    passCommand = "cat ${config.sops.secrets.sops_key.path}";
+  };
+};
+services.borgbackup.jobs."MoonBeauty-Nextcloud" = {
+  paths = [ "/home/moonburst" ];
+  repo = "/mnt/nextcloud/backups";
+  extraCreateArgs = "--stats --list --filter=AME --upload-buffer 256";
+   preHook = "if ! ${pkgs.util-linux}/bin/mountpoint -q /mnt/nextcloud; then echo 'Mount missing, skipping'; exit 1; fi";
+
+  exclude = [
+    # Custom Rules
+    "*/.steam"
+    "*/.cache"
+    "*/.config/sops"
+    "*/.config/vesktop/sessionData"
+    "*/.config/horizon-electron/Partitions"
+    "*/.var"
+    "*/.local/share/cargo"
+    "*/.local/share/Steam"
+    "*/.lmstudio"
+    "*/.git/objects"
+    "*/Games"
+    "*/stump_backup.tar.gz"
+    ""
+
+    # Trash & Temp
+    "*/.local/share/Trash"
+    "*/.Trash*"
+    "**/.tmp"
+    "**/*.swp"
+    "**/*.bak"
+
+    # Browser Caches (Simplified patterns)
+    "*/.cache/mozilla/firefox"
+    "*/.cache/google-chrome"
+    "*/.cache/BraveSoftware"
+    "*/.config/chromium/*/Service Worker/CacheStorage"
+
+    # Development Artefacts
+    "**/node_modules"
+    "**/.npm"
+    "**/__pycache__"
+    "**/.venv"
+    "**/.cargo"
+    "**/.rustup"
+    "**/.gradle"
+  ];
+
+  encryption = {
+    mode = "repokey-blake2";
+    passCommand = "cat ${config.sops.secrets.sops_key.path}";
   };
 };
 
@@ -112,7 +166,7 @@ services.udev.extraRules = ''
       # backs up passwords
 #      "0 0 * * 0 moonburst ~/scripts/cron_scripts/pass_copy.sh"
       # pushes a backup to nextcloud
-      "0 4 1 * * moonburst ~/scripts/cron_scripts/nextcloud_upload.sh"
+#  #     "0 4 1 * * moonburst ~/scripts/cron_scripts/nextcloud_upload.sh"
       # moves .desktop files from home folder to .local/share/applications (mostly for steam games)
       "0 */4 * * * moonburst ~/scripts/cron_scripts/mv-.desktop-to-applications.sh"
       # reminders

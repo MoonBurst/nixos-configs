@@ -28,9 +28,9 @@ in {
   # ====================================================================
 sops = {
   defaultSopsFile = ../../secrets.yaml;
-  age.keyFile = "/home/moonburst/.config/sops/age/keys.txt";
+  age.keyFile = "/home/moonburst/.config/sops/age/moon_keys.txt";
 
-  secrets.example_key = {
+  secrets.sops_key = {
     neededForUsers = true;
   };
 };
@@ -45,14 +45,15 @@ sops = {
     variant = "";
   };
 
-  hardware.graphics.enable = true;
-  hardware.graphics.enable32Bit = true;
-  programs.corectrl.enable = true;
-  security.polkit.enable = true;
-  services.dbus.enable = true;
-  services.gnome.gnome-keyring.enable = true;
-  security.pam.services.sway.enableGnomeKeyring = true;
-  programs.browserpass.enable = true;
+  hardware.graphics.enable = true;                         # Enable GPU acceleration (OpenGL/Vulkan)
+  hardware.graphics.enable32Bit = true;                   # Enable 32-bit graphics (required for Steam)
+  programs.corectrl.enable = true;                        # Enable CPU/GPU performance and fan control
+  security.polkit.enable = true;                          # Allow unprivileged apps to talk to privileged ones
+  services.dbus.enable = true;                            # Enable system messaging for desktop apps
+  services.gnome.gnome-keyring.enable = true;             # Enable secure password and SSH key storage
+  security.pam.services.sway.enableGnomeKeyring = true;   # Allow Sway to unlock the keyring on login
+  programs.browserpass.enable = true;                     # Enable 'pass' integration for browsers
+  programs.fuse.userAllowOther = true;                    # Allow non-root users to share mounted drives
 
   #--- Display Manager
   services.displayManager.ly.enable = true;
@@ -64,7 +65,7 @@ security.rtkit.enable = true;
     enable = true;
     alsa.enable = true;
     alsa.support32Bit = true;
-    pulse.enable = true;
+    pulse.enable = false;
     jack.enable = true;
 
     extraConfig.pipewire."10-quantum-size" = {
@@ -154,7 +155,7 @@ services.btrfs.autoScrub = {
     "/"
     "/mnt/3TBHDD"
     "/mnt/nvme1tb"
-    "/mnt/backup"
+    "/mnt/main_backup"
   ];
 };
 
@@ -181,7 +182,7 @@ systemd.services."notify-update-failure" = {
     USER_ID=$(id -u "$USER_NAME")
 
     echo "--- NIXOS AUTO-UPDATE FAILED ON $(date) ---" > "$LOG_FILE"
-    /run/current-system/sw/bin/journalctl -u nixos-upgrade.service -n 50 --no-pager >> "$LOG_FILE"
+    /run/current-system/sw/bin/journalctl -u nixos-upgrade.service -n 100 --no-pager >> "$LOG_FILE"
     chown "$USER_NAME":users "$LOG_FILE"
 
     if [ -S "/run/user/$USER_ID/bus" ]; then
@@ -312,7 +313,7 @@ services.smartd = {
   # USER CONFIGURATION
   # ====================================================================
   users.users.moonburst = {
-  hashedPasswordFile = config.sops.secrets.example_key.path;
+  hashedPasswordFile = config.sops.secrets.sops_key.path;
   isNormalUser = true;
   description = "MoonBurst";
   home = "/home/moonburst";
@@ -371,7 +372,7 @@ services.smartd = {
     binfmt = true;
     package = pkgs.appimage-run.override {
       extraPkgs = p: [
-        p.xorg.libxshmfence
+        p.libxshmfence
         # p.libxshmfence32
       ];
     };
@@ -433,6 +434,7 @@ services.smartd = {
     gdk-pixbuf # gtk image library
     rnnoise-plugin # mic noise suppression
     lsp-plugins # audio signal processing
+    ncdu #file managerment location/size checks
     # --- Btrfs Tools
     btrfs-progs # btrfs filesystem tools
     btrfs-assistant # btrfs gui manager
