@@ -608,3 +608,34 @@ git add .\
 
 : 1770854567:0;sudo ls -a /run/secrets/
 : 1770854597:0;git add .
+: 1770854600:0;git commit -m "updating for borg and sops"
+: 1770854603:0;nupdate
+: 1770854616:0;sudo ls -a /run/secrets/
+: 1770854621:0;sops -d /nix/store/wnnnvvhvql51bgannfpbbnkhkj2952vp-source/secrets.yaml
+: 1770854634:0;export SOPS_AGE_KEY_FILE=~/.config/sops/age/moon_keys.txt\
+sops -d /nix/store/wnnnvvhvql51bgannfpbbnkhkj2952vp-source/secrets.yaml\
+
+: 1770854674:0;nupdate
+: 1770854711:0;cd ~/.config/sops/age
+: 1770854713:0;ls
+: 1770854725:0;git add .\
+sudo nixos-rebuild switch --flake . --show-trace\
+
+: 1770854730:0;cd ~/nixos-config
+: 1770854731:0;git add .\
+sudo nixos-rebuild switch --flake . --show-trace\
+
+: 1770854767:0;cd /run/secrets
+: 1770854772:0;nix eval .#nixosConfigurations.moonbeauty.config.sops.secrets\
+
+: 1770854818:0;export SOPS_AGE_KEY_FILE=~/.config/sops/age/moon_keys.txt\
+sops -d secrets.yaml | grep sops_key\
+
+: 1770854826:0;cd nixos-config
+: 1770854827:0;export SOPS_AGE_KEY_FILE=~/.config/sops/age/moon_keys.txt\
+sops -d secrets.yaml | grep sops_key\
+
+: 1770854852:0;git add .\
+git commit -m "force sync"\
+sudo nixos-rebuild switch --flake . --force\
+
