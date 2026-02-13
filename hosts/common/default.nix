@@ -51,6 +51,7 @@ sops = {
   security.pam.services.sway.enableGnomeKeyring = true;   # Allow Sway to unlock the keyring on login
   programs.browserpass.enable = true;                     # Enable 'pass' integration for browsers
   programs.fuse.userAllowOther = true;                    # Allow non-root users to share mounted drives
+  services.journald.extraConfig = "SystemMaxUse=1G;"; # Keeps journal from growing beyond 1G
 
   #--- Display Manager
   services.displayManager.ly.enable = true;
@@ -392,7 +393,7 @@ services.smartd = {
   # ====================================================================
 
   environment.systemPackages = with pkgs; [
-
+fuse3
     kitty # gpu-accelerated terminal
     fastfetch # system info display
     gnome-system-monitor # graphical task manager

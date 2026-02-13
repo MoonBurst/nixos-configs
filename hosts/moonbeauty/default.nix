@@ -33,7 +33,16 @@
   services.borgbackup.jobs."MoonBeauty-Backup" = {
   paths = [ "/home/moonburst" ];
   repo = "/mnt/main_backup/";
+  startAt = "00:00";
   extraCreateArgs = "--stats --list --filter=AME";  #shows up in journalctl
+
+  # Prune Policy: Keep 7 daily, 4 weekly, and 6 monthly backups
+    prune.keep = {
+    daily = 7;
+    weekly = 4;
+    monthly = 6;
+  };
+
   exclude = [
     # Custom Rules
     "*/.steam"
@@ -76,12 +85,33 @@
     passCommand = "cat ${config.sops.secrets.sops_key.path}";
   };
 };
+
+
 services.borgbackup.jobs."MoonBeauty-Nextcloud" = {
   paths = [ "/home/moonburst" ];
-  repo = "/mnt/nextcloud/backups";
-  extraCreateArgs = "--stats --list --filter=AME --upload-buffer 256";
-   preHook = "if ! ${pkgs.util-linux}/bin/mountpoint -q /mnt/nextcloud; then echo 'Mount missing, skipping'; exit 1; fi";
+  repo = "/var/lib/borgbackup/nextcloud-staging";
+  startAt = "01:00";
+   extraCreateArgs = "--stats --list --filter=AME";
 
+   # Prune Policy: Keep 7 daily, 4 weekly, and 6 monthly backups
+    prune.keep = {
+    daily = 7;
+    weekly = 4;
+    monthly = 6;
+  };
+
+ preHook = ''
+    mkdir -p /var/lib/borgbackup/nextcloud-staging
+  '';
+  postHook = ''
+    echo "Syncing local Borg repo to Nextcloud (High-Stability Mode)..."
+    ${pkgs.rclone}/bin/rclone sync /var/lib/borgbackup/nextcloud-staging NextCloud:backups \
+      --config /home/moonburst/.config/rclone/rclone.conf \
+      --verbose \
+      --transfers 1 \
+      --webdav-nextcloud-chunk-size 10M \
+      --low-level-retries 20
+  '';
   exclude = [
     # Custom Rules
     "*/.steam"
@@ -97,20 +127,17 @@ services.borgbackup.jobs."MoonBeauty-Nextcloud" = {
     "*/Games"
     "*/stump_backup.tar.gz"
     ""
-
     # Trash & Temp
     "*/.local/share/Trash"
     "*/.Trash*"
     "**/.tmp"
     "**/*.swp"
     "**/*.bak"
-
     # Browser Caches (Simplified patterns)
     "*/.cache/mozilla/firefox"
     "*/.cache/google-chrome"
     "*/.cache/BraveSoftware"
     "*/.config/chromium/*/Service Worker/CacheStorage"
-
     # Development Artefacts
     "**/node_modules"
     "**/.npm"
@@ -120,12 +147,12 @@ services.borgbackup.jobs."MoonBeauty-Nextcloud" = {
     "**/.rustup"
     "**/.gradle"
   ];
-
   encryption = {
     mode = "repokey-blake2";
     passCommand = "cat ${config.sops.secrets.sops_key.path}";
   };
 };
+
 
   # ====================================================================
   # NETWORKING
@@ -200,7 +227,6 @@ services.udev.extraRules = ''
     obs-cli#obs
     mangohud#system use/FPS counter
     # --- Desktop/Theming ---
-    lmstudio#AI LLM
     krita#image editor
 kdePackages.partitionmanager#partition manager
 
