@@ -1,35 +1,18 @@
 # moonbeauty - Desktop Host Configuration
+{ config, pkgs, lib, ... }:
+
 {
-  config,
-  pkgs,
-  lib,
-  niri-flake,
-  cypkgs,
-  sops-nix,
-  ...
-}: {
   # ====================================================================
   # MODULE IMPORTS
   # ====================================================================
   imports = [
-    ../../hosts/common/default.nix
+    ../common/default.nix
+    ./moonbeauty-hardware.nix
     ./mounts.nix
-    ./programs/waybar
     ./services.nix
+    ./programs/waybar
   ];
-  # ====================================================================
-  # SOPS
-  # ====================================================================
- sops = {
-    defaultSopsFile = ../../secrets.yaml;
-    defaultSopsFormat = "yaml";
-    age.keyFile = "/home/moonburst/.config/sops/age/moon_keys.txt";
-    secrets = {
-      sops_key = { };
-      weather_api_key = { owner = "moonburst"; };
-      weather_city = { owner = "moonburst"; };
-    };
-  };
+
   # ====================================================================
   # NETWORKING
   # ====================================================================
@@ -64,7 +47,6 @@ services.udev.extraRules = ''
     # --- Custom Flake Packages (from overlay in flake.nix) ---
 
     # --- System Utilities/Shell ---
-    cron
     rocmPackages.rocm-smi
     corectrl
     wget
@@ -79,7 +61,7 @@ services.udev.extraRules = ''
     mangohud#system use/FPS counter
     # --- Desktop/Theming ---
     krita#image editor
-kdePackages.partitionmanager#partition manager
+    kdePackages.partitionmanager#partition manager
 
 cura-appimage#3d printer
 openscad#3d printer

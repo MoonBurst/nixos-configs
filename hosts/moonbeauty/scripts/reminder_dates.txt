@@ -1,0 +1,26 @@
+# This is a reminder file format guide.
+# Format: MM-DD:DaysInAdvance"Message"+ (Use + for urgent messages)
+01-16:3"Luster's Birthday"+
+05-24:2"Velvet's Birthday"
+05-25:2"Olive Herb's Birthday"
+05-25:2"Father's birthday"
+07-07:2"Genesis's Birthday"+
+07-13:3"Sonata's Birthday"+
+10-01:1"Rainbow-Dash Tumblr's Birthday"
+10-16:1"Radiant's Birthday"
+11-06-3"Chris's Birthday"
+12-05:2"Silver's Birthday"+
+
+
+01-01:3"New Year's Day"
+02-14:7"Valentine's Day"
+03-17:1"St. Patrick's Day"
+04-01:1"April Fool's Day"
+07-04:1"Independence Day"
+10-31:7"Halloween"
+11-23:7"Thanksgiving Day"
+12-25:7"Christmas Day"
+12-31:3"New Year's Eve"
+11-28:3"Black Friday"
+05-11:3"Mother's Day"+
+06-15:3"Father's Day"+
