@@ -14,12 +14,11 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
   # --- AMDGPU/ROCm Kernel Parameters ---
-  boot.kernelParams = [
-    "amdgpu.vm_fragment_size=9"
-    "fbcon=rotate:2" #--rotates screen
-    "amdgpu.ppfeaturemask=0xffffffff" #--needed for corectrl
-    "cma=512M"
-
+boot.kernelParams = [
+    "amdgpu.vm_fragment_size=9"         # Improves GPU performance/memory mapping for high-end AMD cards
+    "fbcon=rotate:2"                                # Rotates the TTY/system console screen 180 degrees
+    "amdgpu.ppfeaturemask=0xffffffff"   # Unlocks full power management for CoreCtrl (overclocking/voltage)
+    "cma=512M"                                      # Reserves 512MB for Contiguous Memory Allocation (helps with GPU buffer stability)
     #VM stuff
   "amd_iommu=on"
   "iommu=pt"

@@ -52,7 +52,6 @@ sops = {
   programs.browserpass.enable = true;                     # Enable 'pass' integration for browsers
   programs.fuse.userAllowOther = true;                    # Allow non-root users to share mounted drives
   services.journald.extraConfig = "SystemMaxUse=1G;"; # Keeps journal from growing beyond 1G
-
   #--- Display Manager
   services.displayManager.ly.enable = true;
   services.displayManager.sessionPackages = [pkgs.niri];
@@ -63,7 +62,7 @@ security.rtkit.enable = true;
     enable = true;
     alsa.enable = true;
     alsa.support32Bit = true;
-    pulse.enable = false;
+    pulse.enable = true;
     jack.enable = true;
 
     extraConfig.pipewire."10-quantum-size" = {
@@ -393,97 +392,92 @@ services.smartd = {
   # ====================================================================
 
   environment.systemPackages = with pkgs; [
-fuse3
-    kitty # gpu-accelerated terminal
-    fastfetch # system info display
-    gnome-system-monitor # graphical task manager
-    s-tui # cpu stress/monitor tool
-    nano # basic text editor
-    git # version control system
-    github-cli # github command line
-    gnupg # encryption/signing tool
-    jq # json processor
-    bc # cli calculator
-    rsync # file sync utility
-    rclone # cloud storage sync
-    procps # process management tools
-    psmisc # process utilities (killall)
-    gawk # pattern scanning/processing
-    ripgrep # fast text search
-    dict # dictionary client
-    libsecret # password storage library
+    # --- System Utilities/Shell ---
+    fuse3                          # FUSE 3 implementation
+    kitty                          # gpu-accelerated terminal
+    fastfetch                      # system info display
+    gnome-system-monitor           # graphical task manager
+    s-tui                          # cpu stress/monitor tool
+    nano                           # basic text editor
+    git                            # version control system
+    github-cli                     # github command line
+    gnupg                          # encryption/signing tool
+    rsync                          # file sync utility
+    rclone                         # cloud storage sync
+    psmisc                         # process utilities (killall)
+    ripgrep                        # fast text search
+    dict                           # dictionary client
+    libsecret                      # password storage library
     kdePackages.polkit-kde-agent-1 # auth dialog agent
-    linux-firmware # hardware driver binaries
-    nix-prefetch-github # nix hash fetcher
-    unar # archive extractor
-    zip # zip compressor
-    unzip # zip extractor
-    cliphist # clipboard history manager
-    lm_sensors # hardware temp monitor
-    usbutils # usb device info
-    cargo # rust build system
-    libnotify # notification library
-    qimgv # fast image viewer
-    olm # matrix encryption library
-    element-desktop # matrix chat client
-    steam-run # run binaries in fhs
-    zenity # cli dialog boxes
-    webp-pixbuf-loader # webp image thumbnails
-    gdk-pixbuf # gtk image library
-    rnnoise-plugin # mic noise suppression
-    lsp-plugins # audio signal processing
-    ncdu #file managerment location/size checks
-    # --- Btrfs Tools
-    btrfs-progs # btrfs filesystem tools
-    btrfs-assistant # btrfs gui manager
+    linux-firmware                 # hardware driver binaries
+    nix-prefetch-github            # nix hash fetcher
+    unar                           # archive extractor
+    zip                            # zip compressor
+    unzip                          # zip extractor
+    cliphist                       # clipboard history manager
+    usbutils                       # usb device info
+    cargo                          # rust build system
+    libnotify                      # notification library
+    qimgv                          # fast image viewer
+    olm                            # matrix encryption library
+    element-desktop                # matrix chat client
+    steam-run                      # run binaries in fhs
+    webp-pixbuf-loader             # webp image thumbnails
+    gdk-pixbuf                     # gtk image library
+    rnnoise-plugin                 # mic noise suppression
+    lsp-plugins                    # audio signal processing
+    ncdu                           # file management location/size checks
 
-    # --- Wayland Utilities
-    waybar # wayland status bar
-    grim # wayland screenshot tool
-    slurp # region selector tool
-    wl-clipboard # wayland clipboard utility
-    satty # screenshot editor
-    wtype # virtual keystroke tool
-    wlrctl # wayland compositor tool
-    playerctl # media player controller
-    dunst # notification daemon
-    swaylock # wayland screen locker
-    swayidle # idle management daemon
-    swaybg # wallpaper setter
-    python3 # python interpreter
-    smartmontools # drive health monitor
+    # --- Btrfs Tools ---
+    btrfs-progs                    # btrfs filesystem tools
+    btrfs-assistant                # btrfs gui manager
 
-    # --- Desktop/Theming
-    nemo # gtk file manager
-    kdePackages.kate # advanced text editor
-    pavucontrol # audio volume mixer
-    bluez-tools # bluetooth cli tools
-    qt5.qtwayland # qt5 wayland support
-    qt6Packages.qt6ct # qt6 configuration tool
+    # --- Wayland Utilities ---
+    waybar                         # wayland status bar
+    grim                           # wayland screenshot tool
+    slurp                          # region selector tool
+    wl-clipboard                   # wayland clipboard utility
+    satty                          # screenshot editor
+    wtype                          # virtual keystroke tool
+    wlrctl                         # wayland compositor tool
+    playerctl                      # media player controller
+    dunst                          # notification daemon
+    swaylock                       # wayland screen locker
+    swayidle                       # idle management daemon
+    swaybg                         # wallpaper setter
+    python3                        # python interpreter
+    smartmontools                  # drive health monitor
 
-    # --- Applications/Communication
-    sox # audio processing tool
-    mpv # versatile media player
-    audacious # lightweight audio player
-    vivaldi # feature-rich web browser
-    vesktop # optimized discord client
-    evolution # email/calendar suite
-    authenticator # 2fa code generator
+    # --- Desktop/Theming ---
+    nemo                           # gtk file manager
+    kdePackages.kate               # advanced text editor
+    pavucontrol                    # audio volume mixer
+    bluez-tools                    # bluetooth cli tools
+    qt5.qtwayland                  # qt5 wayland support
+    qt6Packages.qt6ct              # qt6 configuration tool
 
-    # --- Screencasting / Portals / Compositor Fixes
-    niri # scrollable tiling compositor
-    obs-studio # screen recording/streaming
-    pipewire # modern audio/video server
-    xdg-desktop-portal # desktop integration portal
-    #xdg-desktop-portal-gnome # gnome portal backend
-    xdg-desktop-portal-gtk # gtk portal backend
-    xdg-desktop-portal-wlr # wlroots portal backend
-    xdg-utils # desktop integration tools
+    # --- Applications/Communication ---
+    mpv                            # versatile media player
+    audacious                      # lightweight audio player
+    vivaldi                        # feature-rich web browser
+    vesktop                        # optimized discord client
+    evolution                      # email/calendar suite
+    authenticator                  # 2fa code generator
 
-    # --- Other Tools
-    syncthing # p2p file sync
-    pass # unix password manager
-    sops #secrets manager
+    # --- Screencasting / Portals / Compositor Fixes ---
+    niri                           # scrollable tiling compositor
+    obs-studio                     # screen recording/streaming
+    pipewire                       # modern audio/video server
+    xdg-desktop-portal             # desktop integration portal
+    xdg-desktop-portal-gtk         # gtk portal backend
+    xdg-desktop-portal-wlr         # wlroots portal backend
+    xdg-utils                      # desktop integration tools
+
+    # --- Other Tools ---
+    syncthing                      # p2p file sync
+    pass                           # unix password manager
+    sops                           # secrets manager
+
 
 
     sherlock-launcher
