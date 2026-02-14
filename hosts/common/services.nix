@@ -12,6 +12,9 @@
   services.displayManager.ly.enable = true;
   services.displayManager.sessionPackages = [pkgs.niri];
 
+
+
+    # Add the DeepFilterNet Filter Chain
   # --- Audio: PipeWire ---
   services.pipewire = {
     enable = true;
@@ -20,40 +23,42 @@
     pulse.enable = true;
     jack.enable = true;
 
-    extraConfig.pipewire."10-quantum-size" = {
+    # 1. Give the CPU more breathing room to fix the "Underrun/RTF" error
+    extraConfig.pipewire."92-low-latency" = {
       "context.properties" = {
+        "default.clock.rate" = 48000;
+        "default.clock.quantum" = 1024;
         "default.clock.min-quantum" = 512;
+        "default.clock.max-quantum" = 2048;
       };
     };
 
+    # 2. DeepFilterNet Filter Chain
     extraConfig.pipewire."99-input-denoising" = {
       "context.modules" = [
         {
           name = "libpipewire-module-filter-chain";
           args = {
-            "node.description" = "Noise Suppressed Source";
-            "media.name" = "Noise Suppressed Source";
+            "node.description" = "DeepFilter Noise Cancelling Source";
+            "media.name" = "DeepFilter Noise Cancelling Source";
             "filter.graph" = {
               nodes = [
                 {
                   type = "ladspa";
-                  name = "rnnoise";
-                  plugin = "${pkgs.rnnoise-plugin}/lib/ladspa/librnnoise_ladspa.so";
-                  label = "noise_suppressor_mono";
+                  name = "DeepFilter Mono";
+                  plugin = "${pkgs.deepfilternet}/lib/ladspa/libdeep_filter_ladspa.so";
+                  label = "deep_filter_mono";
                   control = {
-                    "VAD Threshold (%)" = 95.0;
-                    "VAD Grace Period (ms)" = 200;
-                    "Retroactive VAD Grace (ms)" = 200;
+                    "Attenuation Limit (dB)" = 100.0;
                   };
                 }
               ];
             };
             "capture.props" = {
-              "node.name" = "capture.rnnoise_source";
               "node.passive" = true;
             };
             "playback.props" = {
-              "node.name" = "rnnoise_source";
+              "node.name" = "deep_filter_input";
               "media.class" = "Audio/Source";
             };
           };
@@ -61,6 +66,14 @@
       ];
     };
   };
+
+  # 3. Explicitly tell PipeWire where to find LADSPA plugins
+  systemd.user.services.pipewire.environment = {
+    LADSPA_PATH = "${pkgs.deepfilternet}/lib/ladspa";
+  };
+
+  environment.systemPackages = [ pkgs.deepfilternet ];
+
 
   # --- System & Storage Services ---
   services.openssh.enable = true;
