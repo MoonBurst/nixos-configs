@@ -510,3 +510,26 @@ git add hosts/moonbeauty/scripts/\
 : 1771064954:0;nupdate
 : 1771065136:0;systemctl --user start wallpaper-switcher.service
 : 1771065162:0;git add .
+: 1771065175:0;git commit -m "updating for borg for services and waybar"
+: 1771065264:0;pkill waybar
+: 1771065276:0;journalctl -f
+: 1771065473:0;pass f-list.net
+: 1771066015:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service\
+
+: 1771070831:0;nupdate
+: 1771070891:0;systemctl --user restart pipewire wireplumber\
+
+: 1771070916:0;pkill vesktop
+: 1771071052:0;journalctl --user -u pipewire --since "5 minutes ago"\
+
+: 1771071102:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service\
+
+: 1771071109:0;nupdate
+: 1771071182:0;systemctl --user restart pipewire wireplumber\
+
+: 1771071184:0;journalctl --user -u pipewire --since "5 minutes ago"\
+
+: 1771071665:0;journalctl --user -u pipewire --since "20 minutes ago"\
+
+: 1771073497:0;cd nixos-config
+: 1771073501:0;git add .
