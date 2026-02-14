@@ -1,85 +1,3 @@
-sudo rclone purge NextCloud:backups/lock.exclusive --config /var/lib/rclone/rclone.conf\
-\
-# Delete the broken repo folder from the cloud\
-sudo rm -rf /mnt/nextcloud/backups\
-sudo mkdir -p /mnt/nextcloud/backups\
-\
-# Re-initialize using the EXACT secret Borg will use later\
-sudo BORG_LOCK_PATH="/var/lib/borg/nextcloud-locks" \\
-     BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key) \\
-     borg init --encryption=repokey-blake2 /mnt/nextcloud/backups\
-
-sudo mkdir -p /mnt/nextcloud/backups\
-\
-# Re-initialize using the EXACT secret Borg will use later\
-sudo BORG_LOCK_PATH="/var/lib/borg/nextcloud-locks" \\
-     BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key) \\
-     borg init --encryption=repokey-blake2 /mnt/nextcloud/backups
-sudo BORG_LOCK_PATH="/var/lib/borg/nextcloud-locks" \\
-     BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key) \\
-     borg init --encryption=repokey-blake2 /mnt/nextcloud/backups
-# 1. Force delete the existing broken repo\
-sudo rm -rf /mnt/nextcloud/backups\
-\
-# 2. Recreate the empty directory\
-sudo mkdir -p /mnt/nextcloud/backups\
-\
-# 3. Initialize fresh using your CURRENT SOPS secret\
-sudo BORG_LOCK_PATH="/var/lib/borg/nextcloud-locks" \\
-     BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key) \\
-     borg init --encryption=repokey-blake2 /mnt/nextcloud/backups\
-
-nolog
-cd /mnt/nextcloud
-ls
-ls backups
-rm -rf backups/lock.exclusive
-rm backups/README
-sudo rm backups/README
-ls backups
-cd /mnt/nextcloud
-ls
-ls -a
-nolog
-cd /mnt/nextcloud
-ls
-ls -a
-sudo journalctl -u mount-nextcloud.service -n 50 --no-pager\
-
-nolog
-sudo journalctl -u borgbackup-job-MoonBeauty-Nextcloud -f\
-
-nix-collect-garbage
-ls /mnt/nextcloud
-ls /mnt/nextcloud/backups
-nolog
-cd /mnt/nextcloud/backups
-ls
-cd ..
-ls
-rm -rf backups
-ls
-cd backups
-ls
-ls -a
-cd /mnt/nextcloud/backups
-ls
-sudo rm lock.roster
-ls
-rm -rf lock.exclusive.z1kz52z8.tmp
-cat .config/rclone/rclone.conf
-nupdate
-ls
-ls -a
-cd ..
-ls
-cd ..
-cd /mnt/
-ls
-systemctl status borgbackup-job-MoonBeauty-Nextcloud.service
-systemctl status borgbackup-job-MoonBeauty-Nextcloud.service\
-
-sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
 journalctl -u borgbackup-job-MoonBeauty-Nextcloud.service -f\
 
 nupdate
@@ -240,193 +158,193 @@ journalctl -f
 ./.config/waybar/waybar.sh
 time
 kate
-: 1771049721:0;journalctl -f
-: 1771049730:0;waybar
-: 1771049842:0;nupdate
-: 1771049874:0;systemctl --user restart pipewire-pulse.socket
-: 1771050035:0;swaymsg -- waybar --log-level=trace 
-: 1771050042:0;swaymsg exec waybar --log-level=trace 
-: 1771050049:0;waybar --log-level=trace 
-: 1771050062:0;./.config/waybar/waybar.sh
-: 1771050113:0;journalctl -f
-: 1771050155:0;pass f-list.net
-: 1771050335:0;NICOTINE_GTK_VERSION=3 nicotine
-: 1771050748:0;cd .local/share/nemo/actions
-: 1771050749:0;ls
-: 1771050756:0;ls -a
-: 1771050896:0;cd .config/waybar
-: 1771050896:0;ls
-: 1771050899:0;cd modules
-: 1771050900:0;ls
-: 1771050908:0;./gpu_readout.sh
-: 1771050911:0;./gpu_readout.sh 0
-: 1771050946:0;ls
-: 1771050947:0;cd ..
-: 1771050948:0;ls
-: 1771051082:0;pkill waybar
-: 1771051089:0;waybar -c moonbeauty
-: 1771051381:0;./.config/waybar/waybar.sh
-: 1771051387:0;cd .config/waybar/modules
-: 1771051388:0;ls
-: 1771051496:0;cd .config/waybar/
-: 1771051499:0;waybar -c lunarchild
-: 1771051513:0;waybar -c moonbeauty
-: 1771051525:0;ls
-: 1771051527:0;clear
-: 1771051528:0;ls
-: 1771051826:0;waybar -c ~/.config/waybar/moonbeauty -l trace
-: 1771051875:0;waybar -c ~/.config/waybar/moonbeauty -l trace > trace.txt
-: 1771052954:0;killall waybar
-: 1771052957:0;pkill waybar
-: 1771052958:0;env PATH="$PATH" waybar -c ~/.config/waybar/moonbeauty
-: 1771053372:0;sudo nixos-rebuild list-generations
-: 1771053412:0;pkill waybar
-: 1771053419:0;/nix/var/nix/profiles/system-748-link/sw/bin/waybar -c ~/.config/waybar/moonbeauty
-: 1771053546:0;/nix/var/nix/profiles/system-764-link/sw/bin/waybar -c ~/.config/waybar/moonbeauty
-: 1771053581:0;waybar --version
-: 1771053606:0;env PATH="$PATH" waybar -c ~/.config/waybar/moonbeauty
-: 1771053618:0;waybar -c ~/.config/waybar/moonbeauty
-: 1771053763:0;bash /home/moonburst/.config/waybar/modules/gpu_readout.sh 0 2>&1 | cat -A
-: 1771053811:0;waybar -c ~/.config/waybar/moonbeauty
-: 1771053913:0;waybar -c ~/.config/waybar/moonbeauty -l trace 2>&1 | grep -i pango
-: 1771053947:0;waybar -c ~/.config/waybar/moonbeauty
-: 1771053954:0;waybar -c ~/.config/waybar/moonbeauty -l trace 2>&1 | grep -i pango
-: 1771053962:0;waybar -c ~/.config/waybar/moonbeauty
-: 1771054766:0;pass f-list.net
-: 1771054802:0;waybar -c ~/.config/waybar/moonbeauty
-: 1771054984:0;cd .config/waybar
-: 1771054985:0;ls
-: 1771055056:0;nupdate
-: 1771055161:0;systemctl --user restart waybar
-: 1771055227:0;nupdate
-: 1771055281:0;systemctl --user restart waybar
-: 1771055364:0;nupdate
-: 1771055394:0;systemctl --user restart waybar
-: 1771055415:0;pkill waybar
-: 1771055513:0;nix-store -p tree
-: 1771055524:0;nix-shell -p tree
-: 1771055715:0;nupdate
-: 1771055749:0;cd nixos-config
-: 1771055750:0;ls
-: 1771055752:0;cd hosts
-: 1771055753:0;ls
-: 1771055754:0;cd moonbeauty
-: 1771055754:0;ls
-: 1771055784:0;nano waybar.nix
-: 1771055795:0;nupdate
-: 1771055807:0;nano waybar.nix
-: 1771055815:0;ls
-: 1771055818:0;cd nixos-config
-: 1771055841:0;git add .
-: 1771055845:0;nupdate
-: 1771055883:0;cd hosts/moonbeauty
-: 1771055883:0;ls
-: 1771055911:0;cp -r ~/.config/waybar/modules ~/nixos-config/hosts/moonbeauty/\
+journalctl -f
+waybar
+nupdate
+systemctl --user restart pipewire-pulse.socket
+swaymsg -- waybar --log-level=trace 
+swaymsg exec waybar --log-level=trace 
+waybar --log-level=trace 
+./.config/waybar/waybar.sh
+journalctl -f
+pass f-list.net
+NICOTINE_GTK_VERSION=3 nicotine
+cd .local/share/nemo/actions
+ls
+ls -a
+cd .config/waybar
+ls
+cd modules
+ls
+./gpu_readout.sh
+./gpu_readout.sh 0
+ls
+cd ..
+ls
+pkill waybar
+waybar -c moonbeauty
+./.config/waybar/waybar.sh
+cd .config/waybar/modules
+ls
+cd .config/waybar/
+waybar -c lunarchild
+waybar -c moonbeauty
+ls
+clear
+ls
+waybar -c ~/.config/waybar/moonbeauty -l trace
+waybar -c ~/.config/waybar/moonbeauty -l trace > trace.txt
+killall waybar
+pkill waybar
+env PATH="$PATH" waybar -c ~/.config/waybar/moonbeauty
+sudo nixos-rebuild list-generations
+pkill waybar
+/nix/var/nix/profiles/system-748-link/sw/bin/waybar -c ~/.config/waybar/moonbeauty
+/nix/var/nix/profiles/system-764-link/sw/bin/waybar -c ~/.config/waybar/moonbeauty
+waybar --version
+env PATH="$PATH" waybar -c ~/.config/waybar/moonbeauty
+waybar -c ~/.config/waybar/moonbeauty
+bash /home/moonburst/.config/waybar/modules/gpu_readout.sh 0 2>&1 | cat -A
+waybar -c ~/.config/waybar/moonbeauty
+waybar -c ~/.config/waybar/moonbeauty -l trace 2>&1 | grep -i pango
+waybar -c ~/.config/waybar/moonbeauty
+waybar -c ~/.config/waybar/moonbeauty -l trace 2>&1 | grep -i pango
+waybar -c ~/.config/waybar/moonbeauty
+pass f-list.net
+waybar -c ~/.config/waybar/moonbeauty
+cd .config/waybar
+ls
+nupdate
+systemctl --user restart waybar
+nupdate
+systemctl --user restart waybar
+nupdate
+systemctl --user restart waybar
+pkill waybar
+nix-store -p tree
+nix-shell -p tree
+nupdate
+cd nixos-config
+ls
+cd hosts
+ls
+cd moonbeauty
+ls
+nano waybar.nix
+nupdate
+nano waybar.nix
+ls
+cd nixos-config
+git add .
+nupdate
+cd hosts/moonbeauty
+ls
+cp -r ~/.config/waybar/modules ~/nixos-config/hosts/moonbeauty/\
 cp ~/.config/waybar/style.css ~/nixos-config/hosts/moonbeauty/\
 cd ~/nixos-config\
 git add hosts/moonbeauty/modules hosts/moonbeauty/style.css hosts/moonbeauty/waybar.nix\
 
-: 1771055940:0;cd ~/nixos-config/hosts/moonbeauty/modules/\
+cd ~/nixos-config/hosts/moonbeauty/modules/\
 # Remove the hidden .git folder inside the timer module\
 rm -rf waybar-timer/.git\
 # Go back and force Git to track the newly "freed" files\
 cd ~/nixos-config\
 git add --all --force hosts/moonbeauty/modules/\
 
-: 1771055955:0;nupdate
-: 1771056034:0;journalctl --user -u waybar -f\
+nupdate
+journalctl --user -u waybar -f\
 
-: 1771056042:0;systemctl --user restart waybar
-: 1771056076:0;nupdate
-: 1771056091:0;systemctl --user restart waybar
-: 1771056100:0;journalctl --user -u waybar -f
-: 1771056369:0;mkdir -p ~/nixos-config/hosts/moonbeauty/programs/waybar/modules
-: 1771056375:0;mv ~/nixos-config/hosts/moonbeauty/waybar.nix ~/nixos-config/hosts/moonbeauty/programs/waybar/default.nix\
+systemctl --user restart waybar
+nupdate
+systemctl --user restart waybar
+journalctl --user -u waybar -f
+mkdir -p ~/nixos-config/hosts/moonbeauty/programs/waybar/modules
+mv ~/nixos-config/hosts/moonbeauty/waybar.nix ~/nixos-config/hosts/moonbeauty/programs/waybar/default.nix\
 mv ~/nixos-config/hosts/moonbeauty/style.css ~/nixos-config/hosts/moonbeauty/programs/waybar/\
 mv ~/nixos-config/hosts/moonbeauty/modules/* ~/nixos-config/hosts/moonbeauty/programs/waybar/modules/\
 
-: 1771056469:0;git add .
-: 1771056471:0;nupdate
-: 1771056487:0;systemctl --user restart waybar
-: 1771056716:0;nupdate
-: 1771056742:0;systemctl --user restart waybar
-: 1771056833:0;nupdate
-: 1771056856:0;systemctl --user restart waybar
-: 1771056946:0;nupdate && systemctl --user restart waybar
-: 1771057750:0;cd hosts/moonbeauty/programs/waybar/modules
-: 1771057750:0;ls
-: 1771057753:0;cat weather_readout.sh
-: 1771057861:0;cd ..
-: 1771057898:0;SOPS_AGE_KEY_FILE=/home/moonburst/.config/sops/age/moon_keys.txt sops secrets.yaml\
+git add .
+nupdate
+systemctl --user restart waybar
+nupdate
+systemctl --user restart waybar
+nupdate
+systemctl --user restart waybar
+nupdate && systemctl --user restart waybar
+cd hosts/moonbeauty/programs/waybar/modules
+ls
+cat weather_readout.sh
+cd ..
+SOPS_AGE_KEY_FILE=/home/moonburst/.config/sops/age/moon_keys.txt sops secrets.yaml\
 
-: 1771058194:0;nupdate && systemctl --user restart waybar
-: 1771058226:0;journalctl --user -u waybar -f
-: 1771058252:0;/nix/store/$(ls /nix/store | grep weather_readout.sh | head -n 1)
-: 1771058265:0;cat /run/secrets/weather_api_key
-: 1771058292:0;SOPS_AGE_KEY_FILE=/home/moonburst/.config/sops/age/moon_keys.txt sops secrets.yaml\
+nupdate && systemctl --user restart waybar
+journalctl --user -u waybar -f
+/nix/store/$(ls /nix/store | grep weather_readout.sh | head -n 1)
+cat /run/secrets/weather_api_key
+SOPS_AGE_KEY_FILE=/home/moonburst/.config/sops/age/moon_keys.txt sops secrets.yaml\
 
-: 1771058318:0;bash /home/moonburst/nixos-config/hosts/moonbeauty/programs/waybar/modules/weather_readout.sh\
+bash /home/moonburst/nixos-config/hosts/moonbeauty/programs/waybar/modules/weather_readout.sh\
 
-: 1771058344:0;nupdate && systemctl --user restart waybar
-: 1771058366:0;bash /home/moonburst/nixos-config/hosts/moonbeauty/programs/waybar/modules/weather_readout.sh\
+nupdate && systemctl --user restart waybar
+bash /home/moonburst/nixos-config/hosts/moonbeauty/programs/waybar/modules/weather_readout.sh\
 
-: 1771058381:0;SOPS_AGE_KEY_FILE=/home/moonburst/.config/sops/age/moon_keys.txt sops secrets.yaml\
+SOPS_AGE_KEY_FILE=/home/moonburst/.config/sops/age/moon_keys.txt sops secrets.yaml\
 
-: 1771058409:0;bash /home/moonburst/nixos-config/hosts/moonbeauty/programs/waybar/modules/weather_readout.sh\
+bash /home/moonburst/nixos-config/hosts/moonbeauty/programs/waybar/modules/weather_readout.sh\
 
-: 1771058574:0;nupdate && systemctl --user restart waybar
-: 1771058908:0;cd nixos-config/hosts
-: 1771058908:0;ls
-: 1771058910:0;cd moonbeauty
-: 1771058911:0;ls
-: 1771059014:0;nolog
-: 1771059537:0;systemctl list-units --type=service
-: 1771059567:0;systemctl --user list-units --type=service | grep -E "waybar|wallpaper|reminder"\
+nupdate && systemctl --user restart waybar
+cd nixos-config/hosts
+ls
+cd moonbeauty
+ls
+nolog
+systemctl list-units --type=service
+systemctl --user list-units --type=service | grep -E "waybar|wallpaper|reminder"\
 
-: 1771059579:0;systemctl --user list-timers | grep -E "wallpaper|reminder|move-desktop"\
+systemctl --user list-timers | grep -E "wallpaper|reminder|move-desktop"\
 
-: 1771059595:0;systemctl --user enable --now move-desktop-files.timer\
+systemctl --user enable --now move-desktop-files.timer\
 systemctl --user enable --now reminders.timer\
 systemctl --user enable --now wallpaper-switcher.timer\
 
-: 1771059665:0;nupdate
-: 1771059740:0;systemctl --user enable --now move-desktop-files.timer\
+nupdate
+systemctl --user enable --now move-desktop-files.timer\
 systemctl --user enable --now reminders.timer\
 systemctl --user enable --now wallpaper-switcher.timer\
 
-: 1771059757:0;journalctl --user -u <service-name> -f
-: 1771059765:0;systemctl --user list-timers
-: 1771059772:0;systemctl --user list-timers --all
-: 1771059788:0;ls -l /run/secrets/
-: 1771059791:0;sudo ls -l /run/secrets/
-: 1771059799:0;systemctl --user start move-desktop-files.timer reminders.timer\
+journalctl --user -u <service-name> -f
+systemctl --user list-timers
+systemctl --user list-timers --all
+ls -l /run/secrets/
+sudo ls -l /run/secrets/
+systemctl --user start move-desktop-files.timer reminders.timer\
 
-: 1771059804:0;systemctl --user status reminders.timer\
+systemctl --user status reminders.timer\
 
-: 1771059934:0;systemctl --user daemon-reload\
+systemctl --user daemon-reload\
 systemctl --user list-timers\
 
-: 1771059940:0;systemctl --user daemon-reload\
+systemctl --user daemon-reload\
 systemctl --user list-timers --all\
 
-: 1771059957:0;systemctl --user stop move-desktop-files.timer reminders.timer\
+systemctl --user stop move-desktop-files.timer reminders.timer\
 systemctl --user reset-failed move-desktop-files.timer reminders.timer\
 systemctl --user start move-desktop-files.timer reminders.timer\
 
-: 1771059997:0;systemctl --user daemon-reload\
+systemctl --user daemon-reload\
 systemctl --user list-timers --all\
 
-: 1771060000:0;systemctl --user stop move-desktop-files.timer reminders.timer\
+systemctl --user stop move-desktop-files.timer reminders.timer\
 systemctl --user reset-failed move-desktop-files.timer reminders.timer\
 systemctl --user start move-desktop-files.timer reminders.timer\
 
-: 1771060010:0;rm -rf ~/.config/systemd/user/timers.target.wants/reminders.timer\
+rm -rf ~/.config/systemd/user/timers.target.wants/reminders.timer\
 rm -rf ~/.config/systemd/user/timers.target.wants/move-desktop-files.timer\
 systemctl --user daemon-reload\
 systemctl --user start reminders.timer move-desktop-files.timer\
 
-: 1771060017:0;systemctl --user status reminders.timer
-: 1771060037:0;# 1. Remove the manually created "bad" unit files\
+systemctl --user status reminders.timer
+# 1. Remove the manually created "bad" unit files\
 rm -f ~/.config/systemd/user/reminders.timer\
 rm -f ~/.config/systemd/user/move-desktop-files.timer\
 \
@@ -440,96 +358,304 @@ systemctl --user daemon-reload\
 # 4. Start the clean Nix versions\
 systemctl --user start reminders.timer move-desktop-files.timer\
 
-: 1771060045:0;systemctl --user status reminders.timer
-: 1771060070:0;systemctl --user status move-desktop-files.timer\
+systemctl --user status reminders.timer
+systemctl --user status move-desktop-files.timer\
 
-: 1771060086:0;systemctl --user list-timers --all\
+systemctl --user list-timers --all\
 
-: 1771060114:0;cd ~/nixos-config\
+cd ~/nixos-config\
 git add .\
 git commit -m "feat: migrate waybar and automation to pure nix"\
 
-: 1771060241:0;mkdir -p ~/nixos-config/hosts/moonbeauty/scripts\
+mkdir -p ~/nixos-config/hosts/moonbeauty/scripts\
 cp -r ~/scripts/cron_scripts/* ~/nixos-config/hosts/moonbeauty/scripts/\
 cd ~/nixos-config\
 git add hosts/moonbeauty/scripts/\
 
-: 1771060289:0;nupdate
-: 1771060471:0;ls
-: 1771060473:0;cd hosts
-: 1771060473:0;ls
-: 1771060478:0;cd common
-: 1771060478:0;ls
-: 1771060575:0;nano services.nix
-: 1771061420:0;cd ..
-: 1771061424:0;git add hosts/common/services.nix
-: 1771061428:0;sudo nixos-rebuild dry-build --flake .
-: 1771061456:0;nix flake check\
+nupdate
+ls
+cd hosts
+ls
+cd common
+ls
+nano services.nix
+cd ..
+git add hosts/common/services.nix
+sudo nixos-rebuild dry-build --flake .
+nix flake check\
 
-: 1771061685:0;nupdate
-: 1771061807:0;systemctl list-units --type=service --state=failed
-: 1771061823:0;systemctl status btrfs-scrub.service
-: 1771061834:0;systemctl list-units "btrfs-scrub-*.service" --all\
+nupdate
+systemctl list-units --type=service --state=failed
+systemctl status btrfs-scrub.service
+systemctl list-units "btrfs-scrub-*.service" --all\
 
-: 1771061873:0;systemctl --user status pipewire.service\
+systemctl --user status pipewire.service\
 
-: 1771061877:0;systemctl status smartd.service\
+systemctl status smartd.service\
 
-: 1771061884:0;sudo killall -USR1 smartd\
+sudo killall -USR1 smartd\
 
-: 1771061905:0;[200~systemctl --user status xdg-desktop-portal.service
-: 1771061906:0;systemctl --user status xdg-desktop-portal.service\
+[200~systemctl --user status xdg-desktop-portal.service
+systemctl --user status xdg-desktop-portal.service\
 
-: 1771061928:0;systemctl status display-manager.service\
+systemctl status display-manager.service\
 
-: 1771061939:0;sudo systemctl start notify-update-failure.service\
+sudo systemctl start notify-update-failure.service\
 
-: 1771062216:0;nupdate
-: 1771062400:0;sudo systemctl stop borgbackup-job-nextcloud.service\
+nupdate
+sudo systemctl stop borgbackup-job-nextcloud.service\
 
-: 1771062419:0;systemctl list-units "borgbackup-job-*"\
+systemctl list-units "borgbackup-job-*"\
 
-: 1771062429:0;journalctl --user -u waybar -f
-: 1771062434:0;sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service\
+journalctl --user -u waybar -f
+sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service\
 
-: 1771062438:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service\
+sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service\
 
-: 1771062449:0;journalctl -u borgbackup-job-MoonBeauty-Nextcloud.service -f\
+journalctl -u borgbackup-job-MoonBeauty-Nextcloud.service -f\
 
-: 1771062631:0;nupdate
-: 1771062943:0;nix-shell -p tree
-: 1771063590:0;nix flake check\
+nupdate
+nix-shell -p tree
+nix flake check\
 
-: 1771063596:0;cd nixos-config
-: 1771063597:0;nix flake check\
+cd nixos-config
+nix flake check\
 
-: 1771063798:0;sudo nixos-rebuild switch --flake .\
+sudo nixos-rebuild switch --flake .\
 
-: 1771064172:0;nupdate
-: 1771064716:0;systemctl --user start wallpaper-switcher.service
-: 1771064954:0;nupdate
-: 1771065136:0;systemctl --user start wallpaper-switcher.service
-: 1771065162:0;git add .
-: 1771065175:0;git commit -m "updating for borg for services and waybar"
-: 1771065264:0;pkill waybar
-: 1771065276:0;journalctl -f
-: 1771065473:0;pass f-list.net
-: 1771066015:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service\
+nupdate
+systemctl --user start wallpaper-switcher.service
+nupdate
+systemctl --user start wallpaper-switcher.service
+git add .
+git commit -m "updating for borg for services and waybar"
+pkill waybar
+journalctl -f
+pass f-list.net
+sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service\
 
-: 1771070831:0;nupdate
-: 1771070891:0;systemctl --user restart pipewire wireplumber\
+nupdate
+systemctl --user restart pipewire wireplumber\
 
-: 1771070916:0;pkill vesktop
-: 1771071052:0;journalctl --user -u pipewire --since "5 minutes ago"\
+pkill vesktop
+journalctl --user -u pipewire --since "5 minutes ago"\
 
-: 1771071102:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service\
+sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service\
 
-: 1771071109:0;nupdate
-: 1771071182:0;systemctl --user restart pipewire wireplumber\
+nupdate
+systemctl --user restart pipewire wireplumber\
 
-: 1771071184:0;journalctl --user -u pipewire --since "5 minutes ago"\
+journalctl --user -u pipewire --since "5 minutes ago"\
 
-: 1771071665:0;journalctl --user -u pipewire --since "20 minutes ago"\
+journalctl --user -u pipewire --since "20 minutes ago"\
 
-: 1771073497:0;cd nixos-config
-: 1771073501:0;git add .
+cd nixos-config
+git add .
+git commit -m "fixing sound gate"
+git push
+nupdate
+nix show-config | grep -E 'max-jobs|cores'
+nix config show | grep -E 'max-jobs|cores'
+cd nixos-config
+grep -r "dunst" .
+nupdate
+killall dunst\
+
+systemctl --user restart dunst.service\
+```\
+
+systemctl --user restart dunst.service
+nolog
+cd .local/share/themes
+ls
+nupdate
+cd ~/.config/dunst
+ls
+mv dunstrc dunstrc.old
+systemctl --user restart dunst.service
+nupdate
+systemctl --user restart dunst.service
+nupdate
+systemctl --user restart dunst.service
+nupdate
+systemctl --user restart dunst.service
+cd ~/nixos-config/
+cd hosts/common/
+ls
+mkdir scripts
+cd scripts
+mkdir dunst
+nupdate
+cp -r ~/.config/dunst/custom/. ~/nixos-config/hosts/common/scripts/dunst/\
+
+chmod +x ~/nixos-config/hosts/common/scripts/dunst/**/*.sh\
+
+cd ~/nixos-config && git add hosts/common/scripts/dunst/\
+
+cd nixos-config/hosts/common/scripts/dunst
+ls
+nix-shell -p tree
+nupdate
+systemctl --user restart dunst.service
+tree
+nupdate
+systemctl --user restart dunst.service
+dunstify "Luster Dawn" "Testing custom frame and icon."
+dunstify -a "vesktop" "Luster Dawn" "This should trigger the pink frame and icon."\
+
+dunstify -a "Electron" "Solar Sonata" "This should trigger the yellow frame."\
+
+dunstify -a "vesktop" "Cageheart" "Testing the green frame rule."\
+
+cd nixos-config/hosts/common/scripts/dunst
+ls
+nupdate
+cd ..
+git add hosts/common/scripts/dunst/
+ls -R hosts/common/scripts/dunst/\
+
+nupdate
+git add hosts/common/scripts/dunst/\
+
+nupdate
+git add hosts/common/scripts/dunst/solar_sonata/solar_sonata.flac
+git add hosts/common/scripts/dunst/solar_sonata/solar_sonata.flac\
+
+ls solar_sonata
+git add hosts/common/scripts/dunst/solar_sonata/solar_sonata.flac\
+
+nupdate
+cd ..
+cd..
+cd ~/nixos-config
+git add .
+nupdate
+systemctl --user restart dunst.service
+nupdate
+systemctl --user restart dunst.service
+dunstify -a "vesktop" "Cageheart" "Testing the green frame rule."\
+
+dunstify -a "vesktop" "Luster Dawn" "This should trigger the pink frame and icon."\
+
+systemctl --user restart dunst.service
+dunstify -a "Electron" "Luster Dawn" "Testing custom frame and icon."\
+
+dunstify -a "Discord" "Luster Dawn" "Testing custom frame and icon."\
+
+dunstify -a "Vesktop" "Luster Dawn" "Testing custom frame and icon."\
+
+dunstify -a "vesktop" "Luster Dawn" "Testing custom frame and icon."\
+
+sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service\
+
+borg list /mnt/nextcloud/backups
+borg list /var/lib/borgbackup/nextcloud-staging
+sudo borg list /var/lib/borgbackup/nextcloud-staging\
+
+sudo borg delete /var/lib/borgbackup/nextcloud-staging::moonbeauty-MoonBeauty-Nextcloud-2026-02-12T23:57:38.failed\
+
+sudo borg extract --dry-run /var/lib/borgbackup/nextcloud-staging::moonbeauty-MoonBeauty-Nextcloud-2026-02-14T08:04:40
+nupdate
+systemctl --user restart dunst.service
+dunstify -a "vesktop" "Luster Dawn" "Testing custom frame and icon."\
+
+notify-send --app-name="vesktop" "Luster Dawn" "This should trigger your custom pink frame, icon, and sound."\
+
+nupdate
+systemctl --user restart dunst.service
+nupdate
+systemctl --user restart dunst.service
+nupdate
+systemctl --user restart dunst.service
+nupdate
+systemctl --user restart dunst.service
+nupdate
+systemctl --user restart dunst.service
+nupdate && systemctl --user restart dunst.service
+dunstify -a "vesktop" "Luster Dawn" "Testing Rule matching"\
+
+nupdate && systemctl --user restart dunst.service
+cd ~/nixos-config
+git add .
+nupdate && systemctl --user restart dunst.service
+git add .
+nupdate && systemctl --user restart dunst.service
+git add .
+nupdate && systemctl --user restart dunst.service
+git add .
+git add . && nupdate && systemctl --user restart dunst.service
+cd nixos-config
+git add . && nupdate && systemctl --user restart dunst.service
+cd .config
+mv dunst dunst.old
+cd nixos-config
+git add . && nupdate && systemctl --user restart dunst.service
+dunstify -i 
+cd nixos-config/hosts/common/scripts/dunst/luster_dawn
+dunstify -i luster_dawn.png
+dunstify -i luster_dawn.png test
+dunstify -i luster_dawn.png test test
+ls
+git add . && nupdate && systemctl --user restart dunst.service
+systemctl --user restart dunst.service
+notify-send -u critical "System Alert" "This is a critical urgency message."\
+
+git add . && nupdate && systemctl --user restart dunst.service
+notify-send --app-name="vesktop" "Luster Dawn" "This should trigger the pink border, 92px icon, and custom sound."\
+
+git add . && nupdate && systemctl --user restart dunst.service
+notify-send --app-name="vesktop" "Luster Dawn" "This should trigger the pink border, 92px icon, and custom sound."\
+
+git add . && nupdate && systemctl --user restart dunst.service && notify-send --app-name="vesktop" "Luster Dawn" "This should trigger the pink border, 92px icon, and custom sound."
+notify-send -a "vesktop" "Luster Dawn" "Testing the pink border, 92px icon, and sound."\
+
+notify-send -a "vesktop" "Solar Sonata" "Testing the yellow border, 92px icon, and sound."\
+
+notify-send -a "vesktop" "Apogee" "Testing the cyan border and 92px icon."\
+
+notify-send -a "vesktop" "Cageheart" "Testing the green border, 92px icon, and sound."\
+
+notify-send -a "vesktop" "Olivia" "Testing the light blue border, 92px icon, and sound."\
+
+notify-send -a "vesktop" "Bob" "Testing the light blue border, 92px icon, and sound."\
+
+notify-send -u critical "System Alert" "This should have a Red border and stay on screen until clicked."\
+
+git add . && nupdate && systemctl --user restart dunst.service && notify-send --app-name="vesktop" "Luster Dawn" "This should trigger the pink border, 92px icon, and custom sound."
+notify-send -u critical "System Alert" "This should have a Red border and stay on screen until clicked."\
+
+notify-send -a "vesktop" "Bob" "Testing the light blue border, 92px icon, and sound."\
+
+notify-send -a "vesktop" "Cageheart" "Testing the green border, 92px icon, and sound."\
+
+notify-send -u low "System Alert" "This should have a Red border and stay on screen until clicked."\
+
+notify-send -u normal "System Alert" "This should have a Red border and stay on screen until clicked."\
+
+git add . && nupdate && systemctl --user restart dunst.service && notify-send --app-name="vesktop" "Luster Dawn" "This should trigger the pink border, 92px icon, and custom sound."
+git add . && nupdate && systemctl --user restart dunst.service
+notify-send -u normal "System Alert" "This should have a Red border and stay on screen until clicked."\
+
+journalctl -f
+nupdate
+nano ~/.local/share/applications/f-chat-horizon.desktop
+chmod +x ~/F-Chat.Horizon-linux-x86_64.AppImage\
+chmod +x ~/.local/share/applications/f-chat-horizon.desktop\
+
+pass f-list.net
+dbus-send --dest=org.freedesktop.DBus --type=method_call /org/freedesktop/DBus org.freedesktop.DBus.ListNames | grep -E "secrets|keyring"\
+
+sudo dbus-send --dest=org.freedesktop.DBus --type=method_call /org/freedesktop/DBus org.freedesktop.DBus.ListNames | grep -E "secrets|keyring"\
+
+cd nixos-config
+grep -r "services.gnome.gnome-keyring.enable = true;" .
+grep -r "security.pam.services.login.enableGnomeKeyring = true;~" .
+grep -r "security.pam.services.login.enableGnomeKeyring = true;" .
+: 1771105257:0;killall waybar
+: 1771105262:0;pkill waybar
+: 1771105272:0;journalctl -f
+: 1771105547:0;echo $NIXOS_OZONE_WL
+: 1771105699:0;steam-run /home/moonburst/F-Chat.Horizon-linux-x86_64.AppImage --ozone-platform=wayland --password-store=gnome-libsecret %U
+: 1771106794:0;nano ~/.local/share/applications/f-chat-horizon.desktop
+: 1771109895:0;cd nixos-config
+: 1771109900:0;git add .
