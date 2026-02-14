@@ -1,452 +1,58 @@
-ncdu ~/
-ncdu /mnt/main_backup/
-ncdu /mnt/main_backup/
-ncdu /tmp/borgmount 
-sudo ncdu /tmp/borgmount 
-: 1770851907:0;SOPS_AGE_KEY_FILE=~/.config/sops/age/new_name.txt sops -d your_secrets.yaml
-: 1770851915:0;SOPS_AGE_KEY_FILE=~/.config/sops/age/moon_keys.txt sops -d your_secrets.yaml
-: 1770851919:0;SOPS_AGE_KEY_FILE=~/.config/sops/age/moon_keys.txt sops -d secrets.yaml
-: 1770851922:0;cd nixos-config
-: 1770851923:0;SOPS_AGE_KEY_FILE=~/.config/sops/age/moon_keys.txt sops -d secrets.yaml
-: 1770851942:0;sudo cat /run/secrets/borg_passphrase
-: 1770851995:0;journalctl -u sops-nix
-: 1770852002:0;ls -la /run/secrets/
-: 1770852004:0;sudo ls -la /run/secrets/
-: 1770852062:0;cd nixos-config
-: 1770852063:0;ls
-: 1770852065:0;nano secrets.yaml
-: 1770852101:0;sudo ls -l /run/secrets/\
-
-: 1770852142:0;sudo ls -la /run/secrets/example_key
-: 1770852153:0;sops secrets.yaml\
-
-: 1770852161:0;sops secrets.yaml
-: 1770852164:0;cd nixos-config
-: 1770852165:0;sops secrets.yaml
-: 1770852215:0;SOPS_AGE_KEY_FILE=~/.config/sops/age/moon_keys.txt sops secrets.yaml\
-
-: 1770852412:0;nupdate
-: 1770852517:0;sops secrets.yaml\
-
-: 1770852635:0;cd nixos-config
-: 1770852636:0;sops secrets.yaml\
-
-: 1770852720:0;cd /run/secrets
-: 1770852721:0;ls
-: 1770852723:0;ls -a
-: 1770852724:0;sudo ls -a
-: 1770853297:0;cd /rsec
-: 1770853300:0;cd /run/secrets
-: 1770853302:0;ls -a
-: 1770853304:0;sudo ls -a
-: 1770853327:0;sops -d $(nix-instantiate --eval -E '(import <nixpkgs> {}).config.sops.defaultSopsFile' | tr -d '"')\
-
-: 1770853358:0;cd nixos-config
-: 1770853360:0;git add .
-: 1770853363:0;nupdate
-: 1770853379:0;sops -d $(nix-instantiate --eval -E '(import <nixpkgs> {}).config.sops.defaultSopsFile' | tr -d '"')\
-
-: 1770853418:0;sops -d secrets.yaml | grep sops_key
-: 1770853519:0;cat ${config.sops.secrets.sops_key.path}
-: 1770853673:0;cd /run/secrets
-: 1770853677:0;sudo ls -a
-: 1770853755:0;# Point to your key\
-export SOPS_AGE_KEY_FILE=~/.config/sops/age/moon_keys.txt\
-\
-# Decrypt and look for the label\
-sops -d secrets.yaml | grep sops_key\
-
-: 1770853772:0;cd nixos-config
-: 1770853774:0;# Point to your key\
-export SOPS_AGE_KEY_FILE=~/.config/sops/age/moon_keys.txt\
-\
-# Decrypt and look for the label\
-sops -d secrets.yaml | grep sops_key\
-
-: 1770853786:0;sudo ls -a
-: 1770853861:0;cd ~/nixos-config
-: 1770853864:0;sops -d secrets.yaml | grep sops_key
-: 1770853869:0;sops -d secrets.yaml 
-: 1770853947:0;journalctl -u sops-nix.service
-: 1770853979:0;grep -r "example_key" ~/nixos-config
-: 1770854002:0;grep -r "sops_key" ~/nixos-config
-: 1770854026:0;cd ~/nixos-config\
-git add .\
-
-: 1770854029:0;sudo nixos-rebuild switch --flake .\
-
-: 1770854042:0;sudo ls -l /run/secrets/
-: 1770854063:0;ls -l /run/secrets/example_key
-: 1770854070:0;sudo rm -rf /run/secrets\
-
-: 1770854074:0;sudo nixos-rebuild switch --flake .\
-
-: 1770854090:0;ls -l /run/secrets/
-: 1770854215:0;ls ~/.config/sops/age/
-: 1770854223:0;ls ~/nixos-config
-: 1770854228:0;sudo ls -l /run/secrets/
-: 1770854258:0;sudo ls -l /run/secrets/sops_key\
-
-: 1770854267:0;sudo ls -l /run/secrets/
-: 1770854270:0;nupdate
-: 1770854282:0;sudo ls -l /run/secrets/
-: 1770854290:0;sudo ls /run/secrets/
-: 1770854294:0;sudo ls -a /run/secrets/
-: 1770854299:0;sudo ls -a /run/
-: 1770854304:0;cd /run
-: 1770854304:0;ls
-: 1770854308:0;cd secrets
-: 1770854308:0;ls
-: 1770854332:0;sudo ls -l /run/secrets/sops_key\
-
-: 1770854362:0;cd nixos-config
-: 1770854364:0;git add .
-: 1770854385:0;sudo nixos-rebuild switch --flake .\
-
-: 1770854410:0;sudo ls -a /run/secrets/
-: 1770854477:0;git add .
-: 1770854482:0;nupdate
-: 1770854496:0;sudo ls -a /run/secrets/
-: 1770854527:0;nix-instantiate --eval -E '(import ./. {}).nixosConfigurations.moonbeauty.config.sops.age.keyFile'
-: 1770854540:0;nix eval .#nixosConfigurations.moonbeauty.config.sops.defaultSopsFile
-: 1770854563:0;sudo /run/current-system/activate\
-
-: 1770854567:0;sudo ls -a /run/secrets/
-: 1770854597:0;git add .
-: 1770854600:0;git commit -m "updating for borg and sops"
-: 1770854603:0;nupdate
-: 1770854616:0;sudo ls -a /run/secrets/
-: 1770854621:0;sops -d /nix/store/wnnnvvhvql51bgannfpbbnkhkj2952vp-source/secrets.yaml
-: 1770854634:0;export SOPS_AGE_KEY_FILE=~/.config/sops/age/moon_keys.txt\
-sops -d /nix/store/wnnnvvhvql51bgannfpbbnkhkj2952vp-source/secrets.yaml\
-
-: 1770854674:0;nupdate
-: 1770854711:0;cd ~/.config/sops/age
-: 1770854713:0;ls
-: 1770854725:0;git add .\
-sudo nixos-rebuild switch --flake . --show-trace\
-
-: 1770854730:0;cd ~/nixos-config
-: 1770854731:0;git add .\
-sudo nixos-rebuild switch --flake . --show-trace\
-
-: 1770854767:0;cd /run/secrets
-: 1770854772:0;nix eval .#nixosConfigurations.moonbeauty.config.sops.secrets\
-
-: 1770854818:0;export SOPS_AGE_KEY_FILE=~/.config/sops/age/moon_keys.txt\
-sops -d secrets.yaml | grep sops_key\
-
-: 1770854826:0;cd nixos-config
-: 1770854827:0;export SOPS_AGE_KEY_FILE=~/.config/sops/age/moon_keys.txt\
-sops -d secrets.yaml | grep sops_key\
-
-: 1770854852:0;git add .\
-git commit -m "force sync"\
-sudo nixos-rebuild switch --flake . --force\
-
-: 1770854860:0;nupdate
-: 1770854869:0;nix eval .#nixosConfigurations.moonbeauty.config.sops.secrets\
-
-: 1770854887:0;cd /run/secrets
-: 1770854901:0;sudo ls -la /run/secrets-for-users/
-: 1770854940:0;cd /run
-: 1770854940:0;ls
-: 1770854943:0;cd secrets
-: 1770854943:0;ls
-: 1770854950:0;cd secrets-for-users
-: 1770854951:0;ls
-: 1770854954:0;sudo ls
-: 1770854966:0;sudo cat /run/secrets-for-users/sops_key\
-
-: 1770855106:0;nupdate
-: 1770855147:0;sudo ls -l /run/secrets/sops_key\
-
-: 1770855154:0;cd /run
-: 1770855155:0;ls
-: 1770855157:0;cd secrets
-: 1770855194:0;nupdate
-: 1770855231:0;sudo systemctl stop nixos-rebuild-switch-to-configuration.service\
-sudo systemctl reset-failed nixos-rebuild-switch-to-configuration.service\
-
-: 1770855246:0;cd ~/nixos-config\
-git add .\
-
-: 1770855251:0;nupdate
-: 1770855270:0;sudo ls -l /run/secrets/sops_key\
-
-: 1770855306:0;sudo cat /run/secrets/sops_key\
-
-: 1770855314:0;sudo BORG_PASSCOMMAND="cat /run/secrets/sops_key" borg info /mnt/main_backup
-: 1770855348:0;journalctl -f
-: 0:0;
-: 1770855743:0;cd nixos-config/
-: 1770855746:0;git add .
-: 1770855749:0;git commit -m "updating for borg and sops"
-: 1770855755:0;git push
-: 1770857941:0;lsblk -f
-: 1770857978:0;sudo journalctl -fu borgbackup-job-MoonBeauty-Nextcloud.service\
-
-: 1770858106:0;cd /mnt/main_backup
-: 1770858107:0;ls
-: 1770858211:0;sudo borg break-lock /mnt/nextcloud/backups
-: 1770858466:0;lsblk -f
-: 1770858527:0;sudo rm -rf /mnt/nextcloud/backups/lock.exclusive
-: 1770858554:0;sudo rm /mnt/nextcloud/backups/lock.exclusive.*.tmp
-: 1770858631:0;sudo rm -rf /mnt/nextcloud/backups/lock.exclusive.*.tmp
-: 1770858686:0;ls
-: 1770858758:0;ncdu /mnt/nextcloud
-: 1770858944:0;ls /mnt/nextcloud/backups
-: 1770859089:0;cat .config/rclone
-: 1770859092:0;cat .config/rclone/rclone.conf
-: 1770859185:0;cd /mnt
-: 1770859185:0;ls
-: 1770859221:0;nupdate
-: 1770859330:0;sudo systemctl stop rclone-nextcloud-mount.service
-: 1770859336:0;sudo umount -l /mnt/nextcloud
-: 1770859342:0;sudo pkill -9 rclone
-: 1770859352:0;nupdate
-: 1770859360:0;journalctl -u rclone-nextcloud-mount.service -n 50
-: 1770859375:0;ls
-: 1770859378:0;ls nextcloud
-: 1770859379:0;ls
-: 1770859398:0;journalctl -u rclone-nextcloud-mount.service -n 50
-: 1770859406:0;sudo systemctl status rclone-nextcloud-mount.service\
-
-: 1770859412:0;mountpoint /mnt/nextcloud
-: 1770859422:0;ls -la /mnt/nextcloud\
-
-: 1770859433:0;mountpoint /mnt/nextcloud
-: 1770859453:0;ls -la /mnt/nextcloud\
-
-: 1770859459:0;findmnt /mnt/nextcloud
-: 1770859469:0;journalctl -u rclone-nextcloud-mount.service -n 50
-: 1770859496:0;sudo pkill -9 rclone
-: 1770859501:0;sudo umount -l /mnt/nextcloud
-: 1770859506:0;nupdate
-: 1770859523:0;sudo systemctl restart rclone-nextcloud-mount.service
-: 1770859527:0;ls -la /mnt/nextcloud
-: 1770859537:0;journalctl -u rclone-nextcloud-mount.service -n 50
-: 1770859584:0;sudo systemctl stop rclone-nextcloud-mount.service
-: 1770859589:0;sudo pkill -9 rclone
-: 1770859594:0;sudo umount -l /mnt/nextcloud
-: 1770859599:0;nupdate
-: 1770859612:0;journalctl -u rclone-nextcloud-mount.service -n 50
-: 1770859683:0;watch journalctl -u rclone-nextcloud-mount.service -n 50
-: 1770859693:0;sudo journalctl -fu borgbackup-job-MoonBeauty-Nextcloud.service\
-
-: 1770859748:0;nupdate
-: 1770859778:0;ls /mnt/nextcloud
-: 1770859783:0;ls /mnt/nextcloud/backups
-: 1770859785:0;ls /mnt/nextcloud/
-: 1770859792:0;ls -la /mnt/nextcloud
-: 1770859858:0;sudo systemctl stop rclone-nextcloud-mount.service; \\
-sudo pkill -9 rclone; \\
-sudo umount -l /mnt/nextcloud; \\
-sudo rm -rf /mnt/nextcloud; \\
-sudo nixos-rebuild switch && \\
-sudo systemctl start rclone-nextcloud-mount.service\
-
-: 1770859873:0;ls -la /mnt/nextcloud
-: 1770860251:0;cat .config/rclone/rclone.conf
-: 1770860327:0;cat ~/.config/rclone/rclone.conf
-: 1770860407:0;nupdate
-: 1770860474:0;ls -la /mnt/nextcloud
-: 1770860506:0;rclone ls NextCloud:
-: 1770860626:0;sudo mkdir -p /mnt/nextcloud\
-sudo chown moonburst:users /mnt/nextcloud\
-
-: 1770860661:0;rclone mount NextCloud: /mnt/nextcloud --vfs-cache-mode full --daemon\
-ls -la /mnt/nextcloud\
-
-: 1770860740:0;sudo fusermount -uz /mnt/nextcloud; mkdir -p /mnt/nextcloud && rclone mount NextCloud: /mnt/nextcloud --vfs-cache-mode full --allow-other --buffer-size 0 --dir-cache-time 10s --vfs-read-chunk-size 32M --daemon\
-
-: 1770860800:0;sudo fusermount -uz /mnt/nextcloud; rclone mount NextCloud: /mnt/nextcloud --vfs-cache-mode full --buffer-size 0 --vfs-read-chunk-size 32M --daemon && ls -la /mnt/nextcloud
-: 1770860872:0;sudo fusermount -uz /mnt/nextcloud; pkill -9 rclone; rclone mount NextCloud: /mnt/nextcloud --vfs-cache-mode off --vfs-read-chunk-size 0 --buffer-size 0 -vv\
-
-: 1770861008:0;ls -la /mnt/nextcloud\
-
-: 1770861016:0;sudo fusermount -uz /mnt/nextcloud; pkill -9 rclone; rclone mount NextCloud: /mnt/nextcloud --vfs-cache-mode full --vfs-cache-max-age 24h --buffer-size 0 --vfs-read-chunk-size 32M --daemon\
-
-: 1770861067:0;ls -la /mnt/nextcloud\
-
-: 1770861072:0;ls /mnt/nextcloud/
-: 1770861093:0;sudo ls -la /mnt/nextcloud\
-
-: 1770861103:0;sudo fusermount -uz /mnt/nextcloud; pkill -9 rclone; rclone mount NextCloud: /mnt/nextcloud --vfs-cache-mode full --allow-other --daemon\
-
-: 1770861255:0;sudo ls /mnt/nextcloud
-: 1770861324:0;rclone lsd NextCloud:\
-
-: 1770861528:0;sudo fusermount -uz /mnt/nextcloud; pkill -9 rclone; rclone mount NextCloud: /mnt/nextcloud --vfs-cache-mode full -vv\
-
-: 1770861584:0;sudo fusermount -uz /mnt/nextcloud; pkill -9 rclone; rclone mount NextCloud: /mnt/nextcloud --vfs-cache-mode writes --allow-other --uid $(id -u) --gid $(id -g) --daemon\
-
-: 1770861605:0;ls -la /mnt/nextcloud
-: 1770861609:0;rclone lsd NextCloud:\
-
-: 1770861934:0;ls -la /mnt/nextcloud
-: 1770861936:0;rclone lsd NextCloud:\
-
-: 1770861946:0;rclone mount NextCloud:backups /mnt/nextcloud --vfs-cache-mode writes --allow-other -vv\
-
-: 1770861982:0;rm -rf /home/moonburst/.cache/rclone\
-
-: 1770861986:0;sudo fusermount -uz /mnt/nextcloud; pkill -9 rclone; rclone mount NextCloud:backups /mnt/nextcloud --allow-other --vfs-cache-mode off --daemon\
-
-: 1770862014:0;ls -la /mnt/nextcloud
-: 1770862029:0;sudo fusermount -uz /mnt/nextcloud; pkill -9 rclone; rclone mount NextCloud:backups /mnt/nextcloud --vfs-cache-mode full --allow-other --uid $(id -u) --gid $(id -g) --daemon
-: 1770862111:0;nupdate
-: 1770862117:0;watch journalctl -u rclone-nextcloud-mount.service -n 50
-: 1770862155:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770862208:0;sudo journalctl -fu borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770862251:0;sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key) \\
-borg list /mnt/nextcloud\
-
-: 1770862314:0;nupdate
-: 1770862345:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770862367:0;sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key) \\
-borg list /mnt/nextcloud\
-
-: 1770862444:0;sudo fusermount -uz /mnt/nextcloud; pkill -9 rclone; rclone mount NextCloud: /mnt/nextcloud --vfs-cache-mode full --allow-other --uid $(id -u) --gid $(id -g) --daemon\
-
-: 1770862448:0;sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key) \\
-borg list /mnt/nextcloud/backups --allow-fixed-id\
-
-: 1770862460:0;sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key) \\
-borg list /mnt/nextcloud/backups --consider-part-files\
-
-: 1770862542:0;sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key) \\
-BORG_SECURITY_ID_ALLOW_CHANGE=1 borg list /mnt/nextcloud/backups\
-
-: 1770862580:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service\
-sudo journalctl -fu borgbackup-job-MoonBeauty-Nextcloud.service\
-
-: 1770862617:0;sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key) \\
-borg list --ignore-cache /mnt/nextcloud/backups\
-
-: 1770862644:0;sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key) \\
-borg delete --cache-only /mnt/nextcloud/backups\
-
-: 1770862677:0;sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key) \\
-borg list /mnt/nextcloud/backups\
-
-: 1770862723:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770862768:0;sudo rm -rf /root/.cache/borg/*\
-
-: 1770862788:0;sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key) \\
-borg list /mnt/nextcloud/backups\
-
-: 1770862842:0;sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key) \\
-borg list /mnt/nextcloud\
-
-: 1770862894:0;sudo fusermount -uz /mnt/nextcloud; pkill -9 rclone; rclone mount NextCloud: /mnt/nextcloud --vfs-cache-mode full --allow-other --uid $(id -u) --gid $(id -g) --daemon\
-
-: 1770862897:0;ls -la /mnt/nextcloud/backups\
-
-: 1770862908:0;sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key) \\
-BORG_SECURITY_ID_ALLOW_CHANGE=1 borg list /mnt/nextcloud/backups\
-
-: 1770862962:0;find /mnt/nextcloud -name "config"\
-
-: 1770862974:0;rclone ls NextCloud: --include "**/config"
-: 1770863001:0;rclone ls NextCloud: -vv --include "config"\
-
-: 1770863015:0;rclone ls NextCloud:backups\
-
-: 1770863028:0;rclone purge NextCloud:backups\
-mkdir -p /mnt/nextcloud/backups\
-
-: 1770863041:0;sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key) \\
-borg init --encryption=repokey-blake2 /mnt/nextcloud/backups\
-
-: 1770863055:0;sudo fusermount -uz /mnt/nextcloud; pkill -9 rclone; rclone purge NextCloud:backups; mkdir -p /mnt/nextcloud/backups\
-
-: 1770863076:0;rclone mount NextCloud: /mnt/nextcloud --vfs-cache-mode full --allow-other --uid $(id -u) --gid $(id -g) --daemon\
-
-: 1770863089:0;sudo fusermount -uz /mnt/nextcloud; pkill -9 rclone; \\
-rclone mount NextCloud: /mnt/nextcloud \\
-  --config /home/moonburst/.config/rclone/rclone.conf \\
-  --vfs-cache-mode full \\
-  --allow-other \\
-  --uid $(id -u) --gid $(id -g) -vv\
-
-: 1770863102:0;sudo rm -rf /mnt/nextcloud/*\
-rclone mount NextCloud: /mnt/nextcloud --config /home/moonburst/.config/rclone/rclone.conf --vfs-cache-mode full --allow-other --uid 1000 --gid 100 --daemon\
-
-: 1770863105:0;ls -la /mnt/nextcloud/backups\
-
-: 1770863116:0;mkdir -p /mnt/nextcloud/backups\
-sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key) \\
-borg init --encryption=repokey-blake2 /mnt/nextcloud/backups\
-
-: 1770863161:0;ls -la /mnt/nextcloud/backups\
-
-: 1770863165:0;sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key) \\
-borg break-lock /mnt/nextcloud/backups\
-
-: 1770863185:0;rclone delete NextCloud:backups/lock.exclusive --rmdirs\
-
-: 1770863228:0;ls -la /mnt/nextcloud/backups\
-
-: 1770863240:0;sudo fusermount -uz /mnt/nextcloud; pkill -9 rclone; \\
-rclone mount NextCloud: /mnt/nextcloud \\
-  --config /home/moonburst/.config/rclone/rclone.conf \\
-  --vfs-cache-mode full \\
   --allow-other \\
   --uid 1000 --gid 100 --daemon\
 
-: 1770863243:0;ls -la /mnt/nextcloud/backups\
+ls -la /mnt/nextcloud/backups\
 
-: 1770863283:0;sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key) \\
+sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key) \\
 borg break-lock /mnt/nextcloud/backups\
 
-: 1770863291:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service\
+sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service\
 
-: 1770863536:0;sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key) borg break-lock /mnt/nextcloud/backups
-: 1770863546:0;nupdate
-: 1770863595:0;sudo fusermount -uz /mnt/nextcloud; pkill -9 rclone\
+sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key) borg break-lock /mnt/nextcloud/backups
+nupdate
+sudo fusermount -uz /mnt/nextcloud; pkill -9 rclone\
 
-: 1770863598:0;nupdate
-: 1770863645:0;sudo fusermount -uz /mnt/nextcloud; pkill -9 rclone
-: 1770863648:0;nupdate
-: 1770863692:0;sudo fusermount -uz /mnt/nextcloud; sudo pkill -9 rclone; sudo rm -rf /mnt/nextcloud/*\
+nupdate
+sudo fusermount -uz /mnt/nextcloud; pkill -9 rclone
+nupdate
+sudo fusermount -uz /mnt/nextcloud; sudo pkill -9 rclone; sudo rm -rf /mnt/nextcloud/*\
 
-: 1770863698:0;nupdate
-: 1770863743:0;sudo systemctl stop rclone-mount.service
-: 1770863750:0;sudo fusermount -uz /mnt/nextcloud
-: 1770863753:0;nupdate
-: 1770863782:0;sudo journalctl -u rclone-mount.service -n 50 --no-pager\
+nupdate
+sudo systemctl stop rclone-mount.service
+sudo fusermount -uz /mnt/nextcloud
+nupdate
+sudo journalctl -u rclone-mount.service -n 50 --no-pager\
 
-: 1770863808:0;sudo chmod 644 /home/moonburst/.config/rclone/rclone.conf\
+sudo chmod 644 /home/moonburst/.config/rclone/rclone.conf\
 
-: 1770863811:0;nupdate
-: 1770863847:0;ls -la /mnt/nextcloud/backups\
+nupdate
+ls -la /mnt/nextcloud/backups\
 
-: 1770863854:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service\
+sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service\
 
-: 1770863883:0;nupdate
-: 1770863900:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770863938:0;find /mnt/nextcloud -name "config"\
+nupdate
+sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
+find /mnt/nextcloud -name "config"\
 
-: 1770863946:0;sudo find /mnt/nextcloud -name "config"\
+sudo find /mnt/nextcloud -name "config"\
 
-: 1770863960:0;find /mnt/nextcloud -name "config"\
+find /mnt/nextcloud -name "config"\
 
-: 1770863961:0;ls -la /mnt/nextcloud
-: 1770863975:0;sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key) \\
+ls -la /mnt/nextcloud
+sudo BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key) \\
 borg init --encryption=repokey-blake2 /mnt/nextcloud/backups\
 
-: 1770864009:0;[200~ls -la /mnt/nextcloud/backups
-: 1770864011:0;ls -la /mnt/nextcloud/backups\
+[200~ls -la /mnt/nextcloud/backups
+ls -la /mnt/nextcloud/backups\
 
-: 1770864029:0;rclone delete NextCloud:backups/lock.exclusive --rmdirs\
+rclone delete NextCloud:backups/lock.exclusive --rmdirs\
 
-: 1770864061:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770864132:0;sudo journalctl -fu borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770864769:0;nupdate
-: 1770864900:0;sudo du -sh --exclude-from=<(printf "%s\n" "*/.steam" "*/.cache" "*/.config/sops" "*/.config/vesktop/sessionData" "*/.config/horizon-electron/Partitions" "*/.var" "*/.local/share/cargo" "*/.local/share/Steam" "*/.lmstudio" "*/.git/objects" "*/Games" "*/stump_backup.tar.gz" "*/.local/share/Trash" "*/.Trash*" "**/.tmp" "**/*.swp" "**/*.bak" "*/.cache/mozilla/firefox" "*/.cache/google-chrome" "*/.cache/BraveSoftware" "*/.config/chromium/*/Service Worker/CacheStorage" "**/node_modules" "**/.npm" "**/__pycache__" "**/.venv" "**/.cargo" "**/.rustup" "**/.gradle") /home/moonburst\
+sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
+sudo journalctl -fu borgbackup-job-MoonBeauty-Nextcloud.service
+nupdate
+sudo du -sh --exclude-from=<(printf "%s\n" "*/.steam" "*/.cache" "*/.config/sops" "*/.config/vesktop/sessionData" "*/.config/horizon-electron/Partitions" "*/.var" "*/.local/share/cargo" "*/.local/share/Steam" "*/.lmstudio" "*/.git/objects" "*/Games" "*/stump_backup.tar.gz" "*/.local/share/Trash" "*/.Trash*" "**/.tmp" "**/*.swp" "**/*.bak" "*/.cache/mozilla/firefox" "*/.cache/google-chrome" "*/.cache/BraveSoftware" "*/.config/chromium/*/Service Worker/CacheStorage" "**/node_modules" "**/.npm" "**/__pycache__" "**/.venv" "**/.cargo" "**/.rustup" "**/.gradle") /home/moonburst\
 
-: 1770864926:0;cat <<EOF > /tmp/borg_excludes.txt\
+cat <<EOF > /tmp/borg_excludes.txt\
 */.steam\
 */.cache\
 */.config/sops\
@@ -479,111 +85,111 @@ EOF\
 \
 sudo du -sh --exclude-from=/tmp/borg_excludes.txt /home/moonburst\
 
-: 1770867390:0;rclone about NextCloud:\
+rclone about NextCloud:\
 
-: 1770874462:0;nupdate
-: 1770878436:0;rclone about NextCloud:\
+nupdate
+rclone about NextCloud:\
 
-: 1770881231:0;cat .config/sops/age/moon_keys.txt
-: 1770906658:0;rclone about NextCloud:\
+cat .config/sops/age/moon_keys.txt
+rclone about NextCloud:\
 
-: 1770921400:0;rclone about NextCloud:
-: 1770926399:0;nix-shell -p cinny
+rclone about NextCloud:
+nix-shell -p cinny
 cinny
 cinny
 nix-shell -p cinny-desktop
 exit
-: 1770926473:0;nix-shell -p cinny-desktop
-: 1770926479:0;nix-shell -p cinny-unwrapped
+nix-shell -p cinny-desktop
+nix-shell -p cinny-unwrapped
 cinny-unwrapped
 cinny
 exit
-: 1770926550:0;nix-env -iA nixos.cinny-desktop
-: 1770926556:0;nix-shell -p cinny-desktop
-: 1770926558:0;nix-env -iA nixos.cinny-desktop
-: 1770926571:0;nix-env -iA nixos.cinny-unwrapped
-: 1770926770:0;nupdate
-: 1770926807:0;cinny
-: 1770926844:0;nupdate
-: 1770926880:0;cinny-unwrapped
-: 1770927416:0;nupdate
-: 1770927453:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770927587:0;nupdate
-: 1770927622:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770927725:0;rclone about NextCloud:
-: 1770927750:0;ncdu /home/moonburst
-: 1770927795:0;rclone about NextCloud:
-: 1770927817:0;nupdate
-: 1770927822:0;rclone about NextCloud:
-: 1770927836:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770927917:0;rclone about NextCloud:
-: 1770928074:0;nupdate
-: 1770928099:0;borg delete /mnt/nextcloud/backups::moonbeauty-MoonBeauty-Nextcloud-2026-02-12T14:24:01.failed\
+nix-env -iA nixos.cinny-desktop
+nix-shell -p cinny-desktop
+nix-env -iA nixos.cinny-desktop
+nix-env -iA nixos.cinny-unwrapped
+nupdate
+cinny
+nupdate
+cinny-unwrapped
+nupdate
+sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
+nupdate
+sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
+rclone about NextCloud:
+ncdu /home/moonburst
+rclone about NextCloud:
+nupdate
+rclone about NextCloud:
+sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
+rclone about NextCloud:
+nupdate
+borg delete /mnt/nextcloud/backups::moonbeauty-MoonBeauty-Nextcloud-2026-02-12T14:24:01.failed\
 
-: 1770928128:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770928217:0;nupdate
-: 1770928239:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770928305:0;nupdate
-: 1770928330:0;sudo ls /mnt/nextcloud/backups
-: 1770928352:0;nolog
-: 1770928400:0;nupdate
-: 1770930670:0;sudo journalctl -fu borgbackup-job-MoonBeauty-Nextcloud.service\
+sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
+nupdate
+sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
+nupdate
+sudo ls /mnt/nextcloud/backups
+nolog
+nupdate
+sudo journalctl -fu borgbackup-job-MoonBeauty-Nextcloud.service\
 
-: 1770930716:0;nupdate
-: 1770930804:0;sudo journalctl -u mount-nextcloud.service --no-pager | tail -n 20\
+nupdate
+sudo journalctl -u mount-nextcloud.service --no-pager | tail -n 20\
 
-: 1770930850:0;nupdate
-: 1770930916:0;sudo journalctl -u mount-nextcloud.service --no-pager | tail -n 20\
+nupdate
+sudo journalctl -u mount-nextcloud.service --no-pager | tail -n 20\
 
-: 1770930944:0;nupdate
-: 1770931357:0;sudo journalctl -fu borgbackup-job-MoonBeauty-Nextcloud.service\
+nupdate
+sudo journalctl -fu borgbackup-job-MoonBeauty-Nextcloud.service\
 
-: 1770931384:0;nupdate
-: 1770931411:0;sudo journalctl -fu borgbackup-job-MoonBeauty-Nextcloud.service\
+nupdate
+sudo journalctl -fu borgbackup-job-MoonBeauty-Nextcloud.service\
 
-: 1770930124:3;rclone about NextCloud:
-: 1770931441:0;rclone about NextCloud:
-: 1770931570:0;nupdate
-: 1770931871:0;[200~nupdate
-: 1770931874:0;nupdate
-: 1770932193:0;rclone about NextCloud:
-: 1770932213:0;watch rclone about NextCloud:
-: 1770932586:0;journalctl -f
-: 1770932589:0;sudo journalctl -fu borgbackup-job-MoonBeauty-Nextcloud.service\
+rclone about NextCloud:
+rclone about NextCloud:
+nupdate
+[200~nupdate
+nupdate
+rclone about NextCloud:
+watch rclone about NextCloud:
+journalctl -f
+sudo journalctl -fu borgbackup-job-MoonBeauty-Nextcloud.service\
 
-: 1770932886:0;nupdate
-: 1770933040:0;sudo journalctl -fu mount-nextcloud.service
-: 1770933124:0;nupdate
-: 1770934266:0;sudo journalctl -fu mount-nextcloud.service
-: 1770936073:0;cd .config
-: 1770936074:0;ls
-: 1770936097:0;cd ~/.local/share
-: 1770936098:0;ls
-: 1770936500:0;sudo du -sh /var/cache/rclone/vfs/NextCloud\
+nupdate
+sudo journalctl -fu mount-nextcloud.service
+nupdate
+sudo journalctl -fu mount-nextcloud.service
+cd .config
+ls
+cd ~/.local/share
+ls
+sudo du -sh /var/cache/rclone/vfs/NextCloud\
 
-: 1770936686:0;nolog
-: 1770936761:0;nupdate
-: 1770936803:0;sudo journalctl -fu borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770936849:0;sudo journalctl -u mount-nextcloud.service -f
-: 1770936875:0;sudo nethogs  # (Requires pkgs.nethogs)\
+nolog
+nupdate
+sudo journalctl -fu borgbackup-job-MoonBeauty-Nextcloud.service
+sudo journalctl -u mount-nextcloud.service -f
+sudo nethogs  # (Requires pkgs.nethogs)\
 # OR\
 sudo watch -n 1 "ls -l /mnt/nextcloud/backups/data/0/ | wc -l"\
 
-: 1770939957:0;sudo journalctl -fu borgbackup-job-MoonBeauty-Nextcloud.service\
+sudo journalctl -fu borgbackup-job-MoonBeauty-Nextcloud.service\
 
-: 1770939972:0;nupdate
-: 1770942299:0;nolog
-: 1770943319:0;sudo rclone purge NextCloud:backups/lock.exclusive --config /var/lib/rclone/rclone.conf\
+nupdate
+nolog
+sudo rclone purge NextCloud:backups/lock.exclusive --config /var/lib/rclone/rclone.conf\
 
-: 1770943350:0;ls -l /run/secrets/borg_pass\
+ls -l /run/secrets/borg_pass\
 
-: 1770943353:0;sudo cat /run/secrets/borg_pass\
+sudo cat /run/secrets/borg_pass\
 
-: 1770943405:0;sudo cat /run/secrets/sops_key
-: 1770943422:0;nupdate
-: 1770943445:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service\
+sudo cat /run/secrets/sops_key
+nupdate
+sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service\
 
-: 1770943490:0;# Stop services and clear the ghost locks\
+# Stop services and clear the ghost locks\
 sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service\
 sudo rclone purge NextCloud:backups/lock.exclusive --config /var/lib/rclone/rclone.conf\
 \
@@ -596,16 +202,16 @@ sudo BORG_LOCK_PATH="/var/lib/borg/nextcloud-locks" \\
      BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key) \\
      borg init --encryption=repokey-blake2 /mnt/nextcloud/backups\
 
-: 1770943552:0;sudo mkdir -p /mnt/nextcloud/backups\
+sudo mkdir -p /mnt/nextcloud/backups\
 \
 # Re-initialize using the EXACT secret Borg will use later\
 sudo BORG_LOCK_PATH="/var/lib/borg/nextcloud-locks" \\
      BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key) \\
      borg init --encryption=repokey-blake2 /mnt/nextcloud/backups
-: 1770943582:0;sudo BORG_LOCK_PATH="/var/lib/borg/nextcloud-locks" \\
+sudo BORG_LOCK_PATH="/var/lib/borg/nextcloud-locks" \\
      BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key) \\
      borg init --encryption=repokey-blake2 /mnt/nextcloud/backups
-: 1770943592:0;# 1. Force delete the existing broken repo\
+# 1. Force delete the existing broken repo\
 sudo rm -rf /mnt/nextcloud/backups\
 \
 # 2. Recreate the empty directory\
@@ -616,142 +222,423 @@ sudo BORG_LOCK_PATH="/var/lib/borg/nextcloud-locks" \\
      BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key) \\
      borg init --encryption=repokey-blake2 /mnt/nextcloud/backups\
 
-: 1770943638:0;nolog
-: 1770943706:0;cd /mnt/nextcloud
-: 1770943706:0;ls
-: 1770943710:0;ls backups
-: 1770943739:0;rm -rf backups/lock.exclusive
-: 1770943745:0;rm backups/README
-: 1770943750:0;sudo rm backups/README
-: 1770943758:0;ls backups
-: 1770943792:0;cd /mnt/nextcloud
-: 1770943793:0;ls
-: 1770943795:0;ls -a
-: 1770944493:0;nolog
-: 1770945367:0;cd /mnt/nextcloud
-: 1770945367:0;ls
-: 1770945369:0;ls -a
-: 1770945407:0;sudo journalctl -u mount-nextcloud.service -n 50 --no-pager\
+nolog
+cd /mnt/nextcloud
+ls
+ls backups
+rm -rf backups/lock.exclusive
+rm backups/README
+sudo rm backups/README
+ls backups
+cd /mnt/nextcloud
+ls
+ls -a
+nolog
+cd /mnt/nextcloud
+ls
+ls -a
+sudo journalctl -u mount-nextcloud.service -n 50 --no-pager\
 
-: 1770945515:0;nolog
-: 1770946787:0;sudo journalctl -u borgbackup-job-MoonBeauty-Nextcloud -f\
+nolog
+sudo journalctl -u borgbackup-job-MoonBeauty-Nextcloud -f\
 
-: 1770947129:0;nix-collect-garbage
-: 1770949137:0;ls /mnt/nextcloud
-: 1770949146:0;ls /mnt/nextcloud/backups
-: 1770949178:0;nolog
-: 1770954192:0;cd /mnt/nextcloud/backups
-: 1770954192:0;ls
-: 1770954212:0;cd ..
-: 1770954212:0;ls
-: 1770954217:0;rm -rf backups
-: 1770954283:0;ls
-: 1770954284:0;cd backups
-: 1770954286:0;ls
-: 1770954304:0;ls -a
-: 1770954312:0;cd /mnt/nextcloud/backups
-: 1770954313:0;ls
-: 1770954319:0;sudo rm lock.roster
-: 1770954329:0;ls
-: 1770954336:0;rm -rf lock.exclusive.z1kz52z8.tmp
-: 1770955076:0;cat .config/rclone/rclone.conf
-: 1770955150:0;nupdate
-: 1770955183:0;ls
-: 1770955186:0;ls -a
-: 1770955187:0;cd ..
-: 1770955188:0;ls
-: 1770955191:0;cd ..
-: 1770955196:0;cd /mnt/
-: 1770955196:0;ls
-: 1770955227:0;systemctl status borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770955291:0;systemctl status borgbackup-job-MoonBeauty-Nextcloud.service\
+nix-collect-garbage
+ls /mnt/nextcloud
+ls /mnt/nextcloud/backups
+nolog
+cd /mnt/nextcloud/backups
+ls
+cd ..
+ls
+rm -rf backups
+ls
+cd backups
+ls
+ls -a
+cd /mnt/nextcloud/backups
+ls
+sudo rm lock.roster
+ls
+rm -rf lock.exclusive.z1kz52z8.tmp
+cat .config/rclone/rclone.conf
+nupdate
+ls
+ls -a
+cd ..
+ls
+cd ..
+cd /mnt/
+ls
+systemctl status borgbackup-job-MoonBeauty-Nextcloud.service
+systemctl status borgbackup-job-MoonBeauty-Nextcloud.service\
 
-: 1770955322:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770948937:6980;journalctl -u borgbackup-job-MoonBeauty-Nextcloud.service -f\
+sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
+journalctl -u borgbackup-job-MoonBeauty-Nextcloud.service -f\
 
-: 1770955918:0;nupdate
-: 1770955966:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770955978:0;journalctl -u borgbackup-job-MoonBeauty-Nextcloud.service -f\
+nupdate
+sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
+journalctl -u borgbackup-job-MoonBeauty-Nextcloud.service -f\
 
-: 1770956179:0;sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770956228:0;nupdate
-: 1770956244:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770956530:0;sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770956531:0;nupdate
-: 1770956583:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770957023:0;sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770957030:0;nupdate
-: 1770957047:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770957271:0;sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770957298:0;nupdate
-: 1770957323:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770957442:0;sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770957476:0;nupdate
-: 1770957498:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770957577:0;sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770957632:4;export BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key)
-: 1770957640:0;sudo borg compact /var/lib/borgbackup/nextcloud-staging
-: 1770957679:0;sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770960194:0;sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service && \\
+sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service
+nupdate
+sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
+sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service
+nupdate
+sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
+sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service
+nupdate
+sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
+sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service
+nupdate
+sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
+sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service
+nupdate
+sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
+sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service
+export BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key)
+sudo borg compact /var/lib/borgbackup/nextcloud-staging
+sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
+sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service && \\
 sudo nixos-rebuild switch && \\
 sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770962005:0;nix-shell -p speedtest-cli --run "speedtest-cli --simple"\
+nix-shell -p speedtest-cli --run "speedtest-cli --simple"\
 
-: 1770962080:0;sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service && \\
+sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service && \\
 sudo nixos-rebuild switch && \\
 sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770962407:0;journalctl -f
-: 1770962495:0;nupdate
-: 1770962764:0;sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service && \\
+journalctl -f
+nupdate
+sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service && \\
 sudo nixos-rebuild switch && \\
 sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-: 1770963639:0;watch -n 10 "sudo journalctl -u borgbackup-job-MoonBeauty-Nextcloud.service -n 50 | grep -A 8 'Transferring:' | tail -n 15"\
+watch -n 10 "sudo journalctl -u borgbackup-job-MoonBeauty-Nextcloud.service -n 50 | grep -A 8 'Transferring:' | tail -n 15"\
 
-: 1770963744:0;watch -n 10 "sudo journalctl -u borgbackup-job-MoonBeauty-Nextcloud.service -n 50 | grep -A 8 'Transferring:' | tail -n 8"\
+watch -n 10 "sudo journalctl -u borgbackup-job-MoonBeauty-Nextcloud.service -n 50 | grep -A 8 'Transferring:' | tail -n 8"\
 
-: 1770963748:0;watch -n 10 "sudo journalctl -u borgbackup-job-MoonBeauty-Nextcloud.service -n 50 | grep -A 8 'Transferring:' | tail -n 9"\
+watch -n 10 "sudo journalctl -u borgbackup-job-MoonBeauty-Nextcloud.service -n 50 | grep -A 8 'Transferring:' | tail -n 9"\
 
-: 1770963757:0;watch -n 10 "sudo journalctl -u borgbackup-job-MoonBeauty-Nextcloud.service -n 50 | grep -A 8 'Transferring:' | tail -n 10"\
+watch -n 10 "sudo journalctl -u borgbackup-job-MoonBeauty-Nextcloud.service -n 50 | grep -A 8 'Transferring:' | tail -n 10"\
 
-: 1770963765:0;watch -n 10 "sudo journalctl -u borgbackup-job-MoonBeauty-Nextcloud.service -n 50 | grep -A 8 'Transferring:' | tail -n 8"\
+watch -n 10 "sudo journalctl -u borgbackup-job-MoonBeauty-Nextcloud.service -n 50 | grep -A 8 'Transferring:' | tail -n 8"\
 
-: 1770963801:0;watch -n 10 "sudo journalctl -u borgbackup-job-MoonBeauty-Nextcloud.service -n 50 | grep -A 8 'Transferring:' | tail -n 15"\
+watch -n 10 "sudo journalctl -u borgbackup-job-MoonBeauty-Nextcloud.service -n 50 | grep -A 8 'Transferring:' | tail -n 15"\
 
-: 1770963848:0;journalctl -f
-: 1770963917:0;journalctl --disk-usage\
+journalctl -f
+journalctl --disk-usage\
 
-: 1770964048:0;nupdate
-: 1770964069:0;journalctl --disk-usage\
+nupdate
+journalctl --disk-usage\
 
-: 1770964078:0;nix-collect-garbage
-: 1770964154:0;ncdu /
-: 1770964183:0;lsblk -f
-: 1770964250:0;ncdu -x /
-: 1770964280:0;sudo nix-store --optimise
-: 1770964400:0;sudo nix-collect-garbage -d
-: 1770964426:0;ncdu -x /
-: 1770964784:0;rm -rf ~/.lmstudio
-: 1770964789:0;ncdu -x /
-: 1770964803:0;cd .local/share/
-: 1770964804:0;ls
-: 1770964853:0;cd .local/share/
-: 1770964858:0;rm -rf Trash
-: 1770964862:0;ncdu -x /
-: 1770964937:0;sudo rm -rf /var/lib/systemd/coredump/*\
+nix-collect-garbage
+ncdu /
+lsblk -f
+ncdu -x /
+sudo nix-store --optimise
+sudo nix-collect-garbage -d
+ncdu -x /
+rm -rf ~/.lmstudio
+ncdu -x /
+cd .local/share/
+ls
+cd .local/share/
+rm -rf Trash
+ncdu -x /
+sudo rm -rf /var/lib/systemd/coredump/*\
 
-: 1770964944:0;ncdu -x /
-: 1770965400:0;sudo rm /usr/local/bin/croc
-: 1770965408:0;ncdu -x /
-: 1770965469:0;sudo rm -rf /usr/local
-: 1770965500:0;ncdu -x /
-: 1770965524:0;cat /bin/sh
-: 1770965678:0;journalctl -f
-: 1770967594:0;cd nixos-config
-: 1770967595:0;sops secrets.yaml\
+ncdu -x /
+sudo rm /usr/local/bin/croc
+ncdu -x /
+sudo rm -rf /usr/local
+ncdu -x /
+cat /bin/sh
+journalctl -f
+cd nixos-config
+sops secrets.yaml\
 
-: 1770967621:0;SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt sops secrets.yaml\
+SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt sops secrets.yaml\
 
-: 1770967630:0;SOPS_AGE_KEY_FILE=~/.config/sops/age/moon_keys.txt sops secrets.yaml\
+SOPS_AGE_KEY_FILE=~/.config/sops/age/moon_keys.txt sops secrets.yaml\
 
-: 1770971925:0;cd nixos-config
-: 1770971928:0;git add .
+cd nixos-config
+git add .
+git commit -m "updating for borg for nextcloud and sops"
+git push
+journalctl -f
+cd Music
+find . -type f | wc -l
+pkill waybar
+./.config/waybar/waybar.sh
+pkill waybar
+./.config/waybar/waybar.sh
+cat .config/rclone/rclone.conf
+sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service && \\
+sudo nixos-rebuild switch && \\
+sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
+ping cloud.valeindustries.net
+sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service && \\
+sudo nixos-rebuild switch && \\
+sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
+pkill waybar
+./.config/waybar/waybar.sh
+pkill kitty
+journalctl -f
+kill -l
+sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service && \\
+sudo nixos-rebuild switch && \\
+sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
+sudo systemctl --user daemon-reload
+systemctl --user restart pipewire-pulse.socket
+sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service && \\
+sudo nixos-rebuild switch && \\
+sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
+cpuid -1 | grep UMIP
+dmesg | grep -i umip
+sudo dmesg | grep -i umip
+cat /proc/cmdline | grep clearcpuid\
+
+sudo cat /proc/cmdline | grep clearcpuid\
+
+nupdate
+sudo dmesg | grep -i umip
+sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service && \\
+sudo nixos-rebuild switch && \\
+sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
+sudo dmesg | grep -i umip
+cat /proc/cmdline | grep clearcpuid\
+
+systemctl --user status dbus-broker
+nupdate
+pass f-list.net
+journalctl -f
+cat /proc/cmdline\
+
+nupdate
+journalctl -f
+nupdate
+journalctl -f
+pass f-list.net
+./.config/waybar/waybar.sh
+journalctl -f
+pkill kate
+journalctl -f
+pass f-list.net
+./.config/waybar/waybar.sh
+pkill -9 waybar
+nupdate
+journalctl -f
+nupdate
+uname
+uname -r
+journalctl -f
+./.config/waybar/waybar.sh
+time
+kate
+: 1771049721:0;journalctl -f
+: 1771049730:0;waybar
+: 1771049842:0;nupdate
+: 1771049874:0;systemctl --user restart pipewire-pulse.socket
+: 1771050035:0;swaymsg -- waybar --log-level=trace 
+: 1771050042:0;swaymsg exec waybar --log-level=trace 
+: 1771050049:0;waybar --log-level=trace 
+: 1771050062:0;./.config/waybar/waybar.sh
+: 1771050113:0;journalctl -f
+: 1771050155:0;pass f-list.net
+: 1771050335:0;NICOTINE_GTK_VERSION=3 nicotine
+: 1771050748:0;cd .local/share/nemo/actions
+: 1771050749:0;ls
+: 1771050756:0;ls -a
+: 1771050896:0;cd .config/waybar
+: 1771050896:0;ls
+: 1771050899:0;cd modules
+: 1771050900:0;ls
+: 1771050908:0;./gpu_readout.sh
+: 1771050911:0;./gpu_readout.sh 0
+: 1771050946:0;ls
+: 1771050947:0;cd ..
+: 1771050948:0;ls
+: 1771051082:0;pkill waybar
+: 1771051089:0;waybar -c moonbeauty
+: 1771051381:0;./.config/waybar/waybar.sh
+: 1771051387:0;cd .config/waybar/modules
+: 1771051388:0;ls
+: 1771051496:0;cd .config/waybar/
+: 1771051499:0;waybar -c lunarchild
+: 1771051513:0;waybar -c moonbeauty
+: 1771051525:0;ls
+: 1771051527:0;clear
+: 1771051528:0;ls
+: 1771051826:0;waybar -c ~/.config/waybar/moonbeauty -l trace
+: 1771051875:0;waybar -c ~/.config/waybar/moonbeauty -l trace > trace.txt
+: 1771052954:0;killall waybar
+: 1771052957:0;pkill waybar
+: 1771052958:0;env PATH="$PATH" waybar -c ~/.config/waybar/moonbeauty
+: 1771053372:0;sudo nixos-rebuild list-generations
+: 1771053412:0;pkill waybar
+: 1771053419:0;/nix/var/nix/profiles/system-748-link/sw/bin/waybar -c ~/.config/waybar/moonbeauty
+: 1771053546:0;/nix/var/nix/profiles/system-764-link/sw/bin/waybar -c ~/.config/waybar/moonbeauty
+: 1771053581:0;waybar --version
+: 1771053606:0;env PATH="$PATH" waybar -c ~/.config/waybar/moonbeauty
+: 1771053618:0;waybar -c ~/.config/waybar/moonbeauty
+: 1771053763:0;bash /home/moonburst/.config/waybar/modules/gpu_readout.sh 0 2>&1 | cat -A
+: 1771053811:0;waybar -c ~/.config/waybar/moonbeauty
+: 1771053913:0;waybar -c ~/.config/waybar/moonbeauty -l trace 2>&1 | grep -i pango
+: 1771053947:0;waybar -c ~/.config/waybar/moonbeauty
+: 1771053954:0;waybar -c ~/.config/waybar/moonbeauty -l trace 2>&1 | grep -i pango
+: 1771053962:0;waybar -c ~/.config/waybar/moonbeauty
+: 1771054766:0;pass f-list.net
+: 1771054802:0;waybar -c ~/.config/waybar/moonbeauty
+: 1771054984:0;cd .config/waybar
+: 1771054985:0;ls
+: 1771055056:0;nupdate
+: 1771055161:0;systemctl --user restart waybar
+: 1771055227:0;nupdate
+: 1771055281:0;systemctl --user restart waybar
+: 1771055364:0;nupdate
+: 1771055394:0;systemctl --user restart waybar
+: 1771055415:0;pkill waybar
+: 1771055513:0;nix-store -p tree
+: 1771055524:0;nix-shell -p tree
+: 1771055715:0;nupdate
+: 1771055749:0;cd nixos-config
+: 1771055750:0;ls
+: 1771055752:0;cd hosts
+: 1771055753:0;ls
+: 1771055754:0;cd moonbeauty
+: 1771055754:0;ls
+: 1771055784:0;nano waybar.nix
+: 1771055795:0;nupdate
+: 1771055807:0;nano waybar.nix
+: 1771055815:0;ls
+: 1771055818:0;cd nixos-config
+: 1771055841:0;git add .
+: 1771055845:0;nupdate
+: 1771055883:0;cd hosts/moonbeauty
+: 1771055883:0;ls
+: 1771055911:0;cp -r ~/.config/waybar/modules ~/nixos-config/hosts/moonbeauty/\
+cp ~/.config/waybar/style.css ~/nixos-config/hosts/moonbeauty/\
+cd ~/nixos-config\
+git add hosts/moonbeauty/modules hosts/moonbeauty/style.css hosts/moonbeauty/waybar.nix\
+
+: 1771055940:0;cd ~/nixos-config/hosts/moonbeauty/modules/\
+# Remove the hidden .git folder inside the timer module\
+rm -rf waybar-timer/.git\
+# Go back and force Git to track the newly "freed" files\
+cd ~/nixos-config\
+git add --all --force hosts/moonbeauty/modules/\
+
+: 1771055955:0;nupdate
+: 1771056034:0;journalctl --user -u waybar -f\
+
+: 1771056042:0;systemctl --user restart waybar
+: 1771056076:0;nupdate
+: 1771056091:0;systemctl --user restart waybar
+: 1771056100:0;journalctl --user -u waybar -f
+: 1771056369:0;mkdir -p ~/nixos-config/hosts/moonbeauty/programs/waybar/modules
+: 1771056375:0;mv ~/nixos-config/hosts/moonbeauty/waybar.nix ~/nixos-config/hosts/moonbeauty/programs/waybar/default.nix\
+mv ~/nixos-config/hosts/moonbeauty/style.css ~/nixos-config/hosts/moonbeauty/programs/waybar/\
+mv ~/nixos-config/hosts/moonbeauty/modules/* ~/nixos-config/hosts/moonbeauty/programs/waybar/modules/\
+
+: 1771056469:0;git add .
+: 1771056471:0;nupdate
+: 1771056487:0;systemctl --user restart waybar
+: 1771056716:0;nupdate
+: 1771056742:0;systemctl --user restart waybar
+: 1771056833:0;nupdate
+: 1771056856:0;systemctl --user restart waybar
+: 1771056946:0;nupdate && systemctl --user restart waybar
+: 1771057750:0;cd hosts/moonbeauty/programs/waybar/modules
+: 1771057750:0;ls
+: 1771057753:0;cat weather_readout.sh
+: 1771057861:0;cd ..
+: 1771057898:0;SOPS_AGE_KEY_FILE=/home/moonburst/.config/sops/age/moon_keys.txt sops secrets.yaml\
+
+: 1771058194:0;nupdate && systemctl --user restart waybar
+: 1771058226:0;journalctl --user -u waybar -f
+: 1771058252:0;/nix/store/$(ls /nix/store | grep weather_readout.sh | head -n 1)
+: 1771058265:0;cat /run/secrets/weather_api_key
+: 1771058292:0;SOPS_AGE_KEY_FILE=/home/moonburst/.config/sops/age/moon_keys.txt sops secrets.yaml\
+
+: 1771058318:0;bash /home/moonburst/nixos-config/hosts/moonbeauty/programs/waybar/modules/weather_readout.sh\
+
+: 1771058344:0;nupdate && systemctl --user restart waybar
+: 1771058366:0;bash /home/moonburst/nixos-config/hosts/moonbeauty/programs/waybar/modules/weather_readout.sh\
+
+: 1771058381:0;SOPS_AGE_KEY_FILE=/home/moonburst/.config/sops/age/moon_keys.txt sops secrets.yaml\
+
+: 1771058409:0;bash /home/moonburst/nixos-config/hosts/moonbeauty/programs/waybar/modules/weather_readout.sh\
+
+: 1771058574:0;nupdate && systemctl --user restart waybar
+: 1771058908:0;cd nixos-config/hosts
+: 1771058908:0;ls
+: 1771058910:0;cd moonbeauty
+: 1771058911:0;ls
+: 1771059014:0;nolog
+: 1771059537:0;systemctl list-units --type=service
+: 1771059567:0;systemctl --user list-units --type=service | grep -E "waybar|wallpaper|reminder"\
+
+: 1771059579:0;systemctl --user list-timers | grep -E "wallpaper|reminder|move-desktop"\
+
+: 1771059595:0;systemctl --user enable --now move-desktop-files.timer\
+systemctl --user enable --now reminders.timer\
+systemctl --user enable --now wallpaper-switcher.timer\
+
+: 1771059665:0;nupdate
+: 1771059740:0;systemctl --user enable --now move-desktop-files.timer\
+systemctl --user enable --now reminders.timer\
+systemctl --user enable --now wallpaper-switcher.timer\
+
+: 1771059757:0;journalctl --user -u <service-name> -f
+: 1771059765:0;systemctl --user list-timers
+: 1771059772:0;systemctl --user list-timers --all
+: 1771059788:0;ls -l /run/secrets/
+: 1771059791:0;sudo ls -l /run/secrets/
+: 1771059799:0;systemctl --user start move-desktop-files.timer reminders.timer\
+
+: 1771059804:0;systemctl --user status reminders.timer\
+
+: 1771059934:0;systemctl --user daemon-reload\
+systemctl --user list-timers\
+
+: 1771059940:0;systemctl --user daemon-reload\
+systemctl --user list-timers --all\
+
+: 1771059957:0;systemctl --user stop move-desktop-files.timer reminders.timer\
+systemctl --user reset-failed move-desktop-files.timer reminders.timer\
+systemctl --user start move-desktop-files.timer reminders.timer\
+
+: 1771059997:0;systemctl --user daemon-reload\
+systemctl --user list-timers --all\
+
+: 1771060000:0;systemctl --user stop move-desktop-files.timer reminders.timer\
+systemctl --user reset-failed move-desktop-files.timer reminders.timer\
+systemctl --user start move-desktop-files.timer reminders.timer\
+
+: 1771060010:0;rm -rf ~/.config/systemd/user/timers.target.wants/reminders.timer\
+rm -rf ~/.config/systemd/user/timers.target.wants/move-desktop-files.timer\
+systemctl --user daemon-reload\
+systemctl --user start reminders.timer move-desktop-files.timer\
+
+: 1771060017:0;systemctl --user status reminders.timer
+: 1771060037:0;# 1. Remove the manually created "bad" unit files\
+rm -f ~/.config/systemd/user/reminders.timer\
+rm -f ~/.config/systemd/user/move-desktop-files.timer\
+\
+# 2. Remove the "wants" symlinks that point to the bad files\
+rm -f ~/.config/systemd/user/timers.target.wants/reminders.timer\
+rm -f ~/.config/systemd/user/timers.target.wants/move-desktop-files.timer\
+\
+# 3. Reload systemd to pick up the Nix store versions\
+systemctl --user daemon-reload\
+\
+# 4. Start the clean Nix versions\
+systemctl --user start reminders.timer move-desktop-files.timer\
+
+: 1771060045:0;systemctl --user status reminders.timer
+: 1771060070:0;systemctl --user status move-desktop-files.timer\
+
+: 1771060086:0;systemctl --user list-timers --all\
+
+: 1771060114:0;cd ~/nixos-config\
+git add .\
+git commit -m "feat: migrate waybar and automation to pure nix"\
+
