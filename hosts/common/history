@@ -1,312 +1,3 @@
-journalctl -u borgbackup-job-MoonBeauty-Nextcloud.service -f\
-
-nupdate
-sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-journalctl -u borgbackup-job-MoonBeauty-Nextcloud.service -f\
-
-sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service
-nupdate
-sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service
-nupdate
-sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service
-nupdate
-sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service
-nupdate
-sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service
-nupdate
-sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service
-export BORG_PASSPHRASE=$(sudo cat /run/secrets/sops_key)
-sudo borg compact /var/lib/borgbackup/nextcloud-staging
-sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service && \\
-sudo nixos-rebuild switch && \\
-sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-nix-shell -p speedtest-cli --run "speedtest-cli --simple"\
-
-sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service && \\
-sudo nixos-rebuild switch && \\
-sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-journalctl -f
-nupdate
-sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service && \\
-sudo nixos-rebuild switch && \\
-sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-watch -n 10 "sudo journalctl -u borgbackup-job-MoonBeauty-Nextcloud.service -n 50 | grep -A 8 'Transferring:' | tail -n 15"\
-
-watch -n 10 "sudo journalctl -u borgbackup-job-MoonBeauty-Nextcloud.service -n 50 | grep -A 8 'Transferring:' | tail -n 8"\
-
-watch -n 10 "sudo journalctl -u borgbackup-job-MoonBeauty-Nextcloud.service -n 50 | grep -A 8 'Transferring:' | tail -n 9"\
-
-watch -n 10 "sudo journalctl -u borgbackup-job-MoonBeauty-Nextcloud.service -n 50 | grep -A 8 'Transferring:' | tail -n 10"\
-
-watch -n 10 "sudo journalctl -u borgbackup-job-MoonBeauty-Nextcloud.service -n 50 | grep -A 8 'Transferring:' | tail -n 8"\
-
-watch -n 10 "sudo journalctl -u borgbackup-job-MoonBeauty-Nextcloud.service -n 50 | grep -A 8 'Transferring:' | tail -n 15"\
-
-journalctl -f
-journalctl --disk-usage\
-
-nupdate
-journalctl --disk-usage\
-
-nix-collect-garbage
-ncdu /
-lsblk -f
-ncdu -x /
-sudo nix-store --optimise
-sudo nix-collect-garbage -d
-ncdu -x /
-rm -rf ~/.lmstudio
-ncdu -x /
-cd .local/share/
-ls
-cd .local/share/
-rm -rf Trash
-ncdu -x /
-sudo rm -rf /var/lib/systemd/coredump/*\
-
-ncdu -x /
-sudo rm /usr/local/bin/croc
-ncdu -x /
-sudo rm -rf /usr/local
-ncdu -x /
-cat /bin/sh
-journalctl -f
-cd nixos-config
-sops secrets.yaml\
-
-SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt sops secrets.yaml\
-
-SOPS_AGE_KEY_FILE=~/.config/sops/age/moon_keys.txt sops secrets.yaml\
-
-cd nixos-config
-git add .
-git commit -m "updating for borg for nextcloud and sops"
-git push
-journalctl -f
-cd Music
-find . -type f | wc -l
-pkill waybar
-./.config/waybar/waybar.sh
-pkill waybar
-./.config/waybar/waybar.sh
-cat .config/rclone/rclone.conf
-sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service && \\
-sudo nixos-rebuild switch && \\
-sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-ping cloud.valeindustries.net
-sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service && \\
-sudo nixos-rebuild switch && \\
-sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-pkill waybar
-./.config/waybar/waybar.sh
-pkill kitty
-journalctl -f
-kill -l
-sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service && \\
-sudo nixos-rebuild switch && \\
-sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-sudo systemctl --user daemon-reload
-systemctl --user restart pipewire-pulse.socket
-sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service && \\
-sudo nixos-rebuild switch && \\
-sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-cpuid -1 | grep UMIP
-dmesg | grep -i umip
-sudo dmesg | grep -i umip
-cat /proc/cmdline | grep clearcpuid\
-
-sudo cat /proc/cmdline | grep clearcpuid\
-
-nupdate
-sudo dmesg | grep -i umip
-sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service && \\
-sudo nixos-rebuild switch && \\
-sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service
-sudo dmesg | grep -i umip
-cat /proc/cmdline | grep clearcpuid\
-
-systemctl --user status dbus-broker
-nupdate
-pass f-list.net
-journalctl -f
-cat /proc/cmdline\
-
-nupdate
-journalctl -f
-nupdate
-journalctl -f
-pass f-list.net
-./.config/waybar/waybar.sh
-journalctl -f
-pkill kate
-journalctl -f
-pass f-list.net
-./.config/waybar/waybar.sh
-pkill -9 waybar
-nupdate
-journalctl -f
-nupdate
-uname
-uname -r
-journalctl -f
-./.config/waybar/waybar.sh
-time
-kate
-journalctl -f
-waybar
-nupdate
-systemctl --user restart pipewire-pulse.socket
-swaymsg -- waybar --log-level=trace 
-swaymsg exec waybar --log-level=trace 
-waybar --log-level=trace 
-./.config/waybar/waybar.sh
-journalctl -f
-pass f-list.net
-NICOTINE_GTK_VERSION=3 nicotine
-cd .local/share/nemo/actions
-ls
-ls -a
-cd .config/waybar
-ls
-cd modules
-ls
-./gpu_readout.sh
-./gpu_readout.sh 0
-ls
-cd ..
-ls
-pkill waybar
-waybar -c moonbeauty
-./.config/waybar/waybar.sh
-cd .config/waybar/modules
-ls
-cd .config/waybar/
-waybar -c lunarchild
-waybar -c moonbeauty
-ls
-clear
-ls
-waybar -c ~/.config/waybar/moonbeauty -l trace
-waybar -c ~/.config/waybar/moonbeauty -l trace > trace.txt
-killall waybar
-pkill waybar
-env PATH="$PATH" waybar -c ~/.config/waybar/moonbeauty
-sudo nixos-rebuild list-generations
-pkill waybar
-/nix/var/nix/profiles/system-748-link/sw/bin/waybar -c ~/.config/waybar/moonbeauty
-/nix/var/nix/profiles/system-764-link/sw/bin/waybar -c ~/.config/waybar/moonbeauty
-waybar --version
-env PATH="$PATH" waybar -c ~/.config/waybar/moonbeauty
-waybar -c ~/.config/waybar/moonbeauty
-bash /home/moonburst/.config/waybar/modules/gpu_readout.sh 0 2>&1 | cat -A
-waybar -c ~/.config/waybar/moonbeauty
-waybar -c ~/.config/waybar/moonbeauty -l trace 2>&1 | grep -i pango
-waybar -c ~/.config/waybar/moonbeauty
-waybar -c ~/.config/waybar/moonbeauty -l trace 2>&1 | grep -i pango
-waybar -c ~/.config/waybar/moonbeauty
-pass f-list.net
-waybar -c ~/.config/waybar/moonbeauty
-cd .config/waybar
-ls
-nupdate
-systemctl --user restart waybar
-nupdate
-systemctl --user restart waybar
-nupdate
-systemctl --user restart waybar
-pkill waybar
-nix-store -p tree
-nix-shell -p tree
-nupdate
-cd nixos-config
-ls
-cd hosts
-ls
-cd moonbeauty
-ls
-nano waybar.nix
-nupdate
-nano waybar.nix
-ls
-cd nixos-config
-git add .
-nupdate
-cd hosts/moonbeauty
-ls
-cp -r ~/.config/waybar/modules ~/nixos-config/hosts/moonbeauty/\
-cp ~/.config/waybar/style.css ~/nixos-config/hosts/moonbeauty/\
-cd ~/nixos-config\
-git add hosts/moonbeauty/modules hosts/moonbeauty/style.css hosts/moonbeauty/waybar.nix\
-
-cd ~/nixos-config/hosts/moonbeauty/modules/\
-# Remove the hidden .git folder inside the timer module\
-rm -rf waybar-timer/.git\
-# Go back and force Git to track the newly "freed" files\
-cd ~/nixos-config\
-git add --all --force hosts/moonbeauty/modules/\
-
-nupdate
-journalctl --user -u waybar -f\
-
-systemctl --user restart waybar
-nupdate
-systemctl --user restart waybar
-journalctl --user -u waybar -f
-mkdir -p ~/nixos-config/hosts/moonbeauty/programs/waybar/modules
-mv ~/nixos-config/hosts/moonbeauty/waybar.nix ~/nixos-config/hosts/moonbeauty/programs/waybar/default.nix\
-mv ~/nixos-config/hosts/moonbeauty/style.css ~/nixos-config/hosts/moonbeauty/programs/waybar/\
-mv ~/nixos-config/hosts/moonbeauty/modules/* ~/nixos-config/hosts/moonbeauty/programs/waybar/modules/\
-
-git add .
-nupdate
-systemctl --user restart waybar
-nupdate
-systemctl --user restart waybar
-nupdate
-systemctl --user restart waybar
-nupdate && systemctl --user restart waybar
-cd hosts/moonbeauty/programs/waybar/modules
-ls
-cat weather_readout.sh
-cd ..
-SOPS_AGE_KEY_FILE=/home/moonburst/.config/sops/age/moon_keys.txt sops secrets.yaml\
-
-nupdate && systemctl --user restart waybar
-journalctl --user -u waybar -f
-/nix/store/$(ls /nix/store | grep weather_readout.sh | head -n 1)
-cat /run/secrets/weather_api_key
-SOPS_AGE_KEY_FILE=/home/moonburst/.config/sops/age/moon_keys.txt sops secrets.yaml\
-
-bash /home/moonburst/nixos-config/hosts/moonbeauty/programs/waybar/modules/weather_readout.sh\
-
-nupdate && systemctl --user restart waybar
-bash /home/moonburst/nixos-config/hosts/moonbeauty/programs/waybar/modules/weather_readout.sh\
-
-SOPS_AGE_KEY_FILE=/home/moonburst/.config/sops/age/moon_keys.txt sops secrets.yaml\
-
-bash /home/moonburst/nixos-config/hosts/moonbeauty/programs/waybar/modules/weather_readout.sh\
-
-nupdate && systemctl --user restart waybar
-cd nixos-config/hosts
-ls
-cd moonbeauty
-ls
-nolog
-systemctl list-units --type=service
-systemctl --user list-units --type=service | grep -E "waybar|wallpaper|reminder"\
-
-systemctl --user list-timers | grep -E "wallpaper|reminder|move-desktop"\
-
-systemctl --user enable --now move-desktop-files.timer\
-systemctl --user enable --now reminders.timer\
-systemctl --user enable --now wallpaper-switcher.timer\
-
 nupdate
 systemctl --user enable --now move-desktop-files.timer\
 systemctl --user enable --now reminders.timer\
@@ -659,3 +350,154 @@ grep -r "security.pam.services.login.enableGnomeKeyring = true;" .
 : 1771106794:0;nano ~/.local/share/applications/f-chat-horizon.desktop
 : 1771109895:0;cd nixos-config
 : 1771109900:0;git add .
+: 1771109911:0;git commit -m "double checking services and sound gate"
+: 1771109915:0;git push
+: 1771109947:0;nix-shell -p tree
+: 1771113296:0;cd nixos-config
+: 1771113297:0;ls
+: 1771113300:0;cd hosts
+: 1771113301:0;ls
+: 1771113304:0;cd moonbeauty
+: 1771113304:0;ls
+: 1771113311:0;nano test.nix
+: 1771113313:0;ls
+: 1771113433:0;nano test.nix
+: 1771113738:0;swaymsg reload
+: 1771113748:0;cd ..
+: 1771113753:0;nupdate
+cd nixos-config/
+tree
+: 1771113803:0;git add hosts/moonbeauty/test.nix\
+
+: 1771113811:0;nupdate
+: 1771114079:0;git add hosts/moonbeauty/test.nix && nupdate\
+
+: 1771114113:0;nix-collect-garbage
+: 1771114266:0;git add hosts/moonbeauty/test.nix && nupdate\
+
+: 1771114286:0;# Force Git to track the updated file\
+git add hosts/moonbeauty/test.nix\
+\
+# Move the bad cache out of the way\
+mv ~/.cache/nix ~/.cache/nix.bak\
+\
+# Clear the evaluation cache\
+rm -rf ~/.cache/nix/eval-cache-v*\
+
+: 1771114292:0;nupdate
+: 1771114380:0;git add hosts/moonbeauty/test.nix && nupdate\
+
+: 1771114485:0;journalctl -u evdevremapkeys.service -f
+: 1771114798:0;git add hosts/moonbeauty/test.nix && nupdate\
+
+: 1771114842:0;newgrp uinput
+: 1771114851:0;newgrp input
+: 1771114860:0;sudo systemctl restart evdevremapkeys.service
+: 1771114903:0;git add hosts/moonbeauty/test.nix && nupdate\
+
+: 1771114991:0;sudo libinput debug-events --show-keycodes\
+
+: 1771115011:0;git add hosts/moonbeauty/test.nix && nupdate\
+
+: 1771115035:0;sudo nix shell nixpkgs#libinput -c libinput debug-events
+: 1771115096:0;git add hosts/moonbeauty/test.nix && nupdate\
+
+: 1771115155:0;git add hosts/moonbeauty/test.nix && nupdate && newgrp uinput && newgrp input && systemctl restart evdevremapkeys.service\
+\
+
+: 1771115316:0;git add hosts/moonbeauty/test.nix && nupdate && newgrp uinput && newgrp input && systemctl restart evdevremapkeys.service && systemctl restart keyd.service\
+\
+
+: 1771115348:0;newgrp keyd
+: 1771115364:0;sudo systemctl daemon-reload\
+sudo systemctl enable --now keyd\
+
+: 1771115387:0;getent group | grep keyd\
+
+: 1771115459:0;git add hosts/moonbeauty/test.nix && nupdate && newgrp input && newgrp uinput && sudo systemctl daemon-reload && sudo systemctl restart keyd && systemctl status keyd\
+
+: 1771115504:0;sudo keyd monitor
+: 1771115537:0;git add hosts/moonbeauty/test.nix && nupdate && sudo systemctl restart keyd && newgrp uinput && newgrp input\
+
+: 1771115577:0;sudo keyd monitor
+: 1771114361:0;ls /dev/input/by-id/
+: 1771115602:12;systemctl status
+: 1771115632:0;systemctl list-units --type=service | grep keyd\
+
+: 1771115652:0;git add hosts/moonbeauty/test.nix && nupdate && sudo systemctl restart keyd && newgrp uinput && newgrp input\
+
+: 1771115664:0;git add hosts/moonbeauty/test.nix && nupdate && sudo systemctl restart keyd\
+
+: 1771115712:0;sudo keyd monitor
+: 1771115798:0;git add hosts/moonbeauty/test.nix && nupdate && sudo systemctl restart keyd\
+
+: 1771115928:0;sudo systemctl stop keyd.service
+: 1771115931:0;sudo systemctl stop keyd && git add hosts/moonbeauty/test.nix && nupdate && sudo systemctl restart xremap
+: 1771116013:0;sudo systemctl disable --now keyd
+: 1771116015:0;sudo systemctl disable --now keyd.service
+: 1771116049:0;sudo systemctl disable --now keyd.service 
+: 1771116076:0;sudo systemctl stop keyd
+: 1771116083:0;git add hosts/moonbeauty/test.nix && nupdate\
+
+: 1771116135:0;sudo systemctl stop keyd && git add hosts/moonbeauty/test.nix && nupdate && sudo systemctl restart xremap\
+
+: 1771116159:0;sudo systemctl stop keyd && git rm --cached hosts/moonbeauty/test.nix && git add hosts/moonbeauty/test.nix && nupdate\
+
+: 1771116175:0;sudo systemctl stop keyd && git rm -f --cached hosts/moonbeauty/test.nix && git add hosts/moonbeauty/test.nix && nupdate && sudo systemctl restart xremap\
+
+: 1771116197:0;grep -r "https://github.com" .\
+
+: 1771116231:0;sudo systemctl stop keyd && git add hosts/moonbeauty/test.nix && nupdate && sudo systemctl restart xremap\
+
+: 1771116251:0;sudo systemctl stop keyd && git add . && nix-env --delete-generations old && nupdate && sudo systemctl restart xremap\
+
+: 1771116261:0;grep "github.com\"" hosts/moonbeauty/test.nix\
+
+: 1771116279:0;grep "github.com" hosts/moonbeauty/test.nix\
+
+: 1771116304:0;sudo systemctl stop keyd && git add hosts/moonbeauty/test.nix && nupdate\
+
+: 1771116338:0;cat <<'EOF' > hosts/moonbeauty/test.nix\
+{ pkgs, ... }:\
+\
+let\
+  xremap-flake = import (fetchTarball {\
+    url = "https://github.com";\
+    sha256 = "sha256:1h5n33kly5f4v0clb0pff528m49z8n81q8866p6p9892vjmj6p7x";\
+  });\
+in\
+{\
+  imports = [ xremap-flake.nixosModules.default ];\
+\
+  services.xremap = {\
+    withWlroots = true;\
+    userName = "moonburst";\
+    config = {\
+      keymap = [{\
+        name = "Vesktop Only";\
+        application = { only = [ "vesktop" "Vesktop" ]; };\
+        remap = {\
+          "C-APOSTROPHE" = [ "H" "e" "l" "l" "o" "space" "V" "e" "s" "k" "t" "o" "p" ];\
+        };\
+      }];\
+    };\
+  };\
+\
+  services.keyd.enable = false;\
+  users.users.moonburst.extraGroups = [ "input" "uinput" ];\
+  hardware.uinput.enable = true;\
+  services.udev.extraRules = ''KERNEL=="uinput", GROUP="input", MODE="0660"'';\
+  system.stateVersion = "25.11";\
+}\
+EOF\
+
+: 1771116465:0;systemctl stop keyd.service
+: 1771116770:0;swaymsg reload
+: 1771116801:0;swaymsg -t get_tree | jq -r '.. | select(.focused? == true) | .app_id'\
+
+: 1771116810:0;nix-shell -p jq
+swaymsg -t get_tree | jq -r '.. | select(.focused? == true) | .app_id'
+sleep 3 && swaymsg -t get_tree | jq -r '.. | select(.focused? == true) | .app_id'
+: 1771120863:0;journalctl -f
+: 1771121009:0;clear
+: 1771121010:0;journalctl -f
