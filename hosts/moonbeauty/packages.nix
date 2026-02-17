@@ -32,6 +32,7 @@
     wtype                       # Virtual keystroke tool
     sherlock-launcher           # App launcher
     vicinae                     # Niri-compatible launcher
+    wl-clipboard             #wl-copy/paste
     (pkgs.callPackage ../../packages/sherlock-clipboard.nix {})
 
     # --- Hardware Control & Gaming ---
