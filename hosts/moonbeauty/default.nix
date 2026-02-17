@@ -2,12 +2,13 @@
 
 {
   imports = [
-    ../common/default.nix      # Brings in all the stuff above
-    ./packages.nix             # The GUI/Gaming list we made
-    ./moonbeauty-hardware.nix
-    ./mounts.nix
-    ./services.nix
-    ./programs/waybar
+    ../common/default.nix      # Brings in all shared logic (User, BTRFS, Audio, etc)
+    ./packages.nix             # The GUI/Gaming list
+    ./moonbeauty-hardware.nix  # Drive UUIDs
+    ./mounts.nix               # BTRFS Subvolume and Mount definitions
+    ./services.nix             # Moonbeauty-specific services
+    ./programs/waybar          # Waybar config
+    ../common/default.nix
     ./test.nix
   ];
 
@@ -50,8 +51,7 @@
     package = pkgs.appimage-run.override { extraPkgs = p: [ p.libxshmfence ]; };
   };
 
-  security.polkit.enable = true;
-  security.rtkit.enable = true;
+  # (Polkit and Rtkit removed as they are now in common/security.nix)
 
   system.stateVersion = "25.11";
 }
