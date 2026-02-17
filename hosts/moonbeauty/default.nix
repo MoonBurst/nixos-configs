@@ -50,8 +50,6 @@ services.udev.extraRules = ''
     # --- System Utilities/Shell ---
     rocmPackages.rocm-smi
     corectrl
-    wget
-    curl
     openrgb-with-all-plugins
     # --- Gaming/GPU/Emulation ---
     gamescope#for steam
@@ -62,7 +60,6 @@ services.udev.extraRules = ''
     mangohud#system use/FPS counter
     # --- Desktop/Theming ---
     krita#image editor
-    kdePackages.partitionmanager#partition manager
 
 cura-appimage#3d printer
 openscad#3d printer

@@ -19,10 +19,13 @@ boot.kernelParams = [
     "fbcon=rotate:2"                                # Rotates the TTY/system console screen 180 degrees
     "amdgpu.ppfeaturemask=0xffffffff"   # Unlocks full power management for CoreCtrl (overclocking/voltage)
     "cma=512M"                                      # Reserves 512MB for Contiguous Memory Allocation (helps with GPU buffer stability)
+    "nvme_core.default_ps_max_latency_us=0"  #attempt to keep nvmes from disappearing on boot
+    "pcie_aspm=off"                                 #turns off power managment issues
     #VM stuff
   "amd_iommu=on"
   "iommu=pt"
   "vfio-pci.ids=1002:743f,1002:ab28" # RX 6400 Video and Audio IDs
+
   ];
   boot.initrd.kernelModules = [ 
     "amdgpu" 
@@ -55,11 +58,16 @@ virtualisation.libvirtd.qemu.verbatimConfig = ''
   # ====================================================================
   #  FILE SYSTEM
   # ====================================================================
-  fileSystems."/" =
-    { device = "/dev/disk/by-uuid/f427c3b9-0fd4-4868-bb33-8e1393be4201";
-      fsType = "btrfs";
-      options = [ "subvol=@" ];
-    };
+  fileSystems."/" = {
+    device = "/dev/disk/by-uuid/f427c3b9-0fd4-4868-bb33-8e1393be4201";
+    fsType = "btrfs";
+    options = [
+      "subvol=@"
+      "compress=zstd"
+      "noatime"
+      "discard=async"
+    ];
+  };
 
   fileSystems."/boot" =
     { device = "/dev/disk/by-uuid/9FF9-E2A6";
