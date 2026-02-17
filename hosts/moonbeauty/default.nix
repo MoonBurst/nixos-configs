@@ -8,6 +8,7 @@
     ./mounts.nix               # BTRFS Subvolume and Mount definitions
     ./services.nix             # Moonbeauty-specific services
     ./programs/waybar          # Waybar config
+    ./programs/audacious.nix
     ../common/default.nix
     ./test.nix
   ];
