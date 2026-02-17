@@ -1,503 +1,504 @@
-nupdate
-systemctl --user enable --now move-desktop-files.timer\
-systemctl --user enable --now reminders.timer\
-systemctl --user enable --now wallpaper-switcher.timer\
-
-journalctl --user -u <service-name> -f
-systemctl --user list-timers
-systemctl --user list-timers --all
-ls -l /run/secrets/
-sudo ls -l /run/secrets/
-systemctl --user start move-desktop-files.timer reminders.timer\
-
-systemctl --user status reminders.timer\
-
-systemctl --user daemon-reload\
-systemctl --user list-timers\
-
-systemctl --user daemon-reload\
-systemctl --user list-timers --all\
-
-systemctl --user stop move-desktop-files.timer reminders.timer\
-systemctl --user reset-failed move-desktop-files.timer reminders.timer\
-systemctl --user start move-desktop-files.timer reminders.timer\
-
-systemctl --user daemon-reload\
-systemctl --user list-timers --all\
-
-systemctl --user stop move-desktop-files.timer reminders.timer\
-systemctl --user reset-failed move-desktop-files.timer reminders.timer\
-systemctl --user start move-desktop-files.timer reminders.timer\
-
-rm -rf ~/.config/systemd/user/timers.target.wants/reminders.timer\
-rm -rf ~/.config/systemd/user/timers.target.wants/move-desktop-files.timer\
-systemctl --user daemon-reload\
-systemctl --user start reminders.timer move-desktop-files.timer\
-
-systemctl --user status reminders.timer
-# 1. Remove the manually created "bad" unit files\
-rm -f ~/.config/systemd/user/reminders.timer\
-rm -f ~/.config/systemd/user/move-desktop-files.timer\
-\
-# 2. Remove the "wants" symlinks that point to the bad files\
-rm -f ~/.config/systemd/user/timers.target.wants/reminders.timer\
-rm -f ~/.config/systemd/user/timers.target.wants/move-desktop-files.timer\
-\
-# 3. Reload systemd to pick up the Nix store versions\
-systemctl --user daemon-reload\
-\
-# 4. Start the clean Nix versions\
-systemctl --user start reminders.timer move-desktop-files.timer\
-
-systemctl --user status reminders.timer
-systemctl --user status move-desktop-files.timer\
-
-systemctl --user list-timers --all\
-
-cd ~/nixos-config\
-git add .\
-git commit -m "feat: migrate waybar and automation to pure nix"\
-
-mkdir -p ~/nixos-config/hosts/moonbeauty/scripts\
-cp -r ~/scripts/cron_scripts/* ~/nixos-config/hosts/moonbeauty/scripts/\
-cd ~/nixos-config\
-git add hosts/moonbeauty/scripts/\
 
 nupdate
+systemctl --user restart xdg-desktop-portal-wlr\
+
+vesktop --enable-features=UseOzonePlatform --ozone-platform=wayland\
+
+journalctl -f
+vesktop --enable-features=UseOzonePlatform --ozone-platform=wayland\
+
+slurp -f %o -o
+nupdate
+journalctl -f
+vesktop --enable-features=UseOzonePlatform --ozone-platform=wayland\
+
+reboot
+vesktop --enable-features=UseOzonePlatform --ozone-platform=wayland\
+
+journalctl -f
+vesktop --enable-features=UseOzonePlatform --ozone-platform=wayland\
+
+nupdate
+# Reload the systemd manager to see the new Environment overrides\
+systemctl --user daemon-reload\
+\
+# Restart the portal to apply them\
+systemctl --user restart xdg-desktop-portal-wlr xdg-desktop-portal\
+
+vesktop --enable-features=UseOzonePlatform --ozone-platform=wayland\
+
+systemctl --user show xdg-desktop-portal-wlr | grep Environment\
+
+vesktop --enable-features=UseOzonePlatform --ozone-platform=wayland\
+
+swaymsg reload
+systemctl --user restart xdg-desktop-portal-wlr
+vesktop --enable-features=UseOzonePlatform --ozone-platform=wayland\
+
+vesktop
+lsblk -f
+mount | grep btrfs\
+
+mount | grep "on / "\
+
+nix-shell -p btrfs-compsize --command "sudo compsize /"\
+
+nupdate
+nix-env --list-generations --profile /nix/var/nix/profiles/system
+sudo nix-env --list-generations --profile /nix/var/nix/profiles/system
+lsblk -f
+nix-env --list-generations --profile /nix/var/nix/profiles/system
+nix-shell -p btrfs-compsize --command "sudo compsize /"\
+
+journalctl -b
+sudo nix-env --list-generations --profile /nix/var/nix/profiles/system
+nix-shell -p compsize --command "sudo compsize /"
+nix-shell -p compsize --command "sudo compsize -x /"
+nix-shell -p compsize --command "sudo compsize -xv /"
+# This will show you exactly what file compsize is looking at right now\
+sudo strace -p $(pgrep compsize) -e trace=openat,stat
+nix-shell -p compsize --command "sudo compsize -x /run/current-system"
+nix-shell -p compsize --command "sudo compsize -xL /run/current-system"
+nix-shell -p compsize --command "sudo compsize -x ~/"
+lsblk -f
+sudo btrfs filesystem defragment -r -v -czstd ~/
+lsblk -f
+lspci -v | grep -i nvme
+nix-shell -p pciutils --command "lspci -v | grep -i nvme"
+lsblk 0f
+lsblk
+pavucontrol
+journalctl -f
+nupdate
+nix-instantiate --parse /home/moonburst/nixos-config/hosts/common/services.nix
+nupdate
+lsblk -f
+nupdate
+sudo systemctl stop mnt-nvme1tb.mount\
+sudo systemctl daemon-reload
+nupdate
+sudo nixos-rebuild switch --show-trace
+sudo systemctl stop mnt-nvme1tb.automount
+sudo systemctl stop mnt-nvme1tb.mount
+sudo systemctl daemon-reload
+nupdate
+sudo /run/current-system/bin/switch-to-configuration test
+nupdate
+ssh dad
+ssh montana_zeus@192.168.12.24
+ssh montana_zeus@192.168.12.16
+ssh montana_zeus@192.168.12.12
+ssh montana_zeus@192.168.12.128
+ssh montana_zeus@192.168.12.129
+ssh montana_zeus@192.168.12.217
+ssh montana_zeus@192.168.12.9
+sudo blkid
+sudo btrfs device scan\
+sudo btrfs fi show
+lsblk -f
+journalctl -f
+exec wl-paste --type text --watch cliphist store -max-items 50\
+exec wl-paste --type image --watch cliphist store -max-items 10
+exec wl-paste --type text --watch cliphist store -max-items 50 & disown &&\
+exec wl-paste --type image --watch cliphist store -max-items 10 & disown
+ssh montana_zeus@192.168.12.120
+systemctl --user restart pipewire.service\
+systemctl --user restart pipewire-pulse.service\
+systemctl --user restart wireplumber.service
+nupdate
+systemctl --user restart pipewire.service\
+systemctl --user restart pipewire-pulse.service\
+systemctl --user restart wireplumber.service
+sudo killall -9 threaded-ml pipewire
+systemctl --user stop pipewire.socket pipewire.service wireplumber.service
+systemctl --user start pipewire.service
+pkill waybar
+pidof waybar
+killall waybar
+pkill waybar
+pidof waybar
+pkill 110413
+pidof waybar
+pkill 110413
+pidof waybar
+systemctl --user start pipewire.service
+systemctl --user restart pipewire.service\
+systemctl --user restart pipewire-pulse.service\
+systemctl --user restart wireplumber.service
+pidof waybar
+pkill waybar
+gnome-system-monitor
+journalctl -f
+kate
+nupdate
+systemctl --user stop pipewire.socket pipewire.service wireplumber.service
+journalctl -f
+nupdate
+systemctl --user stop pipewire.socket pipewire.service wireplumber.service
+ cd nixos-config
 ls
-cd hosts
-ls
-cd common
+cd hosts/common/scripts
+cd ..
 ls
 nano services.nix
-cd ..
-git add hosts/common/services.nix
-sudo nixos-rebuild dry-build --flake .
-nix flake check\
-
-nupdate
-systemctl list-units --type=service --state=failed
-systemctl status btrfs-scrub.service
-systemctl list-units "btrfs-scrub-*.service" --all\
-
-systemctl --user status pipewire.service\
-
-systemctl status smartd.service\
-
-sudo killall -USR1 smartd\
-
-[200~systemctl --user status xdg-desktop-portal.service
-systemctl --user status xdg-desktop-portal.service\
-
-systemctl status display-manager.service\
-
-sudo systemctl start notify-update-failure.service\
-
-nupdate
-sudo systemctl stop borgbackup-job-nextcloud.service\
-
-systemctl list-units "borgbackup-job-*"\
-
-journalctl --user -u waybar -f
-sudo systemctl stop borgbackup-job-MoonBeauty-Nextcloud.service\
-
-sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service\
-
-journalctl -u borgbackup-job-MoonBeauty-Nextcloud.service -f\
-
-nupdate
-nix-shell -p tree
-nix flake check\
-
-cd nixos-config
-nix flake check\
-
-sudo nixos-rebuild switch --flake .\
-
-nupdate
-systemctl --user start wallpaper-switcher.service
-nupdate
-systemctl --user start wallpaper-switcher.service
-git add .
-git commit -m "updating for borg for services and waybar"
-pkill waybar
+journalctl
 journalctl -f
-pass f-list.net
-sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service\
-
+nano services.nix
 nupdate
-systemctl --user restart pipewire wireplumber\
-
-pkill vesktop
-journalctl --user -u pipewire --since "5 minutes ago"\
-
-sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service\
-
+nano services.nix
 nupdate
-systemctl --user restart pipewire wireplumber\
-
-journalctl --user -u pipewire --since "5 minutes ago"\
-
-journalctl --user -u pipewire --since "20 minutes ago"\
-
-cd nixos-config
-git add .
-git commit -m "fixing sound gate"
-git push
-nupdate
-nix show-config | grep -E 'max-jobs|cores'
-nix config show | grep -E 'max-jobs|cores'
-cd nixos-config
-grep -r "dunst" .
-nupdate
-killall dunst\
-
-systemctl --user restart dunst.service\
-```\
-
-systemctl --user restart dunst.service
-nolog
-cd .local/share/themes
-ls
-nupdate
-cd ~/.config/dunst
-ls
-mv dunstrc dunstrc.old
-systemctl --user restart dunst.service
-nupdate
-systemctl --user restart dunst.service
-nupdate
-systemctl --user restart dunst.service
-nupdate
-systemctl --user restart dunst.service
-cd ~/nixos-config/
-cd hosts/common/
-ls
-mkdir scripts
-cd scripts
-mkdir dunst
-nupdate
-cp -r ~/.config/dunst/custom/. ~/nixos-config/hosts/common/scripts/dunst/\
-
-chmod +x ~/nixos-config/hosts/common/scripts/dunst/**/*.sh\
-
-cd ~/nixos-config && git add hosts/common/scripts/dunst/\
-
-cd nixos-config/hosts/common/scripts/dunst
-ls
-nix-shell -p tree
-nupdate
-systemctl --user restart dunst.service
-tree
-nupdate
-systemctl --user restart dunst.service
-dunstify "Luster Dawn" "Testing custom frame and icon."
-dunstify -a "vesktop" "Luster Dawn" "This should trigger the pink frame and icon."\
-
-dunstify -a "Electron" "Solar Sonata" "This should trigger the yellow frame."\
-
-dunstify -a "vesktop" "Cageheart" "Testing the green frame rule."\
-
-cd nixos-config/hosts/common/scripts/dunst
-ls
-nupdate
-cd ..
-git add hosts/common/scripts/dunst/
-ls -R hosts/common/scripts/dunst/\
-
-nupdate
-git add hosts/common/scripts/dunst/\
-
-nupdate
-git add hosts/common/scripts/dunst/solar_sonata/solar_sonata.flac
-git add hosts/common/scripts/dunst/solar_sonata/solar_sonata.flac\
-
-ls solar_sonata
-git add hosts/common/scripts/dunst/solar_sonata/solar_sonata.flac\
-
-nupdate
-cd ..
-cd..
-cd ~/nixos-config
-git add .
-nupdate
-systemctl --user restart dunst.service
-nupdate
-systemctl --user restart dunst.service
-dunstify -a "vesktop" "Cageheart" "Testing the green frame rule."\
-
-dunstify -a "vesktop" "Luster Dawn" "This should trigger the pink frame and icon."\
-
-systemctl --user restart dunst.service
-dunstify -a "Electron" "Luster Dawn" "Testing custom frame and icon."\
-
-dunstify -a "Discord" "Luster Dawn" "Testing custom frame and icon."\
-
-dunstify -a "Vesktop" "Luster Dawn" "Testing custom frame and icon."\
-
-dunstify -a "vesktop" "Luster Dawn" "Testing custom frame and icon."\
-
-sudo systemctl start borgbackup-job-MoonBeauty-Nextcloud.service\
-
-borg list /mnt/nextcloud/backups
-borg list /var/lib/borgbackup/nextcloud-staging
-sudo borg list /var/lib/borgbackup/nextcloud-staging\
-
-sudo borg delete /var/lib/borgbackup/nextcloud-staging::moonbeauty-MoonBeauty-Nextcloud-2026-02-12T23:57:38.failed\
-
-sudo borg extract --dry-run /var/lib/borgbackup/nextcloud-staging::moonbeauty-MoonBeauty-Nextcloud-2026-02-14T08:04:40
-nupdate
-systemctl --user restart dunst.service
-dunstify -a "vesktop" "Luster Dawn" "Testing custom frame and icon."\
-
-notify-send --app-name="vesktop" "Luster Dawn" "This should trigger your custom pink frame, icon, and sound."\
-
-nupdate
-systemctl --user restart dunst.service
-nupdate
-systemctl --user restart dunst.service
-nupdate
-systemctl --user restart dunst.service
-nupdate
-systemctl --user restart dunst.service
-nupdate
-systemctl --user restart dunst.service
-nupdate && systemctl --user restart dunst.service
-dunstify -a "vesktop" "Luster Dawn" "Testing Rule matching"\
-
-nupdate && systemctl --user restart dunst.service
-cd ~/nixos-config
-git add .
-nupdate && systemctl --user restart dunst.service
-git add .
-nupdate && systemctl --user restart dunst.service
-git add .
-nupdate && systemctl --user restart dunst.service
-git add .
-git add . && nupdate && systemctl --user restart dunst.service
-cd nixos-config
-git add . && nupdate && systemctl --user restart dunst.service
-cd .config
-mv dunst dunst.old
-cd nixos-config
-git add . && nupdate && systemctl --user restart dunst.service
-dunstify -i 
-cd nixos-config/hosts/common/scripts/dunst/luster_dawn
-dunstify -i luster_dawn.png
-dunstify -i luster_dawn.png test
-dunstify -i luster_dawn.png test test
-ls
-git add . && nupdate && systemctl --user restart dunst.service
-systemctl --user restart dunst.service
-notify-send -u critical "System Alert" "This is a critical urgency message."\
-
-git add . && nupdate && systemctl --user restart dunst.service
-notify-send --app-name="vesktop" "Luster Dawn" "This should trigger the pink border, 92px icon, and custom sound."\
-
-git add . && nupdate && systemctl --user restart dunst.service
-notify-send --app-name="vesktop" "Luster Dawn" "This should trigger the pink border, 92px icon, and custom sound."\
-
-git add . && nupdate && systemctl --user restart dunst.service && notify-send --app-name="vesktop" "Luster Dawn" "This should trigger the pink border, 92px icon, and custom sound."
-notify-send -a "vesktop" "Luster Dawn" "Testing the pink border, 92px icon, and sound."\
-
-notify-send -a "vesktop" "Solar Sonata" "Testing the yellow border, 92px icon, and sound."\
-
-notify-send -a "vesktop" "Apogee" "Testing the cyan border and 92px icon."\
-
-notify-send -a "vesktop" "Cageheart" "Testing the green border, 92px icon, and sound."\
-
-notify-send -a "vesktop" "Olivia" "Testing the light blue border, 92px icon, and sound."\
-
-notify-send -a "vesktop" "Bob" "Testing the light blue border, 92px icon, and sound."\
-
-notify-send -u critical "System Alert" "This should have a Red border and stay on screen until clicked."\
-
-git add . && nupdate && systemctl --user restart dunst.service && notify-send --app-name="vesktop" "Luster Dawn" "This should trigger the pink border, 92px icon, and custom sound."
-notify-send -u critical "System Alert" "This should have a Red border and stay on screen until clicked."\
-
-notify-send -a "vesktop" "Bob" "Testing the light blue border, 92px icon, and sound."\
-
-notify-send -a "vesktop" "Cageheart" "Testing the green border, 92px icon, and sound."\
-
-notify-send -u low "System Alert" "This should have a Red border and stay on screen until clicked."\
-
-notify-send -u normal "System Alert" "This should have a Red border and stay on screen until clicked."\
-
-git add . && nupdate && systemctl --user restart dunst.service && notify-send --app-name="vesktop" "Luster Dawn" "This should trigger the pink border, 92px icon, and custom sound."
-git add . && nupdate && systemctl --user restart dunst.service
-notify-send -u normal "System Alert" "This should have a Red border and stay on screen until clicked."\
-
 journalctl -f
+reboot
+journalctl -f
+systemctl --user start pipewire.service
+systemctl --user stop pipewire.service
+systemctl  stop pipewire.service
+journalctl -f
+kate
+journalctl -f
+# 1. Clear the library cache and force a sync\
+sudo ldconfig\
+sudo sync && echo 3 | sudo tee /proc/sys/vm/drop_caches\
+\
+# 2. Check if PipeWire is even installed/visible in the current path\
+ls -l /run/current-system/sw/lib/libpipewire-0.3.so
 nupdate
-nano ~/.local/share/applications/f-chat-horizon.desktop
-chmod +x ~/F-Chat.Horizon-linux-x86_64.AppImage\
-chmod +x ~/.local/share/applications/f-chat-horizon.desktop\
-
-pass f-list.net
-dbus-send --dest=org.freedesktop.DBus --type=method_call /org/freedesktop/DBus org.freedesktop.DBus.ListNames | grep -E "secrets|keyring"\
-
-sudo dbus-send --dest=org.freedesktop.DBus --type=method_call /org/freedesktop/DBus org.freedesktop.DBus.ListNames | grep -E "secrets|keyring"\
-
+journalctl -f
+ssh montana_zeus@192.168.12.120
+nupdate
+ssh montana_zeus@192.168.12.120
+lsblk -f
+cd /mnt
+sudo rm temp_btrfs_check usb
+sudo rm -r temp_btrfs_check usb
 cd nixos-config
-grep -r "services.gnome.gnome-keyring.enable = true;" .
-grep -r "security.pam.services.login.enableGnomeKeyring = true;~" .
-grep -r "security.pam.services.login.enableGnomeKeyring = true;" .
-: 1771105257:0;killall waybar
-: 1771105262:0;pkill waybar
-: 1771105272:0;journalctl -f
-: 1771105547:0;echo $NIXOS_OZONE_WL
-: 1771105699:0;steam-run /home/moonburst/F-Chat.Horizon-linux-x86_64.AppImage --ozone-platform=wayland --password-store=gnome-libsecret %U
-: 1771106794:0;nano ~/.local/share/applications/f-chat-horizon.desktop
-: 1771109895:0;cd nixos-config
-: 1771109900:0;git add .
-: 1771109911:0;git commit -m "double checking services and sound gate"
-: 1771109915:0;git push
-: 1771109947:0;nix-shell -p tree
-: 1771113296:0;cd nixos-config
-: 1771113297:0;ls
-: 1771113300:0;cd hosts
-: 1771113301:0;ls
-: 1771113304:0;cd moonbeauty
-: 1771113304:0;ls
-: 1771113311:0;nano test.nix
-: 1771113313:0;ls
-: 1771113433:0;nano test.nix
-: 1771113738:0;swaymsg reload
-: 1771113748:0;cd ..
-: 1771113753:0;nupdate
-cd nixos-config/
+grep "jq" .
+grep "jq" -r .
+journalctl -u
+journalctl -u dunst.service
+grep -rE "curl|wget|api|http|json" .\
+
 tree
-: 1771113803:0;git add hosts/moonbeauty/test.nix\
+nix-shell -p tree
+cd nixos-config/hosts/moonbeauty/programs/waybar/modules/
+./weather_readout.sh
+nix-shell -p jq --run ./weather_readout.sh\
 
-: 1771113811:0;nupdate
-: 1771114079:0;git add hosts/moonbeauty/test.nix && nupdate\
-
-: 1771114113:0;nix-collect-garbage
-: 1771114266:0;git add hosts/moonbeauty/test.nix && nupdate\
-
-: 1771114286:0;# Force Git to track the updated file\
-git add hosts/moonbeauty/test.nix\
+tree
+cd hosts/moonbeauty/scripts/
+ls
+cd ..
+ls
+cd programs/waybar/modules/
+ls
+cat weather_readout.sh 
+ssh montana_zeus@192.168.12.120
+ssh montana_zeus@192.168.12.123
+ssh montana_zeus@192.168.12.120
+ssh moonburst@192.168.12.120
+ssh montana_zeus@192.168.12.120
+lspci -k | grep -EA3 'VGA|3D'
+nix-shell -p pciutils --run "lspci -k | grep -EA3 'VGA|3D'"
+openrgb
+nix-shell -p vulkan-tools mesa.drivers --run "vulkaninfo | grep deviceName"
+nix-shell -p vulkan-tools mesa --run "vulkaninfo | grep deviceName"
+sudo borg delete /mnt/main_backup::moonbeauty-MoonBeauty-Backup-2026-02-16T00:00:11.failed
+sudo find /home/moonburst -inum 1173
+sudo btrfs inspect-internal inode-resolve 1173 /
+sudo btrfs inspect-internal inode-resolve 1173 /mnt/main_backup
+sudo borg check --repair /mnt/main_backup
+sudo borg delete /mnt/main_backup::moonbeauty-MoonBeauty-Backup-2026-02-16T00:00:11.failed
+sudo borg list /mnt/main_backup
+sudo borg check --archive moonbeauty-MoonBeauty-Backup-2026-02-16T00:00:11 /mnt/main_backup
+sudo borg check /mnt/main_backup::moonbeauty-MoonBeauty-Backup-2026-02-16T00:00:11
+sudo smartctl -a /dev/sdb | grep -E "Reallocated_Sector_Ct|Current_Pending_Sector|Offline_Uncorrectable"
+sudo borg check --repair /mnt/main_backup
+sudo borg delete /mnt/main_backup::moonbeauty-MoonBeauty-Backup-2026-02-16T00:00:11
+sudo systemctl start borgbackup-job-MoonBeauty-Backup.service
+sudo borg check --repair /mnt/main_backup
+sudo smartctl -a /dev/sdb | grep "UDMA_CRC_Error_Count"
+sudo smartctl -a /dev/sdb | grep -E "199|CRC"
+sudo borg break-lock /mnt/main_backup\
+sudo borg check --repair /mnt/main_backup
+sudo rm /mnt/main_backup/data/0/215
+sudo borg break-lock /mnt/main_backup
+sudo borg delete /mnt/main_backup::moonbeauty-MoonBeauty-Backup-2026-02-16T00:00:11
+sudo borg break-lock /mnt/main_backup
+sudo borg check --repair /mnt/main_backup
+sudo borg delete /mnt/main_backup::moonbeauty-MoonBeauty-Backup-2026-02-16T00:00:11
+sudo systemctl start borgbackup-job-MoonBeauty-Backup.service
+journalctl -kf
+journalctl -f
+sudo btrfs scrub start -B /mnt/main_backup
+sudo borg list /mnt/main_backup
+sudo btrfs device stats -z /mnt/main_backup
+sudo btrfs device stats /mnt/main_backup
+borg list
+borg list /mnt/main_backup
+sudo btrfs device stats /mnt/main_backup
+# General health assessment\
+sudo smartctl -H /dev/sdb\
 \
-# Move the bad cache out of the way\
-mv ~/.cache/nix ~/.cache/nix.bak\
+# View the internal hardware error log\
+sudo smartctl -l error /dev/sdb
+sudo smartctl -t long /dev/sdb
+sudo smartctl -l selftest /dev/sdb
+sudo smartctl -A /dev/sdb
+sudo badblocks -v /dev/sdb
+sudo smartctl -H /dev/sdb
+nupdate
+systemctl --user restart pipewire.service wireplumber.service
+pw-link -io
+systemctl --user stop pipewire.socket pipewire.service; killall -9 threaded-ml pipewire
+# Force stop the services to break the restart loop\
+systemctl --user stop pipewire.socket pipewire-pulse.socket pipewire.service pipewire-pulse.service wireplumber.service\
 \
-# Clear the evaluation cache\
-rm -rf ~/.cache/nix/eval-cache-v*\
-
-: 1771114292:0;nupdate
-: 1771114380:0;git add hosts/moonbeauty/test.nix && nupdate\
-
-: 1771114485:0;journalctl -u evdevremapkeys.service -f
-: 1771114798:0;git add hosts/moonbeauty/test.nix && nupdate\
-
-: 1771114842:0;newgrp uinput
-: 1771114851:0;newgrp input
-: 1771114860:0;sudo systemctl restart evdevremapkeys.service
-: 1771114903:0;git add hosts/moonbeauty/test.nix && nupdate\
-
-: 1771114991:0;sudo libinput debug-events --show-keycodes\
-
-: 1771115011:0;git add hosts/moonbeauty/test.nix && nupdate\
-
-: 1771115035:0;sudo nix shell nixpkgs#libinput -c libinput debug-events
-: 1771115096:0;git add hosts/moonbeauty/test.nix && nupdate\
-
-: 1771115155:0;git add hosts/moonbeauty/test.nix && nupdate && newgrp uinput && newgrp input && systemctl restart evdevremapkeys.service\
+# Kill the runaway processes\
+sudo killall -9 pipewire pipewire-pulse wireplumber waybar steam\
 \
-
-: 1771115316:0;git add hosts/moonbeauty/test.nix && nupdate && newgrp uinput && newgrp input && systemctl restart evdevremapkeys.service && systemctl restart keyd.service\
+# Reset the file descriptor limit for your current shell\
+ulimit -n 4096
+systemctl --user stop pipewire.socket pipewire-pulse.socket && sudo killall -9 pipewire pipewire-pulse wireplumber waybar steam threaded-ml
+rm -rf /run/user/$(id -u)/pulse /run/user/$(id -u)/pipewire-0*
+journalctl --user -u pipewire -n 20
+nupdate
+cd nixos-config
+git add .\
+nupdate
+killall -9 waybar
+sudo kill -9 $(pgrep waybar)
+rm -rf /run/user/1000/pulse /run/user/1000/pipewire-0*
+sudo kill -9 $(pgrep waybar)
+nupdate
+sudo kill -9 $(pgrep waybar)
+watch sudo kill -9 $(pgrep waybar)
+killall -9 waybar steam 
+watch killall -9 waybar steam 
+killall -9 waybar steam
+tail -n 30 /home/moonburst/nixos-config/hosts/common/services.nix
+nupdate
+systemctl --user restart pipewire.service wireplumber.service
+pw-link -io | grep DeepFilter
+pw-dot
+pw-link -io | grep -A 5 "DeepFilter"
+pw-loopback -ps "deep_filter_input_clean"
+pw-loopback -C deep_filter_input_clean
+pw-dump | grep -iE "node.name|link"
+pw-loopback -C deep_filter_input_clean
+# Stop and mask the real pulseaudio service (user level)\
+systemctl --user stop pulseaudio.service pulseaudio.socket\
+systemctl --user mask pulseaudio.service pulseaudio.socket\
 \
-
-: 1771115348:0;newgrp keyd
-: 1771115364:0;sudo systemctl daemon-reload\
-sudo systemctl enable --now keyd\
-
-: 1771115387:0;getent group | grep keyd\
-
-: 1771115459:0;git add hosts/moonbeauty/test.nix && nupdate && newgrp input && newgrp uinput && sudo systemctl daemon-reload && sudo systemctl restart keyd && systemctl status keyd\
-
-: 1771115504:0;sudo keyd monitor
-: 1771115537:0;git add hosts/moonbeauty/test.nix && nupdate && sudo systemctl restart keyd && newgrp uinput && newgrp input\
-
-: 1771115577:0;sudo keyd monitor
-: 1771114361:0;ls /dev/input/by-id/
-: 1771115602:12;systemctl status
-: 1771115632:0;systemctl list-units --type=service | grep keyd\
-
-: 1771115652:0;git add hosts/moonbeauty/test.nix && nupdate && sudo systemctl restart keyd && newgrp uinput && newgrp input\
-
-: 1771115664:0;git add hosts/moonbeauty/test.nix && nupdate && sudo systemctl restart keyd\
-
-: 1771115712:0;sudo keyd monitor
-: 1771115798:0;git add hosts/moonbeauty/test.nix && nupdate && sudo systemctl restart keyd\
-
-: 1771115928:0;sudo systemctl stop keyd.service
-: 1771115931:0;sudo systemctl stop keyd && git add hosts/moonbeauty/test.nix && nupdate && sudo systemctl restart xremap
-: 1771116013:0;sudo systemctl disable --now keyd
-: 1771116015:0;sudo systemctl disable --now keyd.service
-: 1771116049:0;sudo systemctl disable --now keyd.service 
-: 1771116076:0;sudo systemctl stop keyd
-: 1771116083:0;git add hosts/moonbeauty/test.nix && nupdate\
-
-: 1771116135:0;sudo systemctl stop keyd && git add hosts/moonbeauty/test.nix && nupdate && sudo systemctl restart xremap\
-
-: 1771116159:0;sudo systemctl stop keyd && git rm --cached hosts/moonbeauty/test.nix && git add hosts/moonbeauty/test.nix && nupdate\
-
-: 1771116175:0;sudo systemctl stop keyd && git rm -f --cached hosts/moonbeauty/test.nix && git add hosts/moonbeauty/test.nix && nupdate && sudo systemctl restart xremap\
-
-: 1771116197:0;grep -r "https://github.com" .\
-
-: 1771116231:0;sudo systemctl stop keyd && git add hosts/moonbeauty/test.nix && nupdate && sudo systemctl restart xremap\
-
-: 1771116251:0;sudo systemctl stop keyd && git add . && nix-env --delete-generations old && nupdate && sudo systemctl restart xremap\
-
-: 1771116261:0;grep "github.com\"" hosts/moonbeauty/test.nix\
-
-: 1771116279:0;grep "github.com" hosts/moonbeauty/test.nix\
-
-: 1771116304:0;sudo systemctl stop keyd && git add hosts/moonbeauty/test.nix && nupdate\
-
-: 1771116338:0;cat <<'EOF' > hosts/moonbeauty/test.nix\
-{ pkgs, ... }:\
+# Kill any remaining instances\
+killall -9 pulseaudio
+systemctl --user start pipewire-pulse.service
+pactl info | grep "Server Name"\
+# Should say: Server Name: PulseAudio (on PipeWire 1.x.x)\
 \
-let\
-  xremap-flake = import (fetchTarball {\
-    url = "https://github.com";\
-    sha256 = "sha256:1h5n33kly5f4v0clb0pff528m49z8n81q8866p6p9892vjmj6p7x";\
-  });\
-in\
-{\
-  imports = [ xremap-flake.nixosModules.default ];\
+pactl list sources short | grep "deep_filter"
+pw-record --target deep_filter_input_clean test.wav
+# This stops all active loopbacks and resets the graph state\
+killall pw-loopback\
+systemctl --user restart wireplumber
+wpctl status
+wpctl set-default 39
+pavucontrol
+vesktop
+# Lower the physical Yeti volume to 60%\
+wpctl set-volume 52 0.60
+pavucontrol
+nupdate
+cd nixos-config
+git add . && nupdate
+systemctl --user restart pipewire
+git add . && nupdate
+systemctl --user restart pipewire
+wpctl status
+git add . && nupdate
+systemctl --user restart pipewire
+git add . && nupdate
+systemctl --user restart pipewire
+git add . && nupdate
+systemctl --user restart pipewire
+git add . && nupdate
+systemctl --user restart pipewire
+journalctl --user -u pipewire -n 20
+vesktop
+pavucontrol
+git add . && nupdate
+pw-link -i -l | grep Yeti
+systemctl --user restart pipewire
+pavucontrol
+git add . && nupdate
+pw-link -i -l | grep Yeti
+systemctl --user restart pipewire
+pw-link -i -l | grep Yeti
+pavucontrol
+wpctl status
+# Force the Yeti hardware to 70% volume to ensure signal reaches the filter\
+wpctl set-volume 67 0.70
+git add . && nupdate & systemctl --user restart pipewire
+pw-link alsa_input.usb-Blue_Microphones_Yeti_Stereo_Microphone_REV8-00.analog-stereo:capture_FL deep_filter_input_clean:input_FL
+git add . && nupdate & systemctl --user restart pipewire
+systemctl --user restart pipewire
+git add . && nupdate & systemctl --user restart pipewire
+killall -9 pipewire pipewire-pulse wireplumber
+git add . && nupdate & systemctl --user restart pipewire
+systemctl --user start pipewire pipewire-pulse wireplumber
+killall -9 pipewire pipewire-pulse wireplumber waybar
+pkill -9 waybar
+systemctl --user start pipewire pipewire-pulse wireplumber
+pavucontrol
+vesktop
+git add . && nupdate & systemctl --user restart pipewire wireplumber
+pavucontrol
+systemctl --user start pipewire pipewire-pulse wireplumber
+pavucontrol
+vesktop
+git add . && nupdate & systemctl --user restart pipewire wireplumber & systemctl start wireplumber pipewire
+systemctl --user start pipewire pipewire-pulse wireplumber
+# 1. Force kill everything related to audio\
+systemctl --user stop pipewire pipewire-pulse wireplumber\
+killall -9 pipewire pipewire-pulse wireplumber .pipewire-wrapped\
 \
-  services.xremap = {\
-    withWlroots = true;\
-    userName = "moonburst";\
-    config = {\
-      keymap = [{\
-        name = "Vesktop Only";\
-        application = { only = [ "vesktop" "Vesktop" ]; };\
-        remap = {\
-          "C-APOSTROPHE" = [ "H" "e" "l" "l" "o" "space" "V" "e" "s" "k" "t" "o" "p" ];\
-        };\
-      }];\
-    };\
-  };\
+# 2. Clear the PipeWire state/sockets (this is often why it timeouts)\
+rm -rf /run/user/$(id -u)/pipewire-0*\
+rm -rf ~/.local/state/wireplumber/*\
 \
-  services.keyd.enable = false;\
-  users.users.moonburst.extraGroups = [ "input" "uinput" ];\
-  hardware.uinput.enable = true;\
-  services.udev.extraRules = ''KERNEL=="uinput", GROUP="input", MODE="0660"'';\
-  system.stateVersion = "25.11";\
-}\
-EOF\
+# 3. Reload the systemd manager\
+systemctl --user daemon-reload\
+\
+# 4. Start them back up one by one\
+systemctl --user start pipewire\
+systemctl --user start pipewire-pulse\
+systemctl --user start wireplumber
+systemctl --user status pipewire wireplumber
+systemctl --user stop pipewire wireplumber pipewire-pulse\
+killall -9 pipewire wireplumber .pipewire-wrapped
+# 1. Flush all file system buffers to disk\
+sync\
+\
+# 2. Tell the kernel to drop all clean caches, dentries, and inodes\
+# (This clears the "600GB" phantom request metadata)\
+echo 3 | sudo tee /proc/sys/vm/drop_caches\
+\
+# 3. Flush the Swap (This moves any "stuck" AI data back to RAM and wipes it)\
+# WARNING: Only do this if you have at least 2GB of RAM free!\
+sudo swapoff -a && sudo swapon -a
+git add . && nupdate & systemctl --user restart pipewire wireplumber & systemctl start wireplumber pipewire
+pavucontrol
+systemctl --user stop pipewire wireplumber pipewire-pulse\
+killall -9 pipewire wireplumber .pipewire-wrapped
+# 1. Force kill everything related to audio\
+systemctl --user stop pipewire pipewire-pulse wireplumber\
+killall -9 pipewire pipewire-pulse wireplumber .pipewire-wrapped\
+\
+# 2. Clear the PipeWire state/sockets (this is often why it timeouts)\
+rm -rf /run/user/$(id -u)/pipewire-0*\
+rm -rf ~/.local/state/wireplumber/*\
+\
+# 3. Reload the systemd manager\
+systemctl --user daemon-reload\
+\
+# 4. Start them back up one by one\
+systemctl --user start pipewire\
+systemctl --user start pipewire-pulse\
+systemctl --user start wireplumber
+systemctl --user stop pipewire wireplumber pipewire-pulse\
+killall -9 pipewire wireplumber .pipewire-wrapped
+killall -9 .pipewire-wrapped pipewire wireplumber waybar
+sudo pkill -9 -f threaded-ml
+git add . && nupdate & systemctl --user restart pipewire wireplumber & systemctl start wireplumber pipewire
+sudo pkill -9 -f threaded-ml
+systemctl --user restart pipewire
+sudo pkill -9 threaded-ml\
+sudo killall -9 .pipewire-wrapped
+sudo reboot now
+: 1771233633:0;journalctl -f
+: 1771233727:0;nupdate
+: 1771234045:0;easyeffects --hide-window &
+: 1771234076:0;systemctl --user restart pipewire
+: 1771234081:0;systemctl --user start pipewire
+: 1771234530:0;systemctl --user restart pipewire
+: 1771234626:0;nupdate && systemctl --user restart pipewire
+: 1771234716:0;easyeffects
+: 1771235252:0;pw-loopback -m '[[ FL FR ]]' --capture-props='node.name=easyeffects_source'
+: 1771235993:0;pw-metadata -n settings 0 clock.force-quantum 128
+: 1771236115:0;pw-loopback -m '[[ FL FR ]]' --capture-props='node.name=easyeffects_source'
+: 1771236704:0;lsblk -f
+: 1771237463:0;pw-loopback -m '[[ FL FR ]]' --capture-props='node.name=easyeffects_source'
+: 1771238817:0;nupdate && systemctl --user restart pipewire
+: 1771238909:0;easyeffects --quit\
+easyeffects &\
 
-: 1771116465:0;systemctl stop keyd.service
-: 1771116770:0;swaymsg reload
-: 1771116801:0;swaymsg -t get_tree | jq -r '.. | select(.focused? == true) | .app_id'\
+: 1771239203:1;nupdate && systemctl --user restart pipewire
+: 1771239208:0;pw-loopback -m '[[ FL FR ]]' --capture-props='node.name=easyeffects_source'
+: 1771239223:0;easyeffects --quit\
+easyeffects &\
 
-: 1771116810:0;nix-shell -p jq
-swaymsg -t get_tree | jq -r '.. | select(.focused? == true) | .app_id'
-sleep 3 && swaymsg -t get_tree | jq -r '.. | select(.focused? == true) | .app_id'
-: 1771120863:0;journalctl -f
-: 1771121009:0;clear
-: 1771121010:0;journalctl -f
+: 1771277592:0;nano .config/gtk-4.0/settings.ini
+: 1771277610:0;gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
+: 1771282853:0;pkill audacious
+: 1771282884:0;audacious
+: 1771282939:0;pw-loopback -m '[[ FL FR ]]' --capture-props='node.name=easyeffects_source'
+: 1771282970:0;cd .config
+: 1771282977:0;rm -rf easyeffects
+: 1771282981:0;cd ~/.local/share
+: 1771282982:0;ls
+: 1771282986:0;rm -rf easyeffects
+: 1771282999:0;easyeffects
+: 1771283126:0;systemctl --user restart pipewire
+: 1771283233:0;pw-loopback -m '[[ FL FR ]]' --capture-props='node.name=easyeffects_source'
+: 1771283141:3371;easyeffects
+: 1771286514:0;easyeffects
+: 1771286748:0;cat scripts/keybinds/toggle_
+: 1771286750:0;cat scripts/keybinds/toggle_mic.sh
+: 1771286824:0;cd scripts/keybinds/
+: 1771286827:0;nano toggle_mic.sh
+: 1771286870:0;nano scripts/keybinds/toggle_mic.sh
+: 1771287591:0;pkill audacious
+: 1771287593:0;audacious
+: 1771287841:0;cd .local/share/themes
+: 1771287842:0;ls
+: 1771287845:0;cd Moon-Burst-Theme
+: 1771287846:0;ls
+: 1771289345:0;nupdate
+: 1771289496:0;cat .local/share/themes
+: 1771289497:0;ls
+: 1771289546:0;cat .local/share/icons
+: 1771289548:0;ls
+: 1771289556:0;cd .local/share
+: 1771289557:0;ls
+: 1771289560:0;cd icons
+: 1771289562:0;ls
+: 1771289603:0;nupdate
+: 1771289654:0;pkill waybar
+: 1771289705:0;export XCURSOR_THEME=Night-Diamond-Blue\
+export XCURSOR_SIZE=24
+: 1771289707:0;pkill waybar
+: 1771289727:0;export XCURSOR_THEME=Night-Diamond-Blue\
+export XCURSOR_SIZE=24
+: 1771289732:0;pkill waybar & waybar
+: 1771289752:0;systemctl --user import-environment XCURSOR_THEME XCURSOR_SIZE
+: 1771289765:0;dbus-update-activation-environment --systemd XCURSOR_THEME XCURSOR_SIZE
+: 1771289772:0;systemctl --user restart waybar.service
+: 1771289786:0;export XCURSOR_THEME=Night-Diamond-Blue
+: 1771289797:0;./Programs/Hyperbeam/Hyperbeam-0.21.0.AppImage
+: 1771289819:0;cat ~/.local/share/icons/Night-Diamond-Blue/index.theme
+: 1771290138:0;cd .local/share/icons
+: 1771290140:0;ls
+: 1771290314:0;nix-shell -p xeyes
+: 1771290459:0;nupdate
+: 1771290510:0;pkill dunst
+: 1771290519:0;pkill waybar
+: 1771290553:0;pkill waybar && pkill dunst && pkill waybar
+: 1771290575:0;nupdate && pkill dunst && pkill waybar
+: 1771291013:0;pkill dunst
+: 1771291015:0;pkill waybar
+: 1771291030:0;nupdate && pkill dunst && pkill waybar
+xeyes
+: 1771291358:0;nix-shell -p tree
+: 1771291394:0;cd nixos-config
+: 1771291395:0;ls
+: 1771291397:0;cat pw.dot
+: 1771291411:0;rm pw.dot

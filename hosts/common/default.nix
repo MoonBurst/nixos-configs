@@ -73,94 +73,100 @@
   # ====================================================================
   # SYSTEM PACKAGES
   # ====================================================================
-  environment.systemPackages = with pkgs; [
-    # --- System Utilities/Shell ---
-    fuse3                          # FUSE 3 implementation
-    kitty                          # gpu-accelerated terminal
-    fastfetch                      # system info display
-    gnome-system-monitor           # graphical task manager
-    s-tui                          # cpu stress/monitor tool
-    nano                           # basic text editor
-    git                            # version control system
-    github-cli                     # github command line
-    gnupg                          # encryption/signing tool
-    rsync                          # file sync utility
-    rclone                         # cloud storage sync
-    psmisc                         # process utilities (killall)
-    ripgrep                        # fast text search
-    dict                           # dictionary client
-    libsecret                      # password storage library
-    kdePackages.polkit-kde-agent-1 # auth dialog agent
-    linux-firmware                 # hardware driver binaries
-    nix-prefetch-github            # nix hash fetcher
-    unar                           # archive extractor
-    zip                            # zip compressor
-    unzip                          # zip extractor
-    cliphist                       # clipboard history manager
-    usbutils                       # usb device info
-    cargo                          # rust build system
-    libnotify                      # notification library
-    qimgv                          # fast image viewer
-    olm                            # matrix encryption library
-    element-desktop                # matrix chat client
-    steam-run                      # run binaries in fhs
-    webp-pixbuf-loader             # webp image thumbnails
-    gdk-pixbuf                     # gtk image library
-    rnnoise-plugin                 # mic noise suppression
-    lsp-plugins                    # audio signal processing
-    ncdu                           # file management location/size checks
+environment.systemPackages = with pkgs; [
+  # --- Applications & Communication ---
+  audacious                       # lightweight audio player
+  authenticator                   # 2fa code generator
+  element-desktop             # matrix chat client
+  evolution                         # email/calendar suite
+  mpv                                # versatile media player
+  vesktop                          # optimized discord client
+  vivaldi                            # feature-rich web browser
 
-    # --- Btrfs Tools ---
-    btrfs-progs                    # btrfs filesystem tools
-    btrfs-assistant                # btrfs gui manager
+  # --- Development & Version Control ---
+  cargo                             # rust build system
+  git                                 # version control system
+  github-cli                      # github command line
+  nix-prefetch-github      # nix hash fetcher
+  python3                       # python interpreter
 
-    # --- Wayland Utilities ---
-    waybar                         # wayland status bar
-    grim                           # wayland screenshot tool
-    slurp                          # region selector tool
-    wl-clipboard                   # wayland clipboard utility
-    satty                          # screenshot editor
-    wtype                          # virtual keystroke tool
-    wlrctl                         # wayland compositor tool
-    playerctl                      # media player controller
-    swaylock                       # wayland screen locker
-    swayidle                       # idle management daemon
-    swaybg                         # wallpaper setter
-    python3                        # python interpreter
-    smartmontools                  # drive health monitor
+  # --- File Management & Archives ---
+  btrfs-assistant             # btrfs gui manager
+  btrfs-progs                  # btrfs filesystem tools
+  ncdu                           # file management location/size checks
+  nemo                          # gtk file manager
+  rclone                         # cloud storage sync
+  rsync                          # file sync utility
+  syncthing                   # p2p file sync
+  unar                           # archive extractor
+  unzip                          # zip extractor
+  zip                              # zip compressor
 
-    # --- Desktop/Theming ---
-    nemo                           # gtk file manager
-    kdePackages.kate               # advanced text editor
-    pavucontrol                    # audio volume mixer
-    bluez-tools                    # bluetooth cli tools
-    qt5.qtwayland                  # qt5 wayland support
-    qt6Packages.qt6ct              # qt6 configuration tool
+  # --- Multimedia & Graphics ---
+  gdk-pixbuf                     # gtk image library
+  lsp-plugins                    # audio signal processing
+  obs-studio                    # screen recording/streaming
+  pavucontrol                 # audio volume mixer
+  pipewire                      # modern audio/video server
+  qimgv                         # fast image viewer
+  rnnoise-plugin            # mic noise suppression
+  webp-pixbuf-loader             # webp image thumbnails
 
-    # --- Applications/Communication ---
-    mpv                            # versatile media player
-    audacious                      # lightweight audio player
-    vivaldi                        # feature-rich web browser
-    vesktop                        # optimized discord client
-    evolution                      # email/calendar suite
-    authenticator                  # 2fa code generator
+  # --- Secrets & Security ---
+  gnupg                       # encryption/signing tool
+  libsecret                    # password storage library
+  olm                            # matrix encryption library
+  pass                           # unix password manager
+  sops                           # secrets manager
 
-    # --- Screencasting / Portals / Compositor Fixes ---
-    niri                           # scrollable tiling compositor
-    obs-studio                     # screen recording/streaming
-    pipewire                       # modern audio/video server
-    xdg-desktop-portal             # desktop integration portal
-    xdg-desktop-portal-gtk         # gtk portal backend
-    xdg-desktop-portal-wlr         # wlroots portal backend
-    xdg-utils                      # desktop integration tools
+  # --- Shell & System Utilities ---
+  bluez-tools                    # bluetooth cli tools
+  curl
+  dict                                # dictionary client
+  fastfetch                      # system info display
+  fuse3                          # FUSE 3 implementation
+  gawk
+  gnome-system-monitor           # graphical task manager
+  jq
+   kdePackages.kate               # advanced text editor
+   kdePackages.partitionmanager#partition manager
+  kitty                           # gpu-accelerated terminal
+  libnotify                      # notification library
+  linux-firmware            # hardware driver binaries
+  nano                           # basic text editor
+  psmisc                        # process utilities (killall)
+  ripgrep                        # fast text search
+  s-tui                            # cpu stress/monitor tool
+  smartmontools           # drive health monitor
+  steam-run                  # run binaries in fhs
+  usbutils                      # usb device info
+  wget
 
-    # --- Other Tools ---
-    syncthing                      # p2p file sync
-    pass                           # unix password manager
-    sops                           # secrets manager
-    sherlock-launcher
-    (pkgs.callPackage ../../packages/sherlock-clipboard.nix {})
-  ];
+  # --- Wayland & Niri Environment ---
+  cliphist                       # clipboard history manager
+  grim                           # wayland screenshot tool
+  kdePackages.polkit-kde-agent-1 # auth dialog agent
+  niri                             # scrollable tiling compositor
+  playerctl                    # media player controller
+  qt5.qtwayland           # qt5 wayland support
+  qt6Packages.qt6ct    # qt6 configuration tool
+  satty                         # screenshot editor
+  sherlock-launcher    # app launcher
+  (pkgs.callPackage ../../packages/sherlock-clipboard.nix {})
+  slurp                        # region selector tool
+  swaybg                    # wallpaper setter
+  swayidle                  # idle management daemon
+  swaylock                 # wayland screen locker
+  waybar                   # wayland status bar
+  wlrctl                      # wayland compositor tool
+  wtype                     # virtual keystroke tool
+  wl-clipboard
+  xdg-desktop-portal                # desktop integration portal
+  xdg-desktop-portal-gtk          # gtk portal backend
+  xdg-desktop-portal-gnome    # recommended for evolution/libsecret
+  xdg-desktop-portal-wlr         # wlroots portal backend
+  xdg-utils                               # desktop integration tools
+];
 
   # ====================================================================
   # PROGRAMS, SHELLS, and THEME FIXES
@@ -184,38 +190,50 @@
     promptInit = builtins.readFile ./zshprompt.sh;
   };
 
-  environment.sessionVariables = rec {
-    NIXOS_OZONE_WL = "1";
-    XDG_CURRENT_DESKTOP = "sway";
-    XDG_SESSION_TYPE = "wayland";
-    XDG_SESSION_DESKTOP = "sway";
-    EDITOR = "nano";
-    TERMINAL = "kitty";
-    QT_QPA_PLATFORMTHEME = "qt6ct";
-    GTK_THEME = "Moon-Burst-Theme";
-    GDK_BACKEND = "wayland,x11";
-    OBS_PLATFORM = "wayland";
+environment.sessionVariables = let
+  homePath = "/home/moonburst";
+in rec {
+  # --- Wayland & Graphics Fixes ---
+  GDK_BACKEND = "wayland,x11";
+  NIXOS_OZONE_WL = "1";
+  OBS_PLATFORM = "wayland";
+  WLR_DRM_NO_MODIFIERS = "1";
+  WLR_NO_HARDWARE_CURSORS = "1";
+  WLR_RENDERER_ALLOW_SOFTWARE = "1";
+  WLR_RENDERER = "gles2";
+  XDG_CURRENT_DESKTOP = "sway";
+  XDG_SESSION_DESKTOP = "sway";
+  XDG_SESSION_TYPE = "wayland";
 
-    XDG_CACHE_HOME = "$HOME/.cache";
-    XDG_CONFIG_HOME = "$HOME/.config";
-    XDG_DATA_HOME = "$HOME/.local/share";
-    XDG_STATE_HOME = "$HOME/.local/state";
+  # --- System Tools & Theming ---
+  EDITOR = "nano";
+  GTK_THEME = "Moon-Burst-Theme";
+  QT_QPA_PLATFORMTHEME = "qt6ct";
+  TERMINAL = "kitty";
 
-    ZDOTDIR = "$HOME/nixos-config/hosts/common";
-    HISTFILE = "${ZDOTDIR}/history";
+  # --- XDG Base Directories (Clean Expansion) ---
+  XDG_CACHE_HOME  = "${homePath}/.cache";
+  XDG_CONFIG_HOME = "${homePath}/.config";
+  XDG_DATA_HOME   = "${homePath}/.local/share";
+  XDG_STATE_HOME  = "${homePath}/.local/state";
 
-    CARGO_HOME = "${XDG_DATA_HOME}/cargo";
-    DOTNET_CLI_HOME = "${XDG_DATA_HOME}/dotnet";
-    GOPATH = "${XDG_DATA_HOME}/go";
-    GRADLE_USER_HOME = "${XDG_DATA_HOME}/gradle";
-    GNUPGHOME = "${XDG_DATA_HOME}/gnupg";
-    GTK2_RC_FILES = "${XDG_CONFIG_HOME}/gtk-2.0/gtkrc";
-    NPM_CONFIG_CACHE = "${XDG_CACHE_HOME}/npm";
-    NPM_CONFIG_INIT_MODULE = "${XDG_CONFIG_HOME}/npm/config/npm-init.js";
-    NUGET_PACKAGES = "${XDG_CACHE_HOME}/NuGetPackages";
-    PASSWORD_STORE_DIR = "${XDG_DATA_HOME}/pass";
-    RUSTUP_HOME = "${XDG_DATA_HOME}/rustup";
-  };
+  # --- Shell & Config ---
+  ZDOTDIR = "${homePath}/nixos-config/hosts/common";
+  HISTFILE = "${ZDOTDIR}/history"; # Correctly evaluates via 'rec'
+
+  # --- Development Homes (Recursive Paths) ---
+  CARGO_HOME             = "${XDG_DATA_HOME}/cargo";
+  DOTNET_CLI_HOME        = "${XDG_DATA_HOME}/dotnet";
+  GNUPGHOME              = "${XDG_DATA_HOME}/gnupg";
+  GOPATH                 = "${XDG_DATA_HOME}/go";
+  GRADLE_USER_HOME       = "${XDG_DATA_HOME}/gradle";
+  GTK2_RC_FILES          = "${XDG_CONFIG_HOME}/gtk-2.0/gtkrc";
+  NPM_CONFIG_CACHE       = "${XDG_CACHE_HOME}/npm";
+  NPM_CONFIG_INIT_MODULE = "${XDG_CONFIG_HOME}/npm/config/npm-init.js";
+  NUGET_PACKAGES         = "${XDG_CACHE_HOME}/NuGetPackages";
+  PASSWORD_STORE_DIR     = "${XDG_DATA_HOME}/pass";
+  RUSTUP_HOME            = "${XDG_DATA_HOME}/rustup";
+};
 
   fonts = {
     packages = with pkgs; [

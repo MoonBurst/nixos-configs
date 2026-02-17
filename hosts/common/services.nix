@@ -11,69 +11,27 @@
   services.gnome.gnome-keyring.enable = true;
   services.displayManager.ly.enable = true;
   services.displayManager.sessionPackages = [pkgs.niri];
-
-
-  # ====================================================================
-  #PIPEWIRE AND AUDIO
-  # ====================================================================
-  services.pipewire = {
-    enable = true;
-    alsa.enable = true;
-    alsa.support32Bit = true;
-    pulse.enable = true;
-    jack.enable = true;
-    extraConfig.pipewire."92-low-latency" = {
-      "context.properties" = {
-        "default.clock.rate" = 48000;
-        "default.clock.quantum" = 1024;
-        "default.clock.min-quantum" = 512;
-        "default.clock.max-quantum" = 2048;
-      };
-    };
-    extraConfig.pipewire."99-input-denoising" = {
-      "context.modules" = [
-        {
-          name = "libpipewire-module-filter-chain";
-          args = {
-            "node.description" = "DeepFilter Noise Cancelling Source";
-            "media.name" = "DeepFilter Noise Cancelling Source";
-            "filter.graph" = {
-              nodes = [
-                {
-                  type = "ladspa";
-                  name = "DeepFilter Mono";
-                  plugin = "${pkgs.deepfilternet}/lib/ladspa/libdeep_filter_ladspa.so";
-                  label = "deep_filter_mono";
-                  control = {
-                    "Attenuation Limit (dB)" = 100.0;
-                  };
-                }
-              ];
-            };
-            "capture.props" = {
-              "node.passive" = true;
-            };
-            "playback.props" = {
-              "node.name" = "deep_filter_input";
-              "media.class" = "Audio/Source";
-            };
-          };
-        }
-      ];
-    };
-  };
-
-  systemd.user.services.pipewire.environment = {
-    LADSPA_PATH = "${pkgs.deepfilternet}/lib/ladspa";
-  };
-
-
-
-
   # --- System & Storage Services ---
   services.openssh.enable = true;
   services.gvfs.enable = true;
   services.journald.extraConfig = "SystemMaxUse=1G;";
+
+  # ====================================================================
+  #PIPEWIRE AND AUDIO
+  # ====================================================================
+# 1. THE FOUNDATION
+  services.pipewire = {
+    enable = true;
+alsa.enable = true; # ALSA compatibility
+    alsa.support32Bit = true; # 32-bit app support
+    pulse.enable = true; # PulseAudio emulation
+    jack.enable = true; # JACK emulation
+  };
+  # Enable dconf so EasyEffects can save settings
+  programs.dconf.enable = true;
+
+
+
   # ====================================================================
   #BTRFS AND SMART
   # ====================================================================
@@ -112,16 +70,34 @@
   # ====================================================================
   # XDG PORTALS
   # ====================================================================
-
-  xdg.portal = {
-    enable = true;
-    wlr.enable = true;
-    extraPortals = with pkgs; [
-      xdg-desktop-portal-wlr
-      xdg-desktop-portal-gtk
+systemd.user.services.xdg-desktop-portal-wlr = {
+  description = "Portal service (wlroots implementation)";
+  serviceConfig = {
+    Environment = [
+      "WLR_RENDERER=gles2"
+      "WLR_DRM_NO_MODIFIERS=1"
     ];
-    config.common = {};
+    Restart = "on-failure";
+    RestartSec = "1";
   };
+};
+
+xdg.portal = {
+  enable = true;
+  wlr = {
+    enable = true;
+    settings.screencast = {
+      modifier_support = false;
+      force_import_egl = true;
+      max_fps = 60;
+      chooser_type = "simple";
+      chooser_cmd = "${pkgs.slurp}/bin/slurp -f %o -o";
+    };
+  };
+  extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
+  config.common.default = "*";
+  config.sway.default = pkgs.lib.mkForce [ "wlr" "gtk" ];
+};
 
    # ====================================================================
    #AUTO UPGRADES
@@ -166,133 +142,142 @@
    # ====================================================================
   # DUNST NOTIFICATIONS
   # ====================================================================
-  services.dunst = {
-    enable = true;
-    settings = {
-      # 1. GLOBAL SETTINGS (Alphabetically First)
-      global = {
-        monitor = 1;
-        follow = "none";
-        enable_posix_regex = true;
-        width = "(400, 400)";
-        origin = "top-right";
-        offset = "(15, 50)";
+ services.dunst = {
+  enable = true;
 
-        ### Appearance ###
-        corner_radius = 10;
-        frame_width = 5;
-        separator_color = "frame";
+  # This isolates the icons so ONLY Dunst can see them
+  package = pkgs.dunst.overrideAttrs (oldAttrs: {
+    nativeBuildInputs = (oldAttrs.nativeBuildInputs or [ ]) ++ [ pkgs.makeWrapper ];
+    postInstall = (oldAttrs.postInstall or "") + ''
+      wrapProgram $out/bin/dunst \
+        --set XDG_DATA_DIRS "${pkgs.adwaita-icon-theme}/share:${pkgs.papirus-icon-theme}/share"
+    '';
+  });
 
-        ### Icons ###
-        icon_position = "left";
-        min_icon_size = 92;
-        max_icon_size = 92;
-        icon_theme = "Papirus-Dark, hicolor, Adwaita";
-        enable_recursive_icon_lookup = true;
-        ### Text ###
-        font = "Iosevka Term 14";
-        format = "<b>%s</b>\n%b";
-        show_indicators = false;
-        alignment = "center";
-        vertical_alignment = "center";
+  settings = {
+    global = {
+      monitor = 1;
+      follow = "none";
+      enable_posix_regex = true;
+      width = "(400, 400)";
+      origin = "top-right";
+      offset = "(15, 50)";
 
-        browser = "${pkgs.firefox}/bin/firefox";
-        always_run_script = true;
-      };
+      ### Appearance ###
+      corner_radius = 10;
+      frame_width = 5;
+      separator_color = "frame";
 
-      # 2. URGENCY LEVELS (Alphabetically Middle)
-      urgency_low = {
-        background = "#000000";
-        foreground = "#f7f716";
-        frame_color = "#007F00";
-      };
-      urgency_normal = {
-        background = "#000000";
-        foreground = "#f7f716";
-        frame_color = "#0000FF"; # Global Blue
-      };
+      ### Icons ###
+      icon_position = "left";
+      min_icon_size = 92;
+      max_icon_size = 92;
+      icon_theme = "Papirus-Dark, Adwaita, hicolor";
+      enable_recursive_icon_lookup = true;
 
-      urgency_critical = {
-        background = "#000000";
-        foreground = "#f7f716";
-        frame_color = "#FF0000";
-        timeout = 0;
-      };
+      ### Text ###
+      font = "Iosevka Term 14";
+      format = "<b>%s</b>\n%b";
+      show_indicators = false;
+      alignment = "center";
+      vertical_alignment = "center";
 
-      # 3. CHARACTER RULES (Alphabetically LAST via 'z_' prefix)
-      "z_luster_dawn" = {
-        appname = "vesktop|Electron";
-        summary = ".*Luster Dawn.*";
-        urgency = "normal";
-        frame_color = "#e041de"; # Pink
-        background = "#000000";
-        foreground = "#f7f716";
-        min_icon_size = 92;
-        max_icon_size = 92;
-        new_icon = "${./scripts/dunst/luster_dawn/luster_dawn.png}";
-        script = "${pkgs.writeShellScript "luster-dawn-script" ''
-          ${pkgs.pulseaudio}/bin/paplay ${./scripts/dunst/luster_dawn/luster_dawn.flac}
-        ''}";
-      };
+      browser = "${pkgs.firefox}/bin/firefox";
+      always_run_script = true;
+    };
 
-      "z_solar_sonata" = {
-        appname = "vesktop|Electron";
-        summary = ".*Solar Sonata.*";
-        urgency = "normal";
-        frame_color = "#FFFF33"; # Yellow
-        background = "#000000";
-        foreground = "#f7f716";
-        min_icon_size = 92;
-        max_icon_size = 92;
-        new_icon = "${./scripts/dunst/solar_sonata/solar_sonata.png}";
-        script = "${pkgs.writeShellScript "solar-sonata-script" ''
-          ${pkgs.pulseaudio}/bin/paplay ${./scripts/dunst/solar_sonata/solar_sonata.flac}
-        ''}";
-      };
+    urgency_low = {
+      background = "#000000";
+      foreground = "#f7f716";
+      frame_color = "#007F00";
+    };
 
-      "z_apogee" = {
-        appname = "vesktop|Electron";
-        summary = ".*Apogee.*";
-        urgency = "normal";
-        frame_color = "#0CD0CD"; # Cyan
-        background = "#000000";
-        foreground = "#f7f716";
-        min_icon_size = 92;
-        max_icon_size = 92;
-        new_icon = "${./scripts/dunst/apogee/apogee.png}";
-      };
+    urgency_normal = {
+      background = "#000000";
+      foreground = "#f7f716";
+      frame_color = "#0000FF";
+    };
 
-      "z_cageheart" = {
-        appname = "vesktop|Electron";
-        summary = ".*Cageheart.*";
-        urgency = "normal";
-        frame_color = "#8ad5a6"; # Green
-        background = "#000000";
-        foreground = "#f7f716";
-        min_icon_size = 92;
-        max_icon_size = 92;
-        new_icon = "${./scripts/dunst/cageheart/cageheart.png}";
-        script = "${pkgs.writeShellScript "cageheart-script" ''
-          ${pkgs.pulseaudio}/bin/paplay ${./scripts/dunst/cageheart/cageheart.flac}
-        ''}";
-      };
+    urgency_critical = {
+      background = "#000000";
+      foreground = "#f7f716";
+      frame_color = "#FF0000";
+      timeout = 0;
+    };
 
-      "z_olivia" = {
-        appname = "vesktop";
-        summary = ".*Olivia.*";
-        urgency = "normal";
-        frame_color = "#18FFD5"; # Light Blue
-        background = "#000000";
-        foreground = "#f7f716";
-        min_icon_size = 92;
-        max_icon_size = 92;
-        new_icon = "${./scripts/dunst/olivia/olivia.png}";
-        script = "${pkgs.writeShellScript "olivia-script" ''
-          ${pkgs.pulseaudio}/bin/paplay ${./scripts/dunst/olivia/olivia.flac}
-        ''}";
-      };
+    "z_luster_dawn" = {
+      appname = "vesktop|Electron";
+      summary = ".*Luster Dawn.*";
+      urgency = "normal";
+      frame_color = "#e041de";
+      background = "#000000";
+      foreground = "#f7f716";
+      min_icon_size = 92;
+      max_icon_size = 92;
+      new_icon = "${./scripts/dunst/luster_dawn/luster_dawn.png}";
+      script = "${pkgs.writeShellScript "luster-dawn-script" ''
+        ${pkgs.pulseaudio}/bin/paplay ${./scripts/dunst/luster_dawn/luster_dawn.flac}
+      ''}";
+    };
+
+    "z_solar_sonata" = {
+      appname = "vesktop|Electron";
+      summary = ".*Solar Sonata.*";
+      urgency = "normal";
+      frame_color = "#FFFF33";
+      background = "#000000";
+      foreground = "#f7f716";
+      min_icon_size = 92;
+      max_icon_size = 92;
+      new_icon = "${./scripts/dunst/solar_sonata/solar_sonata.png}";
+      script = "${pkgs.writeShellScript "solar-sonata-script" ''
+        ${pkgs.pulseaudio}/bin/paplay ${./scripts/dunst/solar_sonata/solar_sonata.flac}
+      ''}";
+    };
+
+    "z_apogee" = {
+      appname = "vesktop|Electron";
+      summary = ".*Apogee.*";
+      urgency = "normal";
+      frame_color = "#0CD0CD";
+      background = "#000000";
+      foreground = "#f7f716";
+      min_icon_size = 92;
+      max_icon_size = 92;
+      new_icon = "${./scripts/dunst/apogee/apogee.png}";
+    };
+
+    "z_cageheart" = {
+      appname = "vesktop|Electron";
+      summary = ".*Cageheart.*";
+      urgency = "normal";
+      frame_color = "#8ad5a6";
+      background = "#000000";
+      foreground = "#f7f716";
+      min_icon_size = 92;
+      max_icon_size = 92;
+      new_icon = "${./scripts/dunst/cageheart/cageheart.png}";
+      script = "${pkgs.writeShellScript "cageheart-script" ''
+        ${pkgs.pulseaudio}/bin/paplay ${./scripts/dunst/cageheart/cageheart.flac}
+      ''}";
+    };
+
+    "z_olivia" = {
+      appname = "vesktop";
+      summary = ".*Olivia.*";
+      urgency = "normal";
+      frame_color = "#18FFD5";
+      background = "#000000";
+      foreground = "#f7f716";
+      min_icon_size = 92;
+      max_icon_size = 92;
+      new_icon = "${./scripts/dunst/olivia/olivia.png}";
+      script = "${pkgs.writeShellScript "olivia-script" ''
+        ${pkgs.pulseaudio}/bin/paplay ${./scripts/dunst/olivia/olivia.flac}
+      ''}";
     };
   };
+};
 
 
   # Required for rendering symbolic .svg icons (Updated to current NixOS option)
@@ -303,11 +288,14 @@
 
   # Ensure these are in your systemPackages for the config above to find them
   environment.systemPackages = with pkgs; [
-    adwaita-icon-theme
-    papirus-icon-theme
-    hicolor-icon-theme
+
     librsvg
     iosevka
     deepfilternet
+    easyeffects
+      lsp-plugins
+  zam-plugins
+  rnnoise
+  #mda_lv2e
   ];
 }
