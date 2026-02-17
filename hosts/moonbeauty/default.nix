@@ -1,76 +1,57 @@
-# moonbeauty - Desktop Host Configuration
 { config, pkgs, lib, ... }:
 
 {
-  # ====================================================================
-  # MODULE IMPORTS
-  # ====================================================================
   imports = [
-    ../common/default.nix
+    ../common/default.nix      # Brings in all the stuff above
+    ./packages.nix             # The GUI/Gaming list we made
     ./moonbeauty-hardware.nix
     ./mounts.nix
     ./services.nix
     ./programs/waybar
-     ./test.nix
+    ./test.nix
   ];
 
-  # ====================================================================
-  # NETWORKING
-  # ====================================================================
   networking.hostName = "moonbeauty";
 
-  # ====================================================================
-  # SERVICES AND HARDWARE (OpenRGB and Steam)
-  # ====================================================================
-  # OPENRGB STUFF
+  # --- Hardware & RGB ---
   services.hardware.openrgb.enable = true;
   hardware.i2c.enable = true;
 
-  # STEAM STUFF
-programs.gamescope.capSysNice = true;
-programs.gamemode.enable = true;
-hardware.steam-hardware.enable = true;
-programs.steam.enable = true;
-programs.steam.dedicatedServer.openFirewall = true;
-#VM STUFF
-virtualisation.libvirtd.enable = true;
-programs.virt-manager.enable = true;
-systemd.tmpfiles.rules = [
-  "f /dev/shm/looking-glass 0660 moonburst qemu-libvirtd -"
-];
-services.udev.extraRules = ''
-  SUBSYSTEM=="kvmfr", OWNER="moonburst", GROUP="kvm", MODE="0660"
-'';
-  # ====================================================================
-  # ENVIRONMENT AND PACKAGES
-  # ====================================================================
-  environment.systemPackages = with pkgs; [
-    # --- Custom Flake Packages (from overlay in flake.nix) ---
+  # --- Gaming ---
+  programs.steam = {
+    enable = true;
+    dedicatedServer.openFirewall = true;
+  };
+  programs.gamemode.enable = true;
+  programs.gamescope.capSysNice = true;
+  hardware.steam-hardware.enable = true;
 
-    # --- System Utilities/Shell ---
-    rocmPackages.rocm-smi
-    corectrl
-    openrgb-with-all-plugins
-    # --- Gaming/GPU/Emulation ---
-    gamescope#for steam
-    mesa#GPU driverrs
-    protonup-qt#for steam
-    obs-studio#obs
-    obs-cli#obs
-    mangohud#system use/FPS counter
-    # --- Desktop/Theming ---
-    krita#image editor
+  # --- Virtualization (VMs) ---
+  virtualisation.libvirtd.enable = true;
+  programs.virt-manager.enable = true;
 
-cura-appimage#3d printer
-openscad#3d printer
-orca-slicer#3d printer
-nicotine-plus#music downloader
-jami#chat client
-vicinae#launcher
-dnsmasq#VM related
-looking-glass-client#VM related
-borgbackup
-    ];
+  systemd.tmpfiles.rules = [
+    "f /dev/shm/looking-glass 0660 moonburst qemu-libvirtd -"
+  ];
+
+  services.udev.extraRules = ''
+    SUBSYSTEM=="kvmfr", OWNER="moonburst", GROUP="kvm", MODE="0660"
+  '';
+
+  # --- System Compatibility ---
+  programs.nix-ld = {
+    enable = true;
+    libraries = with pkgs; [ stdenv.cc.cc.lib zlib ];
+  };
+
+  programs.appimage = {
+    enable = true;
+    binfmt = true;
+    package = pkgs.appimage-run.override { extraPkgs = p: [ p.libxshmfence ]; };
+  };
+
+  security.polkit.enable = true;
+  security.rtkit.enable = true;
 
   system.stateVersion = "25.11";
 }
