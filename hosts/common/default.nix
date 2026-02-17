@@ -1,11 +1,15 @@
-{ config, pkgs, lib, inputs, ... }:
+{ config, pkgs, lib, ... }:
 
 {
   imports = [
-    ./packages.nix      # The CLI/Font list we just made
-    ./services.nix
-    ./zsh.nix
-    inputs.sops-nix.nixosModules.sops
+    ./packages.nix      # CLI tools, Desktop Apps, and Fonts
+    ./services.nix      # System daemons, Portal logic, and Auto-upgrades
+    ./zsh.nix           # Shell configuration and aliases
+    ./security.nix      # SOPS secrets, GPG, and Polkit
+    ./users.nix         # User account (moonburst) and permissions
+    ./audio.nix         # Pipewire and EasyEffects stack
+   ./dunst/dunst.nix        # Custom Dunst notification theme and rules
+    ./btrfs.nix         # BTRFS auto-scrubbing and maintenance logic
   ];
 
   # --- Localization ---
@@ -14,7 +18,9 @@
 
   # --- Nix Settings ---
   nixpkgs.config.allowUnfree = true;
-  nixpkgs.config.permittedInsecurePackages = [ "olm-3.2.16" ];
+  nixpkgs.config.permittedInsecurePackages = [
+    "olm-3.2.16"
+  ];
 
   nix.settings = {
     experimental-features = [ "nix-command" "flakes" ];
@@ -22,6 +28,7 @@
     auto-optimise-store = true;
   };
 
+  # --- System Housekeeping ---
   nix.gc = {
     automatic = true;
     dates = "weekly";
@@ -30,37 +37,10 @@
 
   # --- Core Networking & Hardware ---
   networking.networkmanager.enable = true;
+
   hardware.bluetooth.enable = true;
   hardware.graphics = {
     enable = true;
     enable32Bit = true;
   };
-
-  # --- User Account ---
-  users.users.moonburst = {
-    hashedPasswordFile = config.sops.secrets.sops_key.path;
-    isNormalUser = true;
-    description = "MoonBurst";
-    home = "/home/moonburst";
-    extraGroups = [
-      "networkmanager" "wheel" "audio" "video"
-      "input" "render" "corectrl" "i2c" "libvirtd"
-    ];
-    shell = pkgs.zsh;
-  };
-
-  # --- Shared Secrets (SOPS) ---
-  sops = {
-    defaultSopsFile = ../../secrets.yaml;
-    defaultSopsFormat = "yaml";
-    age.keyFile = "/home/moonburst/.config/sops/age/moon_keys.txt";
-    secrets.sops_key.neededForUsers = true;
-  };
-
-  # --- Shared Programs ---
-  programs.gnupg.agent = {
-    enable = true;
-    enableSSHSupport = true;
-  };
-  programs.fuse.userAllowOther = true;
 }
