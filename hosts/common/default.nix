@@ -9,6 +9,7 @@
 }: {
   imports = [
     ./services.nix
+    ./zsh.nix
     inputs.sops-nix.nixosModules.sops
   ];
 
@@ -182,57 +183,12 @@ environment.systemPackages = with pkgs; [
     lockAll = true;
   }];
 
-  programs.zsh = {
-    enable = true;
-    autosuggestions.enable = true;
-    syntaxHighlighting.enable = true;
-    histSize = 100000;
-    promptInit = builtins.readFile ./zshprompt.sh;
-  };
+
 
 environment.sessionVariables = let
   homePath = "/home/moonburst";
 in rec {
-  # --- Wayland & Graphics Fixes ---
-  GDK_BACKEND = "wayland,x11";
-  NIXOS_OZONE_WL = "1";
-  OBS_PLATFORM = "wayland";
-  WLR_DRM_NO_MODIFIERS = "1";
-  WLR_NO_HARDWARE_CURSORS = "1";
-  WLR_RENDERER_ALLOW_SOFTWARE = "1";
-  WLR_RENDERER = "gles2";
-  XDG_CURRENT_DESKTOP = "sway";
-  XDG_SESSION_DESKTOP = "sway";
-  XDG_SESSION_TYPE = "wayland";
 
-  # --- System Tools & Theming ---
-  EDITOR = "nano";
-  GTK_THEME = "Moon-Burst-Theme";
-  QT_QPA_PLATFORMTHEME = "qt6ct";
-  TERMINAL = "kitty";
-
-  # --- XDG Base Directories (Clean Expansion) ---
-  XDG_CACHE_HOME  = "${homePath}/.cache";
-  XDG_CONFIG_HOME = "${homePath}/.config";
-  XDG_DATA_HOME   = "${homePath}/.local/share";
-  XDG_STATE_HOME  = "${homePath}/.local/state";
-
-  # --- Shell & Config ---
-  ZDOTDIR = "${homePath}/nixos-config/hosts/common";
-  HISTFILE = "${ZDOTDIR}/history"; # Correctly evaluates via 'rec'
-
-  # --- Development Homes (Recursive Paths) ---
-  CARGO_HOME             = "${XDG_DATA_HOME}/cargo";
-  DOTNET_CLI_HOME        = "${XDG_DATA_HOME}/dotnet";
-  GNUPGHOME              = "${XDG_DATA_HOME}/gnupg";
-  GOPATH                 = "${XDG_DATA_HOME}/go";
-  GRADLE_USER_HOME       = "${XDG_DATA_HOME}/gradle";
-  GTK2_RC_FILES          = "${XDG_CONFIG_HOME}/gtk-2.0/gtkrc";
-  NPM_CONFIG_CACHE       = "${XDG_CACHE_HOME}/npm";
-  NPM_CONFIG_INIT_MODULE = "${XDG_CONFIG_HOME}/npm/config/npm-init.js";
-  NUGET_PACKAGES         = "${XDG_CACHE_HOME}/NuGetPackages";
-  PASSWORD_STORE_DIR     = "${XDG_DATA_HOME}/pass";
-  RUSTUP_HOME            = "${XDG_DATA_HOME}/rustup";
 };
 
   fonts = {
