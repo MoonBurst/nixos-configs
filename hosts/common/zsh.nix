@@ -1,14 +1,12 @@
 { pkgs, ... }:
 
 {
-  # 1. Global Shell Behavior
   programs.zsh = {
     enable = true;
     autosuggestions.enable = true;
     syntaxHighlighting.enable = true;
     histSize = 100000;
 
-    # Using the correct attribute name for your NixOS version
     histFile = "$HOME/.local/state/zsh/history";
 
     shellAliases = {
@@ -75,35 +73,33 @@
     XDG_STATE_HOME  = "$HOME/.local/state";
 
     # --- Wayland & Graphics Fixes ---
-    GDK_BACKEND                 = "wayland,x11";
-    NIXOS_OZONE_WL              = "1";
-    OBS_PLATFORM                = "wayland";
-    WLR_DRM_NO_MODIFIERS        = "1";
+    GDK_BACKEND                       = "wayland,x11";
+    NIXOS_OZONE_WL                  = "1";
+    OBS_PLATFORM                      = "wayland";
+    WLR_DRM_NO_MODIFIERS      = "1";
     WLR_NO_HARDWARE_CURSORS     = "1";
     WLR_RENDERER_ALLOW_SOFTWARE = "1";
-    WLR_RENDERER                = "gles2";
-    XDG_CURRENT_DESKTOP         = "sway";
-    XDG_SESSION_DESKTOP         = "sway";
-    XDG_SESSION_TYPE            = "wayland";
+    WLR_RENDERER                    = "gles2";
+    XDG_CURRENT_DESKTOP     = "sway";
+    XDG_SESSION_DESKTOP      = "sway";
+    XDG_SESSION_TYPE             = "wayland";
 
     # --- System Tools & Theming ---
-    EDITOR               = "nano";
-    GTK_THEME            = "Moon-Burst-Theme";
-    QT_QPA_PLATFORMTHEME = "qt6ct";
-    TERMINAL             = "kitty";
+    EDITOR                                 = "nano";
+    GTK_THEME                           = "Moon-Burst-Theme";
+    QT_QPA_PLATFORMTHEME   = "qt6ct";
+    TERMINAL                              = "kitty";
 
     # --- Development Homes ---
-    CARGO_HOME             = "$HOME/.local/share/cargo";
-    DOTNET_CLI_HOME        = "$HOME/.local/share/dotnet";
-    GNUPGHOME              = "$HOME/.local/share/gnupg";
-    GOPATH                 = "$HOME/.local/share/go";
-    GRADLE_USER_HOME       = "$HOME/.local/share/gradle";
-    GTK2_RC_FILES          = "$HOME/.config/gtk-2.0/gtkrc";
-    NPM_CONFIG_CACHE       = "$HOME/.cache/npm";
-    NPM_CONFIG_INIT_MODULE = "$HOME/.config/npm/config/npm-init.js";
-    NUGET_PACKAGES         = "$HOME/.cache/NuGetPackages";
-    PASSWORD_STORE_DIR     = "$HOME/.local/share/pass";
-    RUSTUP_HOME            = "$HOME/.local/share/rustup";
+    CARGO_HOME                      = "$HOME/.local/share/cargo";
+    DOTNET_CLI_HOME              = "$HOME/.local/share/dotnet";
+    GNUPGHOME                        = "$HOME/.local/share/gnupg";
+    GOPATH                                = "$HOME/.local/share/go";
+    GTK2_RC_FILES                     = "$HOME/.config/gtk-2.0/gtkrc";
+    NPM_CONFIG_CACHE            = "$HOME/.cache/npm";
+    NPM_CONFIG_INIT_MODULE  = "$HOME/.config/npm/config/npm-init.js";
+    PASSWORD_STORE_DIR        = "$HOME/.local/share/pass";
+    RUSTUP_HOME                       = "$HOME/.local/share/rustup";
   };
 
   users.defaultUserShell = pkgs.zsh;
