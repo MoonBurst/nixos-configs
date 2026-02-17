@@ -10,6 +10,9 @@ let
   dunstScript = mkScript "dunst_count.sh" ./modules/dunst_count.sh;
   alarmScript = mkScript "alarm.sh" ./modules/alarm.sh;
 
+  # Absolute path to your portal script for maximum reliability
+  musicScriptPath = "/home/moonburst/nixos-config/hosts/moonbeauty/programs/waybar/modules/music_portal.sh";
+
   waybarConfig = pkgs.writeText "waybar-config" (builtins.toJSON {
     layer = "top";
     position = "top";
@@ -20,7 +23,7 @@ let
       "clock#day"
       "custom/weather"
       "custom/dunst_count"
-      "mpris"
+      "custom/music"
       "custom/alarm"
     ];
 
@@ -36,19 +39,22 @@ let
       "tray"
     ];
 
-    "mpris" = {
-      "format" = "{player_icon} {title}";
-      "format-paused" = "{status_icon} <i>{title}</i>";
-      "max-length" = 20;
-      "ellipsis" = "..";
-      "player-icons" = {
-        "default" = "▶";
-        "audacious" = "  ";
-      };
-      "status-icons" = {
-        "paused" = "⏸";
-      };
-      "ignored-players" = [ "vivaldi" ];
+    "custom/music" = {
+      "format" = "󰎆 {}";
+      "interval" = 2;
+      "exec" = "${pkgs.audacious}/bin/audtool current-song 2>/dev/null || echo 'Stopped'";
+
+      # LEFT CLICK: Open/Focus Window
+      "on-click" = "bash ${musicScriptPath} ui";
+
+      # MIDDLE CLICK: Smart Toggle (Play/Pause without restarting)
+      "on-click-middle" = "bash ${musicScriptPath}";
+
+      # RIGHT CLICK: Add Music
+      "on-click-right" = "bash ${musicScriptPath} add";
+
+      "max-length" = 30;
+      "tooltip" = false;
     };
 
     "custom/alarm" = {
@@ -56,9 +62,7 @@ let
       "exec" = "${pkgs.bash}/bin/bash ${alarmScript}";
       "on-click" = "${pkgs.bash}/bin/bash ${alarmScript} set";
       "on-click-right" = "${pkgs.bash}/bin/bash ${alarmScript} cancel";
-      "interval" = 1;
-      "signal" = 8;
-      "tooltip" = false;
+      "interval" = 1; "signal" = 8; "tooltip" = false;
     };
 
     "pulseaudio#microphone" = {
@@ -66,36 +70,27 @@ let
       "format-source" = "";
       "format-source-muted" = " ";
       "on-click" = "${pkgs.pulseaudio}/bin/pactl set-source-mute @DEFAULT_SOURCE@ toggle";
-      "scroll-step" = 5;
-      "tooltip" = false;
+      "scroll-step" = 5; "tooltip" = false;
     };
 
     "custom/gpu_readout" = {
       "exec" = "${pkgs.coreutils}/bin/timeout 1s ${pkgs.bash}/bin/bash ${gpuScript} 0 | ${pkgs.coreutils}/bin/head -n 1";
-      "interval" = 2;
-      "min-length" = 30;
-      "max-length" = 30;
-      "tooltip" = false;
+      "interval" = 2; "min-length" = 30; "max-length" = 30; "tooltip" = false;
     };
 
     "custom/cpu_readout" = {
       "exec" = "${pkgs.coreutils}/bin/timeout 1s ${pkgs.bash}/bin/bash ${cpuScript} | ${pkgs.coreutils}/bin/head -n 1";
-      "interval" = 2;
-      "min-length" = 15;
-      "max-length" = 15;
-      "tooltip" = false;
+      "interval" = 2; "min-length" = 15; "max-length" = 15; "tooltip" = false;
     };
 
     "custom/ram_readout" = {
       "exec" = "${pkgs.coreutils}/bin/timeout 1s ${pkgs.bash}/bin/bash ${ramScript} | ${pkgs.coreutils}/bin/head -n 1";
-      "interval" = 2;
-      "tooltip" = false;
+      "interval" = 2; "tooltip" = false;
     };
 
     "custom/weather" = {
       "exec" = "${pkgs.coreutils}/bin/timeout 2s ${pkgs.bash}/bin/bash ${weatherScript} | ${pkgs.coreutils}/bin/head -n 1";
-      "interval" = 600;
-      "tooltip" = false;
+      "interval" = 600; "tooltip" = false;
     };
 
     "custom/dunst_count" = {
@@ -107,35 +102,20 @@ let
 
     "idle_inhibitor" = {
       "format" = "{icon}";
-      "format-icons" = {
-        "activated" = "";
-        "deactivated" = "";
-      };
+      "format-icons" = { "activated" = ""; "deactivated" = ""; };
       "tooltip" = false;
     };
 
-    "clock" = {
-      "format" = "{:%I:%M:%p}";
-      "interval" = 5;
-      "tooltip" = false;
-    };
-
-    "clock#day" = {
-      "format" = "{:%a %d %b}";
-      "tooltip-format" = "<tt><small>{calendar}</small></tt>";
-    };
+    "clock" = { "format" = "{:%I:%M:%p}"; "interval" = 5; "tooltip" = false; };
+    "clock#day" = { "format" = "{:%a %d %b}"; "tooltip-format" = "<tt><small>{calendar}</small></tt>"; };
 
     "network" = {
-      "min-length" = 25;
-      "max-length" = 25;
-      "interface" = "e*";
+      "min-length" = 25; "max-length" = 25; "interface" = "e*";
       "format-wifi" = " {bandwidthDownBytes}  {bandwidthUpBytes} ";
       "format-ethernet" = "{bandwidthDownBytes}  | {bandwidthUpBytes} ";
-      "format-linked" = "(No IP)";
-      "format-disconnected" = "";
+      "format-linked" = "(No IP)"; "format-disconnected" = "";
       "on-click" = "iwmenu -l custom --launcher-command \"sherlock\"";
-      "tooltip" = false;
-      "interval" = 1;
+      "tooltip" = false; "interval" = 1;
     };
 
     "pulseaudio" = {
@@ -152,7 +132,10 @@ let
 
 in {
   environment.systemPackages = with pkgs; [
-
+    yad
+    audacious
+    libnotify
+    playerctl
   ];
 
   systemd.user.services.waybar = {
@@ -160,33 +143,20 @@ in {
     wantedBy = [ "graphical-session.target" ];
     partOf = [ "graphical-session.target" ];
 
+    wants = [ "audacious.service" ];
+    after = [ "audacious.service" ];
+
     path = with pkgs; [
-      bash
-      coreutils
-      procps
-      gawk
-      gnugrep
-      gnused
-      bc
-      jq
-      curl
-      lm_sensors
-      rocmPackages.rocm-smi
-      playerctl
-      pulseaudio
-      dunst
-      libnotify
-      wireplumber
-      findutils
-      zenity
-      sox
+      bash coreutils procps gawk gnugrep gnused bc jq curl lm_sensors
+      rocmPackages.rocm-smi playerctl pulseaudio dunst libnotify
+      wireplumber findutils yad audacious sox systemd util-linux
     ];
 
     serviceConfig = {
       ExecStart = "${pkgs.waybar}/bin/waybar -c ${waybarConfig} -s ${waybarStyle}";
       Restart = "always";
       ExecStartPre = "${pkgs.coreutils}/bin/sleep 1";
-      PassEnvironment = "DISPLAY WAYLAND_DISPLAY XDG_RUNTIME_DIR";
+      PassEnvironment = "DISPLAY WAYLAND_DISPLAY XDG_RUNTIME_DIR XDG_CURRENT_DESKTOP XDG_SESSION_TYPE";
     };
   };
 }
