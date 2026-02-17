@@ -19,7 +19,7 @@
         follow = "none";
         enable_posix_regex = true;
 
-        # Fixed syntax for NixOS Dunst module
+        ### Window Geometry ###
         width = 400;
         height = 400;
         origin = "top-right";
@@ -67,10 +67,11 @@
         timeout = 0;
       };
 
-      # --- Rules using relative paths based on your Tree output ---
+      # ====================================================================
+      # CHARACTER RULES
+      # ====================================================================
 
       "z_luster_dawn" = {
-        appname = "vesktop|Electron";
         summary = ".*Luster Dawn.*";
         urgency = "normal";
         frame_color = "#e041de";
@@ -82,31 +83,29 @@
         ''}";
       };
 
-      "z_solar_sonata" = {
-        appname = "vesktop|Electron";
-        summary = ".*Solar Sonata.*";
-        urgency = "normal";
-        frame_color = "#FFFF33";
-        background = "#000000";
-        foreground = "#f7f716";
-        new_icon = "${./solar_sonata/solar_sonata.png}";
-        script = "${pkgs.writeShellScript "solar-sonata-script" ''
-          ${pkgs.pulseaudio}/bin/paplay ${./solar_sonata/solar_sonata.flac}
-        ''}";
-      };
-
       "z_apogee" = {
-        appname = "vesktop|Electron";
         summary = ".*Apogee.*";
         urgency = "normal";
         frame_color = "#0CD0CD";
         background = "#000000";
         foreground = "#f7f716";
         new_icon = "${./apogee/apogee.png}";
+      # Audio omitted: No .flac found in tree yet
+      };
+
+      "z_solar_sonata" = {
+        summary = ".*Solar Sonata.*";
+        urgency = "normal";
+        frame_color = "#f7f716";
+        background = "#000000";
+        foreground = "#f7f716";
+        new_icon = "${./solar_sonata/solar_sonata.png}";
+        script = "${pkgs.writeShellScript "solar-sonata-sound" ''
+          ${pkgs.pulseaudio}/bin/paplay ${./solar_sonata/solar_sonata.flac}
+        ''}";
       };
 
       "z_cageheart" = {
-        appname = "vesktop|Electron";
         summary = ".*Cageheart.*";
         urgency = "normal";
         frame_color = "#8ad5a6";
@@ -119,7 +118,6 @@
       };
 
       "z_olivia" = {
-        appname = "vesktop";
         summary = ".*Olivia.*";
         urgency = "normal";
         frame_color = "#18FFD5";
@@ -130,13 +128,21 @@
           ${pkgs.pulseaudio}/bin/paplay ${./olivia/olivia.flac}
         ''}";
       };
+
+      "z_genesis_frost" = {
+        summary = ".*Genesis Frost.*";
+        urgency = "normal";
+        frame_color = "#9ce8ff";
+        background = "#000000";
+        foreground = "#f7f716";
+        new_icon = "${./genesis_frost/genesis_frost.png}";
+        # Audio omitted: No .flac found in tree yet
+      };
     };
   };
 
-  # Required for rendering symbolic .svg icons
+  # Required for rendering symbolic .svg icons and handling paths
   programs.gdk-pixbuf.modulePackages = [ pkgs.librsvg ];
-
-  # Link icon folders so Dunst can see them
   environment.pathsToLink = [ "/share/icons" ];
 
   environment.systemPackages = with pkgs; [
@@ -144,5 +150,6 @@
     iosevka
     papirus-icon-theme
     adwaita-icon-theme
+    libnotify # For notify-send testing
   ];
 }
