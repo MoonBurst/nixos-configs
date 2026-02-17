@@ -4,7 +4,6 @@
   services.dunst = {
     enable = true;
 
-    # Wrapper to ensure Dunst finds the right icon themes in the Nix store
     package = pkgs.dunst.overrideAttrs (oldAttrs: {
       nativeBuildInputs = (oldAttrs.nativeBuildInputs or [ ]) ++ [ pkgs.makeWrapper ];
       postInstall = (oldAttrs.postInstall or "") + ''
@@ -18,58 +17,26 @@
         monitor = 1;
         follow = "none";
         enable_posix_regex = true;
-
-        ### Window Geometry ###
         width = 400;
         height = 400;
         origin = "top-right";
         offset = "15x50";
-
-        ### Appearance ###
         corner_radius = 10;
         frame_width = 5;
         separator_color = "frame";
-
-        ### Icons ###
         icon_position = "left";
         min_icon_size = 92;
         max_icon_size = 92;
         icon_theme = "Papirus-Dark, Adwaita, hicolor";
         enable_recursive_icon_lookup = true;
-
-        ### Text ###
         font = "Iosevka Term 14";
         format = "<b>%s</b>\n%b";
         show_indicators = false;
         alignment = "center";
         vertical_alignment = "center";
-
         browser = "${pkgs.firefox}/bin/firefox";
         always_run_script = true;
       };
-
-      urgency_low = {
-        background = "#000000";
-        foreground = "#f7f716";
-        frame_color = "#007F00";
-      };
-
-      urgency_normal = {
-        background = "#000000";
-        foreground = "#f7f716";
-        frame_color = "#0000FF";
-      };
-
-      urgency_critical = {
-        background = "#000000";
-        foreground = "#f7f716";
-        frame_color = "#FF0000";
-        timeout = 0;
-      };
-
-      # ====================================================================
-      # CHARACTER RULES
-      # ====================================================================
 
       "z_luster_dawn" = {
         summary = ".*Luster Dawn.*";
@@ -90,7 +57,7 @@
         background = "#000000";
         foreground = "#f7f716";
         new_icon = "${./apogee/apogee.png}";
-      # Audio omitted: No .flac found in tree yet
+        # Audio omitted: File missing
       };
 
       "z_solar_sonata" = {
@@ -136,20 +103,11 @@
         background = "#000000";
         foreground = "#f7f716";
         new_icon = "${./genesis_frost/genesis_frost.png}";
-        # Audio omitted: No .flac found in tree yet
       };
     };
   };
 
-  # Required for rendering symbolic .svg icons and handling paths
   programs.gdk-pixbuf.modulePackages = [ pkgs.librsvg ];
   environment.pathsToLink = [ "/share/icons" ];
-
-  environment.systemPackages = with pkgs; [
-    librsvg
-    iosevka
-    papirus-icon-theme
-    adwaita-icon-theme
-    libnotify # For notify-send testing
-  ];
+  environment.systemPackages = with pkgs; [ librsvg iosevka libnotify ];
 }
