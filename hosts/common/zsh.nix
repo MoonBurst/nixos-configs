@@ -100,7 +100,9 @@
     NPM_CONFIG_CACHE            = "$HOME/.cache/npm";
     NPM_CONFIG_INIT_MODULE  = "$HOME/.config/npm/config/npm-init.js";
     PASSWORD_STORE_DIR        = "$HOME/.local/share/pass";
-    RUSTUP_HOME                       = "$HOME/.local/share/rustup";
+    RUSTUP_HOME                      = "$HOME/.local/share/rustup";
+    CLIPHIST_DB_PATH = "/tmp/cliphist_db";
+
   };
 
   users.defaultUserShell = pkgs.zsh;

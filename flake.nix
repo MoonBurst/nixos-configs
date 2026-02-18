@@ -3,8 +3,9 @@
 
   inputs = {
     # Primary Nixpkgs
+     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
    # nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-   nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+
 
     # Flake-parts for modular structure
     flake-parts.url = "github:hercules-ci/flake-parts";
