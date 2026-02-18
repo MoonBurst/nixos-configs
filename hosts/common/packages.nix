@@ -69,3 +69,4 @@
     fontconfig.enable = true;
   };
 }
+
