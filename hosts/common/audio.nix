@@ -34,6 +34,7 @@
 
   # Audio processing and plugin packages
   environment.systemPackages = with pkgs; [
+    pipewire
     easyeffects
     lsp-plugins
     zam-plugins

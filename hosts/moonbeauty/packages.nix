@@ -1,7 +1,6 @@
 { pkgs, ... }: {
   environment.systemPackages = with pkgs; [
     # --- Communication & Web ---
-    vivaldi                     # Main browser
     vesktop                     # Discord with better Linux support
     element-desktop             # Matrix client
     jami                        # Distributed chat

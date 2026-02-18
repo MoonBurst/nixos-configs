@@ -30,4 +30,13 @@
   # Core security services
   security.polkit.enable = true;
   security.rtkit.enable = true;
+
+
+    environment.systemPackages = with pkgs; [
+    sops # To edit/view encrypted files
+    age  # To manage keys
+    pass #to manage passwords
+  ];
 }
+
+
