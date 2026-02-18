@@ -87,7 +87,8 @@
     # --- System Tools & Theming ---
     EDITOR                                 = "nano";
     GTK_THEME                           = "Moon-Burst-Theme";
-    QT_QPA_PLATFORMTHEME   = "qt6ct";
+    QT_QPA_PLATFORMTHEME   = "generic";
+    QT_SCALE_FACTOR = "1.5";
     TERMINAL                              = "kitty";
 
     # --- Development Homes ---

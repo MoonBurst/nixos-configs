@@ -1,5 +1,14 @@
 { pkgs, ... }: {
   environment.systemPackages = with pkgs; [
+#--------
+  (vivaldi.override {
+      commandLineArgs = [
+        "--disable-features=AudioServiceSandbox"
+        "--ozone-platform-hint=auto"
+        "--log-level=3"
+      ];
+    })
+#--------
     # --- Version Control ---
     git                         # The heart of your flake
     github-cli                  # Managing repos from terminal
@@ -38,6 +47,8 @@
     # --- GUI Apps & Editors ---
     kdePackages.kate             # Your missing editor
     kdePackages.kio-extras       # Needed for Kate's file-browser sidebar
+    qview                                 #image viewer
+    pass
   ];
 
   fonts = {
