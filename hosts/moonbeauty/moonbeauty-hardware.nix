@@ -1,8 +1,13 @@
 # ~/nixos-config/modules/desktop-hardware.nix
 # This file contains the machine-specific hardware configuration for moonbeauty (Desktop).
 { config, lib, pkgs, modulesPath, ... }:
-
 {
+  _module.args = {
+    Speakers            = "alsa_output.pci-0000_2a_00.4.analog-stereo";
+    Headphones       = "alsa_output.usb-FiiO_DigiHug_USB_Audio-01.analog-stereo";
+    Microphone         = "alsa_input.usb-Blue_Microphones_Yeti_Stereo_Microphone_REV8-00.analog-stereo";
+  };
+
   imports =
     [ (modulesPath + "/installer/scan/not-detected.nix") ];
 
@@ -36,12 +41,13 @@ boot.kernelParams = [
   boot.extraModulePackages = with config.boot.kernelPackages; [
   kvmfr
   vendor-reset
+  v4l2loopback
 ];
 
 boot.extraModprobeConfig = ''
   softdep amdgpu pre: vfio-pci vendor-reset
 
-  options kvmfr static_size_mb=64
+  options kvmfr static_size_mb=64 v4l2loopback devices=1 video_nr=1 card_label="OBS Virtual Camera" exclusive_caps=1
 '';
 virtualisation.libvirtd.qemu.verbatimConfig = ''
   cgroup_device_acl = [

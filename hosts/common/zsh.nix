@@ -84,12 +84,15 @@
     XDG_SESSION_DESKTOP      = "sway";
     XDG_SESSION_TYPE             = "wayland";
 
+
     # --- System Tools & Theming ---
     EDITOR                                 = "nano";
     GTK_THEME                           = "Moon-Burst-Theme";
+    GTK_ICON_THEME                 = "Papirus-Dark";
     QT_QPA_PLATFORMTHEME   = "generic";
-    QT_SCALE_FACTOR = "1.5";
+    QT_SCALE_FACTOR               = "1.5";
     TERMINAL                              = "kitty";
+    XCURSOR_THEME                   = "";
 
     # --- Development Homes ---
     CARGO_HOME                      = "$HOME/.local/share/cargo";

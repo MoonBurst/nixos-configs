@@ -8,6 +8,7 @@
     variant = "";
   };
   services.dbus.enable = true;
+  programs.dconf.enable = true;
   services.gnome.gnome-keyring.enable = true;
   services.displayManager.ly.enable = true;
   services.displayManager.sessionPackages = [ pkgs.niri ];
@@ -50,33 +51,10 @@
   # ====================================================================
   # XDG PORTALS
   # ====================================================================
-  systemd.user.services.xdg-desktop-portal-wlr = {
-    description = "Portal service (wlroots implementation)";
-    serviceConfig = {
-      Environment = [
-        "WLR_RENDERER=gles2"
-        "WLR_DRM_NO_MODIFIERS=1"
-      ];
-      Restart = "on-failure";
-      RestartSec = "1";
-    };
-  };
-
+  # xdg portal + pipewire = screensharing
   xdg.portal = {
     enable = true;
-    wlr = {
-      enable = true;
-      settings.screencast = {
-        modifier_support = false;
-        force_import_egl = true;
-        max_fps = 60;
-        chooser_type = "simple";
-        chooser_cmd = "${pkgs.slurp}/bin/slurp -f %o -o";
-      };
-    };
-    extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
-    config.common.default = "*";
-    config.sway.default = pkgs.lib.mkForce [ "wlr" "gtk" ];
+    wlr.enable = true;
   };
 
   # ====================================================================
