@@ -3,16 +3,41 @@
 {
   imports = [
     ../common/default.nix      # Brings in all shared logic (User, BTRFS, Audio, etc)
-    ./packages.nix             # The GUI/Gaming list
+  #  ./packages.nix             # The GUI/Gaming list
     ./moonbeauty-hardware.nix  # Drive UUIDs
     ./mounts.nix               # BTRFS Subvolume and Mount definitions
     ./services.nix             # Moonbeauty-specific services
-    ./programs/waybar          # Waybar config
     ./programs/audacious.nix
+    ./programs/waybar          # Waybar config
+  #   ./programs/sway/sway.nix
     ../common/default.nix
+
     ./test.nix
   ];
 
+home-manager.users.moonburst = {
+  imports = [
+    ./programs/sway/sway.nix # Move it HERE
+  ];
+  xdg.configFile."qt5ct/qt5ct.conf".force = true;
+  xdg.configFile."qt6ct/qt6ct.conf".force = true;
+home.sessionVariables = {
+  XDG_CURRENT_DESKTOP = "sway";
+};
+
+programs.kitty = {
+  enable = true;
+  settings = {
+    confirm_os_window_close = 0; # From your previous request
+    "map alt+up" = "scroll_line_up";
+    "map alt+down" = "scroll_line_down";
+    "map alt+page_up" = "scroll_page_up";
+    "map alt+page_down" = "scroll_page_down";
+    "map alt+delete" = "send_text all \\x1bd";
+  };};#kitty end
+
+
+  };
   networking.hostName = "moonbeauty";
 
   # --- Hardware & RGB ---

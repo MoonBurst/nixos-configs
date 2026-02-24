@@ -5,25 +5,24 @@
   programs.obs-studio = {
     enable = true;
     plugins = with pkgs.obs-studio-plugins; [
-      obs-pipewire-audio-capture # Easiest way to grab your virtual sinks
-      wlrobs                     # Required if you are on Wayland
+      obs-pipewire-audio-capture
+      wlrobs
     ];
   };
 
   # 2. Define the systemd user service
   systemd.user.services.obs = {
     description = "OBS Studio Headless/Auto-start Service";
-    
-    # Wait until the graphical session and pipewire are ready
     after = [ "graphical-session.target" "pipewire.service" ];
     wantedBy = [ "graphical-session.target" ];
+    unitConfig.StartLimitIntervalSec = 3;
 
     serviceConfig = {
-      # --startvirtualcam starts the camera immediately
-      # --minimize starts it in the tray so it's not in your way
-      ExecStart = "${pkgs.obs-studio}/bin/obs --startvirtualcam --minimize";
-      Restart = "on-failure";
-      RestartSec = 5;
+      ExecStart = "${pkgs.obs-studio}/bin/obs --nosafe  --startvirtualcam --minimize-to-tray";
+           StandardOutput = "null";
+    StandardError = "null";
+        Restart = "always";
+        RestartSec = 5;
     };
   };
 

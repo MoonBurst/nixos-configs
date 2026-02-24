@@ -10,7 +10,7 @@
   services.dbus.enable = true;
   programs.dconf.enable = true;
   services.gnome.gnome-keyring.enable = true;
-  services.displayManager.ly.enable = true;
+  services.displayManager.ly.enable = false;
   services.displayManager.sessionPackages = [ pkgs.niri ];
 
   # --- System & Storage Services ---
@@ -18,7 +18,7 @@
   services.gvfs.enable = true;
   services.journald.extraConfig = "SystemMaxUse=1G;";
   programs.sway.enable = true;
- environment.variables.TERMINAL = "kitty";
+  environment.variables.TERMINAL = "kitty";
   # ====================================================================
   # SMART DISK MONITORING
   # ====================================================================
@@ -52,10 +52,16 @@
   # XDG PORTALS
   # ====================================================================
   # xdg portal + pipewire = screensharing
-  xdg.portal = {
-    enable = true;
-    wlr.enable = true;
+xdg.portal = {
+  enable = true;
+  wlr.enable = true;
+  extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
+  config.sway = {
+    default = [ "gtk" ];
+    "org.freedesktop.impl.portal.ScreenCast" = [ "wlr" ];
+    "org.freedesktop.impl.portal.Screenshot" = [ "wlr" ];
   };
+};
 
   # ====================================================================
   # AUTO UPGRADES
@@ -63,7 +69,7 @@
   system.autoUpgrade = {
     enable = true;
     flake = "path:/home/moonburst/nixos-config#${config.networking.hostName}";
-    flags = [ "--update-input" "nixpkgs" "-v" ];
+    flags = [ "--update-input" "nixpkgs" ];
     dates = "11:00";
     randomizedDelaySec = "30min";
     allowReboot = false;
@@ -95,4 +101,45 @@
       rm -f /home/moonburst/UPDATE_FAILED.txt
     fi
   '';
+
+
+  services.greetd = {
+    enable = true;
+    settings = {
+      initial_session = {
+        command = "${pkgs.sway}/bin/sway";
+        user = "moonburst";
+      };
+      default_session = {
+        command = "${pkgs.tuigreet}/bin/tuigreet --time --cmd sway";
+        user = "greeter";
+      };
+    };
+  };
+
+
+
+
+  home-manager.users.moonburst = { pkgs, ... }: {
+    # 1. Install required packages for this user
+    home.packages = [ pkgs.cliphist pkgs.wl-clipboard ];
+
+    # 2. Define the separate TEXT and IMAGE services
+    systemd.user.services = {
+      cliphist-text = {
+        Unit.Description = "Clipboard text history manager";
+        Service.ExecStart = "${pkgs.wl-clipboard}/bin/wl-paste --type text --watch ${pkgs.cliphist}/bin/cliphist store -max-items 50";
+        Install.WantedBy = [ "graphical-session.target" ];
+      };
+
+      cliphist-images = {
+        Unit.Description = "Clipboard image history manager";
+        Service.ExecStart = "${pkgs.wl-clipboard}/bin/wl-paste --type image --watch ${pkgs.cliphist}/bin/cliphist store -max-items 10";
+        Install.WantedBy = [ "graphical-session.target" ];
+      };
+    };
+
+    # Match this to your current NixOS version (e.g., "24.11")
+    home.stateVersion = "25.11";
+  };
 }

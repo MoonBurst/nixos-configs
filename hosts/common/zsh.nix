@@ -2,14 +2,14 @@
 
 {
   programs.zsh = {
-    enable = true;
-    autosuggestions.enable = true;
-    syntaxHighlighting.enable = true;
-    histSize = 100000;
+      enable = true;
+      autosuggestions.enable = true;
+      syntaxHighlighting.enable = true;
+      histSize = 100000;
 
-    histFile = "$HOME/.local/state/zsh/history";
+      histFile = "$HOME/.local/state/zsh/history";
 
-    shellAliases = {
+      shellAliases = {
       ll = "ls -l";
       ".." = "cd ..";
       nix-switch = "sudo nixos-rebuild switch --flake ~/nixos-config";
@@ -41,7 +41,7 @@
         local HOSTNAME=$(hostname)
         local FLAKE_PATH="$HOME/nixos-config"
         if [ -d "$FLAKE_PATH" ]; then
-          sudo nixos-rebuild switch --flake "$FLAKE_PATH"#"$HOSTNAME" -v
+        sudo nixos-rebuild switch --flake "$FLAKE_PATH"#"$HOSTNAME" --log-format bar-with-logs --quiet --option warn-dirty false
         fi
       }
 
@@ -86,20 +86,15 @@
 
 
     # --- System Tools & Theming ---
-    EDITOR                                 = "nano";
-    GTK_THEME                           = "Moon-Burst-Theme";
-    GTK_ICON_THEME                 = "Papirus-Dark";
-    QT_QPA_PLATFORMTHEME   = "generic";
-    QT_SCALE_FACTOR               = "1.5";
+    EDITOR                                 = "micro";
     TERMINAL                              = "kitty";
-    XCURSOR_THEME                   = "";
+
 
     # --- Development Homes ---
     CARGO_HOME                      = "$HOME/.local/share/cargo";
     DOTNET_CLI_HOME              = "$HOME/.local/share/dotnet";
     GNUPGHOME                        = "$HOME/.local/share/gnupg";
     GOPATH                                = "$HOME/.local/share/go";
-    GTK2_RC_FILES                     = "$HOME/.config/gtk-2.0/gtkrc";
     NPM_CONFIG_CACHE            = "$HOME/.cache/npm";
     NPM_CONFIG_INIT_MODULE  = "$HOME/.config/npm/config/npm-init.js";
     PASSWORD_STORE_DIR        = "$HOME/.local/share/pass";
