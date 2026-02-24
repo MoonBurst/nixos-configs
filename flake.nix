@@ -2,21 +2,25 @@
   description = "Moonburst's NixOS flake config";
 
   inputs = {
-    # Primary Nixpkgs
-     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
-   # nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
 
+    stylix = {
+      url = "github:danth/stylix/release-25.11";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
-    # Flake-parts for modular structure
+    home-manager = {
+      url = "github:nix-community/home-manager/release-25.11";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     flake-parts.url = "github:hercules-ci/flake-parts";
 
-    # Niri (Wayland compositor) flake
     niri-flake = {
       url = "github:YaLTeR/niri";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Sherlock clipboard
     cypkgs = {
       url = "github:cybardev/nix-channel?ref=main";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -32,38 +36,63 @@
     niri-flake,
     sops-nix,
     cypkgs,
+    stylix,
+    home-manager,
     ...
   } @ inputs:
     flake-parts.lib.mkFlake { inherit inputs; } ({ system, ... }: {
       systems = [ "x86_64-linux" ];
-
-      perSystem = { config, self', pkgs, lib, ... }: {
-        # System-specific configuration can go here if needed
-      };
-
-      # Global flake configurations
       flake = {
         nixosConfigurations = {
           # 1. Desktop Host (moonbeauty)
           moonbeauty = nixpkgs.lib.nixosSystem {
             system = "x86_64-linux";
-            # We pass 'inputs' so common/default.nix can find sops-nix
-            specialArgs = { inherit inputs niri-flake cypkgs; };
+            specialArgs = { inherit inputs; };
             modules = [
+              stylix.nixosModules.stylix
               ./hosts/moonbeauty/default.nix
+               ./hosts/common/theme.nix
+
+              home-manager.nixosModules.home-manager {
+                home-manager.useGlobalPkgs = true;
+                home-manager.useUserPackages = true;
+                home-manager.users.moonburst = {
+                  imports = [
+                ./hosts/moonbeauty/packages.nix
+                ./hosts/common/theme.nix
+                ];
+                  gtk.enable = true;
+                  qt.enable = true;
+                  stylix.enable = true;
+                  stylix.targets.sway.enable = true;
+                  stylix.targets.kitty.enable = true;
+                  stylix.targets.gtk.enable = true;
+
+                  home.stateVersion = "25.11";
+                };
+              }
             ];
           };
 
           # 2. Laptop Host (lunarchild)
           lunarchild = nixpkgs.lib.nixosSystem {
             system = "x86_64-linux";
-            specialArgs = { inherit inputs niri-flake cypkgs; };
+            specialArgs = { inherit inputs; };
             modules = [
               ./hosts/lunarchild/default.nix
-              # It's better to import common/default.nix INSIDE lunarchild/default.nix
-              # but keeping it here for now to ensure it builds.
               ./hosts/common/default.nix
               ./hosts/lunarchild/lunarchild-hardware.nix
+
+              home-manager.nixosModules.home-manager {
+                home-manager.useGlobalPkgs = true;
+                home-manager.useUserPackages = true;
+                home-manager.users.moonburst = {
+                  stylix.targets.sway.enable = true;
+                  stylix.targets.kitty.enable = true;
+                  stylix.targets.gtk.enable = true;
+                  home.stateVersion = "25.11";
+                };
+              }
             ];
           };
         };

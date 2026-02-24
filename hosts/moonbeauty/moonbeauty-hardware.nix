@@ -46,8 +46,8 @@ boot.kernelParams = [
 
 boot.extraModprobeConfig = ''
   softdep amdgpu pre: vfio-pci vendor-reset
-
-  options kvmfr static_size_mb=64 v4l2loopback devices=1 video_nr=1 card_label="OBS Virtual Camera" exclusive_caps=1
+ options kvmfr static_size_mb=64
+ options v4l2loopback devices=1 video_nr=1 card_label="OBS Virtual Camera" exclusive_caps=1
 '';
 virtualisation.libvirtd.qemu.verbatimConfig = ''
   cgroup_device_acl = [

@@ -13,7 +13,8 @@
         };
         "horizon_macros:C" = {
           # 1. Blue Quote (Standard ASCII macro)
-          "apostrophe" = "macro([color=blue]\"[/color])";
+         "apostrophe" = "macro([ 5ms c 5ms o 5ms l 5ms o 5ms r 5ms = 5ms b 5ms l 5ms u 5ms e 5ms ] 5ms \" 5ms [ 5ms / 5ms c 5ms o 5ms l 5ms o 5ms r 5ms ])";
+
 
           # 2. ♪ (Prior/PageUp) - Hex 266a
           "pageup" = "macro(C-S-u 2 6 6 a enter)";
