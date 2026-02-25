@@ -1,32 +1,37 @@
-{ pkgs, lib, ... }: {
+{ pkgs, lib, inputs, ... }:
+
+{
+  # 1. Essential for SVG icons and settings persistence
+  programs.dconf.enable = true;
+  services.xserver.gdk-pixbuf.modulePackages = [ pkgs.librsvg ];
+
+  environment.systemPackages = [
+    inputs.moon-numix.packages.${pkgs.system}.default
+    pkgs.glib # provides gsettings
+    pkgs.gsettings-desktop-schemas
+  ];
+
   stylix = {
     enable = true;
     autoEnable = true;
-    enableReleaseChecks = false;
     polarity = "dark";
-    # image = ./assets/chibimoon.png;
+
+    image = pkgs.runCommand "logo.png" { } ''
+      ${pkgs.imagemagick}/bin/magick -size 1x1 xc:#1E1E1E $out
+    '';
+
+    homeManagerIntegration.autoImport = true;
+    homeManagerIntegration.followSystem = true;
 
     targets.qt.enable = true;
     targets.qt.platform = "qtct";
     targets.gtk.enable = true;
 
-    iconTheme = {
+    icons = {
       enable = true;
-      # We override the Nix store package and "bake in" the black and blue colors
-      package = (pkgs.numix-icon-theme.overrideAttrs (oldAttrs: {
-        nativeBuildInputs = (oldAttrs.nativeBuildInputs or []) ++ [ pkgs.gnused pkgs.findutils ];
-
-        postInstall = ''
-          echo "Recoloring Numix icons to Black and Blue..."
-          find $out/share/icons/Numix -name "*.svg" -type f -exec sed -i \
-            -e 's/#f2bb64/#2F2F2F/gI' \
-            -e 's/#ea9036/#40BFFF/gI' \
-            -e 's/#f9f9f9/#CECB00/gI' \
-            {} +
-        '';
-      }));
-      dark = "Numix";
-      light = "Numix-Light";
+      package = lib.mkForce inputs.moon-numix.packages.${pkgs.system}.default;
+      dark = lib.mkForce "Numix";
+      light = lib.mkForce "Numix-Light";
     };
 
     cursor = {
@@ -36,30 +41,14 @@
     };
 
     base16Scheme = {
-      base00 = "#1E1E1E"; # Black
-      base01 = "#0f0f0f";
-      base02 = "#544E5A";
-      base03 = "#003399";
-      base04 = "#4d4e93";
-      base05 = "#CECB00"; # Yellow
-      base06 = "#ebdbb2";
-      base07 = "#fbf1c7";
-      base08 = "#ff0000";
-      base09 = "#fe8019";
-      base0A = "#fabd2f";
-      base0B = "#b8bb26";
-      base0C = "#8ec07c";
-      base0D = "#675DDB"; # Blue
-      base0E = "#675DDB";
-      base0F = "#ff8019";
+      base00 = "1E1E1E"; base01 = "0F0F0F"; base02 = "544E5A"; base03 = "003399";
+      base04 = "4D4E93"; base05 = "CECB00"; base06 = "EBDBB2"; base07 = "FBF1C7";
+      base08 = "FF0000"; base09 = "FE8019"; base0A = "FABD2F"; base0B = "B8BB26";
+      base0C = "8EC07C"; base0D = "675DDB"; base0E = "675DDB"; base0F = "FF8019";
     };
 
     fonts = {
-      sizes = {
-        applications = 14;
-        desktop = 14;
-        popups = 14;
-      };
+      sizes = { applications = 14; desktop = 14; popups = 14; };
       serif = { package = pkgs.roboto; name = "Roboto Serif"; };
       sansSerif = { package = pkgs.fira-sans; name = "Fira Sans"; };
       monospace = { package = pkgs.nerd-fonts.jetbrains-mono; name = "JetBrainsMono Nerd Font"; };
