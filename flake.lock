@@ -200,6 +200,24 @@
         "type": "github"
       }
     },
+    "moon-numix": {
+      "inputs": {
+        "nixpkgs": "nixpkgs"
+      },
+      "locked": {
+        "lastModified": 1772051255,
+        "narHash": "sha256-HC9WkcjNIgFiHnvZoL9CP6axIKMcKVo9WqHRvzFbWlQ=",
+        "owner": "moonburst",
+        "repo": "moon-numix-icons",
+        "rev": "ced0470207c06dd8a12d92b9aba6d16f6a56bf57",
+        "type": "github"
+      },
+      "original": {
+        "owner": "moonburst",
+        "repo": "moon-numix-icons",
+        "type": "github"
+      }
+    },
     "niri-flake": {
       "inputs": {
         "nixpkgs": [
@@ -223,16 +241,16 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1771903837,
-        "narHash": "sha256-sdaqdnsQCv3iifzxwB22tUwN/fSHoN7j2myFW5EIkGk=",
+        "lastModified": 1771848320,
+        "narHash": "sha256-0MAd+0mun3K/Ns8JATeHT1sX28faLII5hVLq0L3BdZU=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "e764fc9a405871f1f6ca3d1394fb422e0a0c3951",
+        "rev": "2fc6539b481e1d2569f25f8799236694180c0993",
         "type": "github"
       },
       "original": {
         "owner": "NixOS",
-        "ref": "nixos-25.11",
+        "ref": "nixos-unstable",
         "repo": "nixpkgs",
         "type": "github"
       }
@@ -253,6 +271,22 @@
       }
     },
     "nixpkgs_2": {
+      "locked": {
+        "lastModified": 1771903837,
+        "narHash": "sha256-sdaqdnsQCv3iifzxwB22tUwN/fSHoN7j2myFW5EIkGk=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "e764fc9a405871f1f6ca3d1394fb422e0a0c3951",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-25.11",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_3": {
       "locked": {
         "lastModified": 1771207753,
         "narHash": "sha256-b9uG8yN50DRQ6A7JdZBfzq718ryYrlmGgqkRm9OOwCE=",
@@ -298,8 +332,9 @@
         "cypkgs": "cypkgs",
         "flake-parts": "flake-parts",
         "home-manager": "home-manager",
+        "moon-numix": "moon-numix",
         "niri-flake": "niri-flake",
-        "nixpkgs": "nixpkgs",
+        "nixpkgs": "nixpkgs_2",
         "sops-nix": "sops-nix",
         "stylix": "stylix"
       }
@@ -327,7 +362,7 @@
     },
     "sops-nix": {
       "inputs": {
-        "nixpkgs": "nixpkgs_2"
+        "nixpkgs": "nixpkgs_3"
       },
       "locked": {
         "lastModified": 1771889317,

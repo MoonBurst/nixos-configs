@@ -2,19 +2,17 @@
 
 {
   programs.zsh = {
-      enable = true;
-      autosuggestions.enable = true;
-      syntaxHighlighting.enable = true;
-      histSize = 100000;
+    enable = true;
+    autosuggestions.enable = true;
+    syntaxHighlighting.enable = true;
+    histSize = 100000;
+    histFile = "$HOME/.local/state/zsh/history";
 
-      histFile = "$HOME/.local/state/zsh/history";
-
-      shellAliases = {
+    shellAliases = {
       ll = "ls -l";
       ".." = "cd ..";
       nix-switch = "sudo nixos-rebuild switch --flake ~/nixos-config";
       wallpaper = "/home/moonburst/nixos-config/hosts/moonbeauty/scripts/wallpaper.sh";
-
       grab = "scripts/alias_scripts/search.sh";
       color = "hyprpicker --format=rgb --autocopy --render-inactive";
       remove-orphans = "scripts/alias_scripts/remove-orphans.sh";
@@ -31,17 +29,30 @@
       bind-6400 = "echo '0000:2b:00.0' | sudo tee /sys/bus/pci/drivers/amdgpu/bind";
       historycleaner = "$HOME/scripts/alias_scripts/historycleaner.sh";
       nolog = "unset HISTFILE";
-      uhorizon = "curl -L https://github.com/Fchat-Horizon/Horizon/releases/latest/download/F-Chat.Horizon-linux-x86_64.AppImage > F-Chat.Horizon-linux-x86_64.AppImage";
+      uhorizon = "curl -L https://github.com > F-Chat.Horizon-linux-x86_64.AppImage";
       music = "mpv --shuffle --af='dynaudnorm=f=250:g=15:c=1' ~/Music";
+
+      aaa = ''
+        sudo nixos-rebuild switch --flake ~/nixos-config#moonbeauty && \
+        export XDG_DATA_DIRS="${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}:${pkgs.gtk3}/share/gsettings-schemas/${pkgs.gtk3.name}:$XDG_DATA_DIRS" && \
+        echo "--- DIAGNOSTICS ---" && \
+        echo -n "Current Theme: " && ${pkgs.glib}/bin/gsettings get org.gnome.desktop.interface icon-theme && \
+        ICON_FILE="/run/current-system/sw/share/icons/Numix/48/places/default-folder.svg" && \
+        if [ -f "$ICON_FILE" ]; then
+          echo "Checking icon at: $(readlink -f $ICON_FILE)" && \
+          if grep -qi "1E1E1E" "$ICON_FILE"; then echo "Hex code FOUND! (#1E1E1E)"; else echo "Hex code NOT found!"; fi
+        else
+          echo "Icon file not found at $ICON_FILE"
+        fi
+      '';
     };
 
     interactiveShellInit = ''
-      # --- Functions ---
       nupdate() {
         local HOSTNAME=$(hostname)
         local FLAKE_PATH="$HOME/nixos-config"
         if [ -d "$FLAKE_PATH" ]; then
-        sudo nixos-rebuild switch --flake "$FLAKE_PATH"#"$HOSTNAME" --log-format bar-with-logs --quiet --option warn-dirty false
+          sudo nixos-rebuild switch --flake "$FLAKE_PATH"#"$HOSTNAME" --log-format bar-with-logs --quiet --option warn-dirty false
         fi
       }
 
@@ -55,57 +66,43 @@
         magick "$filename" -crop 50%x50% +adjoin -resize 400x400! "''${filename%.*}_%d.''${filename##*.}"
       }
 
-      # --- Completion & Visuals ---
       zmodload zsh/complist
       bindkey '^e' edit-command-line
       autoload -Uz edit-command-line; zle -N edit-command-line
-
       [ -f "$HOME/.config/fastfetch/fastfetch.sh" ] && "$HOME/.config/fastfetch/fastfetch.sh"
     '';
   };
 
-  # 2. Global Environment Variables
   environment.sessionVariables = {
-    # --- XDG Base Directories ---
     XDG_CACHE_HOME  = "$HOME/.cache";
     XDG_CONFIG_HOME = "$HOME/.config";
     XDG_DATA_HOME   = "$HOME/.local/share";
     XDG_STATE_HOME  = "$HOME/.local/state";
-
-    # --- Wayland & Graphics Fixes ---
-    GDK_BACKEND                       = "wayland,x11";
-    NIXOS_OZONE_WL                  = "1";
-    OBS_PLATFORM                      = "wayland";
-    WLR_DRM_NO_MODIFIERS      = "1";
-    WLR_NO_HARDWARE_CURSORS     = "1";
+    GDK_BACKEND = "wayland,x11";
+    NIXOS_OZONE_WL = "1";
+    OBS_PLATFORM = "wayland";
+    WLR_DRM_NO_MODIFIERS = "1";
+    WLR_NO_HARDWARE_CURSORS = "1";
     WLR_RENDERER_ALLOW_SOFTWARE = "1";
-    WLR_RENDERER                    = "gles2";
-    XDG_CURRENT_DESKTOP     = "sway";
-    XDG_SESSION_DESKTOP      = "sway";
-    XDG_SESSION_TYPE             = "wayland";
-
-
-    # --- System Tools & Theming ---
-    EDITOR                                 = "micro";
-    TERMINAL                              = "kitty";
-
-
-    # --- Development Homes ---
-    CARGO_HOME                      = "$HOME/.local/share/cargo";
-    DOTNET_CLI_HOME              = "$HOME/.local/share/dotnet";
-    GNUPGHOME                        = "$HOME/.local/share/gnupg";
-    GOPATH                                = "$HOME/.local/share/go";
-    NPM_CONFIG_CACHE            = "$HOME/.cache/npm";
-    NPM_CONFIG_INIT_MODULE  = "$HOME/.config/npm/config/npm-init.js";
-    PASSWORD_STORE_DIR        = "$HOME/.local/share/pass";
-    RUSTUP_HOME                      = "$HOME/.local/share/rustup";
+    WLR_RENDERER = "gles2";
+    XDG_CURRENT_DESKTOP = "sway";
+    XDG_SESSION_DESKTOP = "sway";
+    XDG_SESSION_TYPE = "wayland";
+    EDITOR = "micro";
+    TERMINAL = "kitty";
+    CARGO_HOME = "$HOME/.local/share/cargo";
+    DOTNET_CLI_HOME = "$HOME/.local/share/dotnet";
+    GNUPGHOME = "$HOME/.local/share/gnupg";
+    GOPATH = "$HOME/.local/share/go";
+    NPM_CONFIG_CACHE = "$HOME/.cache/npm";
+    NPM_CONFIG_INIT_MODULE = "$HOME/.config/npm/config/npm-init.js";
+    PASSWORD_STORE_DIR = "$HOME/.local/share/pass";
+    RUSTUP_HOME = "$HOME/.local/share/rustup";
     CLIPHIST_DB_PATH = "/tmp/cliphist_db";
-
   };
 
   users.defaultUserShell = pkgs.zsh;
 
-  # 3. ZSH PROMPT
   programs.zsh.promptInit = ''
     autoload -Uz colors && colors
     PROMPT="%{$fg[yellow]%}[%D{%T}] %{$fg[blue]%}%n@%m: %{$fg[green]%}%~%{$reset_color%} $"

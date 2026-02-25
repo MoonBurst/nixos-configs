@@ -4,9 +4,9 @@
   wayland.windowManager.sway.config = {
     # Automatic workspace assignments
     assigns = {
-      "1" = [ { class = "vesktop"; } ];
+      #"1" = [ { class = "vesktop"; } ];
       "2" = [ { app_id = "edopro"; } ];
-    #  "3" = [ { app_id = "nemo"; } ];
+      "1" = [ { app_id = "nemo"; } ];
     };
 
     # Window-specific behaviors (for_window)
