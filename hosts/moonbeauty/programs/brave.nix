@@ -26,6 +26,7 @@ let
     "bpaoeijjlplfjbagceilcgbkcdjbomjd" # TTV LOL PRO
     "cjpalhdlnbpafiamejdnhcphjbkeiagm" # uBlock Origin
     "nlkaejimjacpillmajjnopmpbkbnocid" # YouTube NonStop
+    "igeehkedfibbnhbfponhjjplpkeomghi" #tab manager
   ];
 in
 {

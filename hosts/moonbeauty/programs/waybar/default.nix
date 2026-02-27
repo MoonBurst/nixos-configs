@@ -58,11 +58,14 @@ let
     };
 
     "custom/alarm" = {
-      "format" = "{}";
+     "format" = "{}";
+      "return-type" = "json";
       "exec" = "${pkgs.bash}/bin/bash ${alarmScript}";
       "on-click" = "${pkgs.bash}/bin/bash ${alarmScript} set";
       "on-click-right" = "${pkgs.bash}/bin/bash ${alarmScript} cancel";
-      "interval" = 1; "signal" = 8; "tooltip" = false;
+      "interval" = 1;
+      "signal" = 8;
+      "tooltip" = false;
     };
 
     "pulseaudio#microphone" = {
@@ -131,13 +134,6 @@ let
   waybarStyle = pkgs.writeText "waybar-style" (builtins.readFile ./style.css);
 
 in {
-  environment.systemPackages = with pkgs; [
-    yad
-    audacious
-    libnotify
-    playerctl
-  ];
-
   systemd.user.services.waybar = {
     description = "Waybar status bar";
     wantedBy = [ "graphical-session.target" ];
