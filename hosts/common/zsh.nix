@@ -32,20 +32,7 @@
       uhorizon = "curl -L https://github.com > F-Chat.Horizon-linux-x86_64.AppImage";
       music = "mpv --shuffle --af='dynaudnorm=f=250:g=15:c=1' ~/Music";
 
-      aaa = ''
-        sudo nixos-rebuild switch --flake ~/nixos-config#moonbeauty && \
-        export XDG_DATA_DIRS="${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}:${pkgs.gtk3}/share/gsettings-schemas/${pkgs.gtk3.name}:$XDG_DATA_DIRS" && \
-        echo "--- DIAGNOSTICS ---" && \
-        echo -n "Current Theme: " && ${pkgs.glib}/bin/gsettings get org.gnome.desktop.interface icon-theme && \
-        ICON_FILE="/run/current-system/sw/share/icons/Numix/48/places/default-folder.svg" && \
-        if [ -f "$ICON_FILE" ]; then
-          echo "Checking icon at: $(readlink -f $ICON_FILE)" && \
-          if grep -qi "1E1E1E" "$ICON_FILE"; then echo "Hex code FOUND! (#1E1E1E)"; else echo "Hex code NOT found!"; fi
-        else
-          echo "Icon file not found at $ICON_FILE"
-        fi
-      '';
-    };
+};
 
     interactiveShellInit = ''
       nupdate() {

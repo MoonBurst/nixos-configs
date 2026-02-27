@@ -1,4 +1,6 @@
-{ pkgs, ... }: {
+{ pkgs, config, ... }:
+
+{
   # --- Programs with dedicated Stylix/HM modules ---
   # Moving these here allows Stylix to generate their themes automatically
   programs = {
@@ -7,20 +9,66 @@
     kitty.enable = true;
     mpv.enable = true;
     mangohud.enable = true;
+    element-desktop.enable = true;
+    # --- Vesktop & Vencord ---
+    # Consolidated into the programs block to fix the "attribute defined twice" error
+    vesktop = {
+      enable = true;
+      settings = {
+        "discordBranch" = "stable";
+        "firstRun" = false;
+        "minimizeToTray" = "on";
+        "arRPC" = "on";
+        "useQuickCss" = true;
+        "enabledThemes" = [ "stylix.css" ];
+      };
+      vencord.settings = {
+        quickCss = ''
+          @import url("https://raw.githubusercontent.com");
+          :root {
+            --server-columns: 3;
+            --server-size: 35px;
+            --server-spacing: 1px;
+          }
+        '';
+        plugins = {};
+      };
+    };
   };
 
+  # --- Browser Theme Injection ---
+  # References your theme.nix colors via config.lib.stylix.colors
+  home.file.".config/vivaldi/custom.css".text = ''
+    :root {
+      --bg: #${config.lib.stylix.colors.base00};
+      --fg: #${config.lib.stylix.colors.base05};
+      --accent: #${config.lib.stylix.colors.base0D};
+    }
+    /* Simple global injection for web pages */
+    html, body {
+      background-color: var(--bg) !important;
+      color: var(--fg) !important;
+    }
+  '';
+
+#░█░█░█▀█░█▄░▄█░█▀▀
+#░█▀█░█░█░█░▀░█░█▀▀
+#░▀░▀░▀▀▀░▀░░░▀░▀▀▀
   home.packages = with pkgs; [
     # --- Communication & Web ---
-    vesktop                     # Discord (Stylix themes the client)
-    element-desktop             # Matrix (Stylix themes the client)
-  #  nheko                         # Matrix (Stylix themes the client)
-    cinny
+    # REMOVED: vesktop and element-desktop (moved to programs above)
     jami                        # Distributed chat
     nicotine-plus               # Music/Soulseek client
     evolution                   # Email/Calendar
-    (vivaldi.override { commandLineArgs = [ "--disable-features=AudioServiceSandbox" "--ozone-platform-hint=auto" "--log-level=3"];} )
-
-
+    (vivaldi.override {
+      commandLineArgs = [
+        "--disable-features=AudioServiceSandbox"
+        "--ozone-platform-hint=auto"
+        "--log-level=3"
+        "--force-dark-mode"
+        "--enable-features=WebContentsForceDark"
+      ];
+    })
 
     # --- Media & Graphics ---
     audacious                   # Music player (GTK)
