@@ -1,13 +1,12 @@
 { pkgs, lib, inputs, ... }:
 
 {
-  # 1. Essential for SVG icons and settings persistence
   programs.dconf.enable = true;
   services.xserver.gdk-pixbuf.modulePackages = [ pkgs.librsvg ];
 
   environment.systemPackages = [
     inputs.moon-numix.packages.${pkgs.system}.default
-    pkgs.glib # provides gsettings
+    pkgs.glib
     pkgs.gsettings-desktop-schemas
   ];
 
@@ -41,11 +40,24 @@
     };
 
     base16Scheme = {
-      base00 = "1E1E1E"; base01 = "0F0F0F"; base02 = "544E5A"; base03 = "003399";
-      base04 = "4D4E93"; base05 = "CECB00"; base06 = "EBDBB2"; base07 = "FBF1C7";
-      base08 = "FF0000"; base09 = "FE8019"; base0A = "FABD2F"; base0B = "B8BB26";
-      base0C = "8EC07C"; base0D = "675DDB"; base0E = "675DDB"; base0F = "FF8019";
+      base00 = "#1a1a1a";
+      base01 = "#0F0F0F";
+      base02 = "#1a1a1a";
+      base03 = "#003399";
+      base04 = "#4D4E93";
+      base05 = "#F7F700";
+      base06 = "#EBDBB2";
+      base07 = "#cccccc";
+      base08 = "#FF0000";
+      base09 = "#FE8019";
+      base0A = "#FABD2F";
+      base0B = "#F7F700";
+      base0C = "#8EC07C";
+      base0D = "#675DDB";
+      base0E = "#675DDB";
+      base0F = "#FF8019";
     };
+
 
     fonts = {
       sizes = { applications = 14; desktop = 14; popups = 14; };

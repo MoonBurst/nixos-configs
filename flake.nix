@@ -4,6 +4,9 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
 
+    # 1. Add the NUR input
+    nur.url = "github:nix-community/NUR";
+
     stylix = {
       url = "github:danth/stylix/release-25.11";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -41,6 +44,7 @@
     stylix,
     home-manager,
     moon-numix,
+    nur, # 2. Add nur here to the outputs arguments
   } @ inputs:
     flake-parts.lib.mkFlake { inherit inputs; } ({ ... }: {
       systems = [ "x86_64-linux" ];
@@ -55,6 +59,9 @@
               ./hosts/moonbeauty/default.nix
               ./hosts/common/theme.nix
 
+              # 3. Apply the NUR overlay so pkgs.nur exists
+              { nixpkgs.overlays = [ nur.overlays.default ]; }
+
               home-manager.nixosModules.home-manager {
                 home-manager.useGlobalPkgs = true;
                 home-manager.useUserPackages = true;
@@ -67,8 +74,6 @@
                     inputs.moon-numix.packages.${pkgs.system}.default
                   ];
 
-                  # THE NIX WAY: Automatically symlink the icons into ~/.local/share/icons
-                  # This bypasses XDG_DATA_DIRS issues on Sway
                   home.file.".local/share/icons/Numix".source =
                     "${inputs.moon-numix.packages.${pkgs.system}.default}/share/icons/Numix";
 
@@ -91,6 +96,9 @@
               ./hosts/common/default.nix
               ./hosts/common/theme.nix
               ./hosts/lunarchild/lunarchild-hardware.nix
+
+              # Apply NUR overlay here too if you plan to use it on the laptop
+              { nixpkgs.overlays = [ nur.overlays.default ]; }
 
               home-manager.nixosModules.home-manager {
                 home-manager.useGlobalPkgs = true;
