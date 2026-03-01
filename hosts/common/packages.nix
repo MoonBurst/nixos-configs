@@ -45,7 +45,7 @@
     smartmontools               # Drive health (SMART)
     htop                        # Process monitor
     usbutils                    # lsusb
-    pciutils                    # lspci
+    #pciutils                    # lspci
     linux-firmware              # Hardware blobs
 
     # --- Wayland / Niri Backend & Compositor ---
@@ -61,7 +61,7 @@
     # --- System Libraries & Audio Engines ---
     gdk-pixbuf                  # Image library
     webp-pixbuf-loader          # WebP support for GTK
-    lsp-plugins                 # Audio processing
+#    lsp-plugins                 # Audio processing
     rnnoise-plugin              # Mic noise suppression
     qt6Packages.qt6ct           # QT theming logic
     pass                        # Password manager
