@@ -11,6 +11,7 @@
     ./programs/waybar          # Waybar config
     ../common/default.nix
     ./programs/brave.nix
+    ./matrix.nix
     ./test.nix
   ];
 

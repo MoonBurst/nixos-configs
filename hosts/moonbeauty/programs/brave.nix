@@ -30,6 +30,7 @@ let
   ];
 in
 {
+stylix.targets.chromium.enable = true;
   # System Level Policy
   environment.etc."brave/policies/managed/extensions.json".text = builtins.toJSON {
     ExtensionInstallForcelist = extensionIds;

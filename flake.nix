@@ -4,7 +4,6 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
 
-    # 1. Add the NUR input
     nur.url = "github:nix-community/NUR";
 
     stylix = {
@@ -58,8 +57,6 @@
               stylix.nixosModules.stylix
               ./hosts/moonbeauty/default.nix
               ./hosts/common/theme.nix
-
-              # 3. Apply the NUR overlay so pkgs.nur exists
               { nixpkgs.overlays = [ nur.overlays.default ]; }
 
               home-manager.nixosModules.home-manager {
@@ -97,7 +94,6 @@
               ./hosts/common/theme.nix
               ./hosts/lunarchild/lunarchild-hardware.nix
 
-              # Apply NUR overlay here too if you plan to use it on the laptop
               { nixpkgs.overlays = [ nur.overlays.default ]; }
 
               home-manager.nixosModules.home-manager {

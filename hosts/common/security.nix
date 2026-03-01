@@ -1,4 +1,4 @@
-{ config, pkgs, inputs, ... }: {
+{ config, pkgs, inputs, lib, ... }: {
   imports = [
     inputs.sops-nix.nixosModules.sops
   ];
@@ -9,12 +9,26 @@
     defaultSopsFormat = "yaml";
     age.keyFile = "/home/moonburst/.config/sops/age/moon_keys.txt";
     secrets = {
-      sops_key = {
-        neededForUsers = true;
-      };
-      # Adding these here since they are in your common secrets file
-      weather_api_key = { owner = "moonburst"; };
-      weather_city = { owner = "moonburst"; };
+      sops_key.neededForUsers = true;
+      weather_api_key.owner = "moonburst";
+      weather_city.owner = "moonburst";
+      cloudflare_token = { };
+      matrix_macaroon_secret = { owner = "matrix-synapse"; };
+      matrix_registration_secret = { owner = "matrix-synapse"; };
+    };
+  };
+
+
+  systemd.services.cloudflared-matrix-tunnel = {
+    description = "Cloudflare Tunnel for Matrix";
+    after = [ "network.target" ];
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      EnvironmentFile = [ config.sops.secrets.cloudflare_token.path ];
+
+      ExecStart = "${pkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate run --token \${cloudflare_token}";
+      Restart = "on-failure";
+      User = "root";
     };
   };
 
@@ -24,19 +38,11 @@
     enableSSHSupport = true;
   };
 
-  # Essential for certain file mounts/users
   programs.fuse.userAllowOther = true;
-
-  # Core security services
   security.polkit.enable = true;
   security.rtkit.enable = true;
 
-
-    environment.systemPackages = with pkgs; [
-    sops # To edit/view encrypted files
-    age  # To manage keys
-    pass #to manage passwords
+  environment.systemPackages = with pkgs; [
+    sops age pass authenticator cloudflared
   ];
 }
-
-

@@ -1,5 +1,20 @@
-{ pkgs, config, ... }:
+{ pkgs, config, lib, ... }:
 
+let
+  # Custom wrapper to run Cinny via Vivaldi to avoid the broken native package
+  # Inherits your specific Vivaldi flags and applies a dedicated class for styling
+  cinny-stylix = pkgs.makeDesktopItem {
+    name = "Cinny-Stylix";
+    desktopName = "Cinny (Matrix)";
+    genericName = "Discord-like Matrix Client";
+    exec = ''
+      ${pkgs.brave}/bin/brave --app=https://app.cinny.in --class=cinny-stylix
+    '';
+    icon = "matrix";
+    categories = [ "Network" "Chat" ];
+    terminal = false;
+  };
+in
 {
   # --- Programs with dedicated Stylix/HM modules ---
   # Moving these here allows Stylix to generate their themes automatically
@@ -49,14 +64,20 @@
       background-color: var(--bg) !important;
       color: var(--fg) !important;
     }
+    /* Specific overrides for Cinny UI if using the wrapper */
+    [data-theme='dark'] {
+       --sidebar-color: #${config.lib.stylix.colors.base01} !important;
+    }
   '';
 
 #░█░█░█▀█░█▄░▄█░█▀▀
 #░█▀█░█░█░█░▀░█░█▀▀
 #░▀░▀░▀▀▀░▀░░░▀░▀▀▀
   home.packages = with pkgs; [
+    # --- Custom Cinny Wrapper ---
+    cinny-stylix
+
     # --- Communication & Web ---
-    # REMOVED: vesktop and element-desktop (moved to programs above)
     jami                        # Distributed chat
     nicotine-plus               # Music/Soulseek client
     evolution                   # Email/Calendar
@@ -75,6 +96,7 @@
     krita                       # Digital painting (QT)
     qview                       # Image viewer
     pavucontrol                 # Volume mixer (GTK)
+
 
     # --- Desktop GUI Utilities ---
     swaylock                    # Screen locker
@@ -96,7 +118,7 @@
 
     # --- Tools Stylix can theme ---
     hyprpicker                  # Color picker
-    fastfetch                   # System info (Themes the logo/text)
+    fastfetch                   # System info
   ];
 
   home.stateVersion = "25.11";
