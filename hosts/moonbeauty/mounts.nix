@@ -25,6 +25,17 @@
       "x-systemd.automount"
     ];
   };
+ #symlinks steam to the 1tbnvme drive.
+  fileSystems."/home/moonburst/.local/share/Steam" = {
+    device = "/mnt/nvme1tb/Steam";
+    fsType = "none";
+    options = [
+      "bind"
+      "nofail"
+      "x-systemd.requires=/mnt/nvme1tb"
+    ];
+  };
+
 
   fileSystems."/mnt/main_backup" = {
     device = "/dev/disk/by-uuid/42f626e1-0d16-4feb-9286-c5690454e5bf";

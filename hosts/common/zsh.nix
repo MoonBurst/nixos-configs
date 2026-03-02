@@ -65,6 +65,7 @@
     XDG_CONFIG_HOME = "$HOME/.config";
     XDG_DATA_HOME   = "$HOME/.local/share";
     XDG_STATE_HOME  = "$HOME/.local/state";
+    MESA_SHADER_CACHE_MAX_SIZE = "4G";
     GDK_BACKEND = "wayland,x11";
     NIXOS_OZONE_WL = "1";
     OBS_PLATFORM = "wayland";

@@ -7,9 +7,7 @@ let
     name = "Cinny-Stylix";
     desktopName = "Cinny (Matrix)";
     genericName = "Discord-like Matrix Client";
-    exec = ''
-      ${pkgs.brave}/bin/brave --app=https://app.cinny.in --class=cinny-stylix
-    '';
+    exec = '' ${pkgs.brave}/bin/brave --app=https://dev.cinny.in --class=cinny-stylix'';
     icon = "matrix";
     categories = [ "Network" "Chat" ];
     terminal = false;
