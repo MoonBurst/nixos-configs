@@ -13,8 +13,15 @@
       weather_api_key.owner = "moonburst";
       weather_city.owner = "moonburst";
       cloudflare_token = { };
-      matrix_macaroon_secret = { owner = "matrix-synapse"; };
-      matrix_registration_secret = { owner = "matrix-synapse"; };
+      # Explicitly setting group to root prevents "matrix-synapse missing" errors
+      matrix_macaroon_secret = {
+        owner = "matrix-synapse";
+        group = "root";
+      };
+      matrix_registration_secret = {
+        owner = "matrix-synapse";
+        group = "root";
+      };
       laptop_public_key = { };
       desktop_public_key = { };
     };
