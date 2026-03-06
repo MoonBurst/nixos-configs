@@ -20,6 +20,17 @@
   environment.variables.TERMINAL = "kitty";
 
   # ====================================================================
+  # ALIASES & NIX SETTINGS
+  # ====================================================================
+  environment.shellAliases = {
+    # Pulls from GitHub, overwrites local config, and rebuilds
+    nix-sync = "cd /home/moonburst/nixos-config && git fetch origin && git reset --hard origin/main && sudo nixos-rebuild switch --flake .";
+  };
+
+  # Ensures your users can run nix commands and flakes
+  nix.settings.trusted-users = [ "root" "moonburst" "lunarchild" ];
+
+  # ====================================================================
   # USER CONFIGURATION (Fixes SSH "Connection Closed")
   # ====================================================================
   users.users.lunarchild = {
