@@ -36,11 +36,12 @@ stylix.targets.chromium.enable = true;
     ExtensionInstallForcelist = extensionIds;
   };
 
-  home-manager.users.moonburst = { config, pkgs, ... }: {
+home-manager.users.moonburst = { config, pkgs, ... }: {
     services.gpg-agent = {
       enable = true;
-      pinentryPackage = pkgs.pinentry-qt;
+      pinentry.package = pkgs.pinentry-qt;
     };
+
 
     programs.chromium = {
       enable = true;

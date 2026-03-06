@@ -147,4 +147,56 @@
       PassEnvironment = "DISPLAY WAYLAND_DISPLAY XDG_RUNTIME_DIR";
     };
   };
+
+
+
+
+
+
+
+
+
+
+
+
+
+systemd.services.watch-cinny = {
+    description = "Check live NixOS 25.11 branch for Cinny updates";
+    path = [ pkgs.nix pkgs.cacert pkgs.gnugrep pkgs.libnotify pkgs.coreutils ];
+    script = ''
+      CURRENT="4.10.3"
+      REMOTE=$(nix eval --raw "github:NixOS/nixpkgs/nixos-25.11#cinny-desktop.version" --extra-experimental-features "nix-command flakes" 2>/dev/null)
+      if [ -z "$REMOTE" ]; then
+        echo "Error: Could not fetch remote version from GitHub."
+        exit 0
+      fi
+      NEWER=$(printf "%s\n%s" "$CURRENT" "$REMOTE" | sort -V | tail -n1)
+      if [ "$NEWER" == "$REMOTE" ] && [ "$REMOTE" != "$CURRENT" ]; then
+        notify-send "Cinny Update" "Stable 25.11 now has $REMOTE (Live Check)" -u critical
+      fi
+    '';
+    serviceConfig = {
+      Type = "oneshot";
+      User = "moonburst";
+    };
+    environment = {
+      DBUS_SESSION_BUS_ADDRESS = "unix:path=/run/user/1000/bus";
+    };
+  };
+
+  systemd.timers.watch-cinny = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnCalendar = "hourly";
+      Persistent = true;
+    };
+  };
+
+
+
+
+
+
+
+
 }

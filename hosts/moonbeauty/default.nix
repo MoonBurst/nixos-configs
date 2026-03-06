@@ -12,6 +12,7 @@
     ../common/default.nix
     ./programs/brave.nix
     ./matrix.nix
+    ./remote.nix
     ./test.nix
   ];
 

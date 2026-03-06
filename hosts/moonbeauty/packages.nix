@@ -1,8 +1,6 @@
 { pkgs, config, lib, ... }:
 
 let
-  # Custom wrapper to run Cinny via Vivaldi to avoid the broken native package
-  # Inherits your specific Vivaldi flags and applies a dedicated class for styling
   cinny-stylix = pkgs.makeDesktopItem {
     name = "Cinny-Stylix";
     desktopName = "Cinny (Matrix)";
@@ -42,6 +40,10 @@ in
             --server-columns: 3;
             --server-size: 35px;
             --server-spacing: 1px;
+            /* Stylix Colors Injection */
+            --background-primary: #${config.lib.stylix.colors.base00};
+            --text-normal: #${config.lib.stylix.colors.base05};
+            --brand-experiment: #${config.lib.stylix.colors.base0D};
           }
         '';
         plugins = {};
@@ -52,19 +54,29 @@ in
   # --- Browser Theme Injection ---
   # References your theme.nix colors via config.lib.stylix.colors
   home.file.".config/vivaldi/custom.css".text = ''
-    :root {
+    :root, [data-theme='dark'], .cinny {
       --bg: #${config.lib.stylix.colors.base00};
-      --fg: #${config.lib.stylix.colors.base05};
-      --accent: #${config.lib.stylix.colors.base0D};
+      --fg: #${config.lib.stylix.colors.base05};      /* Yellow */
+      --fg-soft: #${config.lib.stylix.colors.base07}; /* Grey/White fallback */
+      --accent: #${config.lib.stylix.colors.base0D};  /* Purple */
+
+      /* Specific Cinny UI Overrides */
+      --sidebar-color: #${config.lib.stylix.colors.base01} !important;
+      --bg-color: #${config.lib.stylix.colors.base00} !important;
+      --primary-text-color: #${config.lib.stylix.colors.base05} !important;
+      --secondary-text-color: #${config.lib.stylix.colors.base07} !important;
+      --accent-color: #${config.lib.stylix.colors.base0D} !important;
+
+      /* Cinny Color Palette Overrides */
+      --cp-color-text-primary: #${config.lib.stylix.colors.base05} !important;
+      --cp-color-text-secondary: #${config.lib.stylix.colors.base07} !important;
+      --cp-color-bg-surface: #${config.lib.stylix.colors.base00} !important;
     }
+
     /* Simple global injection for web pages */
     html, body {
       background-color: var(--bg) !important;
       color: var(--fg) !important;
-    }
-    /* Specific overrides for Cinny UI if using the wrapper */
-    [data-theme='dark'] {
-       --sidebar-color: #${config.lib.stylix.colors.base01} !important;
     }
   '';
 
@@ -98,7 +110,7 @@ in
 
     # --- Desktop GUI Utilities ---
     swaylock                    # Screen locker
-    swayidle                    # Idle management
+   # swayidle                    # Idle management
     satty                       # Screenshot editor
     sherlock-launcher           # App launcher
     vicinae                     # Niri-compatible launcher
@@ -117,6 +129,7 @@ in
     # --- Tools Stylix can theme ---
     hyprpicker                  # Color picker
     fastfetch                   # System info
+   # cinny-desktop
   ];
 
   home.stateVersion = "25.11";

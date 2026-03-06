@@ -19,7 +19,7 @@ let
     spacing = 2;
 
     modules-left = [
-      "idle_inhibitor"
+    #  "idle_inhibitor"
       "clock#day"
       "custom/weather"
       "custom/dunst_count"
