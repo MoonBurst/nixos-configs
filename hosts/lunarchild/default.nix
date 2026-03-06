@@ -6,12 +6,16 @@
   imports = [
     ./lunarchild-hardware.nix
     ../common/default.nix
+  ]; # Added missing closing bracket here
 
   # ====================================================================
   # SERVICES (Laptop Specific)
   # ====================================================================
-  services.logind.lidSwitch = "poweroff";
-  services.logind.lidSwitchExternalPower = "lock";
+  # Updated to modern settings structure
+  services.logind.settings.Login = {
+    HandleLidSwitch = "poweroff";
+    HandleLidSwitchExternalPower = "lock";
+  };
 
   # Enable battery/power management
   services.upower.enable = true;

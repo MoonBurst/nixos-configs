@@ -1,6 +1,24 @@
 { config, pkgs, lib, ... }:
 
 {
+  # ====================================================================
+  # SOPS-NIX CONFIGURATION
+  # ====================================================================
+  sops = {
+    # Path to your encrypted secrets file relative to this nix file
+    defaultSopsFile = ../../secrets.yaml;
+    validateSopsFiles = false;
+
+    # Use your age key for decryption during system rebuild
+    age.keyFile = "/home/moonburst/.config/sops/age/moon_keys.txt";
+
+    # Define secrets to be extracted from secrets.yaml
+    secrets = {
+      "laptop_public_key" = {};
+      "desktop_public_key" = {};
+    };
+  };
+
   # --- Display & Desktop Services ---
   services.xserver.enable = true;
   services.xserver.xkb = {
@@ -19,29 +37,9 @@
   programs.sway.enable = true;
   environment.variables.TERMINAL = "kitty";
 
-  # ====================================================================
-  # ALIASES & NIX SETTINGS
-  # ====================================================================
-  environment.shellAliases = {
-    # Pulls from GitHub, overwrites local config, and rebuilds
-    nix-sync = "cd /home/moonburst/nixos-config && git fetch origin && git reset --hard origin/main && sudo nixos-rebuild switch --flake .";
-  };
-
   # Ensures your users can run nix commands and flakes
   nix.settings.trusted-users = [ "root" "moonburst" "lunarchild" ];
 
-  # ====================================================================
-  # USER CONFIGURATION (Fixes SSH "Connection Closed")
-  # ====================================================================
-  users.users.lunarchild = {
-    isNormalUser = true;
-    description = "lunarchild";
-    extraGroups = [ "networkmanager" "wheel" ]; # wheel allows sudo
-    # Add your public key here to allow passwordless login
-    openssh.authorizedKeys.keys = [
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI..." # Replace with your actual .pub key
-    ];
-  };
 
   # ====================================================================
   # SMART DISK MONITORING
