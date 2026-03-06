@@ -18,6 +18,20 @@
   services.journald.extraConfig = "SystemMaxUse=1G;";
   programs.sway.enable = true;
   environment.variables.TERMINAL = "kitty";
+
+  # ====================================================================
+  # USER CONFIGURATION (Fixes SSH "Connection Closed")
+  # ====================================================================
+  users.users.lunarchild = {
+    isNormalUser = true;
+    description = "lunarchild";
+    extraGroups = [ "networkmanager" "wheel" ]; # wheel allows sudo
+    # Add your public key here to allow passwordless login
+    openssh.authorizedKeys.keys = [
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI..." # Replace with your actual .pub key
+    ];
+  };
+
   # ====================================================================
   # SMART DISK MONITORING
   # ====================================================================
@@ -50,17 +64,16 @@
   # ====================================================================
   # XDG PORTALS
   # ====================================================================
-  # xdg portal + pipewire = screensharing
-xdg.portal = {
-  enable = true;
-  wlr.enable = true;
-  extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
-  config.sway = {
-    default = [ "gtk" ];
-    "org.freedesktop.impl.portal.ScreenCast" = [ "wlr" ];
-    "org.freedesktop.impl.portal.Screenshot" = [ "wlr" ];
+  xdg.portal = {
+    enable = true;
+    wlr.enable = true;
+    extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
+    config.sway = {
+      default = [ "gtk" ];
+      "org.freedesktop.impl.portal.ScreenCast" = [ "wlr" ];
+      "org.freedesktop.impl.portal.Screenshot" = [ "wlr" ];
+    };
   };
-};
 
   # ====================================================================
   # AUTO UPGRADES
@@ -101,7 +114,6 @@ xdg.portal = {
     fi
   '';
 
-
   services.greetd = {
     enable = true;
     settings = {
@@ -116,14 +128,9 @@ xdg.portal = {
     };
   };
 
-
-
-
   home-manager.users.moonburst = { pkgs, ... }: {
-    # 1. Install required packages for this user
     home.packages = [ pkgs.cliphist pkgs.wl-clipboard ];
 
-    # 2. Define the separate TEXT and IMAGE services
     systemd.user.services = {
       cliphist-text = {
         Unit.Description = "Clipboard text history manager";
@@ -138,7 +145,6 @@ xdg.portal = {
       };
     };
 
-    # Match this to your current NixOS version (e.g., "24.11")
     home.stateVersion = "25.11";
   };
 }
