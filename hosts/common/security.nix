@@ -13,9 +13,16 @@
       weather_api_key.owner = "moonburst";
       weather_city.owner = "moonburst";
 
-      # Set mode to 0444 so the SSH service can read these public keys
-      laptop_public_key = { mode = "0444"; };
-      desktop_public_key = { mode = "0444"; };
+      # Write keys directly to the system directory SSH trusts for 'moonburst'
+      # This bypasses the Flake evaluation restriction on /run
+      laptop_public_key = {
+        path = "/etc/ssh/authorized_keys.d/moonburst_laptop";
+        mode = "0444";
+      };
+      desktop_public_key = {
+        path = "/etc/ssh/authorized_keys.d/moonburst_desktop";
+        mode = "0444";
+      };
 
       # Only define Matrix/Cloudflare secrets if we are on the desktop
       cloudflare_token = lib.mkIf (config.networking.hostName == "moonbeauty") { };

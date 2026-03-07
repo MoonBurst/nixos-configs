@@ -4,7 +4,6 @@
   # --- Main User Account ---
   users.users.moonburst = {
     # Password managed via SOPS in security.nix
-    # Use the absolute string path so the Flake doesn't try to "read" the file
     hashedPasswordFile = "/run/secrets/sops_key";
     isNormalUser = true;
     description = "MoonBurst";
@@ -19,10 +18,6 @@
     # Default Shell
     shell = pkgs.zsh;
 
-    # Hardcoded string paths for the authorized keys
-    openssh.authorizedKeys.keyFiles = [
-      "/run/secrets/laptop_public_key"
-      "/run/secrets/desktop_public_key"
-    ];
+    # Authorized keys are managed via sops-nix in security.nix
   };
 }
