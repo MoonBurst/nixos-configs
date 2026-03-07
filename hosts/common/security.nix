@@ -50,8 +50,6 @@
     after = [ "network.target" "sops-nix.service" ];
     wantedBy = [ "multi-user.target" ];
     serviceConfig = {
-      # Bypassing EnvironmentFile because SOPS secrets are raw strings.
-      # We use Bash to cat the secret file directly into the --token argument.
       ExecStart = "${pkgs.bash}/bin/bash -c '${pkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate run --token $(${pkgs.coreutils}/bin/cat ${config.sops.secrets.remote_to_moon_pc_token.path})'";
       Restart = "on-failure";
       RestartSec = "5s";
@@ -62,10 +60,17 @@
   # --- SSH Server Settings ---
   services.openssh = {
     enable = true;
+    # Ensure SSH listens on localhost for the tunnel
+    listenAddresses = [
+      { addr = "0.0.0.0"; port = 22; }
+      { addr = "::"; port = 22; }
+    ];
     settings = {
       PasswordAuthentication = true;
       KbdInteractiveAuthentication = false;
       PermitRootLogin = "no";
+      # Helps with tunnel/proxy handoffs
+      GatewayPorts = "yes";
     };
   };
 
@@ -81,6 +86,8 @@
         CheckHostIP no
         HostKeyAlias moonbeauty
         StrictHostKeyChecking no
+        UserKnownHostsFile /dev/null
+        # Force cloudflared to use the specific hostname for authentication
         ProxyCommand ${pkgs.cloudflared}/bin/cloudflared access ssh --hostname %h
 
       # Local network aliases
@@ -93,8 +100,6 @@
         User moonburst
     '';
   };
-
-
 
   # --- Shared Programs & Security ---
   security.pam.services.greetd.enableGnomeKeyring = true;
