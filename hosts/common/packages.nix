@@ -55,6 +55,7 @@
     playerctl                   # Media key control
     wlrctl                      # Wayland control
     wtype                       # Virtual keystroke tool
+        fastfetch                   # System info
 
     # --- System Libraries & Audio Engines ---
     gdk-pixbuf                  # Image library

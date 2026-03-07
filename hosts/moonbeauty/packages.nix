@@ -128,7 +128,6 @@ in
 
     # --- Tools Stylix can theme ---
     hyprpicker                  # Color picker
-    fastfetch                   # System info
    # cinny-desktop
   ];
 
