@@ -11,6 +11,10 @@
       { name = "matrix-synapse"; ensureDBOwnership = true; }
       { name = "mautrix-discord"; ensureDBOwnership = true; }
     ];
+    settings = {
+      log_min_messages = "warning";
+      log_min_error_statement = "error";
+    };
   };
 
   services.matrix-synapse = {
@@ -19,6 +23,20 @@
       config.sops.secrets.matrix_macaroon_secret.path
       config.sops.secrets.matrix_registration_secret.path
     ];
+
+    # Silences Synapse info/debug spam and specific federation 401 errors
+    log = {
+      root.level = "WARNING";
+      loggers = {
+        "synapse.access.http.8008".level = "WARNING";
+        "synapse.storage.SQL".level = "WARNING";
+
+        # Target the specific modules responsible for the federation retry spam
+        "synapse.http.matrixfederationclient".level = "ERROR";
+        "synapse.federation.sender".level = "ERROR";
+        "synapse.http.client".level = "ERROR";
+      };
+    };
 
     settings = {
       server_name = "moonburst.net";
@@ -48,15 +66,23 @@
     };
   };
 
-  # ==========================================================================
-  # #Discord bridge tag
-  # ==========================================================================
-
   services.mautrix-discord = {
     enable = true;
     registerToSynapse = true;
 
     settings = {
+      # This block silences the Go-based mautrix-discord bridge
+      logging = {
+        min_level = "error";
+        writers = [
+          {
+            type = "stdout";
+            format = "pretty-colored";
+            level = "error";
+          }
+        ];
+      };
+
       homeserver = {
         address = "http://127.0.0.1:8008";
         domain = "moonburst.net";
