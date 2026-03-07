@@ -15,23 +15,16 @@
     age.keyFile = "/home/moonburst/.config/sops/age/moon_keys.txt";
 
     secrets = {
-      moonburst_password = {
-        neededForUsers = true;
-      };
-
-      sops_key = {
-        neededForUsers = true;
-      };
-
-      borg_passphrase = {
-        neededForUsers = true;
-      };
-
+      moonburst_password = { neededForUsers = true; };
+      sops_key = { neededForUsers = true; };
+      borg_passphrase = { neededForUsers = true; };
       weather_api_key.owner = "moonburst";
       weather_city.owner = "moonburst";
 
-      # Desktop-only secrets
-      cloudflare_token = lib.mkIf (config.networking.hostName == "moonbeauty") { };
+      # The specific token for your Cloudflare SSH Tunnel
+      remote_to_moon_pc_token = { };
+
+      # Desktop-only secrets (Moonbeauty)
       matrix_macaroon_secret = lib.mkIf (config.networking.hostName == "moonbeauty") {
         owner = "matrix-synapse";
         group = "root";
@@ -51,20 +44,22 @@
     "d /home/moonburst/.config/sops/age 0700 moonburst users - -"
   ];
 
-  # --- Services (Desktop Specific) ---
-  systemd.services.cloudflared-matrix-tunnel = lib.mkIf (config.networking.hostName == "moonbeauty") {
-    description = "Cloudflare Tunnel for Matrix";
-    after = [ "network.target" ];
+  # --- Cloudflare Tunnel Service (MoonPC SSH Server Side) ---
+  systemd.services.cloudflared-ssh-tunnel = {
+    description = "Cloudflare Tunnel for SSH on MoonPC";
+    after = [ "network.target" "sops-nix.service" ];
     wantedBy = [ "multi-user.target" ];
     serviceConfig = {
-      EnvironmentFile = [ config.sops.secrets.cloudflare_token.path ];
-      ExecStart = "${pkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate run --token \${cloudflare_token}";
+      # Bypassing EnvironmentFile because SOPS secrets are raw strings.
+      # We use Bash to cat the secret file directly into the --token argument.
+      ExecStart = "${pkgs.bash}/bin/bash -c '${pkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate run --token $(${pkgs.coreutils}/bin/cat ${config.sops.secrets.remote_to_moon_pc_token.path})'";
       Restart = "on-failure";
+      RestartSec = "5s";
       User = "root";
     };
   };
 
-  # --- SSH Server ---
+  # --- SSH Server Settings ---
   services.openssh = {
     enable = true;
     settings = {
@@ -78,6 +73,13 @@
   programs.ssh = {
     startAgent = false;
     extraConfig = ''
+      # Connecting from the outside world via Cloudflare
+      Host moonpc
+        HostName ssh.moonburst.net
+        User moonburst
+        ProxyCommand ${pkgs.cloudflared}/bin/cloudflared access ssh --hostname %h
+
+      # Local network aliases
       Host moonbeauty
         HostName moonbeauty
         User moonburst
@@ -94,7 +96,6 @@
 
   programs.gnupg.agent = {
     enable = true;
-    # THIS ENABLES GPG TO ACT AS THE SSH AGENT:
     enableSSHSupport = true;
   };
 

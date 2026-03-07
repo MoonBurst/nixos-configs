@@ -7,7 +7,6 @@
   services.dbus.enable = true;
   programs.dconf.enable = true;
   services.gnome.gnome-keyring.enable = true;
-  services.displayManager.ly.enable = false;
 
   # --- SMART Disk Monitoring ---
   services.smartd = {
