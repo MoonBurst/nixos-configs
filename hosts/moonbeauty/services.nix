@@ -28,7 +28,7 @@
 
     encryption = {
       mode = "repokey-blake2";
-      passCommand = "cat ${config.sops.secrets.sops_key.path}";
+      passCommand = "cat ${config.sops.secrets.master_password.path}";
     };
   };
 
@@ -60,7 +60,7 @@
 
     encryption = {
       mode = "repokey-blake2";
-      passCommand = "cat ${config.sops.secrets.sops_key.path}";
+      passCommand = "cat ${config.sops.secrets.master_password.path}";
     };
   };
 
