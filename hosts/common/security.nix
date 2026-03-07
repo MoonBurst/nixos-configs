@@ -15,8 +15,13 @@
     age.keyFile = "/home/moonburst/.config/sops/age/moon_keys.txt";
 
     secrets = {
-      # This MUST match the name in your secrets.yaml exactly
+      # This matches the first line in your image exactly
       sops_key = {
+        neededForUsers = true;
+      };
+
+      # Added this because I saw it in your decrypted image!
+      borg_passphrase = {
         neededForUsers = true;
       };
 
@@ -45,6 +50,9 @@
       };
     };
   };
+
+  # --- Force SOPS to wait for SSH keys to be ready ---
+  systemd.services.sops-nix.after = [ "openssh.service" ];
 
   # Ensures the directory and keys are accessible
   systemd.tmpfiles.rules = [
