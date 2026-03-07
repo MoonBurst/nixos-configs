@@ -25,16 +25,11 @@
     # Default Shell
     shell = pkgs.zsh;
 
-    # Fix for Flake Pure Evaluation:
-    # Use a command to pull keys from runtime secrets instead of keyFiles
-    openssh.authorizedKeys.keys = [
-       # This tells Nix: "This user is managed by the command below"
+    # Using interpolated strings allows Flakes to evaluate these paths
+    # without trying to read the files from the disk during the build.
+    openssh.authorizedKeys.keyFiles = [
+      "${config.sops.secrets.laptop_public_key.path}"
+      "${config.sops.secrets.desktop_public_key.path}"
     ];
   };
-
-  # Configure SSH to pull keys from the decrypted sops files at runtime
-  services.openssh.authorizedKeysCommand = ''
-    /run/current-system/sw/bin/bash -c 'cat ${config.sops.secrets.laptop_public_key.path} ${config.sops.secrets.desktop_public_key.path}'
-  '';
-  services.openssh.authorizedKeysCommandUser = "root";
 }
