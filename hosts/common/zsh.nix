@@ -12,7 +12,7 @@
       ll = "ls -l";
       ".." = "cd ..";
       nix-switch = "sudo nixos-rebuild switch --flake ~/nixos-config";
-      wallpaper = "/home/moonburst/nixos-config/hosts/moonbeauty/scripts/wallpaper.sh";
+      wallpaper = "/home/moonburst/nixos-config/hosts/common/scripts/wallpaper.sh";
       grab = "scripts/alias_scripts/search.sh";
       color = "hyprpicker --format=rgb --autocopy --render-inactive";
       remove-orphans = "scripts/alias_scripts/remove-orphans.sh";
@@ -33,11 +33,18 @@
       music = "mpv --shuffle --af='dynaudnorm=f=250:g=15:c=1' ~/Music";
       search = "nix search nixpkgs";
       restore_from_git = "cd ~/nixos-config && git fetch origin && git reset --hard origin/main && sudo nixos-rebuild switch --flake .";
-
-
-};
+    };
 
     interactiveShellInit = ''
+      # --- SSH Completion Fix ---
+      # 1. Define the hosts specifically for SSH-related commands
+      zstyle ':completion:*:*:ssh:*:hosts' hosts moonbeauty lunarchild
+      zstyle ':completion:*:*:scp:*:hosts' hosts moonbeauty lunarchild
+
+      # 2. Tell Zsh to ignore any other users or host discovery (like /etc/hosts)
+      zstyle ':completion:*:ssh:*' users ' '
+      zstyle ':completion:*:*:ssh:*:*' tag-order hosts
+
       nupdate() {
         local HOSTNAME=$(hostname)
         local FLAKE_PATH="$HOME/nixos-config"

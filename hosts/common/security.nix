@@ -14,7 +14,6 @@
       weather_city.owner = "moonburst";
 
       # Write keys directly to the system directory SSH trusts for 'moonburst'
-      # This bypasses the Flake evaluation restriction on /run
       laptop_public_key = {
         path = "/etc/ssh/authorized_keys.d/moonburst_laptop";
         mode = "0444";
@@ -48,6 +47,35 @@
       Restart = "on-failure";
       User = "root";
     };
+  };
+
+  # --- SSH Server (Trusting the keys) ---
+  services.openssh = {
+    enable = true;
+    # Tell SSH to look for the keys sops-nix is placing for the 'moonburst' user
+    authorizedKeysFiles = [
+      "/etc/ssh/authorized_keys.d/moonburst_laptop"
+      "/etc/ssh/authorized_keys.d/moonburst_desktop"
+    ];
+    settings = {
+      PasswordAuthentication = true; # Set to false later once you've tested keys
+      KbdInteractiveAuthentication = false;
+      PermitRootLogin = "no";
+    };
+  };
+
+  # --- SSH Client Configuration ---
+  programs.ssh = {
+    startAgent = false; # FIXED: Set to false to avoid conflict with GPG agent
+    extraConfig = ''
+      Host moonbeauty
+        HostName moonbeauty
+        User moonburst
+
+      Host lunarchild
+        HostName lunarchild
+        User moonburst
+    '';
   };
 
   # --- Shared Programs & Security ---
