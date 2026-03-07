@@ -7,7 +7,14 @@
   sops = {
     defaultSopsFile = ../../secrets.yaml;
     defaultSopsFormat = "yaml";
+
+    # NIXOS NATIVE: Uses hardware SSH keys to unlock the vault.
+    # No more manual key files needed once this is active!
+    age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+
+    # Optional Fallback: Look for the manual key if the hardware key fails
     age.keyFile = "/home/moonburst/.config/sops/age/moon_keys.txt";
+
     secrets = {
       sops_key.neededForUsers = true;
       weather_api_key.owner = "moonburst";
@@ -36,7 +43,7 @@
     };
   };
 
-  # Ensures the directory exists with correct permissions for SOPS to read the key
+  # Ensures the directory and keys are accessible to the system service
   systemd.tmpfiles.rules = [
     "d /home/moonburst/.config/sops/age 0700 moonburst users - -"
   ];
@@ -70,7 +77,7 @@
 
   # --- SSH Client Configuration ---
   programs.ssh = {
-    startAgent = false;
+    startAgent = false; # FIXED: Avoid conflict with GPG agent
     extraConfig = ''
       Host moonbeauty
         HostName moonbeauty
