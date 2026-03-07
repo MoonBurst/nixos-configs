@@ -31,15 +31,20 @@
   services.displayManager.ly.enable = false;
 
   # --- System & Storage Services ---
-  services.openssh.enable = true;
+  services.openssh = {
+    enable = true;
+    # Tell SSH to look for the keys sops-nix is placing in /etc/ssh/authorized_keys.d/
+    # %u expands to the username (moonburst)
+    authorizedKeysFiles = [
+      "/etc/ssh/authorized_keys.d/%u_laptop"
+      "/etc/ssh/authorized_keys.d/%u_desktop"
+    ];
+  };
+
   services.gvfs.enable = true;
   services.journald.extraConfig = "SystemMaxUse=1G;";
   programs.sway.enable = true;
   environment.variables.TERMINAL = "kitty";
-
-  # FIX: Call 'cat' directly to bypass SSH "Unsafe AuthorizedKeysCommand" errors
-  services.openssh.authorizedKeysCommand = "${pkgs.coreutils}/bin/cat ${config.sops.secrets.laptop_public_key.path} ${config.sops.secrets.desktop_public_key.path}";
-  services.openssh.authorizedKeysCommandUser = "root";
 
   # Ensures your users can run nix commands and flakes
   nix.settings.trusted-users = [ "root" "moonburst" "lunarchild" ];
