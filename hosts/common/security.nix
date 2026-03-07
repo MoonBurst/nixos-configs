@@ -9,18 +9,21 @@
     defaultSopsFormat = "yaml";
 
     # NIXOS NATIVE: Uses hardware SSH keys to unlock the vault.
-    # No more manual key files needed once this is active!
     age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
 
-    # Optional Fallback: Look for the manual key if the hardware key fails
+    # Optional Fallback
     age.keyFile = "/home/moonburst/.config/sops/age/moon_keys.txt";
 
     secrets = {
-      sops_key.neededForUsers = true;
+      # This MUST match the name in your secrets.yaml exactly
+      sops_key = {
+        neededForUsers = true;
+      };
+
       weather_api_key.owner = "moonburst";
       weather_city.owner = "moonburst";
 
-      # Write keys directly to the system directory SSH trusts for 'moonburst'
+      # Write keys directly to the system directory SSH trusts
       laptop_public_key = {
         path = "/etc/ssh/authorized_keys.d/moonburst_laptop";
         mode = "0444";
@@ -30,7 +33,7 @@
         mode = "0444";
       };
 
-      # Only define Matrix/Cloudflare secrets if we are on the desktop
+      # Desktop-only secrets
       cloudflare_token = lib.mkIf (config.networking.hostName == "moonbeauty") { };
       matrix_macaroon_secret = lib.mkIf (config.networking.hostName == "moonbeauty") {
         owner = "matrix-synapse";
@@ -43,7 +46,7 @@
     };
   };
 
-  # Ensures the directory and keys are accessible to the system service
+  # Ensures the directory and keys are accessible
   systemd.tmpfiles.rules = [
     "d /home/moonburst/.config/sops/age 0700 moonburst users - -"
   ];
@@ -77,7 +80,7 @@
 
   # --- SSH Client Configuration ---
   programs.ssh = {
-    startAgent = false; # FIXED: Avoid conflict with GPG agent
+    startAgent = false;
     extraConfig = ''
       Host moonbeauty
         HostName moonbeauty

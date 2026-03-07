@@ -1,9 +1,12 @@
 keys:
+  - &old_key age1vxek767gxu5mj27acgfpr7w0zdx595crecwdjuwsrf5w80q43crstz29sl
   - &moonbeauty age1ej7nqnzhkvm5f7t9my5dprv9236t6dge5kzr5qj6xsgl34x8gegsmj6jlx
   - &lunarchild age1vpq95rhahg4rdspzx27ecr6usztedg0c8fjmr7wsmnvkdnmwlfwsrgd99f
+
 creation_rules:
   - path_regex: secrets.yaml$
     key_groups:
       - age:
+        - *old_key
         - *moonbeauty
         - *lunarchild
