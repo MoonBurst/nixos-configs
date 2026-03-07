@@ -40,7 +40,8 @@
         "${modifier}+Shift+space" = "floating toggle";
         "${modifier}+Shift+minus" = "move scratchpad";
         "${modifier}+Shift+equal" = "scratchpad show";
-        "--release ${modifier}+Shift+l" = "exec ${pkgs.bash}/bin/bash ~/nixos-config/hosts/moonbeauty/scripts/swaylock.sh";
+        # Path updated: Looking into common/scripts
+        "--release ${modifier}+Shift+l" = "exec ${pkgs.bash}/bin/bash ../../scripts/swaylock.sh";
       };
 
       startup = [

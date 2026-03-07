@@ -2,27 +2,52 @@
 
 {
   imports = [
-   ./audio.nix         # Pipewire and EasyEffects stack
-   ./btrfs.nix         # BTRFS auto-scrubbing and maintenance logic
-   ./dunst/dunst.nix        # Custom Dunst notification theme and rules
+   ./audio.nix
+   ./btrfs.nix
+   ./dunst/dunst.nix
    ./obs.nix
-   ./packages.nix      # CLI tools, Desktop Apps, and Fonts
-   ./security.nix      # SOPS secrets, GPG, and Polkit
-   ./services.nix      # System daemons, Portal logic, and Auto-upgrades
+   ./packages.nix
+   ./security.nix
+   ./services.nix
    ./theme.nix
-   ./users.nix         # User account (moonburst) and permissions
-   ./zsh.nix           # Shell configuration and aliases
+   ./users.nix
+   ./zsh.nix
+   ./programs/waybar/default.nix
+   ./programs/brave.nix      # ADDED
+   ./programs/audacious.nix  # ADDED
   ];
 
-  # --- Localization ---
+  # --- Home Manager (Global for moonburst user) ---
+  home-manager.users.moonburst = {
+    imports = [
+      ./programs/sway/sway.nix
+    ];
+
+    xdg.configFile."qt5ct/qt5ct.conf".force = true;
+    xdg.configFile."qt6ct/qt6ct.conf".force = true;
+
+    home.sessionVariables = {
+      XDG_CURRENT_DESKTOP = "sway";
+    };
+
+    programs.kitty = {
+      enable = true;
+      settings = {
+        confirm_os_window_close = 0;
+        "map alt+up" = "scroll_line_up";
+        "map alt+down" = "scroll_line_down";
+        "map alt+page_up" = "scroll_page_up";
+        "map alt+page_down" = "scroll_page_down";
+        "map alt+delete" = "send_text all \\x1bd";
+      };
+    };
+  };
+
+  # ... (rest of localization and nix settings unchanged)
   time.timeZone = "America/Chicago";
   i18n.defaultLocale = "en_US.UTF-8";
-
-  # --- Nix Settings ---
   nixpkgs.config.allowUnfree = true;
-  nixpkgs.config.permittedInsecurePackages = [
-    "olm-3.2.16"
-  ];
+  nixpkgs.config.permittedInsecurePackages = [ "olm-3.2.16" ];
 
   nix.settings = {
     experimental-features = [ "nix-command" "flakes" ];
@@ -30,16 +55,13 @@
     auto-optimise-store = true;
   };
 
-  # --- System Housekeeping ---
   nix.gc = {
     automatic = true;
     dates = "weekly";
     options = "--delete-older-than 14d";
   };
 
-  # --- Core Networking & Hardware ---
   networking.networkmanager.enable = true;
-
   hardware.bluetooth.enable = true;
   hardware.graphics = {
     enable = true;

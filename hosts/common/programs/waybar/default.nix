@@ -10,8 +10,8 @@ let
   dunstScript = mkScript "dunst_count.sh" ./modules/dunst_count.sh;
   alarmScript = mkScript "alarm.sh" ./modules/alarm.sh;
 
-  # Absolute path to your portal script for maximum reliability
-  musicScriptPath = "/home/moonburst/nixos-config/hosts/moonbeauty/programs/waybar/modules/music_portal.sh";
+  # FIXED: Removed absolute home path. Now uses Nix-managed script from modules folder.
+  musicScript = mkScript "music_portal.sh" ./modules/music_portal.sh;
 
   waybarConfig = pkgs.writeText "waybar-config" (builtins.toJSON {
     layer = "top";
@@ -40,18 +40,14 @@ let
     ];
 
     "custom/music" = {
-      "format" = "󰎆 {}";
+      "format" = "   {}";
       "interval" = 2;
       "exec" = "${pkgs.audacious}/bin/audtool current-song 2>/dev/null || echo 'Stopped'";
 
-      # LEFT CLICK: Open/Focus Window
-      "on-click" = "bash ${musicScriptPath} ui";
-
-      # MIDDLE CLICK: Smart Toggle (Play/Pause without restarting)
-      "on-click-middle" = "bash ${musicScriptPath}";
-
-      # RIGHT CLICK: Add Music
-      "on-click-right" = "bash ${musicScriptPath} add";
+      # UPDATED: Using the musicScript variable instead of the hardcoded /home path
+      "on-click" = "${pkgs.bash}/bin/bash ${musicScript} ui";
+      "on-click-middle" = "${pkgs.bash}/bin/bash ${musicScript}";
+      "on-click-right" = "${pkgs.bash}/bin/bash ${musicScript} add";
 
       "max-length" = 30;
       "tooltip" = false;

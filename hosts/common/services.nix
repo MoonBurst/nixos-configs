@@ -5,14 +5,9 @@
   # SOPS-NIX CONFIGURATION
   # ====================================================================
   sops = {
-    # Path to your encrypted secrets file relative to this nix file
     defaultSopsFile = ../../secrets.yaml;
     validateSopsFiles = false;
-
-    # Use your age key for decryption during system rebuild
     age.keyFile = "/home/moonburst/.config/sops/age/moon_keys.txt";
-
-    # Define secrets to be extracted from secrets.yaml
     secrets = {
       "laptop_public_key" = {};
       "desktop_public_key" = {};
@@ -21,10 +16,7 @@
 
   # --- Display & Desktop Services ---
   services.xserver.enable = true;
-  services.xserver.xkb = {
-    layout = "us";
-    variant = "";
-  };
+  services.xserver.xkb = { layout = "us"; variant = ""; };
   services.dbus.enable = true;
   programs.dconf.enable = true;
   services.gnome.gnome-keyring.enable = true;
@@ -33,8 +25,6 @@
   # --- System & Storage Services ---
   services.openssh = {
     enable = true;
-    # Tell SSH to look for the keys sops-nix is placing in /etc/ssh/authorized_keys.d/
-    # %u expands to the username (moonburst)
     authorizedKeysFiles = [
       "/etc/ssh/authorized_keys.d/%u_laptop"
       "/etc/ssh/authorized_keys.d/%u_desktop"
@@ -45,14 +35,9 @@
   services.journald.extraConfig = "SystemMaxUse=1G;";
   programs.sway.enable = true;
   environment.variables.TERMINAL = "kitty";
-
-  # Ensures your users can run nix commands and flakes
   nix.settings.trusted-users = [ "root" "moonburst" "lunarchild" ];
 
-
-  # ====================================================================
-  # SMART DISK MONITORING
-  # ====================================================================
+  # --- SMART Disk Monitoring ---
   services.smartd = {
     enable = true;
     defaults.monitored = ''
@@ -79,9 +64,7 @@
     '';
   };
 
-  # ====================================================================
-  # XDG PORTALS
-  # ====================================================================
+  # --- XDG Portals ---
   xdg.portal = {
     enable = true;
     wlr.enable = true;
@@ -93,9 +76,7 @@
     };
   };
 
-  # ====================================================================
-  # AUTO UPGRADES
-  # ====================================================================
+  # --- Auto Upgrades ---
   system.autoUpgrade = {
     enable = true;
     flake = "path:/home/moonburst/nixos-config#${config.networking.hostName}";
@@ -135,39 +116,77 @@
   services.greetd = {
     enable = true;
     settings = {
-      initial_session = {
-        command = "${pkgs.sway}/bin/sway";
-        user = "moonburst";
-      };
-      default_session = {
-        command = "${pkgs.tuigreet}/bin/tuigreet --time --cmd sway";
-        user = "greeter";
-      };
+      initial_session = { command = "${pkgs.sway}/bin/sway"; user = "moonburst"; };
+      default_session = { command = "${pkgs.tuigreet}/bin/tuigreet --time --cmd sway"; user = "greeter"; };
     };
   };
 
+  # --- Home Manager ---
   home-manager = {
-    # CORRECT LOCATION: This fixes the 'option does not exist' and the 'clobbered' errors
     backupFileExtension = "backup";
-
     users.moonburst = { pkgs, ... }: {
       home.packages = [ pkgs.cliphist pkgs.wl-clipboard ];
-
       systemd.user.services = {
         cliphist-text = {
           Unit.Description = "Clipboard text history manager";
           Service.ExecStart = "${pkgs.wl-clipboard}/bin/wl-paste --type text --watch ${pkgs.cliphist}/bin/cliphist store -max-items 50";
           Install.WantedBy = [ "graphical-session.target" ];
         };
-
         cliphist-images = {
           Unit.Description = "Clipboard image history manager";
           Service.ExecStart = "${pkgs.wl-clipboard}/bin/wl-paste --type image --watch ${pkgs.cliphist}/bin/cliphist store -max-items 10";
           Install.WantedBy = [ "graphical-session.target" ];
         };
       };
-
       home.stateVersion = "25.11";
     };
+  };
+
+  # ====================================================================
+  # MOVED FROM MOONBEAUTY: SHARED DESKTOP SERVICES
+  # ====================================================================
+
+  systemd.user.services.move-desktop-files = {
+    description = "Move .desktop files from home to applications folder";
+    serviceConfig.ExecStart = "${pkgs.bash}/bin/bash ${./scripts/mv-.desktop-to-applications.sh}";
+  };
+
+  systemd.user.services.reminders = {
+    description = "Run desktop reminder script";
+    path = with pkgs; [ bash zenity libnotify coreutils ];
+    serviceConfig = {
+      ExecStart = "${pkgs.bash}/bin/bash ${./scripts/reminder.sh}";
+      PassEnvironment = "DISPLAY WAYLAND_DISPLAY XDG_RUNTIME_DIR";
+    };
+  };
+
+  systemd.user.services.wallpaper-switcher = {
+    description = "Switch desktop wallpaper every 30 minutes";
+    path = with pkgs; [ bash sway swaybg coreutils gnused gnugrep ];
+    serviceConfig = {
+      ExecStart = "${pkgs.bash}/bin/bash ${./scripts/wallpaper.sh}";
+      PassEnvironment = "DISPLAY WAYLAND_DISPLAY XDG_RUNTIME_DIR";
+    };
+  };
+
+  systemd.services.watch-cinny = {
+    description = "Check live NixOS 25.11 branch for Cinny updates";
+    path = [ pkgs.nix pkgs.cacert pkgs.gnugrep pkgs.libnotify pkgs.coreutils ];
+    script = ''
+      CURRENT="4.10.3"
+      REMOTE=$(nix eval --raw "github:NixOS/nixpkgs/nixos-25.11#cinny-desktop.version" --extra-experimental-features "nix-command flakes" 2>/dev/null)
+      if [ -z "$REMOTE" ]; then exit 0; fi
+      NEWER=$(printf "%s\n%s" "$CURRENT" "$REMOTE" | sort -V | tail -n1)
+      if [ "$NEWER" == "$REMOTE" ] && [ "$REMOTE" != "$CURRENT" ]; then
+        notify-send "Cinny Update" "Stable 25.11 now has $REMOTE" -u critical
+      fi
+    '';
+    serviceConfig = { Type = "oneshot"; User = "moonburst"; };
+    environment = { DBUS_SESSION_BUS_ADDRESS = "unix:path=/run/user/1000/bus"; };
+  };
+
+  systemd.timers.watch-cinny = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = { OnCalendar = "hourly"; Persistent = true; };
   };
 }

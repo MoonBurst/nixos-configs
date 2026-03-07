@@ -17,33 +17,13 @@
     };
 
     exclude = [
-      "*/.steam"
-      "*/.cache"
-      "*/.config/sops"
-      "*/.config/vesktop/sessionData"
-      "*/.config/horizon-electron/Partitions"
-      "*/.var"
-      "*/.local/share/cargo"
-      "*/.local/share/Steam"
-      "*/.lmstudio"
-      "*/.git/objects"
-      "*/Games"
-      "*/.local/share/Trash"
-      "*/.Trash*"
-      "**/.tmp"
-      "**/*.swp"
-      "**/*.bak"
-      "*/.cache/mozilla/firefox"
-      "*/.cache/google-chrome"
-      "*/.cache/BraveSoftware"
-      "*/.config/chromium/*/Service Worker/CacheStorage"
-      "**/node_modules"
-      "**/.npm"
-      "**/__pycache__"
-      "**/.venv"
-      "**/.cargo"
-      "**/.rustup"
-      "**/.gradle"
+      "*/.steam" "*/.cache" "*/.config/sops" "*/.config/vesktop/sessionData"
+      "*/.config/horizon-electron/Partitions" "*/.var" "*/.local/share/cargo"
+      "*/.local/share/Steam" "*/.lmstudio" "*/.git/objects" "*/Games"
+      "*/.local/share/Trash" "*/.Trash*" "**/.tmp" "**/*.swp" "**/*.bak"
+      "*/.cache/mozilla/firefox" "*/.cache/google-chrome" "*/.cache/BraveSoftware"
+      "*/.config/chromium/*/Service Worker/CacheStorage" "**/node_modules"
+      "**/.npm" "**/__pycache__" "**/.venv" "**/.cargo" "**/.rustup" "**/.gradle"
     ];
 
     encryption = {
@@ -68,34 +48,14 @@
     };
 
     exclude = [
-      "*/.steam"
-      "*/.cache"
-      "*/.config/sops"
-      "*/.config/vesktop/sessionData"
-      "*/.config/horizon-electron/Partitions"
-      "*/.var"
-      "*/.local/share/cargo"
-      "*/.local/share/Steam"
-      "*/.lmstudio"
-      "*/.git/objects"
-      "*/Games"
-      "*/stump_backup.tar.gz"
-      "*/.local/share/Trash"
-      "*/.Trash*"
-      "**/.tmp"
-      "**/*.swp"
-      "**/*.bak"
-      "*/.cache/mozilla/firefox"
-      "*/.cache/google-chrome"
-      "*/.cache/BraveSoftware"
-      "*/.config/chromium/*/Service Worker/CacheStorage"
-      "**/node_modules"
-      "**/.npm"
-      "**/__pycache__"
-      "**/.venv"
-      "**/.cargo"
-      "**/.rustup"
-      "**/.gradle"
+      "*/.steam" "*/.cache" "*/.config/sops" "*/.config/vesktop/sessionData"
+      "*/.config/horizon-electron/Partitions" "*/.var" "*/.local/share/cargo"
+      "*/.local/share/Steam" "*/.lmstudio" "*/.git/objects" "*/Games"
+      "*/stump_backup.tar.gz" "*/.local/share/Trash" "*/.Trash*" "**/.tmp"
+      "**/*.swp" "**/*.bak" "*/.cache/mozilla/firefox" "*/.cache/google-chrome"
+      "*/.cache/BraveSoftware" "*/.config/chromium/*/Service Worker/CacheStorage"
+      "**/node_modules" "**/.npm" "**/__pycache__" "**/.venv" "**/.cargo"
+      "**/.rustup" "**/.gradle"
     ];
 
     encryption = {
@@ -104,9 +64,7 @@
     };
   };
 
-  # ====================================================================
-  # SYSTEMD SYSTEM OVERRIDES
-  # ====================================================================
+  # Borg System Overrides
   systemd.services."borgbackup-job-MoonBeauty-Backup" = {
     restartIfChanged = false;
     stopIfChanged = false;
@@ -116,87 +74,4 @@
     restartIfChanged = false;
     stopIfChanged = false;
   };
-
-  # ====================================================================
-  # SYSTEMD USER TIMERS & SERVICES
-  # ====================================================================
-
-  # --- 1. Desktop File Mover ---
-  systemd.user.services.move-desktop-files = {
-    description = "Move .desktop files from home to applications folder";
-    serviceConfig.ExecStart = "${pkgs.bash}/bin/bash ${./scripts/mv-.desktop-to-applications.sh}";
-  };
-
-  # --- 2. Reminders ---
-  systemd.user.services.reminders = {
-    description = "Run desktop reminder script";
-    path = with pkgs; [ bash zenity libnotify coreutils ];
-    serviceConfig = {
-      ExecStart = "${pkgs.bash}/bin/bash ${./scripts/reminder.sh}";
-      PassEnvironment = "DISPLAY WAYLAND_DISPLAY XDG_RUNTIME_DIR";
-    };
-  };
-
-  # --- 3. Wallpaper Switcher ---
-  systemd.user.services.wallpaper-switcher = {
-    description = "Switch desktop wallpaper every 30 minutes";
-    # Added sway here so swaymsg is found
-    path = with pkgs; [ bash sway swaybg coreutils gnused gnugrep ];
-    serviceConfig = {
-      ExecStart = "${pkgs.bash}/bin/bash ${./scripts/wallpaper.sh}";
-      PassEnvironment = "DISPLAY WAYLAND_DISPLAY XDG_RUNTIME_DIR";
-    };
-  };
-
-
-
-
-
-
-
-
-
-
-
-
-
-systemd.services.watch-cinny = {
-    description = "Check live NixOS 25.11 branch for Cinny updates";
-    path = [ pkgs.nix pkgs.cacert pkgs.gnugrep pkgs.libnotify pkgs.coreutils ];
-    script = ''
-      CURRENT="4.10.3"
-      REMOTE=$(nix eval --raw "github:NixOS/nixpkgs/nixos-25.11#cinny-desktop.version" --extra-experimental-features "nix-command flakes" 2>/dev/null)
-      if [ -z "$REMOTE" ]; then
-        echo "Error: Could not fetch remote version from GitHub."
-        exit 0
-      fi
-      NEWER=$(printf "%s\n%s" "$CURRENT" "$REMOTE" | sort -V | tail -n1)
-      if [ "$NEWER" == "$REMOTE" ] && [ "$REMOTE" != "$CURRENT" ]; then
-        notify-send "Cinny Update" "Stable 25.11 now has $REMOTE (Live Check)" -u critical
-      fi
-    '';
-    serviceConfig = {
-      Type = "oneshot";
-      User = "moonburst";
-    };
-    environment = {
-      DBUS_SESSION_BUS_ADDRESS = "unix:path=/run/user/1000/bus";
-    };
-  };
-
-  systemd.timers.watch-cinny = {
-    wantedBy = [ "timers.target" ];
-    timerConfig = {
-      OnCalendar = "hourly";
-      Persistent = true;
-    };
-  };
-
-
-
-
-
-
-
-
 }
