@@ -143,26 +143,28 @@
     };
   };
 
-  home-manager.users.moonburst = { pkgs, ... }: {
-    # Fix for clobbering existing config files
-    home.backupFileExtension = "backup";
+  home-manager = {
+    # CORRECT LOCATION: This fixes the 'option does not exist' and the 'clobbered' errors
+    backupFileExtension = "backup";
 
-    home.packages = [ pkgs.cliphist pkgs.wl-clipboard ];
+    users.moonburst = { pkgs, ... }: {
+      home.packages = [ pkgs.cliphist pkgs.wl-clipboard ];
 
-    systemd.user.services = {
-      cliphist-text = {
-        Unit.Description = "Clipboard text history manager";
-        Service.ExecStart = "${pkgs.wl-clipboard}/bin/wl-paste --type text --watch ${pkgs.cliphist}/bin/cliphist store -max-items 50";
-        Install.WantedBy = [ "graphical-session.target" ];
+      systemd.user.services = {
+        cliphist-text = {
+          Unit.Description = "Clipboard text history manager";
+          Service.ExecStart = "${pkgs.wl-clipboard}/bin/wl-paste --type text --watch ${pkgs.cliphist}/bin/cliphist store -max-items 50";
+          Install.WantedBy = [ "graphical-session.target" ];
+        };
+
+        cliphist-images = {
+          Unit.Description = "Clipboard image history manager";
+          Service.ExecStart = "${pkgs.wl-clipboard}/bin/wl-paste --type image --watch ${pkgs.cliphist}/bin/cliphist store -max-items 10";
+          Install.WantedBy = [ "graphical-session.target" ];
+        };
       };
 
-      cliphist-images = {
-        Unit.Description = "Clipboard image history manager";
-        Service.ExecStart = "${pkgs.wl-clipboard}/bin/wl-paste --type image --watch ${pkgs.cliphist}/bin/cliphist store -max-items 10";
-        Install.WantedBy = [ "graphical-session.target" ];
-      };
+      home.stateVersion = "25.11";
     };
-
-    home.stateVersion = "25.11";
   };
 }
