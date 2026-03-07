@@ -116,7 +116,6 @@ in
     vicinae                     # Niri-compatible launcher
     (pkgs.callPackage ../../packages/sherlock-clipboard.nix {})
     protonup-qt                 # Proton manager
-    nemo                        # File manager (GTK)
     btrfs-assistant             # Btrfs GUI
     kdePackages.kate             # Text editor (QT)
     kdePackages.kio-extras       # Kate file-browser support
