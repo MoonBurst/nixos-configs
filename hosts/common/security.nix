@@ -7,11 +7,7 @@
   sops = {
     defaultSopsFile = ../../secrets.yaml;
     defaultSopsFormat = "yaml";
-
-    # NIXOS NATIVE: Uses hardware SSH keys to unlock the vault.
     age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
-
-    # Optional Fallback
     age.keyFile = "/home/moonburst/.config/sops/age/moon_keys.txt";
 
     secrets = {
@@ -20,11 +16,7 @@
       borg_passphrase = { neededForUsers = true; };
       weather_api_key.owner = "moonburst";
       weather_city.owner = "moonburst";
-
-      # The specific token for your Cloudflare SSH Tunnel
       remote_to_moon_pc_token = { };
-
-      # Desktop-only secrets (Moonbeauty)
       matrix_macaroon_secret = lib.mkIf (config.networking.hostName == "moonbeauty") {
         owner = "matrix-synapse";
         group = "root";
@@ -36,15 +28,12 @@
     };
   };
 
-  # Force SOPS to wait for SSH keys to be ready
   systemd.services.sops-nix.after = [ "openssh.service" ];
-
-  # Ensures the directory and keys are accessible
   systemd.tmpfiles.rules = [
     "d /home/moonburst/.config/sops/age 0700 moonburst users - -"
   ];
 
-  # --- Cloudflare Tunnel Service (MoonPC SSH Server Side) ---
+  # --- Cloudflare Tunnel Service ---
   systemd.services.cloudflared-ssh-tunnel = {
     description = "Cloudflare Tunnel for SSH on MoonPC";
     after = [ "network.target" "sops-nix.service" ];
@@ -60,16 +49,14 @@
   # --- SSH Server Settings ---
   services.openssh = {
     enable = true;
-    # Ensure SSH listens on localhost for the tunnel
+    # Fix: Removed the problematic IPv6 address
     listenAddresses = [
       { addr = "0.0.0.0"; port = 22; }
-      { addr = "::"; port = 22; }
     ];
     settings = {
       PasswordAuthentication = true;
       KbdInteractiveAuthentication = false;
       PermitRootLogin = "no";
-      # Helps with tunnel/proxy handoffs
       GatewayPorts = "yes";
     };
   };
@@ -78,7 +65,6 @@
   programs.ssh = {
     startAgent = false;
     extraConfig = ''
-      # This allows 'ssh moonburst.net' from anywhere
       Host moonburst.net
         HostName moonburst.net
         User moonburst
@@ -87,10 +73,8 @@
         HostKeyAlias moonbeauty
         StrictHostKeyChecking no
         UserKnownHostsFile /dev/null
-        # Force cloudflared to use the specific hostname for authentication
         ProxyCommand ${pkgs.cloudflared}/bin/cloudflared access ssh --hostname %h
 
-      # Local network aliases
       Host moonbeauty
         HostName moonbeauty
         User moonburst
@@ -101,15 +85,12 @@
     '';
   };
 
-  # --- Shared Programs & Security ---
   security.pam.services.greetd.enableGnomeKeyring = true;
   services.gnome.gcr-ssh-agent.enable = false;
-
   programs.gnupg.agent = {
     enable = true;
     enableSSHSupport = true;
   };
-
   programs.fuse.userAllowOther = true;
   security.polkit.enable = true;
   security.rtkit.enable = true;
