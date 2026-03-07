@@ -73,10 +73,14 @@
   programs.ssh = {
     startAgent = false;
     extraConfig = ''
-      # Connecting from the outside world via Cloudflare
-      Host moonpc
-        HostName ssh.moonburst.net
+      # This allows 'ssh moonburst.net' from anywhere
+      Host moonburst.net
+        HostName moonburst.net
         User moonburst
+        Port 22
+        CheckHostIP no
+        HostKeyAlias moonbeauty
+        StrictHostKeyChecking no
         ProxyCommand ${pkgs.cloudflared}/bin/cloudflared access ssh --hostname %h
 
       # Local network aliases
@@ -89,6 +93,8 @@
         User moonburst
     '';
   };
+
+
 
   # --- Shared Programs & Security ---
   security.pam.services.greetd.enableGnomeKeyring = true;
