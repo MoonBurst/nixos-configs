@@ -117,12 +117,11 @@
     enable = true;
     settings = {
       default_session = {
-        command = "${pkgs.tuigreet}/bin/tuigreet --time --cmd sway";
+        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --remember-user --cmd sway";
         user = "greeter";
       };
     };
   };
-
   # --- Home Manager ---
   home-manager = {
     backupFileExtension = "backup";
