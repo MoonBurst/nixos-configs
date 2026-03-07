@@ -166,7 +166,7 @@ in {
       bash coreutils procps gawk gnugrep gnused bc jq curl lm_sensors
       rocmPackages.rocm-smi playerctl pulseaudio dunst libnotify
       wireplumber findutils yad audacious sox systemd util-linux
-      brightnessctl # Added for laptop backlight control
+      brightnessctl
     ];
 
     serviceConfig = {

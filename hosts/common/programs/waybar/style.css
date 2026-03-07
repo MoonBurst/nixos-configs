@@ -60,6 +60,7 @@ box {
   color: @text;
 }
 .niri-taskbar,
+#backlight,
 #battery,
 #bluetooth,
 #clock,
