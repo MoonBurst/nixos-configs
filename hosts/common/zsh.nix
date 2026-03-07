@@ -32,7 +32,8 @@
       uhorizon = "curl -L https://github.com > F-Chat.Horizon-linux-x86_64.AppImage";
       music = "mpv --shuffle --af='dynaudnorm=f=250:g=15:c=1' ~/Music";
       search = "nix search nixpkgs";
-      restore_from_git = "cd /etc/nixos && sudo git fetch origin && sudo git reset --hard origin/main && sudo nixos-rebuild switch";
+      restore_from_git = "cd ~/nixos-config && git fetch origin && git reset --hard origin/main && sudo nixos-rebuild switch --flake .";
+
 
 };
 
