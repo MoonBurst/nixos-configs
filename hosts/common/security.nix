@@ -51,6 +51,9 @@
   };
 
   # --- Shared Programs & Security ---
+  # FIX: Disable conflicting GNOME agent to let GnuPG handle SSH
+  services.gnome.gcr-ssh-agent.enable = false;
+
   programs.gnupg.agent = {
     enable = true;
     enableSSHSupport = true;
