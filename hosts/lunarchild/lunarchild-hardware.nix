@@ -1,4 +1,4 @@
-# ~/nixos-config/modules/laptop-hardware.nix
+# ~/nix/modules/laptop-hardware.nix
 # This file contains the machine-specific hardware configuration for lunarchild (Laptop).
 
 { config, lib, pkgs, modulesPath, ... }:

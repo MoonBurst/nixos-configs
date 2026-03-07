@@ -50,7 +50,7 @@
   # --- Auto Upgrades ---
   system.autoUpgrade = {
     enable = true;
-    flake = "path:/home/moonburst/nixos-config#${config.networking.hostName}";
+    flake = "path:/home/moonburst/nix#${config.networking.hostName}";
     flags = [ "--update-input" "nixpkgs" ];
     dates = "11:00";
     randomizedDelaySec = "30min";

@@ -16,7 +16,6 @@
       borg_passphrase = { neededForUsers = true; };
       weather_api_key.owner = "moonburst";
       weather_city.owner = "moonburst";
-      remote_to_moon_pc_token = { };
       matrix_macaroon_secret = lib.mkIf (config.networking.hostName == "moonbeauty") {
         owner = "matrix-synapse";
         group = "root";
@@ -33,18 +32,6 @@
     "d /home/moonburst/.config/sops/age 0700 moonburst users - -"
   ];
 
-  # --- Cloudflare Tunnel Service ---
-  systemd.services.cloudflared-ssh-tunnel = {
-    description = "Cloudflare Tunnel for SSH on MoonPC";
-    after = [ "network.target" "sops-nix.service" ];
-    wantedBy = [ "multi-user.target" ];
-    serviceConfig = {
-      ExecStart = "${pkgs.bash}/bin/bash -c '${pkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate run --token $(${pkgs.coreutils}/bin/cat ${config.sops.secrets.remote_to_moon_pc_token.path})'";
-      Restart = "on-failure";
-      RestartSec = "5s";
-      User = "root";
-    };
-  };
 
   # --- SSH Server Settings ---
   services.openssh = {

@@ -11,7 +11,7 @@ let
   music = "${pkgs.audacious}/bin/audacious";
   launchpad = "sherlock";
 
-  scriptsDir = "/home/moonburst/nixos-config/hosts/moonbeauty/scripts";
+  scriptsDir = "/home/moonburst/nix/hosts/moonbeauty/scripts";
   userScripts = "/home/moonburst/scripts";
 in
 {
@@ -91,7 +91,7 @@ in
     "XF86AudioLowerVolume" = "exec ${pkgs.wireplumber}/bin/wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-";
     "XF86AudioMute" = "exec ${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle";
     "F10" = "exec ${pkgs.playerctl}/bin/playerctl --player audacious previous";
-    "F11" = "exec bash /home/moonburst/nixos-config/hosts/moonbeauty/programs/waybar/modules/music_portal.sh";
+    "F11" = "exec bash /home/moonburst/nix/hosts/moonbeauty/programs/waybar/modules/music_portal.sh";
     "XF86AudioMedia" = "exec ${pkgs.playerctl}/bin/playerctl play-pause";
     "XF86AudioPlay" = "exec ${pkgs.playerctl}/bin/playerctl play-pause";
     "XF86AudioStop" = "exec ${pkgs.playerctl}/bin/playerctl stop";

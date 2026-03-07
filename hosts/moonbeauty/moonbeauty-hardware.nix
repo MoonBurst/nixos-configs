@@ -1,4 +1,4 @@
-# ~/nixos-config/modules/desktop-hardware.nix
+# ~/nix/modules/desktop-hardware.nix
 # This file contains the machine-specific hardware configuration for moonbeauty (Desktop).
 { config, lib, pkgs, modulesPath, ... }:
 {

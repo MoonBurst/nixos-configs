@@ -11,8 +11,8 @@
     shellAliases = {
       ll = "ls -l";
       ".." = "cd ..";
-      nix-switch = "sudo nixos-rebuild switch --flake ~/nixos-config";
-      wallpaper = "/home/moonburst/nixos-config/hosts/common/scripts/wallpaper.sh";
+      nix-switch = "sudo nixos-rebuild switch --flake ~/nix";
+      wallpaper = "/home/moonburst/nix/hosts/common/scripts/wallpaper.sh";
       grab = "scripts/alias_scripts/search.sh";
       color = "hyprpicker --format=rgb --autocopy --render-inactive";
       remove-orphans = "scripts/alias_scripts/remove-orphans.sh";
@@ -32,7 +32,7 @@
       uhorizon = "curl -L https://github.com > F-Chat.Horizon-linux-x86_64.AppImage";
       music = "mpv --shuffle --af='dynaudnorm=f=250:g=15:c=1' ~/Music";
       search = "nix search nixpkgs";
-      restore_from_git = "cd ~/nixos-config && git fetch origin && git reset --hard origin/main && sudo nixos-rebuild switch --flake .";
+      restore_from_git = "cd ~/nix && git fetch origin && git reset --hard origin/main && sudo nixos-rebuild switch --flake .";
     };
 
     interactiveShellInit = ''
@@ -46,7 +46,7 @@
 
       nupdate() {
         local HOSTNAME=$(hostname)
-        local FLAKE_PATH="$HOME/nixos-config"
+        local FLAKE_PATH="$HOME/nix"
         if [ -d "$FLAKE_PATH" ]; then
           sudo nixos-rebuild switch --flake "$FLAKE_PATH"#"$HOSTNAME" --log-format bar-with-logs --quiet --option warn-dirty false
         fi
