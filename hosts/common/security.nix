@@ -94,6 +94,7 @@
 
   programs.gnupg.agent = {
     enable = true;
+    # THIS ENABLES GPG TO ACT AS THE SSH AGENT:
     enableSSHSupport = true;
   };
 
