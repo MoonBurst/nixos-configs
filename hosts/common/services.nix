@@ -32,7 +32,7 @@
       repo = "/mnt/main_backup/";
       encryption = {
         mode = "repokey-blake2";
-        # UPDATED: Changed sops_key to master_password to match security.nix
+        # UPDATED: Matches the renamed secret in security.nix
         passCommand = "cat ${config.sops.secrets.master_password.path}";
       };
       compression = "auto,zstd";
