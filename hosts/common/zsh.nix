@@ -36,12 +36,12 @@
     };
 
     interactiveShellInit = ''
+      # FIXED: Force the age key variable to be set for every terminal session
+      export SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/moon_keys.txt"
+
       # --- SSH Completion Fix ---
-      # 1. Define the hosts specifically for SSH-related commands
       zstyle ':completion:*:*:ssh:*:hosts' hosts moonbeauty lunarchild
       zstyle ':completion:*:*:scp:*:hosts' hosts moonbeauty lunarchild
-
-      # 2. Tell Zsh to ignore any other users or host discovery (like /etc/hosts)
       zstyle ':completion:*:ssh:*' users ' '
       zstyle ':completion:*:*:ssh:*:*' tag-order hosts
 
@@ -71,6 +71,9 @@
   };
 
   environment.sessionVariables = {
+    # Keep this for system-wide processes
+    SOPS_AGE_KEY_FILE = "$HOME/.config/sops/age/moon_keys.txt";
+
     XDG_CACHE_HOME  = "$HOME/.cache";
     XDG_CONFIG_HOME = "$HOME/.config";
     XDG_DATA_HOME   = "$HOME/.local/share";
