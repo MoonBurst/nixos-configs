@@ -36,6 +36,11 @@
     };
   };
 
+  # Ensures the directory exists with correct permissions for SOPS to read the key
+  systemd.tmpfiles.rules = [
+    "d /home/moonburst/.config/sops/age 0700 moonburst users - -"
+  ];
+
   # --- Services (Desktop Specific) ---
   systemd.services.cloudflared-matrix-tunnel = lib.mkIf (config.networking.hostName == "moonbeauty") {
     description = "Cloudflare Tunnel for Matrix";
@@ -52,13 +57,12 @@
   # --- SSH Server (Trusting the keys) ---
   services.openssh = {
     enable = true;
-    # Tell SSH to look for the keys sops-nix is placing for the 'moonburst' user
     authorizedKeysFiles = [
       "/etc/ssh/authorized_keys.d/moonburst_laptop"
       "/etc/ssh/authorized_keys.d/moonburst_desktop"
     ];
     settings = {
-      PasswordAuthentication = true; # Set to false later once you've tested keys
+      PasswordAuthentication = true;
       KbdInteractiveAuthentication = false;
       PermitRootLogin = "no";
     };
@@ -66,7 +70,7 @@
 
   # --- SSH Client Configuration ---
   programs.ssh = {
-    startAgent = false; # FIXED: Set to false to avoid conflict with GPG agent
+    startAgent = false;
     extraConfig = ''
       Host moonbeauty
         HostName moonbeauty
@@ -79,11 +83,7 @@
   };
 
   # --- Shared Programs & Security ---
-
-  # FIX: Unlock gnome-keyring automatically on login via greetd
   security.pam.services.greetd.enableGnomeKeyring = true;
-
-  # FIX: Disable conflicting GNOME agent to let GnuPG handle SSH
   services.gnome.gcr-ssh-agent.enable = false;
 
   programs.gnupg.agent = {

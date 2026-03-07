@@ -1,7 +1,9 @@
 keys:
-  - &admin age1vxek767gxu5mj27acgfpr7w0zdx595crecwdjuwsrf5w80q43crstz29sl
+  - &moonbeauty age1vxek767gxu5mj27acgfpr7w0zdx595crecwdjuwsrf5w80q43crstz29sl
+  - &lunarchild age1vxek767gxu5mj27acgfpr7w0zdx595crecwdjuwsrf5w80q43crstz29sl
 creation_rules:
   - path_regex: secrets.yaml$
     key_groups:
       - age:
-        - *admin
+        - *moonbeauty
+        - *lunarchild
