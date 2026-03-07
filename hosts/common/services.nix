@@ -116,8 +116,10 @@
   services.greetd = {
     enable = true;
     settings = {
-      initial_session = { command = "${pkgs.sway}/bin/sway"; user = "moonburst"; };
-      default_session = { command = "${pkgs.tuigreet}/bin/tuigreet --time --cmd sway"; user = "greeter"; };
+      default_session = {
+        command = "${pkgs.tuigreet}/bin/tuigreet --time --cmd sway";
+        user = "greeter";
+      };
     };
   };
 
@@ -143,7 +145,7 @@
   };
 
   # ====================================================================
-  # MOVED FROM MOONBEAUTY: SHARED DESKTOP SERVICES
+  # SHARED DESKTOP SERVICES
   # ====================================================================
 
   systemd.user.services.move-desktop-files = {

@@ -51,6 +51,10 @@
   };
 
   # --- Shared Programs & Security ---
+
+  # FIX: Unlock gnome-keyring automatically on login via greetd
+  security.pam.services.greetd.enableGnomeKeyring = true;
+
   # FIX: Disable conflicting GNOME agent to let GnuPG handle SSH
   services.gnome.gcr-ssh-agent.enable = false;
 
