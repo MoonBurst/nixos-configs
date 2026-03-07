@@ -12,29 +12,29 @@
       sops_key.neededForUsers = true;
       weather_api_key.owner = "moonburst";
       weather_city.owner = "moonburst";
-      cloudflare_token = { };
-      # Explicitly setting group to root prevents "matrix-synapse missing" errors
-      matrix_macaroon_secret = {
-        owner = "matrix-synapse";
-        group = "root";
-      };
-      matrix_registration_secret = {
-        owner = "matrix-synapse";
-        group = "root";
-      };
       laptop_public_key = { };
       desktop_public_key = { };
+
+      # Only define Matrix/Cloudflare secrets if we are on the desktop
+      cloudflare_token = lib.mkIf (config.networking.hostName == "moonbeauty") { };
+      matrix_macaroon_secret = lib.mkIf (config.networking.hostName == "moonbeauty") {
+        owner = "matrix-synapse";
+        group = "root";
+      };
+      matrix_registration_secret = lib.mkIf (config.networking.hostName == "moonbeauty") {
+        owner = "matrix-synapse";
+        group = "root";
+      };
     };
   };
 
-
-  systemd.services.cloudflared-matrix-tunnel = {
+  # --- Services (Desktop Specific) ---
+  systemd.services.cloudflared-matrix-tunnel = lib.mkIf (config.networking.hostName == "moonbeauty") {
     description = "Cloudflare Tunnel for Matrix";
     after = [ "network.target" ];
     wantedBy = [ "multi-user.target" ];
     serviceConfig = {
       EnvironmentFile = [ config.sops.secrets.cloudflare_token.path ];
-
       ExecStart = "${pkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate run --token \${cloudflare_token}";
       Restart = "on-failure";
       User = "root";
