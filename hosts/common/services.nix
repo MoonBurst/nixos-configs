@@ -118,7 +118,6 @@
     enable = true;
     settings = {
       default_session = {
-        # --remember pre-fills the last user; --remember-session saves Sway as the choice
         command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --remember-session --cmd sway";
         user = "greeter";
       };
@@ -194,7 +193,8 @@
     environment = { DBUS_SESSION_BUS_ADDRESS = "unix:path=/run/user/1000/bus"; };
   };
 
-  systemd.services.watch-cinny.timers.watch-cinny = {
+  # FIXED: Moved timer outside of services block
+  systemd.timers.watch-cinny = {
     wantedBy = [ "timers.target" ];
     timerConfig = { OnCalendar = "hourly"; Persistent = true; };
   };
