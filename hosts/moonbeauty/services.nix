@@ -28,7 +28,7 @@
 
     encryption = {
       mode = "repokey-blake2";
-      passCommand = "cat ${config.sops.secrets.master_password.path}";
+      passCommand = "cat ${config.sops.secrets.moonburst_password.path}";
     };
   };
 
@@ -60,7 +60,7 @@
 
     encryption = {
       mode = "repokey-blake2";
-      passCommand = "cat ${config.sops.secrets.master_password.path}";
+      passCommand = "cat ${config.sops.secrets.moonburst_password.path}";
     };
   };
 

@@ -8,7 +8,7 @@
   programs.dconf.enable = true;
   programs.gdk-pixbuf.modulePackages = [ pkgs.librsvg ];
   environment.systemPackages = [
-    inputs.moon-numix.packages.${pkgs.system}.default
+    inputs.moon-numix.packages.${pkgs.stdenv.hostPlatform.system}.default
     pkgs.glib
     pkgs.gsettings-desktop-schemas
   ];
@@ -47,7 +47,7 @@
 
     icons = {
       enable = true;
-      package = lib.mkForce inputs.moon-numix.packages.${pkgs.system}.default;
+      package = lib.mkForce inputs.moon-numix.packages.${pkgs.stdenv.hostPlatform.system}.default;
       dark = "Numix";
       light = "Numix-Light";
     };

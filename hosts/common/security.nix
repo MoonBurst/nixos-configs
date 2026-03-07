@@ -15,12 +15,14 @@
     age.keyFile = "/home/moonburst/.config/sops/age/moon_keys.txt";
 
     secrets = {
-      # RENAMED: Changed from sops_key to master_password to break the stuck state
-      master_password = {
+      moonburst_password = {
         neededForUsers = true;
       };
 
-      # Added this because it's in your YAML image
+      sops_key = {
+        neededForUsers = true;
+      };
+
       borg_passphrase = {
         neededForUsers = true;
       };
