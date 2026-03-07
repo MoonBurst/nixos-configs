@@ -6,10 +6,7 @@
     ./moonbeauty-hardware.nix
     ./mounts.nix
     ./services.nix
-    # REMOVED: ./programs/audacious.nix
-    # REMOVED: ./programs/brave.nix
     ./matrix.nix
-    ./remote.nix
     ./test.nix
   ];
 

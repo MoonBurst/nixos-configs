@@ -1,7 +1,74 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 {
-  users.users.matrix-synapse.extraGroups = [ "mautrix-discord" ];
+  # 1. Secret Definitions
+  sops.secrets = {
+    "cloudflare_token" = { };
+    "matrix_macaroon_secret" = { owner = "matrix-synapse"; };
+    "matrix_registration_secret" = { owner = "matrix-synapse"; };
+  };
+
+  # 2. Cloudflare Tunnel (Fixed User/Group and SSL bypass)
+  users.users.cloudflared = { isSystemUser = true; group = "cloudflared"; };
+  users.groups.cloudflared = {};
+
+  systemd.services.cloudflared-tunnel = {
+    description = "Cloudflare Tunnel for Matrix";
+    after = [ "network.target" ];
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      EnvironmentFile = config.sops.secrets.cloudflare_token.path;
+      # Added --no-tls-verify to fix internal certificate handshakes
+      ExecStart = "${pkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate run --no-tls-verify";
+      Restart = "always";
+      User = "cloudflared";
+      Group = "cloudflared";
+    };
+  };
+
+  # 3. Nginx Gateway (Fixed Priority Routing)
+  services.nginx = {
+    enable = true;
+    virtualHosts."moonburst.net" = {
+      default = true;
+
+      # DISCOVERY: ^~ ensures these take absolute priority over the welcome message
+      locations."^~ /.well-known/matrix/server" = {
+        extraConfig = ''
+          default_type application/json;
+          add_header Access-Control-Allow-Origin *;
+          return 200 '{"m.server":"moonburst.net:443"}';
+        '';
+      };
+
+      locations."^~ /.well-known/matrix/client" = {
+        extraConfig = ''
+          default_type application/json;
+          add_header Access-Control-Allow-Origin *;
+          return 200 '{"m.homeserver":{"base_url":"https://moonburst.net"}}';
+        '';
+      };
+
+      # API ROUTES: Absolute priority for all Matrix and Admin traffic
+      locations."^~ /_matrix" = {
+        proxyPass = "http://127.0.0.1:8008";
+        proxyWebsockets = true;
+        extraConfig = ''
+          add_header 'Access-Control-Allow-Origin' '*' always;
+          add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
+          add_header 'Access-Control-Allow-Headers' 'X-Requested-With,Content-Type,Authorization' always;
+        '';
+      };
+
+      locations."^~ /_synapse/admin" = {
+        proxyPass = "http://127.0.0.1:8008";
+      };
+
+      locations."= /" = {
+        return = "200 'Moonburst Matrix Server Active'";
+      };
+    };
+  };
 
   services.postgresql = {
     enable = true;
@@ -11,38 +78,15 @@
       { name = "matrix-synapse"; ensureDBOwnership = true; }
       { name = "mautrix-discord"; ensureDBOwnership = true; }
     ];
-    settings = {
-      log_min_messages = "warning";
-      log_min_error_statement = "error";
-    };
   };
 
   services.matrix-synapse = {
     enable = true;
-    extraConfigFiles = [
-      config.sops.secrets.matrix_macaroon_secret.path
-      config.sops.secrets.matrix_registration_secret.path
-    ];
-
-    # Silences Synapse info/debug spam and specific federation 401 errors
-    log = {
-      root.level = "WARNING";
-      loggers = {
-        "synapse.access.http.8008".level = "WARNING";
-        "synapse.storage.SQL".level = "WARNING";
-
-        # Target the specific modules responsible for the federation retry spam
-        "synapse.http.matrixfederationclient".level = "ERROR";
-        "synapse.federation.sender".level = "ERROR";
-        "synapse.http.client".level = "ERROR";
-      };
-    };
-
+    extraConfigFiles = [ config.sops.secrets.matrix_macaroon_secret.path ];
     settings = {
       server_name = "moonburst.net";
       public_baseurl = "https://moonburst.net";
-      registration_shared_secret = config.sops.secrets.matrix_registration_secret.path;
-
+      registration_shared_secret_path = config.sops.secrets.matrix_registration_secret.path;
       database = {
         name = "psycopg2";
         allow_unsafe_locale = true;
@@ -52,42 +96,22 @@
           host = "/run/postgresql";
         };
       };
-
-      listeners = [
-        {
-          port = 8008;
-          bind_addresses = [ "127.0.0.1" ];
-          type = "http";
-          tls = false;
-          x_forwarded = true;
-          resources = [ { names = [ "client" "federation" ]; compress = false; } ];
-        }
-      ];
+      listeners = [{
+        port = 8008;
+        bind_addresses = [ "127.0.0.1" ];
+        type = "http";
+        tls = false;
+        x_forwarded = true;
+        resources = [ { names = [ "client" "federation" ]; compress = false; } ];
+      }];
     };
   };
 
   services.mautrix-discord = {
     enable = true;
     registerToSynapse = true;
-
     settings = {
-      # This block silences the Go-based mautrix-discord bridge
-      logging = {
-        min_level = "error";
-        writers = [
-          {
-            type = "stdout";
-            format = "pretty-colored";
-            level = "error";
-          }
-        ];
-      };
-
-      homeserver = {
-        address = "http://127.0.0.1:8008";
-        domain = "moonburst.net";
-      };
-
+      homeserver = { address = "http://127.0.0.1:8008"; domain = "moonburst.net"; };
       appservice = {
         address = "http://127.0.0.1:29334";
         hostname = "127.0.0.1";
@@ -97,20 +121,12 @@
           uri = "postgres:///mautrix-discord?host=/run/postgresql";
         };
       };
-
-      bridge = {
-        permissions = {
-          "@moonburst:moonburst.net" = "admin";
-        };
-        direct_media = true;
-
-        media_viewer = {
-          enabled = true;
-          template = "https://moonburst.net{{.ID}}";
-        };
-      };
+      bridge = { permissions = { "@moonburst:moonburst.net" = "admin"; }; direct_media = true; };
     };
   };
 
+  # 7. Permissions & Overrides
   systemd.services.mautrix-discord.after = [ "matrix-synapse.service" ];
+  users.users.matrix-synapse.extraGroups = [ "mautrix-discord" ];
+  systemd.services.matrix-synapse.serviceConfig.ExecStartPre = lib.mkForce [ ];
 }
