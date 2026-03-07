@@ -1,19 +1,6 @@
 { config, pkgs, lib, ... }:
 
 {
-  # ====================================================================
-  # SOPS-NIX CONFIGURATION
-  # ====================================================================
-  sops = {
-    defaultSopsFile = ../../secrets.yaml;
-    validateSopsFiles = false;
-    age.keyFile = "/home/moonburst/.config/sops/age/moon_keys.txt";
-    secrets = {
-      "laptop_public_key" = {};
-      "desktop_public_key" = {};
-    };
-  };
-
   # --- Display & Desktop Services ---
   services.xserver.enable = true;
   services.xserver.xkb = { layout = "us"; variant = ""; };
@@ -36,6 +23,22 @@
   programs.sway.enable = true;
   environment.variables.TERMINAL = "kitty";
   nix.settings.trusted-users = [ "root" "moonburst" "lunarchild" ];
+
+  # --- Borg Backup (Hostname Specific) ---
+  # This ensures the desktop jobs only run on moonbeauty
+  services.borgbackup.jobs = lib.mkIf (config.networking.hostName == "moonbeauty") {
+    "MoonBeauty-Backup" = {
+      paths = [ "/home/moonburst" ];
+      repo = "/mnt/main_backup/";
+      encryption = {
+        mode = "repokey-blake2";
+        # UPDATED: Changed sops_key to master_password to match security.nix
+        passCommand = "cat ${config.sops.secrets.master_password.path}";
+      };
+      compression = "auto,zstd";
+      startAt = "daily";
+    };
+  };
 
   # --- SMART Disk Monitoring ---
   services.smartd = {
@@ -193,7 +196,6 @@
     environment = { DBUS_SESSION_BUS_ADDRESS = "unix:path=/run/user/1000/bus"; };
   };
 
-  # FIXED: Moved timer outside of services block
   systemd.timers.watch-cinny = {
     wantedBy = [ "timers.target" ];
     timerConfig = { OnCalendar = "hourly"; Persistent = true; };

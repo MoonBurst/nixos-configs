@@ -15,12 +15,12 @@
     age.keyFile = "/home/moonburst/.config/sops/age/moon_keys.txt";
 
     secrets = {
-      # This matches the first line in your image exactly
-      sops_key = {
+      # RENAMED: Changed from sops_key to master_password to break the stuck state
+      master_password = {
         neededForUsers = true;
       };
 
-      # Added this because I saw it in your decrypted image!
+      # Added this because it's in your YAML image
       borg_passphrase = {
         neededForUsers = true;
       };
@@ -51,7 +51,7 @@
     };
   };
 
-  # --- Force SOPS to wait for SSH keys to be ready ---
+  # Force SOPS to wait for SSH keys to be ready
   systemd.services.sops-nix.after = [ "openssh.service" ];
 
   # Ensures the directory and keys are accessible
