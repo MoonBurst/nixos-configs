@@ -1,4 +1,4 @@
-{ pkgs, lib, ... }:
+{ pkgs, lib, config, ... }:
 
 let
   mkScript = name: source: pkgs.writeShellScript name (builtins.readFile source);
@@ -9,9 +9,9 @@ let
   weatherScript = mkScript "weather_readout.sh" ./modules/weather_readout.sh;
   dunstScript = mkScript "dunst_count.sh" ./modules/dunst_count.sh;
   alarmScript = mkScript "alarm.sh" ./modules/alarm.sh;
-
-  # FIXED: Removed absolute home path. Now uses Nix-managed script from modules folder.
   musicScript = mkScript "music_portal.sh" ./modules/music_portal.sh;
+
+  isDesktop = config.networking.hostName == "moonbeauty";
 
   waybarConfig = pkgs.writeText "waybar-config" (builtins.toJSON {
     layer = "top";
@@ -19,7 +19,6 @@ let
     spacing = 2;
 
     modules-left = [
-    #  "idle_inhibitor"
       "clock#day"
       "custom/weather"
       "custom/dunst_count"
@@ -32,8 +31,10 @@ let
       "pulseaudio"
       "pulseaudio#microphone"
       "network"
-      "bluetooth"
-      "custom/gpu_readout"
+    ]
+    # Logic: Desktop gets Bluetooth/GPU. Laptop (lunarchild) gets Battery/Backlight.
+    ++ (if isDesktop then [ "bluetooth" "custom/gpu_readout" ] else [ "battery" "backlight" ])
+    ++ [
       "custom/cpu_readout"
       "custom/ram_readout"
       "tray"
@@ -43,12 +44,9 @@ let
       "format" = "   {}";
       "interval" = 2;
       "exec" = "${pkgs.audacious}/bin/audtool current-song 2>/dev/null || echo 'Stopped'";
-
-      # UPDATED: Using the musicScript variable instead of the hardcoded /home path
       "on-click" = "${pkgs.bash}/bin/bash ${musicScript} ui";
       "on-click-middle" = "${pkgs.bash}/bin/bash ${musicScript}";
       "on-click-right" = "${pkgs.bash}/bin/bash ${musicScript} add";
-
       "max-length" = 30;
       "tooltip" = false;
     };
@@ -99,6 +97,23 @@ let
       "tooltip" = false;
     };
 
+    "battery" = {
+      "states" = { "warning" = 30; "critical" = 15; };
+      "format" = "{capacity}% {icon}";
+      "format-charging" = "{capacity}% ";
+      "format-plugged" = "{capacity}% ";
+      "format-icons" = [ "" "" "" "" "" ];
+      "tooltip" = false;
+    };
+
+    "backlight" = {
+      "device" = "intel_backlight";
+      "format" = "{percent}% {icon}";
+      "format-icons" = ["" "" "" "" "" "" "" "" ""];
+      "on-scroll-up" = "${pkgs.brightnessctl}/bin/brightnessctl set 1%+";
+      "on-scroll-down" = "${pkgs.brightnessctl}/bin/brightnessctl set 1%-";
+    };
+
     "idle_inhibitor" = {
       "format" = "{icon}";
       "format-icons" = { "activated" = ""; "deactivated" = ""; };
@@ -124,6 +139,15 @@ let
       "tooltip" = false;
     };
 
+    "bluetooth" = {
+      "format" = " {status}";
+      "format-disabled" = "";
+      "format-off" = "";
+      "interval" = 30;
+      "on-click" = "${pkgs.blueman}/bin/blueman-manager";
+      "tooltip" = false;
+    };
+
     "tray" = { "icon-size" = 21; "spacing" = 1; };
   });
 
@@ -142,6 +166,7 @@ in {
       bash coreutils procps gawk gnugrep gnused bc jq curl lm_sensors
       rocmPackages.rocm-smi playerctl pulseaudio dunst libnotify
       wireplumber findutils yad audacious sox systemd util-linux
+      brightnessctl # Added for laptop backlight control
     ];
 
     serviceConfig = {
