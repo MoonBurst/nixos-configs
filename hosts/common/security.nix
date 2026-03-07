@@ -12,8 +12,10 @@
       sops_key.neededForUsers = true;
       weather_api_key.owner = "moonburst";
       weather_city.owner = "moonburst";
-      laptop_public_key = { };
-      desktop_public_key = { };
+
+      # Set mode to 0444 so the SSH service can read these public keys
+      laptop_public_key = { mode = "0444"; };
+      desktop_public_key = { mode = "0444"; };
 
       # Only define Matrix/Cloudflare secrets if we are on the desktop
       cloudflare_token = lib.mkIf (config.networking.hostName == "moonbeauty") { };
