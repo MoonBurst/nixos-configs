@@ -3,8 +3,8 @@
 {
   # --- Main User Account ---
   users.users.moonburst = {
-    # Password managed via SOPS in security.nix
-    hashedPasswordFile = config.sops.secrets.sops_key.path;
+    # FIX: Wrap the password path in quotes/interpolation for Flake purity
+    hashedPasswordFile = "${config.sops.secrets.sops_key.path}";
     isNormalUser = true;
     description = "MoonBurst";
     home = "/home/moonburst";
@@ -25,6 +25,7 @@
     # Default Shell
     shell = pkgs.zsh;
 
+    # Fix for Flake Pure Evaluation:
     # Using interpolated strings allows Flakes to evaluate these paths
     # without trying to read the files from the disk during the build.
     openssh.authorizedKeys.keyFiles = [
