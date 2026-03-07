@@ -113,15 +113,23 @@
     fi
   '';
 
+  # --- Greetd / Tuigreet Configuration ---
   services.greetd = {
     enable = true;
     settings = {
       default_session = {
-        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --remember-user --cmd sway";
+        # --remember pre-fills the last user; --remember-session saves Sway as the choice
+        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --remember-session --cmd sway";
         user = "greeter";
       };
     };
   };
+
+  # FIX: Create cache directory so tuigreet can actually "remember" the user
+  systemd.tmpfiles.rules = [
+    "d /var/cache/tuigreet 0755 greeter greeter - -"
+  ];
+
   # --- Home Manager ---
   home-manager = {
     backupFileExtension = "backup";
@@ -186,7 +194,7 @@
     environment = { DBUS_SESSION_BUS_ADDRESS = "unix:path=/run/user/1000/bus"; };
   };
 
-  systemd.timers.watch-cinny = {
+  systemd.services.watch-cinny.timers.watch-cinny = {
     wantedBy = [ "timers.target" ];
     timerConfig = { OnCalendar = "hourly"; Persistent = true; };
   };
