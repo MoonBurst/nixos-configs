@@ -3,10 +3,16 @@
 {
   # --- Main User Account ---
   users.users.moonburst = {
-  hashedPasswordFile = "/run/secrets-for-users/moonburst_password";
+    hashedPasswordFile = "/run/secrets-for-users/moonburst_password";
     isNormalUser = true;
     description = "MoonBurst";
     home = "/home/moonburst";
+
+    # FIXED: Using plain strings avoids the "absolute path" evaluation error
+    openssh.authorizedKeys.keys = [
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKYBYv5x6Pn22dJPgjITf+yFfv/3tgyYOrAA306F5fdh MoonBurstPlays@Gmail.com" # Desktop
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBSf5Y/CzAi2TfrOoQFFIDRDkdTutjZxUo3O2QzQCuEW Moon_Laptop"              # Laptop
+    ];
 
     extraGroups = [
       "networkmanager" "wheel" "audio" "video" "input"
@@ -14,6 +20,5 @@
     ];
 
     shell = pkgs.zsh;
-
   };
 }

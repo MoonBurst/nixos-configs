@@ -30,16 +30,6 @@
       weather_api_key.owner = "moonburst";
       weather_city.owner = "moonburst";
 
-      # Write keys directly to the system directory SSH trusts
-      laptop_public_key = {
-        path = "/etc/ssh/authorized_keys.d/moonburst_laptop";
-        mode = "0444";
-      };
-      desktop_public_key = {
-        path = "/etc/ssh/authorized_keys.d/moonburst_desktop";
-        mode = "0444";
-      };
-
       # Desktop-only secrets
       cloudflare_token = lib.mkIf (config.networking.hostName == "moonbeauty") { };
       matrix_macaroon_secret = lib.mkIf (config.networking.hostName == "moonbeauty") {
@@ -74,13 +64,9 @@
     };
   };
 
-  # --- SSH Server (Trusting the keys) ---
+  # --- SSH Server ---
   services.openssh = {
     enable = true;
-    authorizedKeysFiles = [
-      "/etc/ssh/authorized_keys.d/moonburst_laptop"
-      "/etc/ssh/authorized_keys.d/moonburst_desktop"
-    ];
     settings = {
       PasswordAuthentication = true;
       KbdInteractiveAuthentication = false;
