@@ -24,6 +24,19 @@
   outputs = { self, nixpkgs, flake-parts, sops-nix, cypkgs, stylix, home-manager, moon-numix, nur, ... } @ inputs:
     flake-parts.lib.mkFlake { inherit inputs; } ({ ... }: {
       systems = [ "x86_64-linux" ];
+
+      # ADDED: This defines the tools direnv will load into your shell automatically
+      perSystem = { pkgs, ... }: {
+        devShells.default = pkgs.mkShell {
+          packages = with pkgs; [
+            sops
+            age
+            mkpasswd
+            ssh-to-age
+          ];
+        };
+      };
+
       flake = {
         nixosConfigurations = {
           moonbeauty = nixpkgs.lib.nixosSystem {
@@ -56,7 +69,7 @@
             specialArgs = { inherit inputs; };
             modules = [
               { nixpkgs.hostPlatform = "x86_64-linux"; }
-              sops-nix.nixosModules.sops # Enable SOPS for laptop
+              sops-nix.nixosModules.sops
               ./hosts/lunarchild/default.nix
               ./hosts/common/default.nix
               ./hosts/common/theme.nix

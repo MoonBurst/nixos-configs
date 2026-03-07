@@ -36,7 +36,6 @@
     };
 
     interactiveShellInit = ''
-      # FIXED: Force the age key variable to be set for every terminal session
       export SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/moon_keys.txt"
 
       # --- SSH Completion Fix ---
