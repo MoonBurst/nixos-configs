@@ -37,10 +37,8 @@
   programs.sway.enable = true;
   environment.variables.TERMINAL = "kitty";
 
-  # Pull keys from runtime secrets to avoid pure evaluation errors in Flakes
-  services.openssh.authorizedKeysCommand = ''
-    /run/current-system/sw/bin/bash -c 'cat ${config.sops.secrets.laptop_public_key.path} ${config.sops.secrets.desktop_public_key.path}'
-  '';
+  # FIX: Call 'cat' directly to bypass SSH "Unsafe AuthorizedKeysCommand" errors
+  services.openssh.authorizedKeysCommand = "${pkgs.coreutils}/bin/cat ${config.sops.secrets.laptop_public_key.path} ${config.sops.secrets.desktop_public_key.path}";
   services.openssh.authorizedKeysCommandUser = "root";
 
   # Ensures your users can run nix commands and flakes
