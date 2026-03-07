@@ -30,15 +30,20 @@
             specialArgs = { inherit inputs; };
             modules = [
               { nixpkgs.hostPlatform = "x86_64-linux"; }
+              sops-nix.nixosModules.sops # Enable SOPS for desktop
               ./hosts/moonbeauty/default.nix
               ./hosts/common/theme.nix
               { nixpkgs.overlays = [ nur.overlays.default ]; }
               home-manager.nixosModules.home-manager {
                 home-manager.useGlobalPkgs = true;
                 home-manager.useUserPackages = true;
+                home-manager.backupFileExtension = "backup";
                 home-manager.users.moonburst = { pkgs, ... }: {
                   imports = [ ./hosts/moonbeauty/packages.nix ];
-                  home.packages = [ inputs.moon-numix.packages.${pkgs.system}.default ];
+                  home.packages = [
+                    inputs.moon-numix.packages.${pkgs.system}.default
+                    pkgs.kitty.terminfo # Fixes terminal errors
+                  ];
                   home.file.".local/share/icons/Numix".source = "${inputs.moon-numix.packages.${pkgs.system}.default}/share/icons/Numix";
                   home.file.".local/share/icons/Numix-Light".source = "${inputs.moon-numix.packages.${pkgs.system}.default}/share/icons/Numix-Light";
                   home.stateVersion = "25.11";
@@ -51,6 +56,7 @@
             specialArgs = { inherit inputs; };
             modules = [
               { nixpkgs.hostPlatform = "x86_64-linux"; }
+              sops-nix.nixosModules.sops # Enable SOPS for laptop
               ./hosts/lunarchild/default.nix
               ./hosts/common/default.nix
               ./hosts/common/theme.nix
@@ -59,8 +65,12 @@
               home-manager.nixosModules.home-manager {
                 home-manager.useGlobalPkgs = true;
                 home-manager.useUserPackages = true;
+                home-manager.backupFileExtension = "backup";
                 home-manager.users.moonburst = { pkgs, ... }: {
-                  home.packages = [ inputs.moon-numix.packages.${pkgs.system}.default ];
+                  home.packages = [
+                    inputs.moon-numix.packages.${pkgs.system}.default
+                    pkgs.kitty.terminfo # Fixes terminal errors
+                  ];
                   home.file.".local/share/icons/Numix".source = "${inputs.moon-numix.packages.${pkgs.system}.default}/share/icons/Numix";
                   home.file.".local/share/icons/Numix-Light".source = "${inputs.moon-numix.packages.${pkgs.system}.default}/share/icons/Numix-Light";
                   home.stateVersion = "25.11";
