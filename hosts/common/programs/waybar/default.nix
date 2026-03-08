@@ -123,14 +123,19 @@ let
     "clock" = { "format" = "{:%I:%M:%p}"; "interval" = 5; "tooltip" = false; };
     "clock#day" = { "format" = "{:%a %d %b}"; "tooltip-format" = "<tt><small>{calendar}</small></tt>"; };
 
-    "network" = {
-      "min-length" = 25; "max-length" = 25; "interface" = "e*";
-      "format-wifi" = " {bandwidthDownBytes}  {bandwidthUpBytes} ";
-      "format-ethernet" = "{bandwidthDownBytes}  | {bandwidthUpBytes} ";
-      "format-linked" = "(No IP)"; "format-disconnected" = "";
-      "on-click" = "iwmenu -l custom --launcher-command \"sherlock\"";
-      "tooltip" = false; "interval" = 1;
-    };
+"network" = {
+  "min-length" = 25;
+  "max-length" = 25;
+  # Remove "interface": "e*"; to let Waybar auto-detect the active interface
+  "format-wifi" = " {bandwidthDownBytes}  {bandwidthUpBytes} ";
+  "format-ethernet" = "{bandwidthDownBytes}  | {bandwidthUpBytes} ";
+  "format-linked" = "(No IP)";
+  "format-disconnected" = "";
+  "on-click" = "iwmenu -l custom --launcher-command \"sherlock\"";
+  "tooltip" = false;
+  "interval" = 1;
+};
+
 
     "pulseaudio" = {
       "format" = "{volume}% {icon}";
