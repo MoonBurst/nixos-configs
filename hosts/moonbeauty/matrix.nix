@@ -12,18 +12,24 @@
   users.users.cloudflared = { isSystemUser = true; group = "cloudflared"; };
   users.groups.cloudflared = {};
 
-  systemd.services.cloudflared-tunnel = {
-    description = "Cloudflare Tunnel for Matrix";
-    after = [ "network.target" ];
-    wantedBy = [ "multi-user.target" ];
-    serviceConfig = {
-      EnvironmentFile = config.sops.secrets.cloudflare_token.path;
-      ExecStart = "${pkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate run --no-tls-verify";
-      Restart = "always";
-      User = "cloudflared";
-      Group = "cloudflared";
-    };
+systemd.services.cloudflared-tunnel = {
+  after = [ "network-online.target" "sops-install-secrets.service" ];
+  wants = [ "network-online.target" "sops-install-secrets.service" ];
+  wantedBy = [ "multi-user.target" ];
+
+  serviceConfig = {
+    Restart = "always";
+    RestartSec = "5";
+    User = "cloudflared";
+    Group = "cloudflared";
+    EnvironmentFile = config.sops.secrets.cloudflare_token.path;
   };
+
+  script = lib.mkForce ''
+    ${pkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate run
+  '';
+};
+
 
   # 3. Nginx Gateway (The "Front Door")
   services.nginx = {
