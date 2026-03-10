@@ -23,7 +23,6 @@ in
 #    { command = "${gpu6400} ${pkgs.steam}/bin/steam -nochatui -silent"; }
 
     # **Background Services**
-#    { command = "${pkgs.swayidle}/bin/swayidle"; }
 
     # **Clipboard Management (Cliphist)**
     { command = "${pkgs.wl-clipboard}/bin/wl-paste --type text --watch ${pkgs.cliphist}/bin/cliphist store -max-items 50"; }

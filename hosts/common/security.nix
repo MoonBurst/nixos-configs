@@ -52,16 +52,6 @@
   programs.ssh = {
     startAgent = false;
     extraConfig = ''
-      Host moonburst.net
-        HostName moonburst.net
-        User moonburst
-        Port 22
-        CheckHostIP no
-        HostKeyAlias moonbeauty
-        StrictHostKeyChecking no
-        UserKnownHostsFile /dev/null
-        ProxyCommand ${pkgs.cloudflared}/bin/cloudflared access ssh --hostname %h
-
       Host moonbeauty
         HostName moonbeauty
         User moonburst
@@ -73,6 +63,7 @@
   };
 
   security.pam.services.greetd.enableGnomeKeyring = true;
+  security.pam.services.swaylock = {};
   services.gnome.gcr-ssh-agent.enable = false;
   programs.gnupg.agent = {
     enable = true;

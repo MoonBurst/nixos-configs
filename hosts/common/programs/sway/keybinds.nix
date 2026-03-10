@@ -25,7 +25,7 @@ in
     "${super}+Shift+q" = "kill";
     "${super}+e" = "exec ${explorer}";
     "${super}+d" = "exec ${launchpad}";
-    "${super}+l" = "exec ${pkgs.swaylock}/bin/swaylock -f -c 030303";
+    "${super}+l" = "exec ${pkgs.swaylock-effects}/bin/swaylock -f --screenshots --clock --indicator --indicator-radius 120 --indicator-thickness 15 --effect-blur 20x20 --effect-vignette 0:1 --ring-color 1a1a1a --key-hl-color ffff33 --ring-ver-color ffff33 --inside-ver-color 00000000 --ring-wrong-color ff0000 --inside-wrong-color 00000000 --bs-hl-color ff0000 --inside-color 00000000 --separator-color 00000000 --line-color 00000000 --text-color ffff33 --text-ver-color ffff33 --text-wrong-color ff0000 --text-clear-color ffff33 --text-caps-lock-color ffff33 --grace 5 --fade-in 2";
     "${super}+SHIFT+m" = "exec ${pkgs.evolution}/bin/evolution";
     "${super}+k" = ''exec sh -c "CLIPHIST_DB_PATH=/tmp/cliphist_db sherlock-clp list | sherlock | xargs -r ${pkgs.cliphist}/bin/cliphist decode | ${pkgs.wl-clipboard}/bin/wl-copy"'';
 

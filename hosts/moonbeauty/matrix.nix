@@ -8,49 +8,47 @@
     "matrix_registration_secret" = { owner = "matrix-synapse"; };
   };
 
-  # 2. Cloudflare Tunnel (Ensure Dashboard points to http://localhost:80)
+  # 2. Cloudflare Tunnel
   users.users.cloudflared = { isSystemUser = true; group = "cloudflared"; };
   users.groups.cloudflared = {};
 
-systemd.services.cloudflared-tunnel = {
-  after = [ "network-online.target" "sops-install-secrets.service" ];
-  wants = [ "network-online.target" "sops-install-secrets.service" ];
-  wantedBy = [ "multi-user.target" ];
+  systemd.services.cloudflared-tunnel = {
+    after = [ "network-online.target" "sops-install-secrets.service" ];
+    wants = [ "network-online.target" "sops-install-secrets.service" ];
+    wantedBy = [ "multi-user.target" ];
 
-  serviceConfig = {
-    Restart = "always";
-    RestartSec = "5";
-    User = "cloudflared";
-    Group = "cloudflared";
-    EnvironmentFile = config.sops.secrets.cloudflare_token.path;
+    serviceConfig = {
+      Restart = "always";
+      RestartSec = "5";
+      User = "cloudflared";
+      Group = "cloudflared";
+      EnvironmentFile = config.sops.secrets.cloudflare_token.path;
+      LogLevelMax = "warning";
+    };
+
+    script = lib.mkForce ''
+      ${pkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate run > /dev/null
+    '';
   };
 
-  script = lib.mkForce ''
-    ${pkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate run
-  '';
-};
-
-
-  # 3. Nginx Gateway (The "Front Door")
+  # 3. Nginx Gateway
   services.nginx = {
     enable = true;
     recommendedProxySettings = true;
-    # Global buffers to prevent Cloudflare "Connectivity Lost" errors
     commonHttpConfig = ''
       proxy_buffer_size 128k;
       proxy_buffers 4 256k;
       proxy_busy_buffers_size 256k;
+      access_log off;
+      error_log stderr warn;
     '';
 
     virtualHosts."moonburst.net" = {
       default = true;
       serverName = "moonburst.net";
       serverAliases = [ "localhost" "127.0.0.1" ];
-
-      # Cloudflare handles SSL; Nginx stays on Port 80
       addSSL = false;
 
-      # DISCOVERY: Exact matches to prevent Synapse from intercepting with a 302
       locations."= /.well-known/matrix/server" = {
         priority = 1;
         extraConfig = ''
@@ -69,19 +67,17 @@ systemd.services.cloudflared-tunnel = {
         '';
       };
 
-      # SYNAPSE API: Proxy everything else to 8008
       locations."/" = {
         proxyPass = "http://127.0.0.1:8008";
         proxyWebsockets = true;
         extraConfig = ''
           proxy_set_header Host $host;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-          proxy_set_header X-Forwarded-Proto https; # Force Synapse to see HTTPS
+          proxy_set_header X-Forwarded-Proto https;
           client_max_body_size 50M;
         '';
       };
 
-      # Landing Page Override (prevents the Synapse HTML from showing on root)
       locations."= /" = {
         priority = 100;
         extraConfig = ''
@@ -101,19 +97,50 @@ systemd.services.cloudflared-tunnel = {
       { name = "matrix-synapse"; ensureDBOwnership = true; }
       { name = "mautrix-discord"; ensureDBOwnership = true; }
     ];
+    settings = {
+      log_min_messages = "warning";
+      log_checkpoints = "off"; # Suppresses "checkpoint complete" logs
+    };
   };
 
-  # 5. Matrix Synapse Service
+  # 5. Matrix Synapse
   services.matrix-synapse = {
     enable = true;
     extraConfigFiles = [ config.sops.secrets.matrix_macaroon_secret.path ];
+
     settings = {
       server_name = "moonburst.net";
       public_baseurl = "https://moonburst.net";
       registration_shared_secret_path = config.sops.secrets.matrix_registration_secret.path;
-
-      # Allow Nginx/Cloudflare Tunnel to pass through real IPs
       trusted_proxies = [ "127.0.0.1" "::1" ];
+
+      # Pointing to a generated log config that silences the specific modules you saw
+      log_config = pkgs.writeText "synapse-log-config.json" (builtins.toJSON {
+        version = 1;
+        formatters.precise.format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s";
+        handlers.console = {
+          class = "logging.StreamHandler";
+          formatter = "precise";
+        };
+        loggers = {
+          # Silences logs about other servers being down or missing media
+          "synapse.http.matrixfederationclient" = { level = "ERROR"; };
+          "synapse.federation.sender" = { level = "ERROR"; };
+          "synapse.media.media_repository" = { level = "ERROR"; };
+
+          # Silences "Already Disconnected" and client hang-up noise
+          "synapse.http.server" = { level = "ERROR"; };
+          "synapse.federation.transport.server._base" = { level = "ERROR"; };
+          "synapse.federation.transport.server" = { level = "ERROR"; };
+
+          # Silences errors about fetching keys from broken servers (like postnet.cc)
+          "synapse.crypto.keyring" = { level = "ERROR"; };
+        };
+        root = {
+          level = "WARNING";
+          handlers = [ "console" ];
+        };
+      });
 
       database = {
         name = "psycopg2";
@@ -152,11 +179,18 @@ systemd.services.cloudflared-tunnel = {
         };
       };
       bridge = { permissions = { "@moonburst:moonburst.net" = "admin"; }; direct_media = true; };
+      logging.level = "warn";
     };
   };
 
-  # 7. Systemd Tweaks
+  # 7. Systemd Tweaks & Output Filtering
   systemd.services.mautrix-discord.after = [ "matrix-synapse.service" ];
+  systemd.services.mautrix-discord.serviceConfig.LogLevelMax = "warning";
+
+  systemd.services.matrix-synapse = {
+    serviceConfig.LogLevelMax = "warning";
+    serviceConfig.ExecStartPre = lib.mkForce [ ];
+  };
+
   users.users.matrix-synapse.extraGroups = [ "mautrix-discord" ];
-  systemd.services.matrix-synapse.serviceConfig.ExecStartPre = lib.mkForce [ ];
 }

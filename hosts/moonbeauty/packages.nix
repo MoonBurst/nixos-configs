@@ -1,133 +1,50 @@
 { pkgs, config, lib, ... }:
 
-let
-  cinny-stylix = pkgs.makeDesktopItem {
-    name = "Cinny-Stylix";
-    desktopName = "Cinny (Matrix)";
-    genericName = "Discord-like Matrix Client";
-    exec = '' ${pkgs.brave}/bin/brave --app=https://dev.cinny.in --class=cinny-stylix'';
-    icon = "matrix";
-    categories = [ "Network" "Chat" ];
-    terminal = false;
-  };
-in
 {
-  # --- Programs with dedicated Stylix/HM modules ---
-  # Moving these here allows Stylix to generate their themes automatically
-  programs = {
-    obs-studio.enable = true;
-    waybar.enable = true;
-    kitty.enable = true;
-    mpv.enable = true;
-    mangohud.enable = true;
-    element-desktop.enable = true;
-    # --- Vesktop & Vencord ---
-    # Consolidated into the programs block to fix the "attribute defined twice" error
-    vesktop = {
-      enable = true;
-      settings = {
-        "discordBranch" = "stable";
-        "firstRun" = false;
-        "minimizeToTray" = "on";
-        "arRPC" = "on";
-        "useQuickCss" = true;
-        "enabledThemes" = [ "stylix.css" ];
-      };
-      vencord.settings = {
-        quickCss = ''
-          @import url("https://raw.githubusercontent.com");
-          :root {
-            --server-columns: 3;
-            --server-size: 35px;
-            --server-spacing: 1px;
-            /* Stylix Colors Injection */
-            --background-primary: #${config.lib.stylix.colors.base00};
-            --text-normal: #${config.lib.stylix.colors.base05};
-            --brand-experiment: #${config.lib.stylix.colors.base0D};
-          }
-        '';
-        plugins = {};
-      };
-    };
+  # 1. Create a Desktop Launcher for Brave in App Mode
+  xdg.desktopEntries.cinny-brave = {
+    name = "Cinny (Brave)";
+    genericName = "Matrix Client";
+    # Using the absolute path to make sure it finds the right binary
+    # and adding flags for WebRTC/Media support.
+    # Update this line in your package.nix
+exec = "${pkgs.brave}/bin/brave --app=https://dev.cinny.in/ --use-fake-ui-for-media-stream --enforce-webrtc-ip-permission-check";
+    icon = "matrix";
+    terminal = false;
+    categories = [ "Network" "InstantMessaging" ];
+    settings.StartupWMClass = "dev.cinny.in";
   };
 
-  # --- Browser Theme Injection ---
-  # References your theme.nix colors via config.lib.stylix.colors
-  home.file.".config/vivaldi/custom.css".text = ''
-    :root, [data-theme='dark'], .cinny {
-      --bg: #${config.lib.stylix.colors.base00};
-      --fg: #${config.lib.stylix.colors.base05};      /* Yellow */
-      --fg-soft: #${config.lib.stylix.colors.base07}; /* Grey/White fallback */
-      --accent: #${config.lib.stylix.colors.base0D};  /* Purple */
-
-      /* Specific Cinny UI Overrides */
-      --sidebar-color: #${config.lib.stylix.colors.base01} !important;
-      --bg-color: #${config.lib.stylix.colors.base00} !important;
-      --primary-text-color: #${config.lib.stylix.colors.base05} !important;
-      --secondary-text-color: #${config.lib.stylix.colors.base07} !important;
-      --accent-color: #${config.lib.stylix.colors.base0D} !important;
-
-      /* Cinny Color Palette Overrides */
-      --cp-color-text-primary: #${config.lib.stylix.colors.base05} !important;
-      --cp-color-text-secondary: #${config.lib.stylix.colors.base07} !important;
-      --cp-color-bg-surface: #${config.lib.stylix.colors.base00} !important;
-    }
-
-    /* Simple global injection for web pages */
-    html, body {
-      background-color: var(--bg) !important;
-      color: var(--fg) !important;
-    }
-  '';
-
-#░█░█░█▀█░█▄░▄█░█▀▀
-#░█▀█░█░█░█░▀░█░█▀▀
-#░▀░▀░▀▀▀░▀░░░▀░▀▀▀
+  # 2. Add only the media-specific support packages
   home.packages = with pkgs; [
-    # --- Custom Cinny Wrapper ---
-    cinny-stylix
+    # These ensure the browser has the right "pipes" for audio/video
+    gst_all_1.gstreamer
+    gst_all_1.gst-plugins-base
+    gst_all_1.gst-plugins-good
+    gst_all_1.gst-plugins-bad
+    gst_all_1.gst-plugins-ugly
+    gst_all_1.gst-libav
 
-    # --- Communication & Web ---
-    jami                        # Distributed chat
-    nicotine-plus               # Music/Soulseek client
-    evolution                   # Email/Calendar
-    (vivaldi.override {
-      commandLineArgs = [
-        "--disable-features=AudioServiceSandbox"
-        "--ozone-platform-hint=auto"
-        "--log-level=3"
-        "--force-dark-mode"
-        "--enable-features=WebContentsForceDark"
-      ];
-    })
-
-    # --- Media & Graphics ---
-    audacious                   # Music player (GTK)
-    krita                       # Digital painting (QT)
-    qview                       # Image viewer
-    pavucontrol                 # Volume mixer (GTK)
-
-
-    # --- Desktop GUI Utilities ---
-    swaylock                    # Screen locker
-   # swayidle                    # Idle management
-    satty                       # Screenshot editor
-    sherlock-launcher           # App launcher
-    vicinae                     # Niri-compatible launcher
+    # Your existing packages (Brave removed from here to avoid collision)
+    jami
+    nicotine-plus
+    evolution
+    audacious
+    krita
+    qview
+    pavucontrol
+    swaylock-effects
+    satty
+    sherlock-launcher
+    vicinae
     (pkgs.callPackage ../../packages/sherlock-clipboard.nix {})
-    protonup-qt                 # Proton manager
-    btrfs-assistant             # Btrfs GUI
-    kdePackages.kate             # Text editor (QT)
-    kdePackages.kio-extras       # Kate file-browser support
-
-    # --- 3D Printing & Design ---
-    cura-appimage               # 3D Slicing
-    orca-slicer                 # Modern 3D Slicing
-    openscad                    # Programmatic 3D design
-
-    # --- Tools Stylix can theme ---
-    hyprpicker                  # Color picker
-   # cinny-desktop
+    protonup-qt
+    btrfs-assistant
+    kdePackages.kate
+    cura-appimage
+    orca-slicer
+    openscad
+    hyprpicker
   ];
 
   home.stateVersion = "25.11";
