@@ -17,6 +17,9 @@
   
   # Bootloader (systemd-boot)
   boot.loader.systemd-boot.enable = true;
+  ####################
+ # boot.loader.systemd-boot.consoleMode = "max";########################
+#######################
   boot.loader.efi.canTouchEfiVariables = true;
   # --- AMDGPU/ROCm Kernel Parameters ---
 boot.kernelParams = [
@@ -26,6 +29,10 @@ boot.kernelParams = [
     "cma=512M"                                      # Reserves 512MB for Contiguous Memory Allocation (helps with GPU buffer stability)
     "nvme_core.default_ps_max_latency_us=0"  #attempt to keep nvmes from disappearing on boot
     "pcie_aspm=off"                                 #turns off power managment issues
+  "video=2560x1440"
+  "video=DP-1:2560x1440"
+  "video=HDMI-A-2:d"
+  "video=DP-2:d"
     #VM stuff
 #  "amd_iommu=on"
 #  "iommu=pt"

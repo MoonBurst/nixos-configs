@@ -94,7 +94,15 @@
       };
     };
   };
-
+systemd.services.greetd.serviceConfig = {
+  Type = "idle";
+  StandardInput = "tty";
+  StandardOutput = "tty";
+  StandardError = "journal"; # Keeps the UI clean
+  TTYReset = true;
+  TTYVHangup = true;
+  TTYVTDisallocate = true;
+};
   systemd.tmpfiles.rules = [
     "d /var/cache/tuigreet 0755 greeter greeter - -"
   ];
