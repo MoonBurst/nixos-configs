@@ -12,7 +12,8 @@ in
     # **░▀▀▀░░▀░░▀░▀░▀░▀░░▀░░▀▀▀░▀░░**
 
     # **Applications**
-    { command = "${pkgs.vivaldi}/bin/vivaldi"; }
+  #  { command = "${pkgs.vivaldi}/bin/vivaldi"; }
+  { command = "${pkgs.brave}/bin/brave"; }
     { command = "${pkgs.vesktop}/bin/vesktop"; }
     { command = "${pkgs.corectrl}/bin/corectrl"; }
 

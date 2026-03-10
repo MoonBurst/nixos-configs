@@ -12,7 +12,7 @@
     # --- CLI Essentials & Networking ---
     curl                        # Transferring data
     wget                        # Downloading files
-    rsync                       # Fast file copying
+    rsync                     # Fast file copying
     jq                          # JSON processor
     ripgrep                     # Better than grep
     psmisc                      # fuser, killall, etc.

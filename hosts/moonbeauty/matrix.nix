@@ -74,7 +74,7 @@
           proxy_set_header Host $host;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header X-Forwarded-Proto https;
-          client_max_body_size 50M;
+          client_max_body_size 100M;
         '';
       };
 
@@ -99,7 +99,7 @@
     ];
     settings = {
       log_min_messages = "warning";
-      log_checkpoints = "off"; # Suppresses "checkpoint complete" logs
+      log_checkpoints = "off";
     };
   };
 
@@ -114,7 +114,11 @@
       registration_shared_secret_path = config.sops.secrets.matrix_registration_secret.path;
       trusted_proxies = [ "127.0.0.1" "::1" ];
 
-      # Pointing to a generated log config that silences the specific modules you saw
+      # Media and Preview Settings
+      url_preview_enabled = true;
+      url_preview_ip_range_allowlist = [ "0.0.0.0/0" ];
+      max_upload_size = "100M";
+
       log_config = pkgs.writeText "synapse-log-config.json" (builtins.toJSON {
         version = 1;
         formatters.precise.format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s";
@@ -123,17 +127,12 @@
           formatter = "precise";
         };
         loggers = {
-          # Silences logs about other servers being down or missing media
           "synapse.http.matrixfederationclient" = { level = "ERROR"; };
           "synapse.federation.sender" = { level = "ERROR"; };
           "synapse.media.media_repository" = { level = "ERROR"; };
-
-          # Silences "Already Disconnected" and client hang-up noise
           "synapse.http.server" = { level = "ERROR"; };
           "synapse.federation.transport.server._base" = { level = "ERROR"; };
           "synapse.federation.transport.server" = { level = "ERROR"; };
-
-          # Silences errors about fetching keys from broken servers (like postnet.cc)
           "synapse.crypto.keyring" = { level = "ERROR"; };
         };
         root = {
@@ -178,7 +177,14 @@
           uri = "postgres:///mautrix-discord?host=/run/postgresql";
         };
       };
-      bridge = { permissions = { "@moonburst:moonburst.net" = "admin"; }; direct_media = true; };
+      bridge = {
+        permissions = { "@moonburst:moonburst.net" = "admin"; };
+        direct_media = false; # Fixes visibility for Discord CDN links
+                # Tells the bridge to treat Tenor/Giphy MP4s as images
+        animated_sticker = { target = "gif"; };
+        # Forces Discord's "external" media to be re-uploaded locally
+        provisioning_api = true;
+      };
       logging.level = "warn";
     };
   };
