@@ -2,18 +2,18 @@
 
 {
   # 1. Create a Desktop Launcher for Brave in App Mode
-  xdg.desktopEntries.cinny-brave = {
-    name = "Cinny (Brave)";
+xdg.desktopEntries.cinny-brave = {
+    name = "Cinny";
     genericName = "Matrix Client";
-    # --app: Launches in standalone window mode
-    # --enable-features=WebRTCPipeWireCapturer: Fixes screen sharing on Wayland (Hyprland/Sway)
-    # --enable-wayland-ime: Ensures keyboard input works correctly in Wayland
     exec = "${pkgs.brave}/bin/brave --app=https://dev.cinny.in --enable-features=WebRTCPipeWireCapturer --enable-wayland-ime";
     icon = "matrix";
     terminal = false;
     categories = [ "Network" "InstantMessaging" ];
-    settings.StartupWMClass = "brave-dev.cinny.in__-Default";
-  };
+    settings = {
+      StartupWMClass = "brave-dev.cinny.in__-Default";
+      Keywords = "matrix;cinny;chat;messenger;";
+    };
+};
 
   home.packages = with pkgs; [
     # --- Communication & Social ---
