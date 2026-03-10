@@ -2,13 +2,6 @@
 
 {
   wayland.windowManager.sway.config = {
-    # 1. Startup commands to set monitor states
-    startup = [
-      { command = "swaymsg output 'AOC 24G2W1G4 0x0000E8FA' enable"; }
-      { command = "swaymsg output 'HGC CR270HDM 0x00000001' enable"; }
-#      { command = "swaymsg output 'LG Electronics LG ULTRAWIDE 0x0003CBC2' disable"; }
-    ];
-
     # Monitor Configurations
     output = {
       "LG Electronics LG ULTRAWIDE 0x0003CBC2" = {

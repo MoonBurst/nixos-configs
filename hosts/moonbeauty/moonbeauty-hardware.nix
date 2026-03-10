@@ -31,8 +31,10 @@ boot.kernelParams = [
     "pcie_aspm=off"                                 #turns off power managment issues
   "video=2560x1440"
   "video=DP-1:2560x1440"
-  "video=HDMI-A-2:d"
-  "video=DP-2:d"
+
+
+
+
     #VM stuff
 #  "amd_iommu=on"
 #  "iommu=pt"
