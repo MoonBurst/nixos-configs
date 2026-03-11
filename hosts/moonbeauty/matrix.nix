@@ -14,12 +14,7 @@
   ##############################################################################
   systemd.settings.Manager.LogLevel = "warning";
 
-  security.pam.services.sudo.text = pkgs.lib.mkForce ''
-    auth    include system-auth
-    account include system-auth
-    session required pam_unix.so silent
-    password include system-auth
-  '';
+
 
   ##############################################################################
   # SECRETS & PERMISSIONS
