@@ -14,13 +14,13 @@
    ./zsh.nix
    ./programs/waybar/default.nix
    ./programs/brave.nix      # ADDED
-   ./programs/audacious.nix  # ADDED
   ];
 
   # --- Home Manager (Global for moonburst user) ---
   home-manager.users.moonburst = {
     imports = [
       ./programs/sway/sway.nix
+       ./programs/audacious.nix
     ];
 
     xdg.configFile."qt5ct/qt5ct.conf".force = true;

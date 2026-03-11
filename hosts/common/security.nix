@@ -36,12 +36,11 @@
   # --- SSH Server Settings ---
   services.openssh = {
     enable = true;
-    # Fix: Removed the problematic IPv6 address
     listenAddresses = [
       { addr = "0.0.0.0"; port = 22; }
     ];
     settings = {
-      PasswordAuthentication = true;
+      PasswordAuthentication = false;
       KbdInteractiveAuthentication = false;
       PermitRootLogin = "no";
       GatewayPorts = "yes";

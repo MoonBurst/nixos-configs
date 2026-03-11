@@ -43,6 +43,7 @@ let
     "custom/music" = {
       "format" = "   {}";
       "interval" = 2;
+      "escape" = true; # Add this line
       "exec" = "${pkgs.audacious}/bin/audtool current-song 2>/dev/null || echo 'Stopped'";
       "on-click" = "${pkgs.bash}/bin/bash ${musicScript} ui";
       "on-click-middle" = "${pkgs.bash}/bin/bash ${musicScript}";
@@ -50,6 +51,8 @@ let
       "max-length" = 30;
       "tooltip" = false;
     };
+
+
 
     "custom/alarm" = {
      "format" = "{}";
@@ -159,13 +162,11 @@ let
   waybarStyle = pkgs.writeText "waybar-style" (builtins.readFile ./style.css);
 
 in {
-  systemd.user.services.waybar = {
+systemd.user.services.waybar = {
     description = "Waybar status bar";
     wantedBy = [ "graphical-session.target" ];
     partOf = [ "graphical-session.target" ];
 
-    wants = [ "audacious.service" ];
-    after = [ "audacious.service" ];
 
     path = with pkgs; [
       bash coreutils procps gawk gnugrep gnused bc jq curl lm_sensors
@@ -181,4 +182,5 @@ in {
       PassEnvironment = "DISPLAY WAYLAND_DISPLAY XDG_RUNTIME_DIR XDG_CURRENT_DESKTOP XDG_SESSION_TYPE";
     };
   };
+
 }
