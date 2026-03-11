@@ -1,13 +1,26 @@
 { config, pkgs, lib, ... }:
 
+{
   ##############################################################################
   # KERNEL EDIT  # Hopefully fixes audio stuttering
   ##############################################################################
-{
   boot.kernel.sysctl = {
     "net.core.rmem_max" = 7500000;
     "net.core.wmem_max" = 7500000;
   };
+
+  ##############################################################################
+  # LOGGING & SECURITY (SILENCE THE NOISE)
+  ##############################################################################
+  systemd.settings.Manager.LogLevel = "warning";
+
+  security.pam.services.sudo.text = pkgs.lib.mkForce ''
+    auth    include system-auth
+    account include system-auth
+    session required pam_unix.so silent
+    password include system-auth
+  '';
+
   ##############################################################################
   # SECRETS & PERMISSIONS
   ##############################################################################
@@ -22,7 +35,6 @@
 
   ##############################################################################
   # NETWORK GATEWAY (Cloudflare & Nginx)
-  # cloudflared handles the tunnel; Nginx handles routing and .well-knowns.
   ##############################################################################
   systemd.services.cloudflared-tunnel = {
     after = [ "network-online.target" "sops-install-secrets.service" ];
@@ -40,8 +52,6 @@
    services.nginx = {
     enable = true;
     recommendedProxySettings = true;
-
-
     virtualHosts."moonburst.net" = {
       default = true;
       locations = {
@@ -53,7 +63,15 @@
         "= /.well-known/matrix/client".extraConfig = ''
           add_header Content-Type application/json;
           add_header Access-Control-Allow-Origin *;
-          return 200 '{"m.homeserver":{"base_url":"https://moonburst.net"}}';
+          return 200 '{
+            "m.homeserver": {"base_url":"https://moonburst.net"},
+            "org.matrix.msc4143.rtc_foci": [
+              {
+                "type": "livekit",
+                "livekit_service_url": "https://livekit-jwt.call.matrix.org"
+              }
+            ]
+          }';
         '';
         "/".proxyPass = "http://127.0.0.1:8008";
         "/".proxyWebsockets = true;
@@ -78,6 +96,7 @@
       { name = "mautrix-discord"; ensureDBOwnership = true; }
     ];
     settings = {
+      log_checkpoints = false;
       log_min_messages = "warning";
       random_page_cost = 1.1;
       effective_cache_size = "4GB";
@@ -101,6 +120,7 @@
 
       federation_sender_instances = [ "main" ];
       background_processes_parallelism_limit = 10;
+      media_retention_days = 7;
 
       database = {
         name = "psycopg2";
@@ -157,9 +177,9 @@
       logging.level = "warn";
     };
   };
+
   ##############################################################################
   # SERVICE TWEAKS
-  # Ensures the server stays responsive while gaming
   ##############################################################################
   systemd.services.matrix-synapse.serviceConfig = {
     CPUWeight = 200;
