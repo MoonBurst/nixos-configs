@@ -44,7 +44,7 @@
     script = "${pkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate run --proxy-connect-timeout 300s";
   };
 
-   services.nginx = {
+  services.nginx = {
     enable = true;
     recommendedProxySettings = true;
     virtualHosts."moonburst.net" = {
@@ -68,9 +68,16 @@
             ]
           }';
         '';
-        "/".proxyPass = "http://127.0.0.1:8008";
-        "/".proxyWebsockets = true;
-        "/".extraConfig = "client_max_body_size 100M;";
+        "/" = {
+          proxyPass = "http://127.0.0.1:8008";
+          proxyWebsockets = true;
+          extraConfig = ''
+            proxy_read_timeout 300s;
+            proxy_send_timeout 300s;
+            proxy_connect_timeout 300s;
+          '';
+        };
+
         "= /".extraConfig = ''
           add_header Content-Type text/plain;
           return 200 'Moonburst Matrix Server Active';
@@ -78,6 +85,7 @@
       };
     };
   };
+
 
   ##############################################################################
   # DATABASE (PostgreSQL)
@@ -107,6 +115,9 @@
     settings = {
       server_name = "moonburst.net";
       public_baseurl = "https://moonburst.net";
+      enable_registration = true;
+      enable_registration_without_verification = true;
+      suppress_key_server_warning = true;
       registration_shared_secret_path = config.sops.secrets.matrix_registration_secret.path;
       trusted_proxies = [ "127.0.0.1" "::1" ];
       url_preview_enabled = true;
@@ -140,6 +151,7 @@
         tls = false;
         x_forwarded = true;
         resources = [ { names = [ "client" "federation" ]; compress = false; } ];
+
       }];
     };
   };

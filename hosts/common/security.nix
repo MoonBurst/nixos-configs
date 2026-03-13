@@ -11,9 +11,12 @@
     age.keyFile = "/home/moonburst/.config/sops/age/moon_keys.txt";
 
     secrets = {
-      moonburst_password = { neededForUsers = true; };
+      moonburst_password = { };
       sops_key = { neededForUsers = true; };
       borg_passphrase = { neededForUsers = true; };
+      nextcloud_url = { };
+      nextcloud_user = { };
+      nextcloud_pass = { };
       weather_api_key.owner = "moonburst";
       weather_city.owner = "moonburst";
       matrix_macaroon_secret = lib.mkIf (config.networking.hostName == "moonbeauty") {
@@ -31,7 +34,6 @@
   systemd.tmpfiles.rules = [
     "d /home/moonburst/.config/sops/age 0700 moonburst users - -"
   ];
-
 
   # --- SSH Server Settings ---
   services.openssh = {

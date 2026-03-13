@@ -1,77 +1,118 @@
 { config, pkgs, lib, ... }:
 
+let
+  borgPassScript = pkgs.writeShellScript "borg-pass-script" ''
+    ${pkgs.coreutils}/bin/cat ${config.sops.secrets.moonburst_password.path}
+  '';
+
+  rcloneConfigPath = "/run/rclone-mount/nextcloud.conf";
+
+  # Global excludes for BOTH Local and Offsite
+  baseExcludes = [
+    "*/.config/BraveSoftware"
+    "*/.cache/BraveSoftware"
+    "*/.cache/nix"
+    "*/.cache/nix-data"
+    "*/.cache/nix-index"
+    "*/.cache/nix.bak"
+    "*/.direnv"
+    "**/node_modules"
+    "**/.cargo"
+    "**/.rustup"
+    "**/.gradle"
+    "*/.local/share/Steam"
+    "*/.steam"
+    "*/Games"
+    "*/.lmstudio"
+    "*/.var"
+    "*/.local/share/vicinae"
+    "*/.local/share/pnpm"
+    "*/.local/share/rustup"
+    "*/.cache"
+    "*/.cache/vivaldi"
+    "*/.cache/mesa_shader_cache"
+    "*/.cache/appimage-run"
+    "*/.cache/mozilla/firefox"
+    "*/.cache/google-chrome"
+    "**/mesa_shader_cache_db"
+    "**/radv_builtin_shaders"
+    "*/.local/share/Trash"
+    "*/.Trash*"
+    "**/.tmp"
+    "**/*.swp"
+    "**/*.bak"
+    "*/.config/sops"
+  ];
+in
 {
-  # ====================================================================
-  # BORG BACKUP JOB: MoonBeauty-Backup
-  # ====================================================================
-  services.borgbackup.jobs."MoonBeauty-Backup" = {
-    paths = [ "/home/moonburst" ];
-    repo = "/mnt/main_backup/";
-    startAt = "00:00";
-    extraCreateArgs = "--stats --list --filter=AME";
+  # Fix: Pointing to the secrets file so sops.secrets can be decrypted
+  sops.defaultSopsFile = ../../secrets.yaml;
 
-    prune.keep = {
-      daily = 7;
-      weekly = 4;
-      monthly = 6;
-    };
+  sops.secrets = {
+    moonburst_password = {};
+    nextcloud_url = {};
+    nextcloud_user = {};
+    nextcloud_pass = {};
+  };
 
-    exclude = [
-      "*/.steam" "*/.cache" "*/.config/sops" "*/.config/vesktop/sessionData"
-      "*/.config/horizon-electron/Partitions" "*/.var" "*/.local/share/cargo"
-      "*/.local/share/Steam" "*/.lmstudio" "*/.git/objects" "*/Games"
-      "*/.local/share/Trash" "*/.Trash*" "**/.tmp" "**/*.swp" "**/*.bak"
-      "*/.cache/mozilla/firefox" "*/.cache/google-chrome" "*/.cache/BraveSoftware"
-      "*/.config/chromium/*/Service Worker/CacheStorage" "**/node_modules"
-      "**/.npm" "**/__pycache__" "**/.venv" "**/.cargo" "**/.rustup" "**/.gradle"
-    ];
-
-    encryption = {
-      mode = "repokey-blake2";
-      passCommand = "cat ${config.sops.secrets.moonburst_password.path}";
+  systemd.services.mount-nextcloud = {
+    description = "Mount Nextcloud for Borg";
+    after = [ "network-online.target" "sops-nix.service" ];
+    wants = [ "network-online.target" "sops-nix.service" ];
+    serviceConfig = {
+      Type = "simple";
+      RuntimeDirectory = "rclone-mount";
+      # Fix: Added lib.mkForce to override conflicts with hosts/common/default.nix
+      ExecStartPre = lib.mkForce (pkgs.writeShellScript "prep-nextcloud-mount" ''
+        ${pkgs.coreutils}/bin/mkdir -p /mnt/nextcloud
+        RAW_URL=$(${pkgs.coreutils}/bin/cat ${config.sops.secrets.nextcloud_url.path} | ${pkgs.coreutils}/bin/tr -d '[:space:]')
+        USER=$(${pkgs.coreutils}/bin/cat ${config.sops.secrets.nextcloud_user.path} | ${pkgs.coreutils}/bin/tr -d '[:space:]')
+        PASS=$(${pkgs.coreutils}/bin/cat ${config.sops.secrets.nextcloud_pass.path} | ${pkgs.coreutils}/bin/tr -d '[:space:]')
+        BASE_URL=$(echo "$RAW_URL" | ${pkgs.gnused}/bin/sed 's|/*$||')
+        FINAL_URL="$BASE_URL/remote.php/dav/files/$USER/"
+        echo "[NextCloud]
+        type = webdav
+        vendor = nextcloud
+        url = $FINAL_URL
+        user = $USER
+        pass = $PASS" > ${rcloneConfigPath}
+        ${pkgs.coreutils}/bin/chmod 600 ${rcloneConfigPath}
+      '');
+      # Added --rc and --stats 5s to enable the live watch command
+      ExecStart = lib.mkForce "${pkgs.rclone}/bin/rclone mount NextCloud: /mnt/nextcloud --config ${rcloneConfigPath} --vfs-cache-mode full --webdav-nextcloud-chunk-size 4M --allow-non-empty --rc --stats 5s";
+      ExecStop = lib.mkForce "${pkgs.fuse}/bin/fusermount -uz /mnt/nextcloud";
+      Restart = "on-failure";
     };
   };
 
-  # ====================================================================
-  # BORG BACKUP JOB: MoonBeauty-Nextcloud
-  # ====================================================================
-  services.borgbackup.jobs."MoonBeauty-Nextcloud" = {
-    paths = [ "/home/moonburst" ];
-    repo = "/var/lib/borgbackup/nextcloud-staging";
-    startAt = "01:00";
-    extraCreateArgs = "--stats --list --filter=AME";
-
-    prune.keep = {
-      daily = 7;
-      weekly = 4;
-      monthly = 6;
+  services.borgbackup.jobs = {
+    "MoonBeauty-Local" = {
+      paths = [ "/home/moonburst" ];
+      repo = "/mnt/main_backup";
+      startAt = "00:00";
+      doInit = true;
+      compression = "zstd,6";
+      extraCreateArgs = "--stats --list --filter=AME";
+      prune.keep = { daily = 7; weekly = 4; monthly = 6; };
+      exclude = baseExcludes;
+      encryption = { mode = "repokey-blake2"; passCommand = "${borgPassScript}"; };
     };
 
-    exclude = [
-      "*/.steam" "*/.cache" "*/.config/sops" "*/.config/vesktop/sessionData"
-      "*/.config/horizon-electron/Partitions" "*/.var" "*/.local/share/cargo"
-      "*/.local/share/Steam" "*/.lmstudio" "*/.git/objects" "*/Games"
-      "*/stump_backup.tar.gz" "*/.local/share/Trash" "*/.Trash*" "**/.tmp"
-      "**/*.swp" "**/*.bak" "*/.cache/mozilla/firefox" "*/.cache/google-chrome"
-      "*/.cache/BraveSoftware" "*/.config/chromium/*/Service Worker/CacheStorage"
-      "**/node_modules" "**/.npm" "**/__pycache__" "**/.venv" "**/.cargo"
-      "**/.rustup" "**/.gradle"
-    ];
-
-    encryption = {
-      mode = "repokey-blake2";
-      passCommand = "cat ${config.sops.secrets.moonburst_password.path}";
+    "MoonBeauty-Offsite" = {
+      paths = [ "/home/moonburst" ];
+      repo = "/mnt/nextcloud";
+      startAt = "02:00";
+      doInit = true;
+      compression = "zstd,6";
+      extraCreateArgs = "--stats --list --filter=AME";
+      prune.keep = { daily = 7; weekly = 4; monthly = 6; };
+      exclude = baseExcludes ++ [ "*/stump_backup.tar.gz" ];
+      encryption = { mode = "repokey-blake2"; passCommand = "${borgPassScript}"; };
     };
   };
 
-  # Borg System Overrides
-  systemd.services."borgbackup-job-MoonBeauty-Backup" = {
-    restartIfChanged = false;
-    stopIfChanged = false;
-  };
-
-  systemd.services."borgbackup-job-MoonBeauty-Nextcloud" = {
-    restartIfChanged = false;
-    stopIfChanged = false;
+  systemd.services."borgbackup-job-MoonBeauty-Offsite" = {
+    bindsTo = [ "mount-nextcloud.service" ];
+    after = [ "mount-nextcloud.service" ];
   };
 }

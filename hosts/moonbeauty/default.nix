@@ -1,14 +1,15 @@
-{ config, pkgs, lib, ... }:
-
-{
+{ config, pkgs, inputs, lib, ... }: {
   imports = [
-    ../common/default.nix      # Pulls in Sway, Waybar, Brave, and Audacious
+    ../common/default.nix
     ./moonbeauty-hardware.nix
     ./mounts.nix
     ./services.nix
     ./matrix.nix
     ./test.nix
   ];
+
+  # Fix for Home Manager / Flakes activation
+  nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
   networking.hostName = "moonbeauty";
 

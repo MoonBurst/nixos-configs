@@ -5,12 +5,13 @@
   users.users.moonburst = {
     hashedPasswordFile = "/run/secrets-for-users/moonburst_password";
     isNormalUser = true;
+    group = "moonburst"; # Added to satisfy the mandatory group requirement
     description = "MoonBurst";
     home = "/home/moonburst";
 
     openssh.authorizedKeys.keys = [
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKYBYv5x6Pn22dJPgjITf+yFfv/3tgyYOrAA306F5fdh MoonBurstPlays@Gmail.com" # Desktop
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBSf5Y/CzAi2TfrOoQFFIDRDkdTutjZxUo3O2QzQCuEW Moon_Laptop"              # Laptop
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKYBYv5x6Pn22dJPgjITf+yFfv/3tgyYOrAA306F5fdh MoonBurstPlays@Gmail.com"
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBSf5Y/CzAi2TfrOoQFFIDRDkdTutjZxUo3O2QzQCuEW Moon_Laptop"
     ];
 
     extraGroups = [
@@ -27,4 +28,7 @@
 
     shell = pkgs.zsh;
   };
+
+  # Manually defining the group satisfies the "group is unset" error
+  users.groups.moonburst = {};
 }

@@ -1,6 +1,15 @@
 { pkgs, ... }:
 
 {
+  # Fix: Using age.sshKeyPaths to properly support your Ed25519 host key
+  sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+
+  # Permit unfree and insecure packages for Steam and Matrix
+  nixpkgs.config.allowUnfree = true;
+  nixpkgs.config.permittedInsecurePackages = [
+    "olm-3.2.16"
+  ];
+
   services.keyd = {
     enable = true;
     keyboards.default = {
@@ -30,7 +39,14 @@
   };
 
   # Required permissions and packages
-  users.users.moonburst.extraGroups = [ "keyd" "input" "uinput" ];
+  users.users.moonburst = {
+    isNormalUser = true;
+    group = "moonburst";
+    extraGroups = [ "keyd" "input" "uinput" ];
+  };
+
+  users.groups.moonburst = {};
+
   hardware.uinput.enable = true;
   environment.systemPackages = [ pkgs.keyd ];
 
