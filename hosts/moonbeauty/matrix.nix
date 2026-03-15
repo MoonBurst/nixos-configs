@@ -83,10 +83,20 @@ in
         "/_matrix" = {
           proxyPass = "http://127.0.0.1:8008";
           proxyWebsockets = true;
+          extraConfig = ''
+            proxy_read_timeout 300s;
+            proxy_send_timeout 300s;
+            proxy_connect_timeout 300s;
+          '';
         };
         "/_synapse/client" = {
           proxyPass = "http://127.0.0.1:8008";
           proxyWebsockets = true;
+            extraConfig = ''
+            proxy_read_timeout 300s;
+            proxy_send_timeout 300s;
+            proxy_connect_timeout 300s;
+          '';
         };
 
         # Serve the custom config.json
