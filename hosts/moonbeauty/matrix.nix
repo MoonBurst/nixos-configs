@@ -61,6 +61,14 @@ in
     virtualHosts."moonburst.net" = {
       default = true;
       locations = {
+        # Block bot probes for PHP/WordPress and silence the error logs for them
+        "~ \\.php$" = {
+          extraConfig = ''
+            log_not_found off;
+            return 404;
+          '';
+        };
+
         "= /.well-known/matrix/server".extraConfig = ''
           add_header Content-Type application/json;
           add_header Access-Control-Allow-Origin *;
