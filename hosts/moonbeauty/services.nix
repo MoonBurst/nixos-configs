@@ -2,12 +2,9 @@
 
 let
   borgPassScript = pkgs.writeShellScript "borg-pass-script" ''
-    ${pkgs.coreutils}/bin/cat ${config.sops.secrets.moonburst_password.path}
+    ${pkgs.coreutils}/bin/cat ${config.sops.secrets.borg_passphrase.path}
   '';
-
   rcloneConfigPath = "/run/rclone-mount/nextcloud.conf";
-
-  # Global excludes for BOTH Local and Offsite
   baseExcludes = [
     "*/.config/BraveSoftware"
     "*/.cache/BraveSoftware"
@@ -45,11 +42,11 @@ let
   ];
 in
 {
-  # Fix: Pointing to the secrets file so sops.secrets can be decrypted
   sops.defaultSopsFile = ../../secrets.yaml;
 
   sops.secrets = {
     moonburst_password = {};
+    borg_passphrase = {};
     nextcloud_url = {};
     nextcloud_user = {};
     nextcloud_pass = {};
@@ -62,12 +59,15 @@ in
     serviceConfig = {
       Type = "simple";
       RuntimeDirectory = "rclone-mount";
-      # Fix: Added lib.mkForce to override conflicts with hosts/common/default.nix
       ExecStartPre = lib.mkForce (pkgs.writeShellScript "prep-nextcloud-mount" ''
+        export PATH=$PATH:${pkgs.glibc.bin}/bin
         ${pkgs.coreutils}/bin/mkdir -p /mnt/nextcloud
         RAW_URL=$(${pkgs.coreutils}/bin/cat ${config.sops.secrets.nextcloud_url.path} | ${pkgs.coreutils}/bin/tr -d '[:space:]')
         USER=$(${pkgs.coreutils}/bin/cat ${config.sops.secrets.nextcloud_user.path} | ${pkgs.coreutils}/bin/tr -d '[:space:]')
         PASS=$(${pkgs.coreutils}/bin/cat ${config.sops.secrets.nextcloud_pass.path} | ${pkgs.coreutils}/bin/tr -d '[:space:]')
+
+        OBSCURED_PASS=$(${pkgs.rclone}/bin/rclone obscure "$PASS")
+
         BASE_URL=$(echo "$RAW_URL" | ${pkgs.gnused}/bin/sed 's|/*$||')
         FINAL_URL="$BASE_URL/remote.php/dav/files/$USER/"
         echo "[NextCloud]
@@ -75,11 +75,10 @@ in
         vendor = nextcloud
         url = $FINAL_URL
         user = $USER
-        pass = $PASS" > ${rcloneConfigPath}
+        pass = $OBSCURED_PASS" > ${rcloneConfigPath}
         ${pkgs.coreutils}/bin/chmod 600 ${rcloneConfigPath}
       '');
-      # Added --rc and --stats 5s to enable the live watch command
-      ExecStart = lib.mkForce "${pkgs.rclone}/bin/rclone mount NextCloud: /mnt/nextcloud --config ${rcloneConfigPath} --vfs-cache-mode full --webdav-nextcloud-chunk-size 4M --allow-non-empty --rc --stats 5s";
+      ExecStart = lib.mkForce "${pkgs.rclone}/bin/rclone mount NextCloud: /mnt/nextcloud --config ${rcloneConfigPath} --vfs-cache-mode writes --vfs-cache-max-age 1s --vfs-write-back 0s --dir-cache-time 1s --attr-timeout 1s --webdav-nextcloud-chunk-size 4M --allow-non-empty --allow-other --rc --stats 5s";
       ExecStop = lib.mkForce "${pkgs.fuse}/bin/fusermount -uz /mnt/nextcloud";
       Restart = "on-failure";
     };

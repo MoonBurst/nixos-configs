@@ -7,13 +7,14 @@
   sops = {
     defaultSopsFile = ../../secrets.yaml;
     defaultSopsFormat = "yaml";
-    age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+
     age.keyFile = "/home/moonburst/.config/sops/age/moon_keys.txt";
+    age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
 
     secrets = {
       moonburst_password = { };
       sops_key = { neededForUsers = true; };
-      borg_passphrase = { neededForUsers = true; };
+      borg_passphrase = { };
       nextcloud_url = { };
       nextcloud_user = { };
       nextcloud_pass = { };

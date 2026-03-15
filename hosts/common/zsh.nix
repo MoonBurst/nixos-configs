@@ -70,8 +70,7 @@
   };
 
   environment.sessionVariables = {
-    # Keep this for system-wide processes
-    SOPS_AGE_KEY_FILE = "$HOME/.config/sops/age/moon_keys.txt";
+   SOPS_AGE_KEY_FILE = "/home/moonburst/.config/sops/age/moon_keys.txt";
 
     XDG_CACHE_HOME  = "$HOME/.cache";
     XDG_CONFIG_HOME = "$HOME/.config";
