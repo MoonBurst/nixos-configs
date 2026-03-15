@@ -1,5 +1,18 @@
 { config, pkgs, lib, ... }:
 
+let
+  element-web-config = pkgs.writeTextDir "config.json" (builtins.toJSON {
+    default_server_config = {
+      "m.homeserver" = {
+        "base_url" = "https://moonburst.net";
+        "server_name" = "moonburst.net";
+      };
+    };
+    disable_custom_urls = true;
+    disable_guests = true;
+    show_labs_settings = true;
+  });
+in
 {
   ##############################################################################
   # KERNEL EDIT  # Hopefully fixes audio stuttering
@@ -13,8 +26,6 @@
   # LOGGING & SECURITY (SILENCE THE NOISE)
   ##############################################################################
   systemd.settings.Manager.LogLevel = "warning";
-
-
 
   ##############################################################################
   # SECRETS & PERMISSIONS
@@ -68,24 +79,29 @@
             ]
           }';
         '';
-        "/" = {
+
+        "/_matrix" = {
           proxyPass = "http://127.0.0.1:8008";
           proxyWebsockets = true;
-          extraConfig = ''
-            proxy_read_timeout 300s;
-            proxy_send_timeout 300s;
-            proxy_connect_timeout 300s;
-          '';
+        };
+        "/_synapse/client" = {
+          proxyPass = "http://127.0.0.1:8008";
+          proxyWebsockets = true;
         };
 
-        "= /".extraConfig = ''
-          add_header Content-Type text/plain;
-          return 200 'Moonburst Matrix Server Active';
+        # Serve the custom config.json
+        "= /config.json".extraConfig = ''
+          alias ${element-web-config}/config.json;
         '';
+
+        # Root serves the Element Web interface
+        "/" = {
+          root = pkgs.element-web;
+          index = "index.html";
+        };
       };
     };
   };
-
 
   ##############################################################################
   # DATABASE (PostgreSQL)
@@ -111,14 +127,17 @@
   ##############################################################################
   services.matrix-synapse = {
     enable = true;
-    extraConfigFiles = [ config.sops.secrets.matrix_macaroon_secret.path ];
+    extraConfigFiles = [
+      config.sops.secrets.matrix_macaroon_secret.path
+      config.sops.secrets.matrix_registration_secret.path
+    ];
     settings = {
       server_name = "moonburst.net";
       public_baseurl = "https://moonburst.net";
       enable_registration = true;
       enable_registration_without_verification = true;
       suppress_key_server_warning = true;
-      registration_shared_secret_path = config.sops.secrets.matrix_registration_secret.path;
+
       trusted_proxies = [ "127.0.0.1" "::1" ];
       url_preview_enabled = true;
       url_preview_ip_range_allowlist = [ "0.0.0.0/0" ];
@@ -151,7 +170,6 @@
         tls = false;
         x_forwarded = true;
         resources = [ { names = [ "client" "federation" ]; compress = false; } ];
-
       }];
     };
   };
