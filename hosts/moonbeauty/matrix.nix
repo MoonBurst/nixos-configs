@@ -43,16 +43,16 @@ in
   # NETWORK GATEWAY (Cloudflare & Nginx)
   ##############################################################################
   systemd.services.cloudflared-tunnel = {
-    after = [ "network-online.target" "sops-install-secrets.service" ];
-    wants = [ "network-online.target" "sops-install-secrets.service" ];
+    after = [ "network-online.target" "sops-nix.service" ];
+    wants = [ "network-online.target" "sops-nix.service" ];
     wantedBy = [ "multi-user.target" ];
     serviceConfig = {
       Restart = "always";
       RestartSec = "5";
-      DynamicUser = true;
+      User = "root";
       EnvironmentFile = config.sops.secrets.cloudflare_token.path;
     };
-    script = "${pkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate run --proxy-connect-timeout 300s --proxy-read-timeout 300s";
+    script = "${pkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate run";
   };
 
   services.nginx = {
@@ -229,6 +229,10 @@ in
   systemd.services.matrix-synapse.serviceConfig = {
     CPUWeight = 200;
     IOWeight = 200;
+  };
+
+  systemd.services.postgresql.serviceConfig = {
+    IOWeight = 500;
   };
 
   systemd.services.nginx.serviceConfig.Restart = "always";
