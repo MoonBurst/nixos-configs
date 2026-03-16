@@ -27,6 +27,9 @@ in
   ##############################################################################
   systemd.settings.Manager.LogLevel = "warning";
 
+  # MASK THE BROKEN SOPS-NIX DUMMY SERVICE
+  systemd.services.sops-nix.enable = false;
+
   ##############################################################################
   # SECRETS & PERMISSIONS
   ##############################################################################
@@ -43,8 +46,8 @@ in
   # NETWORK GATEWAY (Cloudflare & Nginx)
   ##############################################################################
   systemd.services.cloudflared-tunnel = {
-    after = [ "network-online.target" "sops-nix.service" ];
-    wants = [ "network-online.target" "sops-nix.service" ];
+    after = [ "network-online.target" "sops-install-secrets.service" ];
+    wants = [ "network-online.target" "sops-install-secrets.service" ];
     wantedBy = [ "multi-user.target" ];
     serviceConfig = {
       Restart = "always";
@@ -61,10 +64,28 @@ in
     virtualHosts."moonburst.net" = {
       default = true;
       locations = {
-        # Block bot probes for PHP/WordPress and silence the error logs for them
+        # Silence Element's "domain-specific" config probe
+        "= /config.moonburst.net.json" = {
+          extraConfig = ''
+            log_not_found off;
+            return 404;
+          '';
+        };
+
+        # Block bot probes for WordPress and silence the error logs
+        "~* /wp-includes/.*" = {
+          extraConfig = ''
+            log_not_found off;
+            access_log off;
+            return 404;
+          '';
+        };
+
+        # Block bot probes for PHP and silence the error logs for them
         "~ \\.php$" = {
           extraConfig = ''
             log_not_found off;
+            access_log off;
             return 404;
           '';
         };
@@ -156,17 +177,18 @@ in
       public_baseurl = "https://moonburst.net";
       enable_registration = true;
       enable_registration_without_verification = true;
-      suppress_key_server_warning = true;
 
+      # REMOVED the conflicting registration_shared_secret_path line.
+      # Synapse will now read it from the extraConfigFiles path above.
+
+      suppress_key_server_warning = true;
       trusted_proxies = [ "127.0.0.1" "::1" ];
       url_preview_enabled = true;
       url_preview_ip_range_allowlist = [ "0.0.0.0/0" ];
       max_upload_size = "100M";
-
       federation_sender_instances = [ "main" ];
       background_processes_parallelism_limit = 10;
       media_retention_days = 7;
-
       database = {
         name = "psycopg2";
         allow_unsafe_locale = true;
@@ -176,7 +198,6 @@ in
           host = "/run/postgresql";
         };
       };
-
       log_config = pkgs.writeText "synapse-log-config.json" (builtins.toJSON {
         version = 1;
         formatters.precise.format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s";
@@ -230,15 +251,11 @@ in
     CPUWeight = 200;
     IOWeight = 200;
   };
-
-  systemd.services.postgresql.serviceConfig = {
-    IOWeight = 500;
-  };
-
+  systemd.services.postgresql.serviceConfig.IOWeight = 500;
   systemd.services.nginx.serviceConfig.Restart = "always";
-
   systemd.services.mautrix-discord = {
     after = [ "matrix-synapse.service" "postgresql.service" ];
     serviceConfig.StateDirectory = "mautrix-discord";
   };
 }
+

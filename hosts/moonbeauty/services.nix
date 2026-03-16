@@ -5,7 +5,6 @@ let
     ${pkgs.coreutils}/bin/cat ${config.sops.secrets.borg_passphrase.path}
   '';
   rcloneConfigPath = "/run/rclone-mount/nextcloud.conf";
-  # Centralized cache location on your 3TB HDD
   rcloneCacheDir = "/mnt/3TBHDD/rclone-cache";
 
   baseExcludes = [
@@ -57,8 +56,9 @@ in
 
   systemd.services.mount-nextcloud = {
     description = "Mount Nextcloud for Borg";
-    after = [ "network-online.target" "sops-nix.service" ];
-    wants = [ "network-online.target" "sops-nix.service" ];
+    # FIXED: Using sops-install-secrets.service instead of sops-nix.service
+    after = [ "network-online.target" "sops-install-secrets.service" ];
+    wants = [ "network-online.target" "sops-install-secrets.service" ];
     serviceConfig = {
       Type = "simple";
       RuntimeDirectory = "rclone-mount";
@@ -85,12 +85,6 @@ in
         ${pkgs.coreutils}/bin/chmod 600 ${rcloneConfigPath}
       '');
 
-      # FIXES APPLIED BELOW:
-      # 1. Added --cache-dir pointing to your 3TB HDD
-      # 2. Changed mode to 'full' for better Borg compatibility
-      # 3. Increased write-back delay to 5s to prevent "file not found" errors
-      # 4. Increased cache-max-age and dir-cache-time to stop rclone from expiring files too fast
-      # 5. Set chunk size to 10M to balance speed and avoid Cloudflare 524 timeouts
       ExecStart = lib.mkForce ''
         ${pkgs.rclone}/bin/rclone mount NextCloud: /mnt/nextcloud \
           --config ${rcloneConfigPath} \
@@ -102,6 +96,7 @@ in
           --dir-cache-time 5m \
           --attr-timeout 5m \
           --webdav-nextcloud-chunk-size 10M \
+          --bwlimit 200k \
           --allow-non-empty \
           --allow-other \
           --rc \
