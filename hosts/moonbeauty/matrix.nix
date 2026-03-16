@@ -52,7 +52,7 @@ in
       DynamicUser = true;
       EnvironmentFile = config.sops.secrets.cloudflare_token.path;
     };
-    script = "${pkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate run --proxy-connect-timeout 300s";
+    script = "${pkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate run --proxy-connect-timeout 300s --proxy-read-timeout 300s";
   };
 
   services.nginx = {
@@ -92,6 +92,7 @@ in
           proxyPass = "http://127.0.0.1:8008";
           proxyWebsockets = true;
           extraConfig = ''
+            proxy_buffering off;
             proxy_read_timeout 300s;
             proxy_send_timeout 300s;
             proxy_connect_timeout 300s;
@@ -101,6 +102,7 @@ in
           proxyPass = "http://127.0.0.1:8008";
           proxyWebsockets = true;
             extraConfig = ''
+            proxy_buffering off;
             proxy_read_timeout 300s;
             proxy_send_timeout 300s;
             proxy_connect_timeout 300s;
@@ -227,16 +229,12 @@ in
   systemd.services.matrix-synapse.serviceConfig = {
     CPUWeight = 200;
     IOWeight = 200;
-    CPUAffinity = "0 1";
   };
-  systemd.services.postgresql.serviceConfig.CPUAffinity = "0 1";
-  systemd.services.cloudflared-tunnel.serviceConfig.CPUAffinity = "0 1";
 
   systemd.services.nginx.serviceConfig.Restart = "always";
 
   systemd.services.mautrix-discord = {
     after = [ "matrix-synapse.service" "postgresql.service" ];
     serviceConfig.StateDirectory = "mautrix-discord";
-    serviceConfig.CPUAffinity = "0 1";
   };
 }
