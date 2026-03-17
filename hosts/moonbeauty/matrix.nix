@@ -64,19 +64,19 @@ in
     virtualHosts."moonburst.net" = {
       default = true;
       locations = {
-        # Silence Element's "domain-specific" config probe
-        "= /config.moonburst.net.json" = {
+        # SILENCE COMMON BOT PROBES (Removed ^ anchor to catch nested /wp1/wp-includes/ etc)
+        "~* (admin|api|robots\\.txt|sitemap\\.xml|\\.git|\\.env|wp-includes|wp-content|wp-admin|wlwmanifest)" = {
           extraConfig = ''
             log_not_found off;
+            access_log off;
             return 404;
           '';
         };
 
-        # Block bot probes for WordPress and silence the error logs
-        "~* /wp-includes/.*" = {
+        # Silence Element's "domain-specific" config probe
+        "= /config.moonburst.net.json" = {
           extraConfig = ''
             log_not_found off;
-            access_log off;
             return 404;
           '';
         };
@@ -178,9 +178,6 @@ in
       enable_registration = true;
       enable_registration_without_verification = true;
 
-      # REMOVED the conflicting registration_shared_secret_path line.
-      # Synapse will now read it from the extraConfigFiles path above.
-
       suppress_key_server_warning = true;
       trusted_proxies = [ "127.0.0.1" "::1" ];
       url_preview_enabled = true;
@@ -258,4 +255,3 @@ in
     serviceConfig.StateDirectory = "mautrix-discord";
   };
 }
-

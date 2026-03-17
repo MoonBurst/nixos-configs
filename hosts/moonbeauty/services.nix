@@ -1,9 +1,6 @@
 { config, pkgs, lib, ... }:
 
 let
-  borgPassScript = pkgs.writeShellScript "borg-pass-script" ''
-    ${pkgs.coreutils}/bin/cat ${config.sops.secrets.borg_passphrase.path}
-  '';
   rcloneConfigPath = "/run/rclone-mount/nextcloud.conf";
   rcloneCacheDir = "/mnt/3TBHDD/rclone-cache";
 
@@ -56,7 +53,6 @@ in
 
   systemd.services.mount-nextcloud = {
     description = "Mount Nextcloud for Borg";
-    # FIXED: Using sops-install-secrets.service instead of sops-nix.service
     after = [ "network-online.target" "sops-install-secrets.service" ];
     wants = [ "network-online.target" "sops-install-secrets.service" ];
     serviceConfig = {
@@ -118,7 +114,11 @@ in
       extraCreateArgs = "--stats --list --filter=AME";
       prune.keep = { daily = 7; weekly = 4; monthly = 6; };
       exclude = baseExcludes;
-      encryption = { mode = "repokey-blake2"; passCommand = "${borgPassScript}"; };
+      encryption = {
+        mode = "repokey-blake2";
+        # FIXED: Changed to passCommand and used cat to read the secret
+        passCommand = "${pkgs.coreutils}/bin/cat ${config.sops.secrets.borg_passphrase.path}";
+      };
     };
 
     "MoonBeauty-Offsite" = {
@@ -130,7 +130,11 @@ in
       extraCreateArgs = "--stats --list --filter=AME";
       prune.keep = { daily = 7; weekly = 4; monthly = 6; };
       exclude = baseExcludes ++ [ "*/stump_backup.tar.gz" ];
-      encryption = { mode = "repokey-blake2"; passCommand = "${borgPassScript}"; };
+      encryption = {
+        mode = "repokey-blake2";
+        # FIXED: Changed to passCommand and used cat to read the secret
+        passCommand = "${pkgs.coreutils}/bin/cat ${config.sops.secrets.borg_passphrase.path}";
+      };
     };
   };
 
