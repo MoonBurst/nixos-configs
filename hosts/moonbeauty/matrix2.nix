@@ -155,9 +155,10 @@ in
         portal_only_on_message = true;
         presence = true;
 
-        # FORCED STRING FIX: Wrap in extra single quotes to force literal YAML string output
-        username_template = lib.mkForce "'discord_{{.ID}}'";
-        displayname_template = lib.mkForce "'{{.DisplayName}}'";
+        # CRITICAL FIX: lib.mkForce on the string value prevents the Nix module
+        # from interpreting this as a Nix variable or a map object.
+        username_template = lib.mkForce "discord_{{.ID}}";
+        displayname_template = lib.mkForce "{{.DisplayName}}";
 
         startup_private_channel_create_limit = 0;
         sync_direct_chats = true;
