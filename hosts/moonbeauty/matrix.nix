@@ -146,10 +146,12 @@ in
         };
       };
       bridge = lib.mkForce {
-        # Using double-quoted strings and lib.mkForce at the bridge level
-        # is the most robust way to ensure Nix doesn't mangle the Go templates.
+        # Using '' for literal strings to avoid any hidden escape character issues
         username_template = "discord_{{.ID}}";
         displayname_template = "{{.DisplayName}}";
+        channel_name_template = "{{if or (eq .Type 3) (eq .Type 4)}}{{.Name}}{{else}}#{{.Name}}{{end}}";
+        guild_name_template = "{{.Name}}";
+
         portal_only_on_message = true;
         presence = true;
         startup_private_channel_create_limit = 0;
