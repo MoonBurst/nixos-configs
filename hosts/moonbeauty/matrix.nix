@@ -1,7 +1,7 @@
 { config, pkgs, lib, ... }:
 
 let
-  conduit-pkg = pkgs.matrix-continuwuity;
+  conduit-pkg = pkgs.matrix-conduwuit; # Fixed the package name for consistency
 
   element-web-config = pkgs.writeTextDir "config.json" (builtins.toJSON {
     default_server_config = {
@@ -145,21 +145,23 @@ in
           uri = "postgres:///mautrix-discord?host=/run/postgresql";
         };
       };
-      bridge = {
+      # Fix: Wrapping the entire bridge set in lib.mkForce
+      # stops the individual templates from being wrapped in YAML metadata.
+      bridge = lib.mkForce {
+        username_template = "discord_{{.ID}}";
+        displayname_template = "{{.DisplayName}}";
         portal_only_on_message = true;
         presence = true;
-
-        # NUCLEAR FIX: Force raw strings to bypass NixOS option metadata
-        username_template = lib.mkForce (builtins.unsafeDiscardStringContext "discord_{{.ID}}");
-        displayname_template = lib.mkForce (builtins.unsafeDiscardStringContext "{{.DisplayName}}");
-
         startup_private_channel_create_limit = 0;
         sync_direct_chats = true;
         invite_on_create = true;
         auto_join_invites = true;
         double_puppet_server_map = { "moonburst.net" = "https://moonburst.net"; };
         double_puppet_allow_discovery = true;
-        permissions = { "@moonburst:moonburst.net" = "admin"; "moonburst.net" = "user"; };
+        permissions = {
+          "@moonburst:moonburst.net" = "admin";
+          "moonburst.net" = "user";
+        };
         private_chat_portal_meta = "always";
         user_avatar_sync = true;
         fetch_message_methods = [ "api" "gateway" ];
