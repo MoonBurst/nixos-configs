@@ -132,14 +132,6 @@ in
     enable = true;
     environmentFile = config.sops.secrets.discord_bot_token.path;
 
-    # FIX: Move templates into an extraConfig block if the settings block is being ignored
-    extraConfig = {
-      bridge = {
-        username_template = "discord_{{.ID}}";
-        displayname_template = "{{.DisplayName}}";
-      };
-    };
-
     settings = {
       homeserver = {
         address = "http://127.0.0.1:6167";
@@ -157,6 +149,11 @@ in
       bridge = {
         portal_only_on_message = true;
         presence = true;
+
+        # FORCED STRING FIX - lib.mkForce ensures these are not overwritten by empty defaults
+        username_template = lib.mkForce "discord_{{.ID}}";
+        displayname_template = lib.mkForce "{{.DisplayName}}";
+
         startup_private_channel_create_limit = 0;
         sync_direct_chats = true;
         invite_on_create = true;
