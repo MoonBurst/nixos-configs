@@ -155,9 +155,10 @@ in
         portal_only_on_message = true;
         presence = true;
 
-        # FORCED LITERAL STRINGS: Using mkForce + indented strings to ensure raw output
-        username_template = lib.mkForce ''discord_{{.ID}}'';
-        displayname_template = lib.mkForce ''{{.DisplayName}}'';
+        # CRITICAL FIX: Use lib.mkForce on a plain string.
+        # Do NOT use any other Nix functions here.
+        username_template = lib.mkForce "discord_{{.ID}}";
+        displayname_template = lib.mkForce "{{.DisplayName}}";
 
         startup_private_channel_create_limit = 0;
         sync_direct_chats = true;
