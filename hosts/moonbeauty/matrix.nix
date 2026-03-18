@@ -1,7 +1,6 @@
 { config, pkgs, lib, ... }:
 
 let
-  # Using the high-performance Rust fork (Conduwuit)
   conduit-pkg = pkgs.matrix-continuwuity;
 
   element-web-config = pkgs.writeTextDir "config.json" (builtins.toJSON {
@@ -25,9 +24,6 @@ let
   });
 in
 {
-  ###############################
-  # KERNEL PERFORMANCE TWEAKS
-  ###############################
   boot.kernel.sysctl = {
     "net.core.rmem_max" = 7500000;
     "net.core.wmem_max" = 7500000;
@@ -35,9 +31,6 @@ in
 
   systemd.settings.Manager.LogLevel = "warning";
 
-  ###############################
-  # SECRETS & PERMISSIONS
-  ###############################
   sops = {
     defaultSopsFile = lib.mkForce ../../secrets.yaml;
     secrets = {
@@ -58,12 +51,10 @@ in
   users.users.mautrix-discord = {
     isSystemUser = true;
     group = "mautrix-discord";
+    extraGroups = [ "postgres" ];
   };
   users.groups.mautrix-discord = { };
 
-  ###############################
-  # NETWORK GATEWAY (NGINX)
-  ###############################
   services.nginx = {
     enable = true;
     recommendedProxySettings = true;
@@ -86,7 +77,6 @@ in
           proxyPass = "http://127.0.0.1:6167";
           proxyWebsockets = true;
           extraConfig = ''
-            # CRITICAL: Matrix signatures fail if Nginx modifies the body or Host header
             proxy_buffering off;
             proxy_request_buffering off;
             proxy_set_header Host "moonburst.net";
@@ -118,9 +108,6 @@ in
     script = "${pkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate run";
   };
 
-  ###############################
-  # DATABASE (PostgreSQL)
-  ###############################
   services.postgresql = {
     enable = true;
     package = pkgs.postgresql_16;
@@ -128,9 +115,6 @@ in
     ensureUsers = [ { name = "mautrix-discord"; ensureDBOwnership = true; } ];
   };
 
-  ###############################
-  # RUST MATRIX SERVER (Conduwuit)
-  ###############################
   services.matrix-conduit = {
     enable = true;
     package = conduit-pkg;
@@ -140,16 +124,15 @@ in
       port = 6167;
       address = "127.0.0.1";
       max_request_size = 104857600;
-      # Removed deprecated keys causing startup warnings
       trusted_servers = [ "matrix.org" "moonburst.net" ];
+      appservice_configs = [
+        "/var/lib/mautrix-discord/discord-registration.yaml"
+      ];
     };
   };
 
   systemd.services.conduit.serviceConfig.ExecStart = lib.mkForce "${conduit-pkg}/bin/conduwuit";
 
-  ###############################
-  # DISCORD BRIDGE
-  ###############################
   services.mautrix-discord = {
     enable = true;
     environmentFile = config.sops.secrets.discord_bot_token.path;
@@ -172,16 +155,16 @@ in
         portal_only_on_message = true;
         presence = true;
 
-        # Better name templates to force real names
-        displayname_template = "{{or .GlobalName .Username}}";
-        username_template = "{{.displayname}} (Discord)";
+        # FIX: Using '' (indented string) to ensure literal output in YAML
+        # This prevents Nix from adding surrounding double quotes which can break the Go parser
+        username_template = ''discord_{{.ID}}'';
+        displayname_template = ''{{or .GlobalName .Username}} (Discord)'';
 
         startup_private_channel_create_limit = 0;
         sync_direct_chats = true;
         invite_on_create = true;
         auto_join_invites = true;
 
-        # Force bridge to use local account power for metadata pushes
         double_puppet_server_map = {
           "moonburst.net" = "https://moonburst.net";
         };

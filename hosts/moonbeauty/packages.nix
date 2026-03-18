@@ -1,19 +1,6 @@
 { pkgs, config, lib, ... }:
 
 {
-  # 1. Create a Desktop Launcher for Brave in App Mode
-xdg.desktopEntries.cinny-brave = {
-    name = "Cinny";
-    genericName = "Matrix Client";
-    exec = "${pkgs.brave}/bin/brave --app=https://dev.cinny.in --enable-features=WebRTCPipeWireCapturer --enable-wayland-ime";
-    icon = "matrix";
-    terminal = false;
-    categories = [ "Network" "InstantMessaging" ];
-    settings = {
-      StartupWMClass = "brave-dev.cinny.in__-Default";
-      Keywords = "matrix;cinny;chat;messenger;";
-    };
-};
 
   home.packages = with pkgs; [
     # --- Communication & Social ---
@@ -44,6 +31,7 @@ xdg.desktopEntries.cinny-brave = {
     cura-appimage       # Popular 3D printer slicer (AppImage version)
     orca-slicer         # High-performance slicer based on Bambu/PrusaSlicer
     openscad            # Programmatic 3D CAD modeler
+    cinny-desktop
   ];
 
   home.stateVersion = "25.11";

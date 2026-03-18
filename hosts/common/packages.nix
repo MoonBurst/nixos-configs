@@ -64,5 +64,6 @@
     qt6Packages.qt6ct           # QT theming logic
     pass                        # Password manager
 
+
   ];
 }
