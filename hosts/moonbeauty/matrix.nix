@@ -145,9 +145,9 @@ in
           uri = "postgres:///mautrix-discord?host=/run/postgresql";
         };
       };
-      # We lib.mkForce the entire bridge set to stop Nix from injecting
-      # metadata wrappers like "_type: override" into the YAML file.
       bridge = lib.mkForce {
+        # Using double-quoted strings and lib.mkForce at the bridge level
+        # is the most robust way to ensure Nix doesn't mangle the Go templates.
         username_template = "discord_{{.ID}}";
         displayname_template = "{{.DisplayName}}";
         portal_only_on_message = true;
