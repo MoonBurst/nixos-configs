@@ -1,7 +1,7 @@
 { config, pkgs, lib, ... }:
 
 let
-  conduit-pkg = pkgs.matrix-conduwuit; # Fixed the package name for consistency
+  conduit-pkg = pkgs.matrix-continuwuity;
 
   element-web-config = pkgs.writeTextDir "config.json" (builtins.toJSON {
     default_server_config = {
@@ -145,8 +145,8 @@ in
           uri = "postgres:///mautrix-discord?host=/run/postgresql";
         };
       };
-      # Fix: Wrapping the entire bridge set in lib.mkForce
-      # stops the individual templates from being wrapped in YAML metadata.
+      # We lib.mkForce the entire bridge set to stop Nix from injecting
+      # metadata wrappers like "_type: override" into the YAML file.
       bridge = lib.mkForce {
         username_template = "discord_{{.ID}}";
         displayname_template = "{{.DisplayName}}";
