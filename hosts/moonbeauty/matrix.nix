@@ -132,6 +132,8 @@ in
     enable = true;
     environmentFile = config.sops.secrets.discord_bot_token.path;
 
+    # FIX: Use the module's top-level options for templates
+    # This ensures the module doesn't output an empty field
     settings = {
       homeserver = {
         address = "http://127.0.0.1:6167";
@@ -150,9 +152,9 @@ in
         portal_only_on_message = true;
         presence = true;
 
-        # FORCED STRING FIX - lib.mkForce ensures these are not overwritten by empty defaults
-        username_template = lib.mkForce "discord_{{.ID}}";
-        displayname_template = lib.mkForce "{{.DisplayName}}";
+        # FORCED STRING FIX
+        username_template = "discord_{{.ID}}";
+        displayname_template = "{{.DisplayName}}";
 
         startup_private_channel_create_limit = 0;
         sync_direct_chats = true;
