@@ -155,20 +155,20 @@ in
         portal_only_on_message = true;
         presence = true;
 
-        # MANDATORY: These must be exactly {{.ID}} and use '' to avoid extra YAML quoting
-        username_template = ''discord_{{.ID}}'';
-        displayname_template = ''{{or .GlobalName .Username}} (Discord)'';
+        # FIX: Explicitly forcing the template without extra quotes for the Go parser
+        username_template = lib.mkForce "discord_{{.ID}}";
+        displayname_template = lib.mkForce "{{.DisplayName}}";
 
         startup_private_channel_create_limit = 0;
         sync_direct_chats = true;
         invite_on_create = true;
         auto_join_invites = true;
+        dm_space_id = "";
 
         double_puppet_server_map = {
           "moonburst.net" = "https://moonburst.net";
         };
         double_puppet_allow_discovery = true;
-
         permissions = {
           "@moonburst:moonburst.net" = "admin";
           "moonburst.net" = "user";

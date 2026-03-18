@@ -37,15 +37,23 @@ in
       "cloudflare_token" = { };
       "matrix_macaroon_secret" = { owner = lib.mkForce "matrix-conduit"; };
       "matrix_registration_secret" = { owner = lib.mkForce "matrix-conduit"; };
+      "discord_bot_token" = { owner = lib.mkForce "mautrix-discord"; };
     };
   };
 
   users.users.matrix-conduit = {
     isSystemUser = true;
     group = "matrix-conduit";
-    extraGroups = [ "postgres" ];
+    extraGroups = [ "mautrix-discord" "postgres" ];
   };
   users.groups.matrix-conduit = { };
+
+  users.users.mautrix-discord = {
+    isSystemUser = true;
+    group = "mautrix-discord";
+    extraGroups = [ "postgres" ];
+  };
+  users.groups.mautrix-discord = { };
 
   services.nginx = {
     enable = true;
@@ -53,12 +61,18 @@ in
     virtualHosts."moonburst.net" = {
       default = true;
       locations = {
-        "= /.well-known/matrix/server".extraConfig = "add_header Content-Type application/json; add_header Access-Control-Allow-Origin *; return 200 '{\"m.server\":\"moonburst.net:443\"}';";
+        "= /.well-known/matrix/server".extraConfig = ''
+          add_header Content-Type application/json;
+          add_header Access-Control-Allow-Origin *;
+          return 200 '{"m.server":"moonburst.net:443"}';
+        '';
+
         "= /.well-known/matrix/client".extraConfig = ''
           add_header Content-Type application/json;
           add_header Access-Control-Allow-Origin *;
           return 200 '{"m.homeserver":{"base_url":"https://moonburst.net"}}';
         '';
+
         "/_matrix" = {
           proxyPass = "http://127.0.0.1:6167";
           proxyWebsockets = true;
@@ -71,6 +85,7 @@ in
             client_max_body_size 100M;
           '';
         };
+
         "= /config.json".extraConfig = "alias ${element-web-config}/config.json;";
         "/" = {
           root = pkgs.element-web;
@@ -110,8 +125,68 @@ in
       address = "127.0.0.1";
       max_request_size = 104857600;
       trusted_servers = [ "matrix.org" "moonburst.net" ];
+      appservice_configs = [
+        "/var/lib/mautrix-discord/discord-registration.yaml"
+      ];
     };
   };
 
   systemd.services.conduit.serviceConfig.ExecStart = lib.mkForce "${conduit-pkg}/bin/conduwuit";
+
+  services.mautrix-discord = {
+    enable = true;
+    environmentFile = config.sops.secrets.discord_bot_token.path;
+
+    settings = {
+      homeserver = {
+        address = "http://127.0.0.1:6167";
+        domain = "moonburst.net";
+      };
+      appservice = {
+        address = "http://127.0.0.1:29334";
+        port = 29334;
+        sender_localpart = "discordbot";
+        database = {
+          type = "postgres";
+          uri = "postgres:///mautrix-discord?host=/run/postgresql";
+        };
+      };
+      bridge = {
+        portal_only_on_message = true;
+        presence = true;
+
+        # FORCED STRING FIX: Wrap in extra single quotes to force literal YAML string output
+        username_template = lib.mkForce "'discord_{{.ID}}'";
+        displayname_template = lib.mkForce "'{{.DisplayName}}'";
+
+        startup_private_channel_create_limit = 0;
+        sync_direct_chats = true;
+        invite_on_create = true;
+        auto_join_invites = true;
+        dm_space_id = "";
+
+        double_puppet_server_map = {
+          "moonburst.net" = "https://moonburst.net";
+        };
+        double_puppet_allow_discovery = true;
+        permissions = {
+          "@moonburst:moonburst.net" = "admin";
+          "moonburst.net" = "user";
+        };
+
+        private_chat_portal_meta = "always";
+        user_avatar_sync = true;
+        fetch_message_methods = [ "api" "gateway" ];
+        lookup_guild_names = true;
+        allow_attachments = true;
+      };
+      encryption = {
+        allow = false;
+        default = false;
+      };
+      logging = {
+        print_level = "error";
+      };
+    };
+  };
 }
