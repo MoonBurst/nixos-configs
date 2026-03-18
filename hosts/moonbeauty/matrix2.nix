@@ -131,6 +131,10 @@ in
   services.mautrix-discord = {
     enable = true;
     environmentFile = config.sops.secrets.discord_bot_token.path;
+
+    # FIX: Move these to the top level of the service if the settings block is failing
+    # Note: If your nixpkgs version doesn't support these here, it will error on build.
+    # If it errors, we will move them back and use lib.mkForce.
     settings = {
       homeserver = {
         address = "http://127.0.0.1:6167";
@@ -149,9 +153,9 @@ in
         portal_only_on_message = true;
         presence = true;
 
-        # FIX: lib.mkForce on the string value prevents Nix from outputting an empty field
-        username_template = lib.mkForce "discord_{{.ID}}";
-        displayname_template = lib.mkForce "{{.DisplayName}}";
+        # EXPLICIT TEMPLATES
+        username_template = "discord_{{.ID}}";
+        displayname_template = "{{.DisplayName}}";
 
         startup_private_channel_create_limit = 0;
         sync_direct_chats = true;
