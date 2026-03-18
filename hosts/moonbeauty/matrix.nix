@@ -155,8 +155,7 @@ in
         portal_only_on_message = true;
         presence = true;
 
-        # FIX: Using '' (indented string) to ensure literal output in YAML
-        # This prevents Nix from adding surrounding double quotes which can break the Go parser
+        # MANDATORY: These must be exactly {{.ID}} and use '' to avoid extra YAML quoting
         username_template = ''discord_{{.ID}}'';
         displayname_template = ''{{or .GlobalName .Username}} (Discord)'';
 
