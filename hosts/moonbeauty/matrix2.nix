@@ -149,9 +149,9 @@ in
         portal_only_on_message = true;
         presence = true;
 
-        # FORCED STRING FIX
-        username_template = "discord_{{.ID}}";
-        displayname_template = "{{.DisplayName}}";
+        # FIX: lib.mkForce on the string value prevents Nix from outputting an empty field
+        username_template = lib.mkForce "discord_{{.ID}}";
+        displayname_template = lib.mkForce "{{.DisplayName}}";
 
         startup_private_channel_create_limit = 0;
         sync_direct_chats = true;
