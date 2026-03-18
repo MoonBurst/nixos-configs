@@ -146,7 +146,8 @@ in
         };
       };
       bridge = lib.mkForce {
-        # Using '' for literal strings to avoid any hidden escape character issues
+        # Using lib.mkForce on the entire 'bridge' set and clean strings
+        # ensures no metadata leakage or template mangling.
         username_template = "discord_{{.ID}}";
         displayname_template = "{{.DisplayName}}";
         channel_name_template = "{{if or (eq .Type 3) (eq .Type 4)}}{{.Name}}{{else}}#{{.Name}}{{end}}";
