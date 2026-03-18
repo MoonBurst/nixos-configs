@@ -1,7 +1,6 @@
 { config, pkgs, lib, ... }:
 
 let
-  # Using the high-performance Rust fork (Conduwuit)
   conduit-pkg = pkgs.matrix-continuwuity;
 
   element-web-config = pkgs.writeTextDir "config.json" (builtins.toJSON {
@@ -25,9 +24,6 @@ let
   });
 in
 {
-  ###############################
-  # KERNEL PERFORMANCE TWEAKS
-  ###############################
   boot.kernel.sysctl = {
     "net.core.rmem_max" = 7500000;
     "net.core.wmem_max" = 7500000;
@@ -35,58 +31,38 @@ in
 
   systemd.settings.Manager.LogLevel = "warning";
 
-  ###############################
-  # SECRETS & PERMISSIONS
-  ###############################
   sops = {
     defaultSopsFile = lib.mkForce ../../secrets.yaml;
     secrets = {
       "cloudflare_token" = { };
       "matrix_macaroon_secret" = { owner = lib.mkForce "matrix-conduit"; };
       "matrix_registration_secret" = { owner = lib.mkForce "matrix-conduit"; };
-      "discord_bot_token" = { owner = lib.mkForce "mautrix-discord"; };
     };
   };
 
   users.users.matrix-conduit = {
     isSystemUser = true;
     group = "matrix-conduit";
-    extraGroups = [ "mautrix-discord" "postgres" ];
+    extraGroups = [ "postgres" ];
   };
   users.groups.matrix-conduit = { };
 
-  users.users.mautrix-discord = {
-    isSystemUser = true;
-    group = "mautrix-discord";
-  };
-  users.groups.mautrix-discord = { };
-
-  ###############################
-  # NETWORK GATEWAY (NGINX)
-  ###############################
   services.nginx = {
     enable = true;
     recommendedProxySettings = true;
     virtualHosts."moonburst.net" = {
       default = true;
       locations = {
-        "= /.well-known/matrix/server".extraConfig = ''
-          add_header Content-Type application/json;
-          add_header Access-Control-Allow-Origin *;
-          return 200 '{"m.server":"moonburst.net:443"}';
-        '';
-
+        "= /.well-known/matrix/server".extraConfig = "add_header Content-Type application/json; add_header Access-Control-Allow-Origin *; return 200 '{\"m.server\":\"moonburst.net:443\"}';";
         "= /.well-known/matrix/client".extraConfig = ''
           add_header Content-Type application/json;
           add_header Access-Control-Allow-Origin *;
           return 200 '{"m.homeserver":{"base_url":"https://moonburst.net"}}';
         '';
-
         "/_matrix" = {
           proxyPass = "http://127.0.0.1:6167";
           proxyWebsockets = true;
           extraConfig = ''
-            # CRITICAL: Matrix signatures fail if Nginx modifies the body or Host header
             proxy_buffering off;
             proxy_request_buffering off;
             proxy_set_header Host "moonburst.net";
@@ -95,7 +71,6 @@ in
             client_max_body_size 100M;
           '';
         };
-
         "= /config.json".extraConfig = "alias ${element-web-config}/config.json;";
         "/" = {
           root = pkgs.element-web;
@@ -118,9 +93,6 @@ in
     script = "${pkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate run";
   };
 
-  ###############################
-  # DATABASE (PostgreSQL)
-  ###############################
   services.postgresql = {
     enable = true;
     package = pkgs.postgresql_16;
@@ -128,9 +100,6 @@ in
     ensureUsers = [ { name = "mautrix-discord"; ensureDBOwnership = true; } ];
   };
 
-  ###############################
-  # RUST MATRIX SERVER (Conduwuit)
-  ###############################
   services.matrix-conduit = {
     enable = true;
     package = conduit-pkg;
@@ -140,71 +109,9 @@ in
       port = 6167;
       address = "127.0.0.1";
       max_request_size = 104857600;
-      # Removed deprecated keys causing startup warnings
       trusted_servers = [ "matrix.org" "moonburst.net" ];
     };
   };
 
   systemd.services.conduit.serviceConfig.ExecStart = lib.mkForce "${conduit-pkg}/bin/conduwuit";
-
-  ###############################
-  # DISCORD BRIDGE
-  ###############################
-  services.mautrix-discord = {
-    enable = true;
-    environmentFile = config.sops.secrets.discord_bot_token.path;
-
-    settings = {
-      homeserver = {
-        address = "http://127.0.0.1:6167";
-        domain = "moonburst.net";
-      };
-      appservice = {
-        address = "http://127.0.0.1:29334";
-        port = 29334;
-        sender_localpart = "discordbot";
-        database = {
-          type = "postgres";
-          uri = "postgres:///mautrix-discord?host=/run/postgresql";
-        };
-      };
-      bridge = {
-        portal_only_on_message = true;
-        presence = true;
-
-        # Better name templates to force real names
-        displayname_template = "{{or .GlobalName .Username}}";
-        username_template = "{{.displayname}} (Discord)";
-
-        startup_private_channel_create_limit = 0;
-        sync_direct_chats = true;
-        invite_on_create = true;
-        auto_join_invites = true;
-
-        # Force bridge to use local account power for metadata pushes
-        double_puppet_server_map = {
-          "moonburst.net" = "https://moonburst.net";
-        };
-        double_puppet_allow_discovery = true;
-
-        permissions = {
-          "@moonburst:moonburst.net" = "admin";
-          "moonburst.net" = "user";
-        };
-
-        private_chat_portal_meta = "always";
-        user_avatar_sync = true;
-        fetch_message_methods = [ "api" "gateway" ];
-        lookup_guild_names = true;
-        allow_attachments = true;
-      };
-      encryption = {
-        allow = false;
-        default = false;
-      };
-      logging = {
-        print_level = "error";
-      };
-    };
-  };
 }
