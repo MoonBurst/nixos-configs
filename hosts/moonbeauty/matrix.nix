@@ -146,12 +146,12 @@ in
         };
       };
       bridge = lib.mkForce {
-        # Using lib.mkForce on the entire 'bridge' set and clean strings
-        # ensures no metadata leakage or template mangling.
-        username_template = "discord_{{.ID}}";
-        displayname_template = "{{.DisplayName}}";
-        channel_name_template = "{{if or (eq .Type 3) (eq .Type 4)}}{{.Name}}{{else}}#{{.Name}}{{end}}";
-        guild_name_template = "{{.Name}}";
+        # Using builtins.unsafeDiscardStringContext on the templates
+        # to ensure they are passed as raw strings without Nix metadata.
+        username_template = builtins.unsafeDiscardStringContext "discord_{{.ID}}";
+        displayname_template = builtins.unsafeDiscardStringContext "{{.DisplayName}}";
+        channel_name_template = builtins.unsafeDiscardStringContext "{{if or (eq .Type 3) (eq .Type 4)}}{{.Name}}{{else}}#{{.Name}}{{end}}";
+        guild_name_template = builtins.unsafeDiscardStringContext "{{.Name}}";
 
         portal_only_on_message = true;
         presence = true;
