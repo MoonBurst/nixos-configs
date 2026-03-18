@@ -155,10 +155,9 @@ in
         portal_only_on_message = true;
         presence = true;
 
-        # CRITICAL FIX: Use lib.mkForce on a plain string.
-        # Do NOT use any other Nix functions here.
-        username_template = lib.mkForce "discord_{{.ID}}";
-        displayname_template = lib.mkForce "{{.DisplayName}}";
+        # REMOVED lib.mkForce: Use a raw string to avoid the 'override' object wrapper
+        username_template = "discord_{{.ID}}";
+        displayname_template = "{{.DisplayName}}";
 
         startup_private_channel_create_limit = 0;
         sync_direct_chats = true;
