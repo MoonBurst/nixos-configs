@@ -137,9 +137,6 @@ in
     enable = true;
     environmentFile = config.sops.secrets.discord_bot_token.path;
 
-    # FIX: Use module top-level template options to ensure they aren't empty
-    # Note: If your nixpkgs version doesn't support these here, it will error on build.
-    # We use lib.mkForce to override the broken defaults.
     settings = {
       homeserver = {
         address = "http://127.0.0.1:6167";
@@ -158,14 +155,16 @@ in
         portal_only_on_message = true;
         presence = true;
 
-        # EXPLICIT TEMPLATES USING GO SYNTAX
-        username_template = lib.mkForce "discord_{{.ID}}";
-        displayname_template = lib.mkForce "{{.DisplayName}}";
+        # FORCED LITERAL STRINGS: Using mkForce + indented strings to ensure raw output
+        username_template = lib.mkForce ''discord_{{.ID}}'';
+        displayname_template = lib.mkForce ''{{.DisplayName}}'';
 
         startup_private_channel_create_limit = 0;
         sync_direct_chats = true;
         invite_on_create = true;
         auto_join_invites = true;
+        dm_space_id = "";
+
         double_puppet_server_map = {
           "moonburst.net" = "https://moonburst.net";
         };
