@@ -66,11 +66,13 @@ in
           add_header Access-Control-Allow-Origin *;
           return 200 '{"m.server":"moonburst.net:443"}';
         '';
+
         "= /.well-known/matrix/client".extraConfig = ''
           add_header Content-Type application/json;
           add_header Access-Control-Allow-Origin *;
           return 200 '{"m.homeserver":{"base_url":"https://moonburst.net"}}';
         '';
+
         "/_matrix" = {
           proxyPass = "http://127.0.0.1:6167";
           proxyWebsockets = true;
@@ -83,6 +85,7 @@ in
             client_max_body_size 100M;
           '';
         };
+
         "= /config.json".extraConfig = "alias ${element-web-config}/config.json;";
         "/" = {
           root = pkgs.element-web;
@@ -122,7 +125,9 @@ in
       address = "127.0.0.1";
       max_request_size = 104857600;
       trusted_servers = [ "matrix.org" "moonburst.net" ];
-      appservice_configs = [ "/var/lib/mautrix-discord/discord-registration.yaml" ];
+      appservice_configs = [
+        "/var/lib/mautrix-discord/discord-registration.yaml"
+      ];
     };
   };
 
@@ -132,8 +137,9 @@ in
     enable = true;
     environmentFile = config.sops.secrets.discord_bot_token.path;
 
-    # FIX: Use the module's top-level options for templates
-    # This ensures the module doesn't output an empty field
+    # FIX: Use module top-level template options to ensure they aren't empty
+    # Note: If your nixpkgs version doesn't support these here, it will error on build.
+    # We use lib.mkForce to override the broken defaults.
     settings = {
       homeserver = {
         address = "http://127.0.0.1:6167";
@@ -152,25 +158,36 @@ in
         portal_only_on_message = true;
         presence = true;
 
-        # FORCED STRING FIX
-        username_template = "discord_{{.ID}}";
-        displayname_template = "{{.DisplayName}}";
+        # EXPLICIT TEMPLATES USING GO SYNTAX
+        username_template = lib.mkForce "discord_{{.ID}}";
+        displayname_template = lib.mkForce "{{.DisplayName}}";
 
         startup_private_channel_create_limit = 0;
         sync_direct_chats = true;
         invite_on_create = true;
         auto_join_invites = true;
-        double_puppet_server_map = { "moonburst.net" = "https://moonburst.net"; };
+        double_puppet_server_map = {
+          "moonburst.net" = "https://moonburst.net";
+        };
         double_puppet_allow_discovery = true;
-        permissions = { "@moonburst:moonburst.net" = "admin"; "moonburst.net" = "user"; };
+        permissions = {
+          "@moonburst:moonburst.net" = "admin";
+          "moonburst.net" = "user";
+        };
+
         private_chat_portal_meta = "always";
         user_avatar_sync = true;
         fetch_message_methods = [ "api" "gateway" ];
         lookup_guild_names = true;
         allow_attachments = true;
       };
-      encryption = { allow = false; default = false; };
-      logging = { print_level = "error"; };
+      encryption = {
+        allow = false;
+        default = false;
+      };
+      logging = {
+        print_level = "error";
+      };
     };
   };
 }
