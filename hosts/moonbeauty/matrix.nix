@@ -128,17 +128,20 @@ in
 
   systemd.services.conduit.serviceConfig.ExecStart = lib.mkForce "${conduit-pkg}/bin/conduwuit";
 
-  # We use the module ONLY for the basics, and overwrite the file manually
+  # Satisfy the module's minimum required assertions
   services.mautrix-discord = {
     enable = true;
     environmentFile = config.sops.secrets.discord_bot_token.path;
     settings = {
-      homeserver.domain = "moonburst.net";
+      homeserver = {
+        domain = "moonburst.net";
+        address = "http://127.0.0.1:6167";
+      };
       appservice.database.type = "postgres";
     };
   };
 
-  # THE ULTIMATE BYPASS: Write the config file manually as a literal string
+  # OVERWRITE the file with the literal content the bridge needs
   systemd.services.mautrix-discord-registration.serviceConfig.ExecStartPre = lib.mkForce (pkgs.writeShellScript "write-mautrix-config" ''
     cat <<EOF > /var/lib/mautrix-discord/config.yaml
 homeserver:
