@@ -145,15 +145,13 @@ in
           uri = "postgres:///mautrix-discord?host=/run/postgresql";
         };
       };
-      # We force the entire bridge attribute set.
-      # This is the standard way to stop the Nix module from
-      # "helping" with the templates and breaking the Go syntax.
+      # We define bridge settings here, but if the module continues to mangle
+      # username_template, we may need to use extraConfig for the whole bridge block.
       bridge = lib.mkForce {
         username_template = "discord_{{.ID}}";
         displayname_template = "{{.DisplayName}}";
         channel_name_template = "{{if or (eq .Type 3) (eq .Type 4)}}{{.Name}}{{else}}#{{.Name}}{{end}}";
         guild_name_template = "{{.Name}}";
-
         portal_only_on_message = true;
         presence = true;
         startup_private_channel_create_limit = 0;
