@@ -131,7 +131,6 @@ in
   services.mautrix-discord = {
     enable = true;
     environmentFile = config.sops.secrets.discord_bot_token.path;
-    # Using a single force-merge block to stop Nix from individual escaping.
     settings = lib.mkForce {
       homeserver = {
         address = "http://127.0.0.1:6167";
@@ -147,31 +146,17 @@ in
         };
       };
       bridge = {
-        # Using a raw Nix string with escaped curly braces.
         username_template = "discord_''${''}{''.ID''}${''}";
         displayname_template = "''${''}{''.DisplayName''}${''}";
         portal_only_on_message = true;
-        presence = true;
-        startup_private_channel_create_limit = 0;
-        sync_direct_chats = true;
-        invite_on_create = true;
-        auto_join_invites = true;
-        double_puppet_server_map = { "moonburst.net" = "https://moonburst.net"; };
-        double_puppet_allow_discovery = true;
-        permissions = { "@moonburst:moonburst.net" = "admin"; "moonburst.net" = "user"; };
-        private_chat_portal_meta = "always";
-        user_avatar_sync = true;
-        fetch_message_methods = [ "api" "gateway" ];
-        lookup_guild_names = true;
-        allow_attachments = true;
+        permissions = {
+          "@moonburst:moonburst.net" = "admin";
+          "moonburst.net" = "user";
+        };
       };
-      encryption = { allow = false; default = false; };
-      logging = { print_level = "error"; };
     };
   };
 
-  # Direct file writing in the activation phase to ensure it's on disk
-  # BEFORE any systemd service units even begin to parse dependencies.
   system.activationScripts.mautrix-discord-config-fix.text = ''
     mkdir -p /var/lib/mautrix-discord
     cat <<EOF > /var/lib/mautrix-discord/config.yaml
