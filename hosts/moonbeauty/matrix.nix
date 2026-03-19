@@ -147,7 +147,7 @@ in
       };
       # This is the "Nuclear Fix" - bypass the generator by forcing the whole bridge block.
       bridge = lib.mkForce {
-        username_template = "discord_{{.ID}}";
+        username_template = "{{.ID}}";
         displayname_template = "{{.DisplayName}}";
         portal_only_on_message = true;
         presence = true;
