@@ -146,12 +146,12 @@ in
         };
       };
       bridge = lib.mkForce {
-        # Using builtins.unsafeDiscardStringContext on the templates
-        # to ensure they are passed as raw strings without Nix metadata.
-        username_template = builtins.unsafeDiscardStringContext "discord_{{.ID}}";
-        displayname_template = builtins.unsafeDiscardStringContext "{{.DisplayName}}";
-        channel_name_template = builtins.unsafeDiscardStringContext "{{if or (eq .Type 3) (eq .Type 4)}}{{.Name}}{{else}}#{{.Name}}{{end}}";
-        guild_name_template = builtins.unsafeDiscardStringContext "{{.Name}}";
+        # Using double-single quotes to escape the dots and ensuring
+        # the entire template is seen as a literal string.
+        username_template = "discord_''{{''.ID''}}''";
+        displayname_template = "''{{''.DisplayName''}}''";
+        channel_name_template = "''{{''if or (eq .Type 3) (eq .Type 4)''}}{{'' .Name ''}}{{''else''}}''#''{{'' .Name ''}}{{''end''}}''";
+        guild_name_template = "''{{''.Name''}}''";
 
         portal_only_on_message = true;
         presence = true;
