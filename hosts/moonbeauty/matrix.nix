@@ -131,9 +131,7 @@ in
   services.mautrix-discord = {
     enable = true;
     environmentFile = config.sops.secrets.discord_bot_token.path;
-
-    # We use settings for the easy stuff...
-    settings = {
+    settings = lib.mkForce {
       homeserver = {
         address = "http://127.0.0.1:6167";
         domain = "moonburst.net";
@@ -147,18 +145,13 @@ in
           uri = "postgres:///mautrix-discord?host=/run/postgresql";
         };
       };
-      encryption = { allow = false; default = false; };
-      logging = { print_level = "error"; };
-    };
-
-    # ...and extraConfig to force the bridge block as a RAW LITERAL.
-    # This bypasses the module's broken JSON/YAML generator.
-    extraConfig = {
       bridge = {
-        username_template = "discord_{{.ID}}";
-        displayname_template = "{{.DisplayName}}";
-        channel_name_template = "{{if or (eq .Type 3) (eq .Type 4)}}{{.Name}}{{else}}#{{.Name}}{{end}}";
-        guild_name_template = "{{.Name}}";
+        # Using unsafeDiscardStringContext to strip any Nix-internal
+        # object wrapping from the template strings.
+        username_template = builtins.unsafeDiscardStringContext "discord_{{.ID}}";
+        displayname_template = builtins.unsafeDiscardStringContext "{{.DisplayName}}";
+        channel_name_template = builtins.unsafeDiscardStringContext "{{if or (eq .Type 3) (eq .Type 4)}}{{.Name}}{{else}}#{{.Name}}{{end}}";
+        guild_name_template = builtins.unsafeDiscardStringContext "{{.Name}}";
         portal_only_on_message = true;
         presence = true;
         startup_private_channel_create_limit = 0;
@@ -177,6 +170,8 @@ in
         lookup_guild_names = true;
         allow_attachments = true;
       };
+      encryption = { allow = false; default = false; };
+      logging = { print_level = "error"; };
     };
   };
 }
