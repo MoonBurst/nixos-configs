@@ -131,7 +131,8 @@ in
   services.mautrix-discord = {
     enable = true;
     environmentFile = config.sops.secrets.discord_bot_token.path;
-    settings = {
+    # Forced top-level settings to prevent any individual option merging logic
+    settings = lib.mkForce {
       homeserver = {
         address = "http://127.0.0.1:6167";
         domain = "moonburst.net";
@@ -145,9 +146,7 @@ in
           uri = "postgres:///mautrix-discord?host=/run/postgresql";
         };
       };
-      # We define bridge settings here, but if the module continues to mangle
-      # username_template, we may need to use extraConfig for the whole bridge block.
-      bridge = lib.mkForce {
+      bridge = {
         username_template = "discord_{{.ID}}";
         displayname_template = "{{.DisplayName}}";
         channel_name_template = "{{if or (eq .Type 3) (eq .Type 4)}}{{.Name}}{{else}}#{{.Name}}{{end}}";
