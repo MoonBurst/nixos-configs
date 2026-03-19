@@ -145,10 +145,12 @@ in
           uri = "postgres:///mautrix-discord?host=/run/postgresql";
         };
       };
-      # This is the "Nuclear Fix" - bypass the generator by forcing the whole bridge block.
-      bridge = lib.mkForce {
-        username_template = "{{.ID}}";
-        displayname_template = "{{.DisplayName}}";
+      bridge = {
+        # Removing the discord_ prefix to simplify the string and
+        # using mkForce to attempt to override the default generator's quoting.
+        username_template = lib.mkForce "{{.ID}}";
+        displayname_template = lib.mkForce "{{.DisplayName}}";
+
         portal_only_on_message = true;
         presence = true;
         startup_private_channel_create_limit = 0;
