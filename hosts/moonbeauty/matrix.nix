@@ -145,12 +145,11 @@ in
           uri = "postgres:///mautrix-discord?host=/run/postgresql";
         };
       };
-      bridge = {
-        # Removing the discord_ prefix to simplify the string and
-        # using mkForce to attempt to override the default generator's quoting.
-        username_template = lib.mkForce "{{.ID}}";
-        displayname_template = lib.mkForce "{{.DisplayName}}";
-
+      # We force the entire bridge block to ensure Nix doesn't try
+      # to 'helpfully' format the templates into multiline YAML strings.
+      bridge = lib.mkForce {
+        username_template = builtins.unsafeDiscardStringContext "discord_{{.ID}}";
+        displayname_template = builtins.unsafeDiscardStringContext "{{.DisplayName}}";
         portal_only_on_message = true;
         presence = true;
         startup_private_channel_create_limit = 0;
