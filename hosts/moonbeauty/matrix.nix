@@ -131,7 +131,7 @@ in
   services.mautrix-discord = {
     enable = true;
     environmentFile = config.sops.secrets.discord_bot_token.path;
-    settings = lib.mkForce {
+    settings = {
       homeserver = {
         address = "http://127.0.0.1:6167";
         domain = "moonburst.net";
@@ -146,12 +146,9 @@ in
         };
       };
       bridge = {
-        # Using multi-line string syntax to help the YAML generator
-        # keep the template clean.
-        username_template = ''discord_{{.ID}}'';
-        displayname_template = ''{{.DisplayName}}'';
-        channel_name_template = ''{{if or (eq .Type 3) (eq .Type 4)}}{{.Name}}{{else}}#{{.Name}}{{end}}'';
-        guild_name_template = ''{{.Name}}'';
+        # We use simple placeholders that sed will replace with the real Go templates
+        username_template = "REPLACE_ME_ID";
+        displayname_template = "REPLACE_ME_DISPLAYNAME";
 
         portal_only_on_message = true;
         presence = true;
@@ -175,4 +172,13 @@ in
       logging = { print_level = "error"; };
     };
   };
+
+  # The "Nuclear Patch": Manually inject the templates into the file
+  # right before the registration and bridge services start.
+  systemd.services.mautrix-discord-registration.serviceConfig.ExecStartPre = lib.mkBefore [
+    (pkgs.writeShellScript "patch-mautrix-config" ''
+      sed -i 's/REPLACE_ME_ID/discord_{{.ID}}/g' /var/lib/mautrix-discord/config.yaml
+      sed -i 's/REPLACE_ME_DISPLAYNAME/{{.DisplayName}}/g' /var/lib/mautrix-discord/config.yaml
+    '')
+  ];
 }
