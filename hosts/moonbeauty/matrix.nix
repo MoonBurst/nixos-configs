@@ -145,10 +145,9 @@ in
           uri = "postgres:///mautrix-discord?host=/run/postgresql";
         };
       };
-      # THE "NOT DUMB" FIX:
-      # We force the bridge block and use standard Nix strings.
-      # If the module's generator is still quoting these, we use
-      # unsafeDiscardStringContext to ensure they are clean.
+      # We force the bridge settings to avoid any merging.
+      # By using standard strings here, we hope the YAML emitter
+      # doesn't see a reason to quote them.
       bridge = lib.mkForce {
         username_template = "discord_{{.ID}}";
         displayname_template = "{{.DisplayName}}";
@@ -160,7 +159,10 @@ in
         auto_join_invites = true;
         double_puppet_server_map = { "moonburst.net" = "https://moonburst.net"; };
         double_puppet_allow_discovery = true;
-        permissions = { "@moonburst:moonburst.net" = "admin"; "moonburst.net" = "user"; };
+        permissions = {
+          "@moonburst:moonburst.net" = "admin";
+          "moonburst.net" = "user";
+        };
         private_chat_portal_meta = "always";
         user_avatar_sync = true;
         fetch_message_methods = [ "api" "gateway" ];
@@ -171,4 +173,17 @@ in
       logging = { print_level = "error"; };
     };
   };
+
+  # This is the "Proper" fix for the "Dumb" generator.
+  # We use sed to strip the single quotes from the config file
+  # AFTER Nix generates it but BEFORE the bridge runs.
+  systemd.services.mautrix-discord-registration.serviceConfig.ExecStartPre = lib.mkBefore [
+    (pkgs.writeShellScript "fix-quotes" ''
+      # If Nix puts ' around the template, this strips them.
+      if [ -f /var/lib/mautrix-discord/config.yaml ]; then
+        sed -i "s/'{{.ID}}'/{{.ID}}/g" /var/lib/mautrix-discord/config.yaml
+        sed -i "s/'discord_{{.ID}}'/discord_{{.ID}}/g" /var/lib/mautrix-discord/config.yaml
+      fi
+    '')
+  ];
 }
