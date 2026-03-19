@@ -146,12 +146,13 @@ in
         };
       };
       bridge = {
-        # Using unsafeDiscardStringContext to strip any Nix-internal
-        # object wrapping from the template strings.
-        username_template = builtins.unsafeDiscardStringContext "discord_{{.ID}}";
-        displayname_template = builtins.unsafeDiscardStringContext "{{.DisplayName}}";
-        channel_name_template = builtins.unsafeDiscardStringContext "{{if or (eq .Type 3) (eq .Type 4)}}{{.Name}}{{else}}#{{.Name}}{{end}}";
-        guild_name_template = builtins.unsafeDiscardStringContext "{{.Name}}";
+        # Using multi-line string syntax to help the YAML generator
+        # keep the template clean.
+        username_template = ''discord_{{.ID}}'';
+        displayname_template = ''{{.DisplayName}}'';
+        channel_name_template = ''{{if or (eq .Type 3) (eq .Type 4)}}{{.Name}}{{else}}#{{.Name}}{{end}}'';
+        guild_name_template = ''{{.Name}}'';
+
         portal_only_on_message = true;
         presence = true;
         startup_private_channel_create_limit = 0;
