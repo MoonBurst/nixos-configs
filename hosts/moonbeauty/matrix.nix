@@ -131,8 +131,9 @@ in
   services.mautrix-discord = {
     enable = true;
     environmentFile = config.sops.secrets.discord_bot_token.path;
-    # Forced top-level settings to prevent any individual option merging logic
-    settings = lib.mkForce {
+
+    # We use settings for the easy stuff...
+    settings = {
       homeserver = {
         address = "http://127.0.0.1:6167";
         domain = "moonburst.net";
@@ -146,6 +147,13 @@ in
           uri = "postgres:///mautrix-discord?host=/run/postgresql";
         };
       };
+      encryption = { allow = false; default = false; };
+      logging = { print_level = "error"; };
+    };
+
+    # ...and extraConfig to force the bridge block as a RAW LITERAL.
+    # This bypasses the module's broken JSON/YAML generator.
+    extraConfig = {
       bridge = {
         username_template = "discord_{{.ID}}";
         displayname_template = "{{.DisplayName}}";
@@ -169,8 +177,6 @@ in
         lookup_guild_names = true;
         allow_attachments = true;
       };
-      encryption = { allow = false; default = false; };
-      logging = { print_level = "error"; };
     };
   };
 }
