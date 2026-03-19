@@ -1,7 +1,7 @@
 { config, pkgs, lib, ... }:
 
 let
-  conduit-pkg = pkgs.matrix-continuwuity;
+  conduit-pkg = pkgs.matrix-conduwuit; # Fixed reference to conduwuit
 
   element-web-config = pkgs.writeTextDir "config.json" (builtins.toJSON {
     default_server_config = {
@@ -35,9 +35,9 @@ in
     defaultSopsFile = lib.mkForce ../../secrets.yaml;
     secrets = {
       "cloudflare_token" = { };
-      "matrix_macaroon_secret" = { owner = lib.mkForce "matrix-conduit"; };
-      "matrix_registration_secret" = { owner = lib.mkForce "matrix-conduit"; };
-      "discord_bot_token" = { owner = lib.mkForce "mautrix-discord"; };
+      "matrix_macaroon_secret" = { owner = "matrix-conduit"; };
+      "matrix_registration_secret" = { owner = "matrix-conduit"; };
+      "discord_bot_token" = { owner = "mautrix-discord"; };
     };
   };
 
@@ -131,7 +131,7 @@ in
   services.mautrix-discord = {
     enable = true;
     environmentFile = config.sops.secrets.discord_bot_token.path;
-    settings = lib.mkForce {
+    settings = {
       homeserver = {
         address = "http://127.0.0.1:6167";
         domain = "moonburst.net";
@@ -146,8 +146,8 @@ in
         };
       };
       bridge = {
-        username_template = "discord_''${''}{''.ID''}${''}";
-        displayname_template = "''${''}{''.DisplayName''}${''}";
+        username_template = "discord_{{.ID}}";
+        displayname_template = "{{.DisplayName}}";
         portal_only_on_message = true;
         permissions = {
           "@moonburst:moonburst.net" = "admin";
@@ -159,7 +159,7 @@ in
 
   system.activationScripts.mautrix-discord-config-fix.text = ''
     mkdir -p /var/lib/mautrix-discord
-    cat <<EOF > /var/lib/mautrix-discord/config.yaml
+    cat <<'EOF' > /var/lib/mautrix-discord/config.yaml
 homeserver:
   address: http://127.0.0.1:6167
   domain: moonburst.net
