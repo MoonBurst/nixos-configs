@@ -128,7 +128,6 @@ in
 
   systemd.services.conduit.serviceConfig.ExecStart = lib.mkForce "${conduit-pkg}/bin/conduwuit";
 
-  # Satisfy the module's minimum required assertions
   services.mautrix-discord = {
     enable = true;
     environmentFile = config.sops.secrets.discord_bot_token.path;
@@ -141,7 +140,14 @@ in
     };
   };
 
-  # OVERWRITE the file with the literal content the bridge needs
+  # This writes the config, then grafts the generated tokens into it
+  systemd.services.mautrix-discord-registration.serviceConfig.ExecStartPost = lib.mkAfter (pkgs.writeShellScript "patch-tokens" ''
+    AS_TOKEN=$(grep "as_token:" /var/lib/mautrix-discord/discord-registration.yaml | awk '{print $2}')
+    HS_TOKEN=$(grep "hs_token:" /var/lib/mautrix-discord/discord-registration.yaml | awk '{print $2}')
+    sed -i "s/as_token: .*/as_token: $AS_TOKEN/" /var/lib/mautrix-discord/config.yaml
+    sed -i "s/hs_token: .*/hs_token: $HS_TOKEN/" /var/lib/mautrix-discord/config.yaml
+  '');
+
   systemd.services.mautrix-discord-registration.serviceConfig.ExecStartPre = lib.mkForce (pkgs.writeShellScript "write-mautrix-config" ''
     cat <<EOF > /var/lib/mautrix-discord/config.yaml
 homeserver:
@@ -158,6 +164,8 @@ appservice:
   id: discord
   bot:
     username: discordbot
+  as_token: "placeholder"
+  hs_token: "placeholder"
 bridge:
   username_template: discord_{{.ID}}
   displayname_template: "{{.DisplayName}}"
