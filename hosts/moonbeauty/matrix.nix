@@ -145,11 +145,10 @@ in
           uri = "postgres:///mautrix-discord?host=/run/postgresql";
         };
       };
-      bridge = {
-        # We use simple placeholders that sed will replace with the real Go templates
-        username_template = "REPLACE_ME_ID";
-        displayname_template = "REPLACE_ME_DISPLAYNAME";
-
+      # This is the "Nuclear Fix" - bypass the generator by forcing the whole bridge block.
+      bridge = lib.mkForce {
+        username_template = "discord_{{.ID}}";
+        displayname_template = "{{.DisplayName}}";
         portal_only_on_message = true;
         presence = true;
         startup_private_channel_create_limit = 0;
@@ -158,10 +157,7 @@ in
         auto_join_invites = true;
         double_puppet_server_map = { "moonburst.net" = "https://moonburst.net"; };
         double_puppet_allow_discovery = true;
-        permissions = {
-          "@moonburst:moonburst.net" = "admin";
-          "moonburst.net" = "user";
-        };
+        permissions = { "@moonburst:moonburst.net" = "admin"; "moonburst.net" = "user"; };
         private_chat_portal_meta = "always";
         user_avatar_sync = true;
         fetch_message_methods = [ "api" "gateway" ];
@@ -172,13 +168,4 @@ in
       logging = { print_level = "error"; };
     };
   };
-
-  # The "Nuclear Patch": Manually inject the templates into the file
-  # right before the registration and bridge services start.
-  systemd.services.mautrix-discord-registration.serviceConfig.ExecStartPre = lib.mkBefore [
-    (pkgs.writeShellScript "patch-mautrix-config" ''
-      sed -i 's/REPLACE_ME_ID/discord_{{.ID}}/g' /var/lib/mautrix-discord/config.yaml
-      sed -i 's/REPLACE_ME_DISPLAYNAME/{{.DisplayName}}/g' /var/lib/mautrix-discord/config.yaml
-    '')
-  ];
 }
