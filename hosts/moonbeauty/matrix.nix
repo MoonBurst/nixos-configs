@@ -128,46 +128,56 @@ in
 
   systemd.services.conduit.serviceConfig.ExecStart = lib.mkForce "${conduit-pkg}/bin/conduwuit";
 
+  # We use the module ONLY for the basics, and overwrite the file manually
   services.mautrix-discord = {
     enable = true;
     environmentFile = config.sops.secrets.discord_bot_token.path;
     settings = {
-      homeserver = {
-        address = "http://127.0.0.1:6167";
-        domain = "moonburst.net";
-      };
-      appservice = {
-        address = "http://127.0.0.1:29334";
-        port = 29334;
-        sender_localpart = "discordbot";
-        database = {
-          type = "postgres";
-          uri = "postgres:///mautrix-discord?host=/run/postgresql";
-        };
-      };
-      # We lib.mkForce the bridge block to overwrite all defaults.
-      # The templates are defined with explicit interpolation to prevent
-      # the YAML generator from escaping the braces.
-      bridge = lib.mkForce {
-        username_template = "discord_" + "{{.ID}}";
-        displayname_template = "" + "{{.DisplayName}}";
-        portal_only_on_message = true;
-        presence = true;
-        startup_private_channel_create_limit = 0;
-        sync_direct_chats = true;
-        invite_on_create = true;
-        auto_join_invites = true;
-        double_puppet_server_map = { "moonburst.net" = "https://moonburst.net"; };
-        double_puppet_allow_discovery = true;
-        permissions = { "@moonburst:moonburst.net" = "admin"; "moonburst.net" = "user"; };
-        private_chat_portal_meta = "always";
-        user_avatar_sync = true;
-        fetch_message_methods = [ "api" "gateway" ];
-        lookup_guild_names = true;
-        allow_attachments = true;
-      };
-      encryption = { allow = false; default = false; };
-      logging = { print_level = "error"; };
+      homeserver.domain = "moonburst.net";
+      appservice.database.type = "postgres";
     };
   };
+
+  # THE ULTIMATE BYPASS: Write the config file manually as a literal string
+  systemd.services.mautrix-discord-registration.serviceConfig.ExecStartPre = lib.mkForce (pkgs.writeShellScript "write-mautrix-config" ''
+    cat <<EOF > /var/lib/mautrix-discord/config.yaml
+homeserver:
+  address: http://127.0.0.1:6167
+  domain: moonburst.net
+  software: standard
+appservice:
+  address: http://127.0.0.1:29334
+  hostname: 0.0.0.0
+  port: 29334
+  database:
+    type: postgres
+    uri: postgres:///mautrix-discord?host=/run/postgresql
+  id: discord
+  bot:
+    username: discordbot
+bridge:
+  username_template: discord_{{.ID}}
+  displayname_template: "{{.DisplayName}}"
+  portal_only_on_message: true
+  presence: true
+  startup_private_channel_create_limit: 0
+  sync_direct_chats: true
+  invite_on_create: true
+  auto_join_invites: true
+  double_puppet_server_map:
+    "moonburst.net": "https://moonburst.net"
+  double_puppet_allow_discovery: true
+  permissions:
+    "@moonburst:moonburst.net": admin
+    "moonburst.net": user
+  private_chat_portal_meta: always
+  user_avatar_sync: true
+  fetch_message_methods: [api, gateway]
+  lookup_guild_names: true
+  allow_attachments: true
+logging:
+  print_level: error
+EOF
+    chown mautrix-discord:mautrix-discord /var/lib/mautrix-discord/config.yaml
+  '');
 }
