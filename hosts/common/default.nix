@@ -1,20 +1,21 @@
-{ config, pkgs, lib, ... }:
+{ config, pkgs, lib, inputs, ... }:
 
 {
   imports = [
-   ./audio.nix
-   ./btrfs.nix
-   ./dunst/dunst.nix
-   ./obs.nix
-   ./packages.nix
-   ./security.nix
-   ./services.nix
-   ./theme.nix
-   ./users.nix
-   ./zsh.nix
-   ./programs/waybar/default.nix
-   ./programs/brave.nix      # ADDED
-   ./programs/audacious.nix  # ADDED
+    inputs.sops-nix.nixosModules.sops
+    ./audio.nix
+    ./btrfs.nix
+    ./dunst/dunst.nix
+    ./obs.nix
+    ./packages.nix
+    ./security.nix
+    ./services.nix
+    ./theme.nix
+    ./users.nix
+    ./zsh.nix
+    ./programs/waybar/default.nix
+    ./programs/brave.nix      # ADDED
+    ./programs/audacious.nix  # ADDED
   ];
 
   # --- Home Manager (Global for moonburst user) ---

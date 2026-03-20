@@ -1,3 +1,4 @@
+# --- main.nix (or sops.nix) ---
 { config, pkgs, inputs, lib, ... }: {
   imports = [
     inputs.sops-nix.nixosModules.sops
@@ -12,7 +13,8 @@
     age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
 
     secrets = {
-      moonburst_password = { };
+      # --- System & User Secrets ---
+      moonburst_password = { neededForUsers = true; };
       sops_key = { neededForUsers = true; };
       borg_passphrase = { };
       nextcloud_url = { };
@@ -20,18 +22,9 @@
       nextcloud_pass = { };
       weather_api_key.owner = "moonburst";
       weather_city.owner = "moonburst";
-      matrix_macaroon_secret = lib.mkIf (config.networking.hostName == "moonbeauty") {
-        owner = "root";
-        group = "root";
-      };
-      matrix_registration_secret = lib.mkIf (config.networking.hostName == "moonbeauty") {
-        owner = "root";
-        group = "root";
-      };
     };
   };
 
-  systemd.services.sops-nix.after = [ "openssh.service" ];
   systemd.tmpfiles.rules = [
     "d /home/moonburst/.config/sops/age 0700 moonburst users - -"
   ];

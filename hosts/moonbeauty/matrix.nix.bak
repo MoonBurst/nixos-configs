@@ -31,6 +31,7 @@ in
     "cloudflare_token" = { owner = "continuwuity"; };
   };
 
+  # Complete, valid YAML for mautrix-discord managed as a template
   sops.templates."mautrix-discord-config" = {
     path = bridgeConfigPath;
     owner = "mautrix-discord";
@@ -53,12 +54,8 @@ in
           displayname: Discord Bridge
       bridge:
         username_template: "discord_{{.}}"
-        displayname_template: "{{.DisplayName}}"
+        displayname_template: "{{.Displayname}}"
         sync_with_custom_puppets: true
-        get_embeds: true
-        media_h_f_v: true
-        disable_discord_reply_mention: false
-        private_chat_portal_meta: true
         double_puppet_server_map:
           "moonburst.net": "http://127.0.0.1:6167"
         login_shared_secret_file:
@@ -88,7 +85,7 @@ in
           - exclusive: true
             regex: "@discord_.*:moonburst.net"
           - exclusive: true
-            regex: "@discordbot:moonburst.net"
+            regex: "@discordbot:moonburst.net" # Add this line
         aliases: [{ exclusive: true, regex: "#discord_.*:moonburst.net" }]
       url: "http://127.0.0.1:29334"
       sender_localpart: discordbot
