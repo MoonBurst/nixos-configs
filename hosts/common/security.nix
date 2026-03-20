@@ -21,11 +21,11 @@
       weather_api_key.owner = "moonburst";
       weather_city.owner = "moonburst";
       matrix_macaroon_secret = lib.mkIf (config.networking.hostName == "moonbeauty") {
-        owner = "matrix-synapse";
+        owner = "root";
         group = "root";
       };
       matrix_registration_secret = lib.mkIf (config.networking.hostName == "moonbeauty") {
-        owner = "matrix-synapse";
+        owner = "root";
         group = "root";
       };
     };
