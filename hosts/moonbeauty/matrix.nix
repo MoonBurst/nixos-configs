@@ -7,17 +7,15 @@ let
   puppetSecretPath = config.sops.secrets.matrix_double_puppet_secret.path;
   discordEnvPath = config.sops.templates."discord-env".path;
 
-  element-web-config = pkgs.writeTextDir "config.json" (builtins.toJSON {
-    default_server_config = {
-      "m.homeserver" = { "base_url" = "https://moonburst.net"; "server_name" = "moonburst.net"; };
-    };
-    "element_call" = { "url" = "https://call.element.io"; "use_excalidraw" = true; };
-    "features" = { "feature_group_calls" = true; "feature_video_rooms" = true; };
-    disable_custom_urls = true;
-    disable_guests = true;
-    show_labs_settings = true;
+  # New Cinny Config (Replacing Element)
+  cinny-config = pkgs.writeText "config.json" (builtins.toJSON {
+    default/*Homeserver*/ = 0;
+    homeserverList = [
+      "moonburst.net"
+    ];
   });
 in
+
 {
   nixpkgs.config.permittedInsecurePackages = [ "olm-3.2.16" ];
 
@@ -96,6 +94,7 @@ in
     '';
   };
 
+
   services.matrix-continuwuity = {
     enable = true;
     settings = {
@@ -103,9 +102,12 @@ in
         server_name = "moonburst.net";
         port = [ 6167 ];
         address = [ "127.0.0.1" ];
+        max_request_size = 52428800;
         allow_registration = false;
         registration_token_file = config.sops.secrets.matrix_registration_secret.path;
         login_shared_secret_file = puppetSecretPath;
+        url_preview_enabled = true;
+        url_preview_ip_range_blacklist = [ "127.0.0.0/8" "10.0.0.0/8" "172.16.0.0/12" "192.168.0.0/16" "::1/128" ];
       };
       appservice.config_files = [ registrationPath ];
     };
@@ -115,7 +117,9 @@ in
     DynamicUser = lib.mkForce false;
     User = "continuwuity";
     Group = "continuwuity";
+    StateDirectory = "continuwuity";
     ReadWritePaths = [ "/var/lib/continuwuity" ];
+    LogLevelMax = "err";
   };
 
   services.mautrix-discord = {
@@ -133,8 +137,11 @@ in
     serviceConfig = {
       ExecStart = lib.mkForce "${pkgs.mautrix-discord}/bin/mautrix-discord --config=${bridgeConfigPath}";
       SupplementaryGroups = [ "continuwuity" "postgres" ];
+      # Use "err" to only show critical issues
+      LogLevelMax = "err";
     };
   };
+
 
   services.postgresql = {
     enable = true;
@@ -146,6 +153,10 @@ in
   services.nginx = {
     enable = true;
     virtualHosts."moonburst.net" = {
+      extraConfig = ''
+        client_max_body_size 50M;
+        access_log off;
+      '';
       locations = {
         "= /.well-known/matrix/server".extraConfig = ''
           add_header Content-Type application/json;
@@ -155,22 +166,52 @@ in
         "= /.well-known/matrix/client".extraConfig = ''
           add_header Content-Type application/json;
           add_header Access-Control-Allow-Origin *;
-          return 200 '{
-            "m.homeserver": {"base_url":"https://moonburst.net"},
-            "org.matrix.msc4143.rtc_foci": [
-              {
-                "type": "livekit",
-                "livekit_service_url": "https://livekit-jwt.call.matrix.org"
-              }
-            ]
-          }';
+          return 200 "{\"m.homeserver\":{\"base_url\":\"https://moonburst.net\"},\"org.matrix.msc4143.rtc_foci\":[{\"type\":\"livekit\",\"livekit_service_url\":\"https://livekit-jwt.call.matrix.org\"}]}";
         '';
-        "/_matrix" = { proxyPass = "http://127.0.0.1:6167"; proxyWebsockets = true; };
-        "= /config.json".alias = "${element-web-config}/config.json";
-        "/" = { root = pkgs.element-web; index = "index.html"; };
+        "/_matrix/media" = {
+          proxyPass = "http://127.0.0.1:6167";
+          proxyWebsockets = true;
+          extraConfig = ''
+            proxy_set_header Host $host;
+            proxy_buffering off;
+            proxy_pass_header Authorization;
+            proxy_pass_header Content-Type;
+          '';
+        };
+        "/_matrix" = {
+          proxyPass = "http://127.0.0.1:6167";
+          proxyWebsockets = true;
+          extraConfig = ''
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_pass_header Authorization;
+            proxy_pass_header Content-Type;
+            proxy_read_timeout 300s;
+            proxy_send_timeout 300s;
+          '';
+        };
+
+        "= /config.json".extraConfig = ''
+          alias ${cinny-config};
+          add_header Content-Type application/json;
+          add_header Access-Control-Allow-Origin *;
+        '';
+        "/" = {
+          proxyPass = "https://dev.cinny.in";
+          proxyWebsockets = true;
+        };
       };
     };
   };
+
+
+
+
+
+
+
 
   systemd.services.cloudflared-tunnel = {
     wantedBy = [ "multi-user.target" ];
@@ -192,5 +233,7 @@ in
   systemd.tmpfiles.rules = [
     "d /var/lib/mautrix-discord 0750 mautrix-discord mautrix-discord -"
     "d /var/lib/continuwuity 0700 continuwuity continuwuity -"
+    "d /var/lib/continuwuity/media 0700 continuwuity continuwuity -"
   ];
+
 }
