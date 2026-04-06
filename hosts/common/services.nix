@@ -10,6 +10,6 @@
         lib.hasSuffix ".nix" name
       ) files;
     in
-    # Use path concatenation (+) to maintain the "path" type
+
     lib.mapAttrsToList (name: _: subDir + "/${name}") nixFiles;
 }

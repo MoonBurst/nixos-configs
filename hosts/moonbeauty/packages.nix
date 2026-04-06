@@ -48,11 +48,11 @@
       name = "Cinny (Brave)";
       genericName = "Matrix Client";
       exec = "cinny-brave";
-      icon = "cinny";                  # Pulls the icon from the system icon theme
+      icon = "cinny";
       terminal = false;
       categories = [ "Network" "Chat" ];
       settings = {
-        StartupWMClass = "cinny-app";  # Matches the --class flag in the script
+        StartupWMClass = "cinny-app";
       };
     };
   };

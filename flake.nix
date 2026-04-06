@@ -25,7 +25,7 @@
     flake-parts.lib.mkFlake { inherit inputs; } ({ ... }: {
       systems = [ "x86_64-linux" ];
 
-      # ADDED: This defines the tools direnv will load into your shell automatically
+
       perSystem = { pkgs, ... }: {
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [

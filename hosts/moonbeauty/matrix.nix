@@ -1,4 +1,3 @@
-# --- matrix.nix ---
 { config, pkgs, lib, ... }:
 
 let
@@ -6,8 +5,6 @@ let
   bridgeConfigPath = "/var/lib/mautrix-discord/bridge-config.yaml";
   puppetSecretPath = config.sops.secrets.matrix_double_puppet_secret.path;
   discordEnvPath = config.sops.templates."discord-env".path;
-
-  # New Cinny Config (Replacing Element)
   cinny-config = pkgs.writeText "config.json" (builtins.toJSON {
     default/*Homeserver*/ = 0;
     homeserverList = [
@@ -137,18 +134,20 @@ in
     serviceConfig = {
       ExecStart = lib.mkForce "${pkgs.mautrix-discord}/bin/mautrix-discord --config=${bridgeConfigPath}";
       SupplementaryGroups = [ "continuwuity" "postgres" ];
-      # Use "err" to only show critical issues
       LogLevelMax = "err";
     };
   };
 
-
-  services.postgresql = {
-    enable = true;
-    package = pkgs.postgresql_16;
-    ensureDatabases = [ "mautrix-discord" ];
-    ensureUsers = [{ name = "mautrix-discord"; ensureDBOwnership = true; }];
+services.postgresql = {
+  enable = true;
+  package = pkgs.postgresql_16;
+  ensureDatabases = [ "mautrix-discord" ];
+  ensureUsers = [{ name = "mautrix-discord"; ensureDBOwnership = true; }];
+  settings = {
+    log_checkpoints = false;
+    log_min_messages = "error";
   };
+};
 
   services.nginx = {
     enable = true;
@@ -206,22 +205,17 @@ in
     };
   };
 
-
-
-
-
-
-
-
-  systemd.services.cloudflared-tunnel = {
-    wantedBy = [ "multi-user.target" ];
-    serviceConfig = {
-      EnvironmentFile = config.sops.secrets.cloudflare_token.path;
-      ExecStart = "${pkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate run";
-      Restart = "always";
-      User = "continuwuity";
-    };
+systemd.services.cloudflared-tunnel = {
+  wantedBy = [ "multi-user.target" ];
+  serviceConfig = {
+    EnvironmentFile = config.sops.secrets.cloudflare_token.path;
+    ExecStart = "${pkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate run --protocol http2";
+    Restart = "always";
+    RestartSec = "5s";
+    User = "continuwuity";
   };
+};
+
 
   users.groups.continuwuity = {};
   users.users.continuwuity = {

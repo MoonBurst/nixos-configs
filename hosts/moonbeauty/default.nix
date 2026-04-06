@@ -1,5 +1,6 @@
 { config, pkgs, inputs, lib, ... }: {
   imports = [
+    #./email.nix
     ../common/default.nix
     ./moonbeauty-hardware.nix
     ./mounts.nix
@@ -8,11 +9,8 @@
     ./test.nix
   ];
 
-  # Fix for Home Manager / Flakes activation
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
-
   networking.hostName = "moonbeauty";
-
   services.hardware.openrgb.enable = true;
   hardware.i2c.enable = true;
 
@@ -20,6 +18,7 @@
     enable = true;
     dedicatedServer.openFirewall = true;
   };
+
   programs.gamemode.enable = true;
   programs.gamescope.capSysNice = true;
   hardware.steam-hardware.enable = true;
@@ -46,20 +45,20 @@
     binfmt = true;
     package = pkgs.appimage-run.override { extraPkgs = p: [ p.libxshmfence ]; };
   };
-####
-#OW kernel post test
+
+
  boot.kernel.sysctl = {
     "kernel.print_fatal_signals" = 0;
   };
   boot.kernelParams = [ "clearcpuid=514" ];
-  # 1. Define the "Gaming Lane"
-systemd.slices."steam-games".sliceConfig.CPUAffinity = "2 3 4 5 6 7";
 
+# 1. Define the "Gaming Lane"
+systemd.slices."steam-games".sliceConfig.CPUAffinity = "2 3 4 5 6 7";
 # 2. Force the Steam process (and everything it starts) into that lane
 systemd.services."steam".serviceConfig.Slice = "steam-games.slice";
-
 # 3. Handle the "scope" (This catches games launched via the Desktop environment)
 systemd.slices."app-steam".sliceConfig.CPUAffinity = "2 3 4 5 6 7";
-####
-  system.stateVersion = "25.11";
+
+
+system.stateVersion = "25.11";
 }

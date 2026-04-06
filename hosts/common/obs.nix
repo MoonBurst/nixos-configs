@@ -1,7 +1,7 @@
 { config, pkgs, ... }:
 
 {
-  # 1. Install OBS with essential plugins
+
   programs.obs-studio = {
     enable = true;
     plugins = with pkgs.obs-studio-plugins; [
@@ -10,7 +10,6 @@
     ];
   };
 
-  # 2. Define the systemd user service
   systemd.user.services.obs = {
     description = "OBS Studio Headless/Auto-start Service";
     after = [ "graphical-session.target" "pipewire.service" ];
@@ -26,7 +25,6 @@
     };
   };
 
-  # 3. Ensure Virtual Camera driver is loaded at boot
   boot.extraModulePackages = with config.boot.kernelPackages; [ v4l2loopback ];
   boot.kernelModules = [ "v4l2loopback" ];
   boot.extraModprobeConfig = ''

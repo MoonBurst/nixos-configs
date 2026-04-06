@@ -43,7 +43,7 @@ let
     "custom/music" = {
       "format" = "   {}";
       "interval" = 2;
-      "escape" = true; # Add this line
+      "escape" = true;
       "exec" = "${pkgs.audacious}/bin/audtool current-song 2>/dev/null || echo 'Stopped'";
       "on-click" = "${pkgs.bash}/bin/bash ${musicScript} ui";
       "on-click-middle" = "${pkgs.bash}/bin/bash ${musicScript}";

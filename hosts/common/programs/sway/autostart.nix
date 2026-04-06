@@ -1,7 +1,6 @@
 { pkgs, ... }:
 
 let
-  # Define your GPU Environment Variables as Nix strings
   gpu7900 = "MESA_VK_DEVICE_SELECT=1002:744c! DRI_PRIME=pci-0000:28:00.0";
   gpu6400 = "MESA_VK_DEVICE_SELECT=1002:743f! DRI_PRIME=pci-0000:2b:00.0";
 in
@@ -12,7 +11,6 @@ in
     # **░▀▀▀░░▀░░▀░▀░▀░▀░░▀░░▀▀▀░▀░░**
 
     # **Applications**
-  #  { command = "${pkgs.vivaldi}/bin/vivaldi"; }
   { command = "${pkgs.brave}/bin/brave"; }
     { command = "${pkgs.vesktop}/bin/vesktop"; }
     { command = "${pkgs.corectrl}/bin/corectrl"; }
@@ -29,7 +27,5 @@ in
     { command = "${pkgs.wl-clipboard}/bin/wl-paste --type text --watch ${pkgs.cliphist}/bin/cliphist store -max-items 50"; }
     { command = "${pkgs.wl-clipboard}/bin/wl-paste --type image --watch ${pkgs.cliphist}/bin/cliphist store -max-items 10"; }
 
-    # **Scripts & Daemons**
-    # { command = "sherlock --daemonize"; always = true; }
   ];
 }

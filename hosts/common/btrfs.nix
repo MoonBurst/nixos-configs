@@ -1,13 +1,14 @@
 { pkgs, ... }:
 
 {
-  # 1. Official Auto Scrubbing (Checks for corruption)
+
+
   services.btrfs.autoScrub = {
     enable = true;
     interval = "monthly";
   };
 
-  # 2. Custom Auto Balancing (Cleans up empty chunks)
+
   systemd.services.btrfs-balance = {
     description = "Btrfs balance to reclaim empty chunks";
     serviceConfig.Type = "oneshot";

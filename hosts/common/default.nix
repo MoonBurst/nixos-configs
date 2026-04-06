@@ -14,11 +14,10 @@
     ./users.nix
     ./zsh.nix
     ./programs/waybar/default.nix
-    ./programs/brave.nix      # ADDED
-    ./programs/audacious.nix  # ADDED
+    ./programs/brave.nix
+    ./programs/audacious.nix
   ];
 
-  # --- Home Manager (Global for moonburst user) ---
   home-manager.users.moonburst = {
     imports = [
       ./programs/sway/sway.nix
@@ -44,9 +43,9 @@
     };
   };
 
-  # ... (rest of localization and nix settings unchanged)
   time.timeZone = "America/Chicago";
   i18n.defaultLocale = "en_US.UTF-8";
+  i18n.extraLocales = [ "en_US.UTF-8/UTF-8" ];
   nixpkgs.config.allowUnfree = true;
   nixpkgs.config.permittedInsecurePackages = [ "olm-3.2.16" ];
 

@@ -1,5 +1,3 @@
-# ~/nix/modules/desktop-hardware.nix
-# This file contains the machine-specific hardware configuration for moonbeauty (Desktop).
 { config, lib, pkgs, modulesPath, ... }:
 {
   _module.args = {
@@ -17,9 +15,6 @@
   
   # Bootloader (systemd-boot)
   boot.loader.systemd-boot.enable = true;
-  ####################
- # boot.loader.systemd-boot.consoleMode = "max";########################
-#######################
   boot.loader.efi.canTouchEfiVariables = true;
   # --- AMDGPU/ROCm Kernel Parameters ---
 boot.kernelParams = [

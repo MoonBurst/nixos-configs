@@ -116,7 +116,6 @@ in
       exclude = baseExcludes;
       encryption = {
         mode = "repokey-blake2";
-        # FIXED: Changed to passCommand and used cat to read the secret
         passCommand = "${pkgs.coreutils}/bin/cat ${config.sops.secrets.borg_passphrase.path}";
       };
     };
@@ -132,7 +131,6 @@ in
       exclude = baseExcludes ++ [ "*/stump_backup.tar.gz" ];
       encryption = {
         mode = "repokey-blake2";
-        # FIXED: Changed to passCommand and used cat to read the secret
         passCommand = "${pkgs.coreutils}/bin/cat ${config.sops.secrets.borg_passphrase.path}";
       };
     };

@@ -5,7 +5,7 @@
   users.users.moonburst = {
     hashedPasswordFile = "/run/secrets-for-users/moonburst_password";
     isNormalUser = true;
-    group = "moonburst"; # Added to satisfy the mandatory group requirement
+    group = "moonburst";
     description = "MoonBurst";
     home = "/home/moonburst";
 
@@ -29,6 +29,5 @@
     shell = pkgs.zsh;
   };
 
-  # Manually defining the group satisfies the "group is unset" error
   users.groups.moonburst = {};
 }

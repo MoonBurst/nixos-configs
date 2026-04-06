@@ -22,7 +22,6 @@
       ${pkgs.imagemagick}/bin/magick -size 1x1 xc:#1E1E1E $out
     '';
 
-    # Change these back to the standard "Module" approach
     homeManagerIntegration.autoImport = true;
     homeManagerIntegration.followSystem = true;
 
