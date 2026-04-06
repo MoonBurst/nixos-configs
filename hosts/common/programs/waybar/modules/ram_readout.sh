@@ -1,46 +1,26 @@
 #!/usr/bin/env bash
-
-# Enable strict mode
 set -euo pipefail
 
-# --- Threshold Definitions (in GiB) ---
-RED_THRESHOLD=8    # Critical threshold: less than this is RED
-WARN_THRESHOLD=16  # Warning threshold: less than this (but >= RED_THRESHOLD) is ORANGE
+RED_THRESHOLD=8
+WARN_THRESHOLD=16
+COLOR_CRITICAL="#FF0000"
+COLOR_WARNING="#FFA500"
+COLOR_SUFFICIENT="#00FF00"
 
-# --- Color Definitions ---
-COLOR_CRITICAL="#FF0000"     # Red color for critically low memory
-COLOR_WARNING="#FFA500"      # Orange/Amber color for warning memory
-COLOR_SUFFICIENT="#00FF00"   # Green color for sufficient memory
-COLOR_PADDING="#262626"      # Gray color for N/A
+# 1. Get available memory
+available_memory=$(free -g | awk '/Mem/ {print $7}')
 
-# --- Main Monitoring Function ---
-monitor_ram() {
-    # Extract the 'available' memory in GiB.
-    # The '$7' column on the 'Mem' line usually corresponds to 'available' memory when using 'free -g'.
-    local available_memory
-    available_memory=$(free -g | awk '/Mem/ {print $7}')
+# 2. Determine Color
+color="$COLOR_SUFFICIENT"
+if (( available_memory < RED_THRESHOLD )); then
+    color="$COLOR_CRITICAL"
+elif (( available_memory < WARN_THRESHOLD )); then
+    color="$COLOR_WARNING"
+fi
 
-    # Check if memory reading was successful and is a number
-    # If the output is missing or not a number (e.g., if 'free' output changes), return N/A status.
-    if ! [[ "$available_memory" =~ ^[0-9]+$ ]]; then
-        echo "<span foreground='$COLOR_PADDING'>RAM: N/A</span>"
-        return
-    fi
-    
-    local color="$COLOR_SUFFICIENT"
+# 3. Get TOP 10 processes using a single AWK command
+# This avoids pipe issues by doing the 'head' logic inside AWK itself
+tooltip=$(ps -eo rss,comm --no-headers | awk '{mag[$2]+=$1} END {for (i in mag) print mag[i], i}' | sort -rn | awk 'NR<=10 {printf "%7d MB  %s\\n", $1/1024, $2}' | tr -d '\n')
 
-    # Determine color based on thresholds
-    if (( available_memory < RED_THRESHOLD )); then
-        color="$COLOR_CRITICAL"
-    elif (( available_memory < WARN_THRESHOLD )); then
-        color="$COLOR_WARNING"
-    fi
-
-    # Print the available memory in the specified color using Pango markup.
-    echo "<span foreground='$color'>RAM: $available_memory GiB</span>"
-}
-
-#while true; do
-    monitor_ram
-#    sleep 1
-#done
+# 4. Final Output
+echo "{\"text\": \"<span foreground='$color'>RAM: $available_memory GiB</span>\", \"tooltip\": \"<tt>$tooltip</tt>\"}"

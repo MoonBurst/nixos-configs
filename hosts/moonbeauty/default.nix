@@ -52,12 +52,22 @@
   };
   boot.kernelParams = [ "clearcpuid=514" ];
 
-# 1. Define the "Gaming Lane"
-systemd.slices."steam-games".sliceConfig.CPUAffinity = "2 3 4 5 6 7";
-# 2. Force the Steam process (and everything it starts) into that lane
-systemd.services."steam".serviceConfig.Slice = "steam-games.slice";
-# 3. Handle the "scope" (This catches games launched via the Desktop environment)
-systemd.slices."app-steam".sliceConfig.CPUAffinity = "2 3 4 5 6 7";
+systemd.user.slices."steam-games" = {
+  sliceConfig = {
+    CPUAffinity = "2 3 4 5 6 7";
+    MemorySwapMax = 0; # Strictly forbids games from using zram
+    CPUWeight = 1000;   # High priority for gameplay
+  };
+};
+
+systemd.user.slices."app-steam" = {
+  sliceConfig = {
+    CPUAffinity = "2 3 4 5 6 7";
+  };
+};
+
+
+
 
 
 system.stateVersion = "25.11";

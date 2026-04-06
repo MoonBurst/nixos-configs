@@ -1,43 +1,58 @@
 { config, pkgs, ... }: {
 
-  # 1. Define the custom systemd service
-  systemd.services.custom-zram = {
-    description = "Custom zram initialization service";
-
-    # Ensure it starts early during boot
+  systemd.services.zram = {
+    description = "Dynamic 50% RAM zram Service";
     wantedBy = [ "multi-user.target" ];
     after = [ "dev-zram0.device" ];
+
+    path = with pkgs; [
+      gawk
+      gnugrep
+      kmod
+      util-linux
+    ];
 
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
     };
 
-    # The actual commands to set up the device
     script = ''
-      # Load the module
-      ${pkgs.kmod}/bin/modprobe zram
+#Load the module
+      modprobe zram
 
-      # Reset and set algorithm/size
+#Reset the device
       echo 1 > /sys/block/zram0/reset || true
-      echo zstd > /sys/block/zram0/comp_algorithm
-      echo 4G > /sys/block/zram0/disksize # Set your desired compressed size
 
-      # Initialize as swap and enable
-      ${pkgs.util-linux}/bin/mkswap /dev/zram0
-      ${pkgs.util-linux}/bin/swapon /dev/zram0 --priority 100
+#Calculate 50% of Total RAM dynamically
+      TOTAL_K=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+      ZRAM_SIZE=$((TOTAL_K / 2))"K"
+
+#Set the dynamic size and algorithm
+      echo zstd > /sys/block/zram0/comp_algorithm
+      echo $ZRAM_SIZE > /sys/block/zram0/disksize
+
+#Disable all other swap (ensures disk is never used)
+      swapoff -a || true
+
+#Activate zram
+      mkswap /dev/zram0
+      swapon /dev/zram0 --priority 100
     '';
 
-    # Clean up when service stops
     preStop = ''
-      ${pkgs.util-linux}/bin/swapoff /dev/zram0 || true
+      swapoff /dev/zram0 || true
       echo 1 > /sys/block/zram0/reset
     '';
   };
 
-  # 2. Add required tools to system path
-  environment.systemPackages = with pkgs; [
-    util-linux # for mkswap/swapon
-    zram-tools # for zramctl
-  ];
+  # Kernel tweaks to prioritize RAM over disk
+  boot.kernel.sysctl = {
+    "vm.swappiness" = 180;
+    "vm.page-cluster" = 0;
+    "vm.vfs_cache_pressure" = 500;
+  };
+
+  environment.systemPackages = [ pkgs.util-linux ];
+  swapDevices = [ ];
 }

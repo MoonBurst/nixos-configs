@@ -83,10 +83,13 @@ let
       "interval" = 2; "min-length" = 15; "max-length" = 15; "tooltip" = false;
     };
 
-    "custom/ram_readout" = {
-      "exec" = "${pkgs.coreutils}/bin/timeout 1s ${pkgs.bash}/bin/bash ${ramScript} | ${pkgs.coreutils}/bin/head -n 1";
-      "interval" = 2; "tooltip" = false;
-    };
+"custom/ram_readout" = {
+  # Note: Head -n 1 is still safe here to ensure a single JSON object
+  "exec" = "${pkgs.coreutils}/bin/timeout 1s ${pkgs.bash}/bin/bash ${ramScript} | ${pkgs.coreutils}/bin/head -n 1";
+  "interval" = 2;
+  "return-type" = "json"; # Tells waybar to look for the 'tooltip' key in the output
+};
+
 
     "custom/weather" = {
       "exec" = "${pkgs.coreutils}/bin/timeout 2s ${pkgs.bash}/bin/bash ${weatherScript} | ${pkgs.coreutils}/bin/head -n 1";
