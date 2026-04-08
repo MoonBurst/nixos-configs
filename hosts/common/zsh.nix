@@ -33,6 +33,8 @@
       music = "mpv --shuffle --af='dynaudnorm=f=250:g=15:c=1' ~/Music";
       search = "nix search nixpkgs";
       restore_from_git = "cd ~/nix && git fetch origin && git reset --hard origin/main && sudo nixos-rebuild switch --flake .";
+      # Changed: 'open' now uses the system's 'dumb' xdg-open directly
+      open = "xdg-open";
     };
 
     interactiveShellInit = ''
@@ -61,31 +63,6 @@
         local filename="$1"
         magick "$filename" -crop 50%x50% +adjoin -resize 400x400! "''${filename%.*}_%d.''${filename##*.}"
       }
-
-      # --- Notify-on-Failure File Opener ---
-      smart_open() {
-        local target="$1"
-        if [[ "$target" == *://* ]]; then
-          xdg-open "$target"
-          return 0
-        fi
-
-        if [ ! -f "$target" ] && [ ! -d "$target" ]; then
-           echo "Error: File or directory '$target' not found."
-           return 1
-        fi
-
-        local mime_type=$(xdg-mime query filetype "$target")
-        local default_app=$(xdg-mime query default "$mime_type")
-
-        if [ -n "$default_app" ]; then
-          xdg-open "$target"
-        else
-          ${pkgs.libnotify}/bin/notify-send -u critical "Missing MIME Association" "Add '$mime_type' to your mime.nix file."
-          echo "Error: No default application for '$mime_type'."
-        fi
-      }
-      alias open="smart_open"
 
       # --- Steam Join Lobby Link Handler ---
       command_not_found_handler() {

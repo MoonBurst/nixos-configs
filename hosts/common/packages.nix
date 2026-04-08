@@ -23,6 +23,7 @@
     wl-clipboard                # wl-copy/paste
     libnotify                   # Sending desktop notifications
     micro
+    vlc
 
 
     # --- Archives ---
