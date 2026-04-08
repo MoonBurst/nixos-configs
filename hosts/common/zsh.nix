@@ -62,6 +62,41 @@
         magick "$filename" -crop 50%x50% +adjoin -resize 400x400! "''${filename%.*}_%d.''${filename##*.}"
       }
 
+      # --- Notify-on-Failure File Opener ---
+      smart_open() {
+        local target="$1"
+        if [[ "$target" == *://* ]]; then
+          xdg-open "$target"
+          return 0
+        fi
+
+        if [ ! -f "$target" ] && [ ! -d "$target" ]; then
+           echo "Error: File or directory '$target' not found."
+           return 1
+        fi
+
+        local mime_type=$(xdg-mime query filetype "$target")
+        local default_app=$(xdg-mime query default "$mime_type")
+
+        if [ -n "$default_app" ]; then
+          xdg-open "$target"
+        else
+          ${pkgs.libnotify}/bin/notify-send -u critical "Missing MIME Association" "Add '$mime_type' to your mime.nix file."
+          echo "Error: No default application for '$mime_type'."
+        fi
+      }
+      alias open="smart_open"
+
+      # --- Steam Join Lobby Link Handler ---
+      command_not_found_handler() {
+        if [[ "$1" == steam://* ]]; then
+          xdg-open "$1"
+          return 0
+        fi
+        echo "zsh: command not found: $1"
+        return 127
+      }
+
       zmodload zsh/complist
       bindkey '^e' edit-command-line
       autoload -Uz edit-command-line; zle -N edit-command-line
@@ -70,8 +105,7 @@
   };
 
   environment.sessionVariables = {
-   SOPS_AGE_KEY_FILE = "/home/moonburst/.config/sops/age/moon_keys.txt";
-
+    SOPS_AGE_KEY_FILE = "/home/moonburst/.config/sops/age/moon_keys.txt";
     XDG_CACHE_HOME  = "$HOME/.cache";
     XDG_CONFIG_HOME = "$HOME/.config";
     XDG_DATA_HOME   = "$HOME/.local/share";

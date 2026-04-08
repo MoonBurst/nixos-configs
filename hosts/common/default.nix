@@ -6,6 +6,7 @@
     ./audio.nix
     ./btrfs.nix
     ./dunst/dunst.nix
+    ./mime.nix
     ./obs.nix
     ./packages.nix
     ./security.nix
