@@ -100,7 +100,7 @@ in
         port = [ 6167 ];
         address = [ "127.0.0.1" ];
         max_request_size = 52428800;
-        allow_registration = false;
+        allow_registration = true;
         registration_token_file = config.sops.secrets.matrix_registration_secret.path;
         login_shared_secret_file = puppetSecretPath;
         url_preview_enabled = true;

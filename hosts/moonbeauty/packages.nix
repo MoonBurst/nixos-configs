@@ -7,7 +7,7 @@
     jami                                # Peer-to-peer video calling and chat
     nicotine-plus                       # Graphical client for the Soulseek file-sharing network
     evolution                           # Professional email and calendar suite
-
+mission-center
 # --- Detached Cinny Instance ---
 (writeShellScriptBin "cinny-brave" ''
   exec ${pkgs.brave}/bin/brave \
