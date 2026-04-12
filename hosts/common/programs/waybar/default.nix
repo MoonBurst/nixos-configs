@@ -92,9 +92,14 @@ let
 
 
     "custom/weather" = {
+      # The head -n 1 ensures only the final JSON object is read if there is stray output
       "exec" = "${pkgs.coreutils}/bin/timeout 2s ${pkgs.bash}/bin/bash ${weatherScript} | ${pkgs.coreutils}/bin/head -n 1";
-      "interval" = 600; "tooltip" = false;
+      "interval" = 600;
+      "return-type" = "json"; # Critical: Tells Waybar to expect a JSON object
+      "tooltip" = true;       # Enables the hover-over forecast
     };
+
+
 
     "custom/dunst_count" = {
       "exec" = "${pkgs.bash}/bin/bash ${dunstScript}";

@@ -90,6 +90,23 @@ in
       rate_limited: false
     '';
   };
+##Remove this block once the terms of registration are updated
+##Remove this block once the terms of registration are updated
+##Remove this block once the terms of registration are updated
+sops.templates."continuwuity-env" = {
+  content = ''
+    CONTINUWUITY_REGISTRATION_TOKEN=${config.sops.placeholder.matrix_registration_secret}
+    CONDUWUIT_REGISTRATION_TOKEN=${config.sops.placeholder.matrix_registration_secret}
+  '';
+  owner = "continuwuity";
+};
+
+systemd.services.continuwuity.serviceConfig.EnvironmentFile = [
+  config.sops.templates."continuwuity-env".path
+];
+##Remove this block once the terms of registration are updated
+##Remove this block once the terms of registration are updated
+##Remove this block once the terms of registration are updated
 
 
   services.matrix-continuwuity = {
@@ -101,7 +118,7 @@ in
         address = [ "127.0.0.1" ];
         max_request_size = 52428800;
         allow_registration = true;
-        registration_token_file = config.sops.secrets.matrix_registration_secret.path;
+      #  registration_token_file = config.sops.secrets.matrix_registration_secret.path;
         login_shared_secret_file = puppetSecretPath;
         url_preview_enabled = true;
         url_preview_ip_range_blacklist = [ "127.0.0.0/8" "10.0.0.0/8" "172.16.0.0/12" "192.168.0.0/16" "::1/128" ];
