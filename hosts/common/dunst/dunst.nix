@@ -24,8 +24,8 @@ let
 
     ### ICON SIZE FIX ###
     icon_position = left
-    min_icon_size = 92
-    max_icon_size = 128
+    min_icon_size = 64
+    max_icon_size = 64
     icon_theme = "Papirus-Dark, Adwaita, hicolor"
     enable_recursive_icon_lookup = true
 

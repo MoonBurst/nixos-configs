@@ -10,6 +10,8 @@
     ];
   };
 
+environment.systemPackages = [ pkgs.obs-cmd ];
+
   systemd.user.services.obs = {
     description = "OBS Studio Headless/Auto-start Service";
     after = [ "graphical-session.target" "pipewire.service" ];

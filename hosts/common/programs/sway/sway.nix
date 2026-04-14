@@ -1,8 +1,4 @@
-{ pkgs, lib, config, ... }:
-
-{
-  imports = [
-    ./autostart.nix
+{ pkgs, lib, config, ... }: { imports = [ ./autostart.nix
     ./keybinds.nix
     ./outputs.nix
     ./window-rules.nix
@@ -14,10 +10,6 @@
 
     config = rec {
       modifier = "Mod4";
-      left = "h";
-      down = "j";
-      up = "k";
-      right = "l";
 
       # THIS LINE KILLS THE DEFAULT SWAYBAR
       bars = [ ];
