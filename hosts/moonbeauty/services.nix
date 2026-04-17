@@ -81,23 +81,31 @@ in
         ${pkgs.coreutils}/bin/chmod 600 ${rcloneConfigPath}
       '');
 
-      ExecStart = lib.mkForce ''
-        ${pkgs.rclone}/bin/rclone mount NextCloud: /mnt/nextcloud \
-          --config ${rcloneConfigPath} \
-          --cache-dir ${rcloneCacheDir} \
-          --vfs-cache-mode full \
-          --vfs-cache-max-size 100G \
-          --vfs-cache-max-age 24h \
-          --vfs-write-back 5s \
-          --dir-cache-time 5m \
-          --attr-timeout 5m \
-          --webdav-nextcloud-chunk-size 10M \
-          --bwlimit 200k \
-          --allow-non-empty \
-          --allow-other \
-          --rc \
-          --stats 5s
-      '';
+ExecStart = lib.mkForce ''
+  ${pkgs.rclone}/bin/rclone mount NextCloud: /mnt/nextcloud \
+    --config ${rcloneConfigPath} \
+    --cache-dir ${rcloneCacheDir} \
+    --vfs-cache-mode full \
+    --vfs-cache-max-size 100G \
+    --vfs-cache-max-age 24h \
+    --vfs-write-back 2m \
+    --dir-cache-time 1m \
+    --attr-timeout 1m \
+    --webdav-nextcloud-chunk-size 1M \
+    --bwlimit 100k \
+    --transfers 1 \
+    --tpslimit 0.5 \
+    --low-level-retries 20 \
+    --retries 10 \
+    --timeout 5m \
+    --contimeout 2m \
+    --allow-non-empty \
+    --allow-other \
+    --rc \
+    --stats 5s
+'';
+
+
 
       ExecStop = lib.mkForce "${pkgs.fuse}/bin/fusermount -uz /mnt/nextcloud";
       Restart = "on-failure";
@@ -126,7 +134,7 @@ in
       startAt = "02:00";
       doInit = true;
       compression = "zstd,6";
-      extraCreateArgs = "--stats --list --filter=AME";
+      extraCreateArgs = "--stats --list --filter=AME --checkpoint-interval 300";
       prune.keep = { daily = 7; weekly = 4; monthly = 6; };
       exclude = baseExcludes ++ [ "*/stump_backup.tar.gz" ];
       encryption = {

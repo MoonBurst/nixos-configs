@@ -3,11 +3,8 @@
 {
   imports = [
     inputs.sops-nix.nixosModules.sops
-    ./audio.nix
     ./btrfs.nix
-    ./dunst/dunst.nix
     ./mime.nix
-    ./obs.nix
     ./packages.nix
     ./security.nix
     ./services.nix
@@ -17,6 +14,7 @@
     ./programs/waybar/default.nix
     ./programs/brave.nix
     ./programs/audacious.nix
+    ./programs/walker.nix
   ];
 
   home-manager.users.moonburst = {

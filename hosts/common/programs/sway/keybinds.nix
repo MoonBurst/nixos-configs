@@ -10,9 +10,7 @@ let
   explorer = "${pkgs.nemo}/bin/nemo";
   music = "${pkgs.audacious}/bin/audacious";
   launchpad = "sherlock";
-
-  scriptsDir = "/home/moonburst/nix/hosts/moonbeauty/scripts";
-  userScripts = "/home/moonburst/scripts";
+  scriptsDir = ../../scripts;
 in
 {
   wayland.windowManager.sway.config.keybindings = lib.mkOptionDefault {
@@ -21,13 +19,11 @@ in
 # ░█▀█░█▀▀░█▀▀░░░█░░░█▀█░█░█░█░█░█░░░█▀█░█▀▀░█▀▄░▀▀█
 # ░▀░▀░▀░░░▀░░░░░▀▀▀░▀░▀░▀▀▀░▀░▀░▀▀▀░▀░▀░▀▀▀░▀░▀░▀▀▀
     "${super}+Return" = "exec ${term}";
-    "${super}+q" = "exec bash ${userScripts}/keybinds/safekill.sh";
+    "${super}+q" = "exec ${pkgs.bash}/bin/bash ${scriptsDir}/safekill.sh";
     "${super}+Shift+q" = "kill";
     "${super}+e" = "exec ${explorer}";
     "${super}+d" = "exec ${launchpad}";
     "${super}+l" = "exec ${pkgs.swaylock-effects}/bin/swaylock -f --screenshots --clock --indicator --indicator-radius 120 --indicator-thickness 15 --effect-blur 20x20 --effect-vignette 0:1 --ring-color 1a1a1a --key-hl-color ffff33 --ring-ver-color ffff33 --inside-ver-color 00000000 --ring-wrong-color ff0000 --inside-wrong-color 00000000 --bs-hl-color ff0000 --inside-color 00000000 --separator-color 00000000 --line-color 00000000 --text-color ffff33 --text-ver-color ffff33 --text-wrong-color ff0000 --text-clear-color ffff33 --text-caps-lock-color ffff33 --grace 5 --fade-in 2";
-
-
     "${super}+SHIFT+m" = "exec ${pkgs.evolution}/bin/evolution";
     "${super}+k" = ''exec sh -c "CLIPHIST_DB_PATH=/tmp/cliphist_db sherlock-clp list | sherlock | xargs -r ${pkgs.cliphist}/bin/cliphist decode | ${pkgs.wl-clipboard}/bin/wl-copy"'';
 
@@ -88,8 +84,9 @@ in
     # ░█░█░█▀▀░█░█░░█░░█▀█
     # ░▀░▀░▀▀▀░▀▀░░▀▀▀░▀░▀
     # **Media & Audio**
-    "${super}+0" = "exec bash ${userScripts}/keybinds/toggle_mic.sh";
-    "${super}+minus" = "exec bash ${userScripts}/keybinds/sound_sink_switcher.sh";
+    "${super}+0" = "exec ${pkgs.bash}/bin/bash ${scriptsDir}/toggle_mic.sh";
+    "${super}+minus" = "exec ${pkgs.bash}/bin/bash ${scriptsDir}/sound_sink_switcher.sh";
+
     "XF86AudioRaiseVolume" = "exec ${pkgs.wireplumber}/bin/wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+ --limit 0.70";
     "XF86AudioLowerVolume" = "exec ${pkgs.wireplumber}/bin/wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-";
     "XF86AudioMute" = "exec ${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle";

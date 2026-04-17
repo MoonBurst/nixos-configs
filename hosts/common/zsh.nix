@@ -29,7 +29,7 @@
       bind-6400 = "echo '0000:2b:00.0' | sudo tee /sys/bus/pci/drivers/amdgpu/bind";
       historycleaner = "$HOME/scripts/alias_scripts/historycleaner.sh";
       nolog = "unset HISTFILE";
-      uhorizon = "curl -L https://github.com > F-Chat.Horizon-linux-x86_64.AppImage";
+      hupdate = "$HOME/update_horizon.sh";
       music = "mpv --shuffle --af='dynaudnorm=f=250:g=15:c=1' ~/Music";
       search = "nix search nixpkgs";
       restore_from_git = "cd ~/nix && git fetch origin && git reset --hard origin/main && sudo nixos-rebuild switch --flake .";
