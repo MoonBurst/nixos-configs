@@ -22,6 +22,7 @@
 
       keybindings = lib.mkOptionDefault {
         "${modifier}+m" = "output \"AOC 24G2W1G4 0x0000E8FA\" toggle ; output \"LG Electronics LG ULTRAWIDE 0x0003CBC2\" toggle";
+        "button1" = "nop";
         "button4" = "nop";
         "button5" = "nop";
         "button6" = "nop";
