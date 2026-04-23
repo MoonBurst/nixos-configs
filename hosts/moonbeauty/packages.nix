@@ -1,21 +1,32 @@
 # --- packages.nix ---
-{ pkgs, config, lib, ... }:
+{ pkgs, config, lib, nixpkgs-unstable, ... }:
 
+let
+  unstable = nixpkgs-unstable.legacyPackages.${pkgs.system};
+in
 {
   home.packages = with pkgs; [
+    # --- Unstable Packages ---
+    unstable.dolphin-emu                # GameCube/Wii emulator
+    unstable.archipelago                # Multi-game randomizer
+    unstable.poptracker                 # Tracker for randomizers
+
     # --- Communication & Social ---
     jami                                # Peer-to-peer video calling and chat
     nicotine-plus                       # Graphical client for the Soulseek file-sharing network
     evolution                           # Professional email and calendar suite
-mission-center
-# --- Detached Cinny Instance ---
-(writeShellScriptBin "cinny-brave" ''
-  exec ${pkgs.brave}/bin/brave \
-    --app=https://moonburst.net \
-    --class=cinny-app \
-    --enable-features=UseOzonePlatform \
-    --ozone-platform=wayland
-'')
+    mission-center
+
+    # --- Detached Cinny Instance ---
+    (writeShellScriptBin "cinny-brave" ''
+      exec ${pkgs.brave}/bin/brave \
+        --app=https://moonburst.net \
+        --class=cinny-app \
+        --user-data-dir="$HOME/.config/cinny-brave" \
+        --enable-features=UseOzonePlatform \
+        --ozone-platform=wayland
+    '')
+
 
     # --- Media & Graphics ---
     audacious                           # Lightweight, "Winamp-style" audio player

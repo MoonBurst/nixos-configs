@@ -3,6 +3,7 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
     nur.url = "github:nix-community/NUR";
     stylix = {
       url = "github:danth/stylix/release-25.11";
@@ -51,6 +52,7 @@
                 home-manager.useGlobalPkgs = true;
                 home-manager.useUserPackages = true;
                 home-manager.backupFileExtension = "backup";
+                home-manager.extraSpecialArgs = { inherit (inputs) nixpkgs-unstable; };
                 home-manager.users.moonburst = { pkgs, ... }: {
                   imports = [ ./hosts/moonbeauty/packages.nix ];
                   home.packages = [

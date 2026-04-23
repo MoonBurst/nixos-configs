@@ -11,13 +11,13 @@ DUNST_MUTED="#808080" # Grey (Used for paused state)
 # ---------------------
 
 monitor_dunst() {
-    
+
     local DUNST_WARN="$WARN"
     local DUNST_NORM="$NORM"
-    
+
     local count="?"
     local status="false"
-    
+
     # Check if dunstctl exists and dunst is running
     if command -v dunstctl &> /dev/null; then
         # Suppress errors if dunstctl fails (e.g., dunst is not running properly)
@@ -28,7 +28,7 @@ monitor_dunst() {
         echo "<span color=\"$DUNST_MUTED\">Dunst N/A</span>"
         return
     fi
-    
+
     local icon=""
     local color=""
 
@@ -45,7 +45,7 @@ monitor_dunst() {
         icon="🔔"
         color="$DUNST_NORM"
     fi
-    
+
     # Output Pango markup for the status
     echo "<span color=\"$color\">$icon $count</span>"
 }
