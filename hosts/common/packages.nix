@@ -56,8 +56,8 @@
     playerctl                   # Media key control
     wlrctl                      # Wayland control
     wtype                       # Virtual keystroke tool
-        fastfetch                   # System info
-  nemo                        # File manager (GTK)
+    fastfetch                   # System info
+    nemo                        # File manager (GTK)
     # --- System Libraries & Audio Engines ---
     gdk-pixbuf                  # Image library
     webp-pixbuf-loader          # WebP support for GTK

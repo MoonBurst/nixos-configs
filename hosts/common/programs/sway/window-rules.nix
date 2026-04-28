@@ -1,16 +1,12 @@
-{ ... }:
-
-{
+{ ... }: {
   wayland.windowManager.sway.config = {
-    # Automatic workspace assignments
     assigns = {
       "1" = [ { class = "vesktop"; } ];
       "2" = [ { app_id = "edopro"; } ];
-      #"1" = [ { app_id = "nemo"; } ];
     };
 
-    # Window-specific behaviors (for_window)
     window.commands = [
+      # Generic rules first
       { command = "fullscreen 0"; criteria = { app_id = "edopro"; }; }
       { command = "allow_tearing yes"; criteria = { class = "^steam_app.*"; }; }
       { command = "border pixel 1"; criteria = { class = ".*"; }; }
@@ -19,9 +15,22 @@
       { command = "title_format \"[X11] %title\""; criteria = { shell = "xwayland"; }; }
       { command = "title_format \"[WL] %title\""; criteria = { shell = "xdg_shell"; }; }
       { command = "inhibit_idle open"; criteria = { app_id = "gamescope"; title = "Overwatch"; }; }
-    ];
 
-    # Default layout for new workspaces
+      # WALKER OVERRIDES AT THE BOTTOM (HIGHEST PRIORITY)
+      {
+        command = "floating enable, sticky enable, border none, border csd, fullscreen disable, focus, opacity set 1, resize set 700 500, move position center";
+        criteria = { app_id = "dev.benz.walker"; };
+      }
+      {
+        command = "floating enable, sticky enable, border none, border csd, fullscreen disable, focus, opacity set 1, resize set 700 500, move position center";
+        criteria = { app_id = "walker"; };
+      }
+      # Catching class just in case Sway is seeing it as an XWayland or generic window
+      {
+        command = "floating enable, sticky enable, border none, border csd, fullscreen disable, focus, opacity set 1, resize set 700 500, move position center";
+        criteria = { class = "walker"; };
+      }
+    ];
     workspaceLayout = "tabbed";
   };
 }

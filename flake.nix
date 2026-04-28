@@ -18,6 +18,12 @@
       url = "github:cybardev/nix-channel?ref=main";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+  elephant.url = "github:abenz1267/elephant";
+  walker = {
+    url = "github:abenz1267/walker";
+    inputs.elephant.follows = "elephant";
+  };
     sops-nix.url = "github:Mic92/sops-nix";
     moon-numix.url = "github:moonburst/moon-numix-icons";
   };
