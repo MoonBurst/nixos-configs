@@ -1,13 +1,26 @@
-{ pkgs, ... }:
+{ pkgs, lib, config, ... }:
 
 let
-  dunstCustom = pkgs.dunst.overrideAttrs (oldAttrs: {
-    nativeBuildInputs = (oldAttrs.nativeBuildInputs or [ ]) ++ [ pkgs.makeWrapper ];
-    postInstall = (oldAttrs.postInstall or "") + ''
-      wrapProgram $out/bin/dunst \
-        --set XDG_DATA_DIRS "${pkgs.adwaita-icon-theme}/share:${pkgs.papirus-icon-theme}/share"
-    '';
-  });
+  resourcePath = ./resources;
+
+  characters = [
+    { name = "apogee";        summary = "Apogee";        color = "#0CD0CD"; }
+    { name = "solar_sonata";  summary = "Solar Sonata";  color = "#f7f716"; sound = true; }
+    { name = "cageheart";     summary = "Cageheart";     color = "#8ad5a6"; sound = true; }
+    { name = "olivia";        summary = "Olivia";        color = "#18FFD5"; sound = true; }
+    { name = "genesis_frost"; summary = "Genesis Frost"; color = "#9ce8ff"; }
+    { name = "luster_dawn";   summary = "Luster Dawn";   color = "#e041de"; sound = true; }
+  ];
+
+  makeRule = { name, summary, color, sound ? false }: ''
+    [z_${name}]
+    summary = ".*${summary}.*"
+    frame_color = "${color}"
+    new_icon = "${resourcePath}/${name}/${name}.png"
+    ${if sound
+      then "script = \"${pkgs.writeShellScript "${name}-sound" "${pkgs.pulseaudio}/bin/paplay ${resourcePath}/${name}/${name}.flac"}\""
+      else ""}
+  '';
 
   dunstrc_content = ''
     [global]
@@ -21,13 +34,18 @@ let
     corner_radius = 10
     frame_width = 5
     separator_color = frame
-
-    ### ICON SIZE FIX ###
     icon_position = left
-    min_icon_size = 64
-    max_icon_size = 64
+    min_icon_size = 100
+    max_icon_size = 100
+
+    # Set Papirus as the primary theme for lookup
     icon_theme = "Papirus-Dark, Adwaita, hicolor"
     enable_recursive_icon_lookup = true
+
+    # Updated paths for Papirus on NixOS
+    icon_path = "/run/current-system/sw/share/icons/Papirus-Dark/48x48/status:/run/current-system/sw/share/icons/Papirus-Dark/48x48/devices:/run/current-system/sw/share/icons/Papirus-Dark/48x48/apps:/run/current-system/sw/share/icons/hicolor/48x48/apps"
+
+    default_icon = "${resourcePath}/fallback.png"
 
     font = "Iosevka Term 14"
     format = "<b>%s</b>\n%b"
@@ -46,58 +64,37 @@ let
     frame_color = "#0000FF"
     timeout = 5
 
-    ### CHARACTER RULES (BOTTOM = HIGHEST PRIORITY) ###
-
-    [z_apogee]
-    summary = ".*Apogee.*"
-    frame_color = "#0CD0CD"
-    new_icon = "${./apogee/apogee.png}"
-
-    [z_solar_sonata]
-    summary = ".*Solar Sonata.*"
-    frame_color = "#f7f716"
-    new_icon = "${./solar_sonata/solar_sonata.png}"
-    script = "${pkgs.writeShellScript "solar-sonata-sound" "export PATH=$PATH:${pkgs.pulseaudio}/bin; paplay ${./solar_sonata/solar_sonata.flac}"}"
-
-    [z_cageheart]
-    summary = ".*Cageheart.*"
-    frame_color = "#8ad5a6"
-    new_icon = "${./cageheart/cageheart.png}"
-    script = "${pkgs.writeShellScript "cageheart-script" "export PATH=$PATH:${pkgs.pulseaudio}/bin; paplay ${./cageheart/cageheart.flac}"}"
-
-    [z_olivia]
-    summary = ".*Olivia.*"
-    frame_color = "#18FFD5"
-    new_icon = "${./olivia/olivia.png}"
-    script = "${pkgs.writeShellScript "olivia-script" "export PATH=$PATH:${pkgs.pulseaudio}/bin; paplay ${./olivia/olivia.flac}"}"
-
-    [z_genesis_frost]
-    summary = ".*Genesis Frost.*"
-    frame_color = "#9ce8ff"
-    new_icon = "${./genesis_frost/genesis_frost.png}"
-
-    [z_luster_dawn]
-    summary = ".*Luster Dawn.*"
-    frame_color = "#e041de"
-    new_icon = "${./luster_dawn/luster_dawn.png}"
-    script = "${pkgs.writeShellScript "luster-dawn-script" "export PATH=$PATH:${pkgs.pulseaudio}/bin; paplay ${./luster_dawn/luster_dawn.flac}"}"
+    ${lib.concatStringsSep "\n" (map makeRule characters)}
   '';
 
   dunstConfig = pkgs.writeText "dunstrc" dunstrc_content;
 in
 {
-  environment.systemPackages = [ dunstCustom pkgs.libnotify pkgs.pulseaudio ];
-  services.dbus.packages = [ dunstCustom ];
+  home-manager.users.moonburst = {
+    services.mako.enable = lib.mkForce false;
 
-  systemd.user.services.dunst = {
-    description = "Dunst notification daemon";
-    after = [ "graphical-session.target" ];
-    serviceConfig = {
-      ExecStart = "${dunstCustom}/bin/dunst -config ${dunstConfig}";
-      Restart = "always";
+    services.dunst = {
+      enable = true;
+      configFile = dunstConfig;
+      package = pkgs.dunst.overrideAttrs (oldAttrs: {
+        nativeBuildInputs = (oldAttrs.nativeBuildInputs or [ ]) ++ [ pkgs.makeWrapper ];
+        postInstall = (oldAttrs.postInstall or "") + ''
+          wrapProgram $out/bin/dunst \
+            --set XDG_DATA_DIRS "${pkgs.adwaita-icon-theme}/share:${pkgs.papirus-icon-theme}/share" \
+            --prefix GDK_PIXBUF_MODULE_FILE : "${pkgs.librsvg}/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache"
+        '';
+      });
     };
-    wantedBy = [ "graphical-session.target" ];
   };
 
+  # Make sure the icon theme is actually in your system profile
+  environment.systemPackages = [
+    pkgs.libnotify
+    pkgs.pulseaudio
+    pkgs.file
+    pkgs.librsvg
+    pkgs.papirus-icon-theme
+    pkgs.adwaita-icon-theme
+  ];
   programs.gdk-pixbuf.modulePackages = [ pkgs.librsvg ];
 }
