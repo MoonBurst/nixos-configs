@@ -1,7 +1,10 @@
 { inputs, config, pkgs, ... }: {
   home-manager.users.moonburst = { lib, ... }: {
     imports = [ inputs.walker.homeManagerModules.default ];
-    home.packages = with pkgs; [ wl-clipboard ];
+    home.packages = with pkgs; [
+      wl-clipboard
+      inputs.elephant.packages.${pkgs.system}.default
+    ];
 
     home.activation.linkElephantCache = lib.hm.dag.entryAfter ["writeBoundary"] ''
       mkdir -p /tmp/elephant-cache
@@ -11,6 +14,46 @@
         ln -s /tmp/elephant-cache "$HOME/.cache/elephant"
       fi
     '';
+
+    # Elephant Backend Service
+    systemd.user.services.elephant = {
+      Unit = {
+        Description = lib.mkForce "Elephant - Backend for Walker";
+        PartOf = lib.mkForce [ "graphical-session.target" ];
+      };
+      Service = {
+        ExecStart = lib.mkForce "${inputs.elephant.packages.${pkgs.system}.default}/bin/elephant";
+        # Fixes pathing and ensures it finds the DBus session
+        Environment = [
+          "PATH=${lib.makeBinPath [ pkgs.bash pkgs.coreutils ]}:/run/current-system/sw/bin:/etc/profiles/per-user/moonburst/bin"
+          "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus"
+        ];
+        Restart = lib.mkForce "always";
+        RestartSec = lib.mkForce 5;
+      };
+      Install = {
+        WantedBy = [ "graphical-session.target" ];
+      };
+    };
+
+    # Walker Service Customization
+    systemd.user.services.walker = {
+      Unit = {
+        Description = lib.mkForce "Walker - Application Runner";
+        Requires = lib.mkForce [ "elephant.service" ];
+        After = lib.mkForce [ "elephant.service" "dbus.socket" ];
+      };
+      Service = {
+        # Wait for Elephant to fully initialize its listeners
+        ExecStartPre = lib.mkForce "${pkgs.coreutils}/bin/sleep 3";
+        Environment = [
+          "PATH=${lib.makeBinPath [ pkgs.bash pkgs.coreutils ]}:/run/current-system/sw/bin:/etc/profiles/per-user/moonburst/bin"
+          "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus"
+        ];
+        RestartSec = lib.mkForce 5;
+        Restart = lib.mkForce "always";
+      };
+    };
 
     programs.walker = {
       enable = true;
@@ -91,8 +134,5 @@
         '';
       };
     };
-
-    xdg.configFile."walker/config.json".text = builtins.toJSON config.home-manager.users.moonburst.programs.walker.config;
-    xdg.configFile."walker/style.css".text = config.home-manager.users.moonburst.programs.walker.themes."stylix-match".style;
   };
 }

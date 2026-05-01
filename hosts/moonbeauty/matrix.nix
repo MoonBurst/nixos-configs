@@ -197,7 +197,12 @@ services.postgresql = {
           add_header Access-Control-Allow-Origin *;
         '';
         "/" = {
-          proxyPass = "https://dev.cinny.in";
+          # Using a variable forces Nginx to start even if DNS is down
+          extraConfig = ''
+            resolver 1.1.1.1;
+            set $cinny_upstream dev.cinny.in;
+            proxy_pass https://$cinny_upstream;
+          '';
           proxyWebsockets = true;
         };
       };

@@ -58,7 +58,7 @@
                 home-manager.useGlobalPkgs = true;
                 home-manager.useUserPackages = true;
                 home-manager.backupFileExtension = "backup";
-                home-manager.extraSpecialArgs = { inherit (inputs) nixpkgs-unstable; };
+                home-manager.extraSpecialArgs = { inherit inputs; inherit (inputs) nixpkgs-unstable; };
                 home-manager.users.moonburst = { pkgs, ... }: {
                   imports = [ ./hosts/moonbeauty/packages.nix ];
                   home.packages = [
