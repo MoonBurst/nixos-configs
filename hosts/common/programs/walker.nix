@@ -44,6 +44,9 @@
         After = lib.mkForce [ "elephant.service" "dbus.socket" ];
       };
       Service = {
+        # IMPORTANT: Add the flag here to keep it resident in memory
+        ExecStart = lib.mkForce "${inputs.walker.packages.${pkgs.system}.default}/bin/walker --gapplication-service";
+
         # Wait for Elephant to fully initialize its listeners
         ExecStartPre = lib.mkForce "${pkgs.coreutils}/bin/sleep 3";
         Environment = [

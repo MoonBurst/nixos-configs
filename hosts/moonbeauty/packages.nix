@@ -10,7 +10,6 @@ in
     unstable.dolphin-emu                # GameCube/Wii emulator
     unstable.archipelago                # Multi-game randomizer
     unstable.poptracker                 # Tracker for randomizers
-
     # --- Communication & Social ---
     jami                                # Peer-to-peer video calling and chat
     nicotine-plus                       # Graphical client for the Soulseek file-sharing network
