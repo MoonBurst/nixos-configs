@@ -1,6 +1,5 @@
 { config, pkgs, inputs, lib, ... }: {
   imports = [
-    #./email.nix
     ../common/default.nix
     ./moonbeauty-hardware.nix
     ./mounts.nix

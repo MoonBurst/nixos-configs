@@ -65,4 +65,8 @@
       emoji = { package = pkgs.noto-fonts-color-emoji; name = "Noto Color Emoji"; };
     };
   };
+    home-manager.users.moonburst = {
+    home.file.".local/share/icons/Numix".source = "${inputs.moon-numix.packages.${pkgs.system}.default}/share/icons/Numix";
+    home.file.".local/share/icons/Numix-Light".source = "${inputs.moon-numix.packages.${pkgs.system}.default}/share/icons/Numix-Light";
+  };
 }

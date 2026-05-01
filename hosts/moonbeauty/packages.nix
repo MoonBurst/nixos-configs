@@ -30,12 +30,9 @@ in
     # --- Media & Graphics ---
     audacious                           # Lightweight, "Winamp-style" audio player
     krita                               # Professional digital painting and illustration tool
-    qview                               # Minimalist, fast image viewer
-    pavucontrol                         # PulseAudio/PipeWire volume mixer (essential for debugging mic/speakers)
+
 
     # --- System & Utilities ---
-    swaylock-effects                    # Screen locker with blur and aesthetic effects
-    satty                               # Modern screenshot annotation tool
     sherlock-launcher                   # Minimalist application runner/launcher
     (pkgs.callPackage ../../packages/sherlock-clipboard.nix {}) # Custom clipboard manager
     btrfs-assistant                     # GUI for managing Btrfs filesystems and Snapper snapshots
@@ -65,6 +62,5 @@ in
       };
     };
   };
-
-  home.stateVersion = "25.11";
 }
+

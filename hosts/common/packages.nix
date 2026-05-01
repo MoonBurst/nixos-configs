@@ -1,4 +1,4 @@
-{ pkgs, ... }: {
+{ pkgs, inputs, ... }: {
   environment.systemPackages = with pkgs; [
     # --- Version Control & Dev (Non-GUI) ---
     git                         # The heart of your flake
@@ -65,6 +65,19 @@
     qt6Packages.qt6ct           # QT theming logic
     pass                        # Password manager
 
+    swaylock-effects                    # Screen locker with blur and aesthetic effects
+    satty                               # Modern screenshot annotation tool
+    qview                               # Minimalist, fast image viewer
+    pavucontrol                         # PulseAudio/PipeWire volume mixer (essential for debugging mic/speakers)
+
+
+    sops
+    age
+    mkpasswd
+    ssh-to-age
+
+    inputs.moon-numix.packages.${pkgs.system}.default
+    pkgs.kitty.terminfo
 
   ];
 }

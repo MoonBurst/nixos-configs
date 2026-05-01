@@ -6,7 +6,7 @@
   imports = [
     ./lunarchild-hardware.nix
     ../common/default.nix
-  ]; # Added missing closing bracket here
+  ];
 
   # ====================================================================
   # SERVICES (Laptop Specific)

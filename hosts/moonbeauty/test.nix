@@ -49,6 +49,4 @@
 
   hardware.uinput.enable = true;
   environment.systemPackages = [ pkgs.keyd ];
-
-  system.stateVersion = "25.11";
 }
