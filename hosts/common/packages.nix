@@ -78,6 +78,14 @@
 
     inputs.moon-numix.packages.${pkgs.system}.default
     pkgs.kitty.terminfo
+    # --- Fonts ---
+    noto-fonts
+    noto-fonts-cjk-sans
+    noto-fonts-cjk-serif
+    symbola
+    unifont        # Ultimate BMP coverage
+    unifont_upper  # Ultimate SMP coverage
+
 
   ];
 }

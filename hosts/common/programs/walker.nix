@@ -3,6 +3,7 @@
     imports = [ inputs.walker.homeManagerModules.default ];
     home.packages = with pkgs; [
       wl-clipboard
+      uni
       inputs.elephant.packages.${pkgs.system}.default
     ];
 
@@ -23,9 +24,8 @@
       };
       Service = {
         ExecStart = lib.mkForce "${inputs.elephant.packages.${pkgs.system}.default}/bin/elephant";
-        # Fixes pathing and ensures it finds the DBus session
         Environment = [
-          "PATH=${lib.makeBinPath [ pkgs.bash pkgs.coreutils ]}:/run/current-system/sw/bin:/etc/profiles/per-user/moonburst/bin"
+          "PATH=${lib.makeBinPath [ pkgs.bash pkgs.coreutils pkgs.uni]}:/run/current-system/sw/bin:/etc/profiles/per-user/moonburst/bin"
           "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus"
         ];
         Restart = lib.mkForce "always";
@@ -70,15 +70,33 @@
         ui = { width = 700; height = 0; };
 
         providers = {
-          default = [ "websearch" "desktopapplications" "calc" "clipboard" "symbols" ];
-          max_results_provider = { "desktopapplications" = 3; "clipboard" = 50; };
+          default = [ "websearch" "desktopapplications" "calc" "clipboard" "symbols" "unicode" ];
+          max_results_provider = {
+          "desktopapplications" = 3;
+          "clipboard" = 50;
+          "unicode" = 20;
+          "symbols" = 3;
+        };
+
           prefixes = [
             { provider = "websearch"; prefix = "d "; }
             { provider = "websearch"; prefix = "?"; }
             { provider = "calc"; prefix = "="; }
-          ];
+           ];
         };
-      };
+
+
+
+
+        commands = {
+          "unicode" = {
+            description = "Search All Unicode";
+            # We use absolute paths to ensure the service finds the binaries
+            command = "${pkgs.bash}/bin/bash -c '${pkgs.uni}/bin/uni search . | ${inputs.walker.packages.${pkgs.system}.default}/bin/walker --dmenu'";
+          };
+        };
+
+        };
 
       themes."stylix-match" = {
         style = let
