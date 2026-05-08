@@ -1,6 +1,5 @@
 {
   description = "Moonburst's NixOS flake config";
-
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";

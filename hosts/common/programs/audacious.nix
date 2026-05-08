@@ -11,7 +11,7 @@
       };
 
       Service = {
-        ExecStart = "${pkgs.audacious}/bin/audacious -H";
+        ExecStart = "${pkgs.audacious}/bin/audacious";
         Restart = "on-failure";
       };
 

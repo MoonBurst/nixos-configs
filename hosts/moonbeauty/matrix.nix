@@ -1,12 +1,17 @@
-{ config, pkgs, lib, ... }:
+{ config, pkgs, lib, ... }@args:
 
 let
+  unstablePkgs = if args ? inputs.nixpkgs-unstable
+    then args.inputs.nixpkgs-unstable.legacyPackages.${pkgs.system}
+    else pkgs;
+
   registrationPath = "/run/discord-registration.yaml";
   bridgeConfigPath = "/var/lib/mautrix-discord/bridge-config.yaml";
   puppetSecretPath = config.sops.secrets.matrix_double_puppet_secret.path;
   discordEnvPath = config.sops.templates."discord-env".path;
-  cinny-config = pkgs.writeText "config.json" (builtins.toJSON {
-    default/*Homeserver*/ = 0;
+
+  sable-config = pkgs.writeText "config.json" (builtins.toJSON {
+    defaultHomeserver = 0;
     homeserverList = [
       "moonburst.net"
     ];
@@ -15,6 +20,20 @@ in
 
 {
   nixpkgs.config.permittedInsecurePackages = [ "olm-3.2.16" ];
+
+  environment.systemPackages = [
+    unstablePkgs.cloudflared
+
+    # Detached Sable Instance
+    (pkgs.writeShellScriptBin "sable-app" ''
+      exec ${pkgs.brave}/bin/brave \
+        --app=https://sable.moe \
+        --class=sable-app \
+        --user-data-dir="$HOME/.config/sable-brave" \
+        --enable-features=UseOzonePlatform \
+        --ozone-platform=wayland
+    '')
+  ];
 
   sops.secrets = {
     "matrix_as_token" = { owner = "mautrix-discord"; };
@@ -137,22 +156,26 @@ in
     };
   };
 
-services.postgresql = {
-  enable = true;
-  package = pkgs.postgresql_16;
-  ensureDatabases = [ "mautrix-discord" ];
-  ensureUsers = [{ name = "mautrix-discord"; ensureDBOwnership = true; }];
-  settings = {
-    log_checkpoints = false;
-    log_min_messages = "error";
+  services.postgresql = {
+    enable = true;
+    package = pkgs.postgresql_16;
+    ensureDatabases = [ "mautrix-discord" ];
+    ensureUsers = [{ name = "mautrix-discord"; ensureDBOwnership = true; }];
+    settings = {
+      log_checkpoints = false;
+      log_min_messages = "error";
+    };
   };
-};
 
   services.nginx = {
     enable = true;
     virtualHosts."moonburst.net" = {
+      listen = [
+        { addr = "0.0.0.0"; port = 80; }
+        { addr = "[::]"; port = 80; }
+      ];
       extraConfig = ''
-        client_max_body_size 50M;
+        client_max_body_size 100M;
         access_log off;
       '';
       locations = {
@@ -164,7 +187,7 @@ services.postgresql = {
         "= /.well-known/matrix/client".extraConfig = ''
           add_header Content-Type application/json;
           add_header Access-Control-Allow-Origin *;
-          return 200 "{\"m.homeserver\":{\"base_url\":\"https://moonburst.net\"},\"org.matrix.msc4143.rtc_foci\":[{\"type\":\"livekit\",\"livekit_service_url\":\"https://livekit-jwt.call.matrix.org\"}]}";
+          return 200 "{\"m.homeserver\":{\"base_url\":\"https://moonburst.net\"},\"org.matrix.msc4143.rtc_foci\":[{\"type\":\"livekit\",\"livekit_service_url\":\"https://matrix.org\"}]}";
         '';
         "/_matrix/media" = {
           proxyPass = "http://127.0.0.1:6167";
@@ -192,16 +215,18 @@ services.postgresql = {
         };
 
         "= /config.json".extraConfig = ''
-          alias ${cinny-config};
+          alias ${sable-config};
           add_header Content-Type application/json;
           add_header Access-Control-Allow-Origin *;
         '';
+
         "/" = {
-          # Using a variable forces Nginx to start even if DNS is down
           extraConfig = ''
             resolver 1.1.1.1;
-            set $cinny_upstream dev.cinny.in;
-            proxy_pass https://$cinny_upstream;
+            set $sable_upstream app.sable.moe;
+            proxy_pass https://$sable_upstream;
+            proxy_set_header Host $sable_upstream;
+            proxy_ssl_server_name on;
           '';
           proxyWebsockets = true;
         };
@@ -209,17 +234,16 @@ services.postgresql = {
     };
   };
 
-systemd.services.cloudflared-tunnel = {
-  wantedBy = [ "multi-user.target" ];
-  serviceConfig = {
-    EnvironmentFile = config.sops.secrets.cloudflare_token.path;
-    ExecStart = "${pkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate run --protocol http2";
-    Restart = "always";
-    RestartSec = "5s";
-    User = "continuwuity";
+  systemd.services.cloudflared-tunnel = {
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      EnvironmentFile = config.sops.secrets.cloudflare_token.path;
+      ExecStart = lib.mkForce "${unstablePkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate run --protocol quic";
+      Restart = "always";
+      RestartSec = "5s";
+      User = "continuwuity";
+    };
   };
-};
-
 
   users.groups.continuwuity = {};
   users.users.continuwuity = {
@@ -233,5 +257,4 @@ systemd.services.cloudflared-tunnel = {
     "d /var/lib/continuwuity 0700 continuwuity continuwuity -"
     "d /var/lib/continuwuity/media 0700 continuwuity continuwuity -"
   ];
-
 }

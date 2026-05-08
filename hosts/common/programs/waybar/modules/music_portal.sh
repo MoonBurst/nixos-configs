@@ -44,7 +44,7 @@ case "$1" in
             done
 
             # Hide it immediately so it 'feels' like it started minimized
-            audtool mainwin-show off
+            audtool mainwin-show on
             audtool playback-play
         fi
         ;;

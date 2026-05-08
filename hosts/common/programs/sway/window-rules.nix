@@ -3,6 +3,7 @@
     assigns = {
       "1" = [ { class = "vesktop"; } ];
       "2" = [ { app_id = "edopro"; } ];
+      "5" = [{ class = "Audacious"; }];
     };
 
     window.commands = [

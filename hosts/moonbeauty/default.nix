@@ -48,7 +48,9 @@
 
  boot.kernel.sysctl = {
     "kernel.print_fatal_signals" = 0;
-  };
+  "net.core.rmem_max" = 7500000;
+  "net.core.wmem_max" = 7500000;
+};
   boot.kernelParams = [ "clearcpuid=514" ];
 
 systemd.user.slices."steam-games" = {

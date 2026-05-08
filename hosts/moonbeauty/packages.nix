@@ -16,12 +16,12 @@ in
     evolution                           # Professional email and calendar suite
     mission-center
 
-    # --- Detached Cinny Instance ---
-    (writeShellScriptBin "cinny-brave" ''
+# --- Detached Sable Instance ---
+    (pkgs.writeShellScriptBin "sable-app" ''
       exec ${pkgs.brave}/bin/brave \
-        --app=https://moonburst.net \
-        --class=cinny-app \
-        --user-data-dir="$HOME/.config/cinny-brave" \
+        --app=https://sable.moe \
+        --class=sable-app \
+        --user-data-dir="$HOME/.config/sable-brave" \
         --enable-features=UseOzonePlatform \
         --ozone-platform=wayland
     '')
@@ -30,9 +30,12 @@ in
     # --- Media & Graphics ---
     audacious                           # Lightweight, "Winamp-style" audio player
     krita                               # Professional digital painting and illustration tool
-
+    qview                               # Minimalist, fast image viewer
+    pavucontrol                         # PulseAudio/PipeWire volume mixer (essential for debugging mic/speakers)
 
     # --- System & Utilities ---
+    swaylock-effects                    # Screen locker with blur and aesthetic effects
+    satty                               # Modern screenshot annotation tool
     sherlock-launcher                   # Minimalist application runner/launcher
     (pkgs.callPackage ../../packages/sherlock-clipboard.nix {}) # Custom clipboard manager
     btrfs-assistant                     # GUI for managing Btrfs filesystems and Snapper snapshots
@@ -62,5 +65,6 @@ in
       };
     };
   };
-}
 
+  home.stateVersion = "25.11";
+}
