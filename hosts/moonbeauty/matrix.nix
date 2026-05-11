@@ -23,16 +23,6 @@ in
 
   environment.systemPackages = [
     unstablePkgs.cloudflared
-
-    # Detached Sable Instance
-    (pkgs.writeShellScriptBin "sable-app" ''
-      exec ${pkgs.brave}/bin/brave \
-        --app=https://sable.moe \
-        --class=sable-app \
-        --user-data-dir="$HOME/.config/sable-brave" \
-        --enable-features=UseOzonePlatform \
-        --ozone-platform=wayland
-    '')
   ];
 
   sops.secrets = {
@@ -206,11 +196,11 @@ in
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Proto https;
             proxy_pass_header Authorization;
             proxy_pass_header Content-Type;
-            proxy_read_timeout 300s;
-            proxy_send_timeout 300s;
+            proxy_read_timeout 600s;
+            proxy_send_timeout 600s;
           '';
         };
 

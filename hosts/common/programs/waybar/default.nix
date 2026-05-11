@@ -10,6 +10,7 @@ let
   dunstScript = mkScript "dunst_count.sh" ./modules/dunst_count.sh;
   alarmScript = mkScript "alarm.sh" ./modules/alarm.sh;
   musicScript = mkScript "music_portal.sh" ./modules/music_portal.sh;
+  borgScript = mkScript "borg_status.sh" ./modules/borg_status.sh;
 
   isDesktop = config.networking.hostName == "moonbeauty";
 
@@ -24,6 +25,7 @@ let
       "custom/dunst_count"
       "custom/music"
       "custom/alarm"
+      "custom/borg"
     ];
 
     modules-right = [
@@ -165,6 +167,16 @@ let
     };
 
     "tray" = { "icon-size" = 21; "spacing" = 1; };
+
+    "custom/borg" = {
+  "format" = "{}";
+  "return-type" = "json";
+  "interval" = 5;
+  "exec" = "${borgScript}";
+  "on-click" = "${pkgs.kitty}/bin/kitty -e journalctl -u borgbackup-job-MoonBeauty-Offsite.service -f";
+  "tooltip" = true;
+};
+
   });
 
   waybarStyle = pkgs.writeText "waybar-style" (builtins.readFile ./style.css);
@@ -180,7 +192,7 @@ systemd.user.services.waybar = {
       bash coreutils procps gawk gnugrep gnused bc jq curl lm_sensors
       rocmPackages.rocm-smi playerctl pulseaudio dunst libnotify
       wireplumber findutils yad audacious sox systemd util-linux
-      brightnessctl
+      brightnessctl rclone
     ];
 
     serviceConfig = {

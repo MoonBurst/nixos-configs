@@ -97,8 +97,8 @@ ExecStart = lib.mkForce ''
     --tpslimit 0.5 \
     --low-level-retries 20 \
     --retries 10 \
-    --timeout 5m \
-    --contimeout 2m \
+    --timeout 30m \
+    --contimeout 30m \
     --allow-non-empty \
     --allow-other \
     --rc \

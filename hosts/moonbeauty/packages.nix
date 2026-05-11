@@ -16,12 +16,12 @@ in
     evolution                           # Professional email and calendar suite
     mission-center
 
-# --- Detached Sable Instance ---
-    (pkgs.writeShellScriptBin "sable-app" ''
+    # --- Detached Cinny Instance ---
+    (writeShellScriptBin "matrix" ''
       exec ${pkgs.brave}/bin/brave \
-        --app=https://sable.moe \
-        --class=sable-app \
-        --user-data-dir="$HOME/.config/sable-brave" \
+        --app=https://moonburst.net \
+        --class=matrix-app \
+        --user-data-dir="$HOME/.config/matrix-brave" \
         --enable-features=UseOzonePlatform \
         --ozone-platform=wayland
     '')
@@ -30,12 +30,9 @@ in
     # --- Media & Graphics ---
     audacious                           # Lightweight, "Winamp-style" audio player
     krita                               # Professional digital painting and illustration tool
-    qview                               # Minimalist, fast image viewer
-    pavucontrol                         # PulseAudio/PipeWire volume mixer (essential for debugging mic/speakers)
+
 
     # --- System & Utilities ---
-    swaylock-effects                    # Screen locker with blur and aesthetic effects
-    satty                               # Modern screenshot annotation tool
     sherlock-launcher                   # Minimalist application runner/launcher
     (pkgs.callPackage ../../packages/sherlock-clipboard.nix {}) # Custom clipboard manager
     btrfs-assistant                     # GUI for managing Btrfs filesystems and Snapper snapshots
@@ -53,18 +50,16 @@ in
 
   # --- Desktop Entry for Launcher ---
   xdg.desktopEntries = {
-    cinny-brave = {
-      name = "Cinny (Brave)";
+    matrix-brave = {
+      name = "Matrix (Brave)";
       genericName = "Matrix Client";
-      exec = "cinny-brave";
-      icon = "cinny";
+      exec = "matrix";
+      icon = "matrix";
       terminal = false;
       categories = [ "Network" "Chat" ];
       settings = {
-        StartupWMClass = "cinny-app";
+        StartupWMClass = "matrix-app";
       };
     };
   };
-
-  home.stateVersion = "25.11";
 }
