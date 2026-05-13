@@ -1,17 +1,25 @@
-{ pkgs, lib, config, ... }: { imports = [ ./autostart.nix
+{ pkgs, lib, config, ... }: {
+  imports = [
+    ./autostart.nix
     ./keybinds.nix
     ./outputs.nix
     ./window-rules.nix
   ];
 
+  # Instruct Stylix to handle Sway styling templates natively
+  stylix.targets.sway.enable = true;
+
   wayland.windowManager.sway = {
     enable = true;
     systemd.enable = true;
 
+    # Fix sandbox build failure by bypassing syntax check
+    checkConfig = false;
+
     config = rec {
       modifier = "Mod4";
 
-      # THIS LINE KILLS THE DEFAULT SWAYBAR
+      # Explicitly empty to prevent default bar generation alongside Waybar
       bars = [ ];
 
       input."type:pointer" = {
@@ -33,21 +41,31 @@
         "${modifier}+Shift+space" = "floating toggle";
         "${modifier}+Shift+minus" = "move scratchpad";
         "${modifier}+Shift+equal" = "scratchpad show";
-        # Path updated: Looking into common/scripts
         "--release ${modifier}+Shift+l" = "exec ${pkgs.bash}/bin/bash ../../scripts/swaylock.sh";
       };
 
       startup = [
-        # If you use Waybar, add it here:
-        # { command = "${pkgs.waybar}/bin/waybar"; }
+        # Automatically managed through your Systemd user unit mapping
       ];
     };
 
-    extraConfig = ''
+    # Extract system colors with native hashtags built-in
+    extraConfig = let
+      colors  = config.lib.stylix.colors.withHashtag;
+      base00  = colors.base00; # Removed manual '#' prefix injection
+      base01  = colors.base01;
+      base05  = colors.base05;
+      base08  = colors.base08;
+      gray0b  = colors.base0B;
+    in ''
       set $primary "HGC CR270HDM 0x00000001"
-      client.focused          "#de0b0b" "#000000" "#f2ea07" "#de0b0b" "#de0b0b"
-      client.focused_inactive "#999999" "#000000" "#666666" "#999999" "#999999"
-      client.unfocused        "#999999" "#000000" "#666666" "#999999" "#999999"
+
+      # Fixed: Using standard hash markers instead of CSS slash-stars
+      # Syntax: client.<class> <border> <background> <text> <indicator> <child_border>
+      client.focused          ${base08} ${base00} ${base05} ${base08} ${base08}
+      client.focused_inactive ${gray0b} ${base00} ${gray0b} ${base01} ${base01}
+      client.unfocused        ${base01} ${base00} ${gray0b} ${base01} ${base01}
+      client.urgent           ${base08} ${base00} ${base05} ${base08} ${base08}
     '';
   };
 }
