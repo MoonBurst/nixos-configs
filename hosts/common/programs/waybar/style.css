@@ -6,6 +6,31 @@
 @define-color yellow   			#eed49f;
 @define-color red      			#ed8796;
 
+/* --- Burn-in Protection Animations --- */
+/* Oscillates the outer bar border color subtly */
+@keyframes antiBurnOutline {
+  0%   { border-color: @outline; }
+  33%  { border-color: #3b3e52; }
+  66%  { border-color: #575b75; }
+  100% { border-color: @outline; }
+}
+
+/* Oscillates the bar background to shift static dark pixels */
+@keyframes antiBurnBase {
+  0%   { background-color: #0f0f0f; }
+  50%  { background-color: #141414; }
+  100% { background-color: #0f0f0f; }
+}
+
+/* Shifts internal module backgrounds slightly */
+@keyframes antiBurnBubble {
+  0%   { background-color: #262626; border-color: @outline; }
+  25%  { background-color: #2e2e2e; border-color: #3b3e52; }
+  50%  { background-color: #222222; border-color: #575b75; }
+  75%  { background-color: #2a2a2a; border-color: #3b3e52; }
+  100% { background-color: #262626; border-color: @outline; }
+}
+
 * {
   font-family: JetBrains Mono Font, FontAwesome, Roboto, Helvetica, Arial, sans-serif,pso_font;
   font-size: 15px;
@@ -18,6 +43,9 @@ window#waybar {
   color: @text;
   transition-property: background-color;
   transition-duration: 0.5s;
+
+  /* Added: Extremely slow shifts for the main window */
+  animation: antiBurnBase 60s ease-in-out infinite, antiBurnOutline 90s ease-in-out infinite;
 }
 window#waybar.hidden {
   opacity: 0.2;
@@ -27,7 +55,7 @@ tooltip {
   border: 1px solid @blue;
 }
 tooltip label {
-  color: @white;
+  color: #ffffff; /* Fixed variable fallback to valid hex */
 }
 label:focus {
   background-color: #000000;
@@ -44,20 +72,23 @@ box {
 }
 
 #workspaces label {
-  font-size: 15px;
+font-size: 15px;
 }
 #workspaces button {
-  padding: 0 0.5em;
-  background-color: @bubble_background;
-  color: @text;
-  margin: 0.25em;
+padding: 0 0.5em;
+background-color: @bubble_background;
+color: @text;
+margin: 0.25em;
+/* Added: Slow variation for individual workspace blocks */
+animation: antiBurnBubble 80s ease-in-out infinite;
 }
 #workspaces button.active {
-  color: @blue;
+color: @blue;
 }
 #workspaces button.urgent {
-  background-color: @red;
-  color: @text;
+background-color: @red;
+color: @text;
+animation: none; /* Stops the loop so urgent color stays visible */
 }
 .niri-taskbar,
 #backlight,
@@ -100,42 +131,47 @@ box {
 #window,
 #wireplumber,
 #workspaces{
-  padding: 0 0.5em;
-  margin: 0.005em;
-  padding-left: 5px;
-  padding-right: 5px;
-  font-weight: bold;
-  background-color: @bubble_background;
-  border: 2px solid @outline;
+padding: 0 0.5em;
+margin: 0.005em;
+padding-left: 5px;
+padding-right: 5px;
+font-weight: bold;
+background-color: @bubble_background;
+border: 2px solid @outline;
+
+/* Added: Desynchronized loop to constantly shift static modules */
+animation: antiBurnBubble 75s ease-in-out infinite;
 }
 #custom-updates.updated {
-  padding-left: 0;
-  padding-right: 1em;
+padding-left: 0;
+padding-right: 1em;
 }
 #custom-updates {
-  color: @red;
+color: @red;
 }
 #user {
-  color: @blue;
+color: @blue;
 }
 #network.disconnected {
-  background-color: #f53c3c;
+background-color: #f53c3c;
+animation: none;
 }
 #temperature.critical {
-  background-color: #eb4d4b;
+background-color: #eb4d4b;
+animation: none;
 }
 #keyboard-state > label {
-  padding: 0 5px;
+padding: 0 5px;
 }
 #keyboard-state > label.locked {
-  background: rgba(0, 0, 0, 0.2);
+background: rgba(0, 0, 0, 0.2);
 }
 /* Custom styling for the logout icon on end */
 #custom-wlogout {
-  font-size: 1.75em;
-  padding-right: 0.5em;
-  padding-left: 0.5em;
-  color: @blue;
+font-size: 1.75em;
+padding-right: 0.5em;
+padding-left: 0.5em;
+color: @blue;
 }
 @keyframes blink {
   to {
