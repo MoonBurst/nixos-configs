@@ -158,14 +158,17 @@ let
 
     "tray" = { "icon-size" = 21; "spacing" = 1; };
 
-    "custom/borg" = {
-      "format" = "{}";
-      "return-type" = "json";
-      "interval" = 5;
-      "exec" = "${borgScript}";
-      "on-click" = "${pkgs.kitty}/bin/kitty -e journalctl -u borgbackup-job-MoonBeauty-Offsite.service -f";
-      "tooltip" = true;
-    };
+"custom/borg" = {
+  "format" = "{}";
+  "return-type" = "json";
+  "interval" = 5;
+  "exec" = "${borgScript}";
+  "on-click" = "${pkgs.kitty}/bin/kitty -e journalctl -u borgbackup-job-MoonBeauty-Offsite.service -f";
+  "tooltip" = true;
+  "escape" = true;
+};
+
+
   });
 
   waybarStyle = let
@@ -175,7 +178,8 @@ let
     outline   = cfgColors.base03; # #003399
     text      = cfgColors.base05; # #F7F700
     red       = cfgColors.base08; # #FF0000
-    gray0b    = cfgColors.base0B; # #545454 (Swapped in to replace blue)
+    gray0b    = cfgColors.base0B; # #545454
+
   in pkgs.writeText "waybar-style" ''
     /* --- Dynamic Anti-Burn-In Keyframes --- */
     @keyframes antiBurnOutline {
@@ -192,7 +196,7 @@ let
 
     @keyframes antiBurnBubble {
       0%   { background-color: ${bubble}; border-color: ${outline}; }
-      50%  { background-color: ${base}; border-color: ${gray0b}; } /* Replaced blue pointer with gray0b */
+      50%  { background-color: ${base}; border-color: ${gray0b}; }
       100% { background-color: ${bubble}; border-color: ${outline}; }
     }
 

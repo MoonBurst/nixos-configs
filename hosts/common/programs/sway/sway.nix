@@ -52,7 +52,7 @@
     # Extract system colors with native hashtags built-in
     extraConfig = let
       colors  = config.lib.stylix.colors.withHashtag;
-      base00  = colors.base00; # Removed manual '#' prefix injection
+      base00  = colors.base00;
       base01  = colors.base01;
       base05  = colors.base05;
       base08  = colors.base08;
