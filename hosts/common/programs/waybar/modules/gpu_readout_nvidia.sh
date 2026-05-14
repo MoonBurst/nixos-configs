@@ -1,14 +1,13 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # This script uses the most robust method (query all, then filter by BDF) and handles N/A values gracefully.
 
 # --- Configuration ---
 NVIDIA_SMI="/usr/bin/nvidia-smi" # Default path, verify on your system
 
 # Define the target GPU using its PCI Bus ID (BDF).
-TARGET_GPU_BUS_ID="26:00.0" 
+TARGET_GPU_BUS_ID="26:00.0"
 
 # NVIDIA-SMI query fields corresponding to the original metrics:
-# NOTE: We include 'pci.bus_id' first so we can filter later.
 NVIDIA_QUERY_FIELDS="pci.bus_id,temperature.gpu,utilization.gpu,power.draw,memory.total,memory.used"
 NVIDIA_FORMAT="csv,noheader,nounits" # Output as CSV, no header, no units
 
@@ -22,48 +21,91 @@ POWER_CRITICAL=300.0
 VRAM_MIN_WARNING_GB=12.0
 VRAM_MIN_CRITICAL_GB=6.0
 
-# --- Color Definitions (Pango Markup Hex Codes) ---
+# --- Color Definitions (Base Targets) ---
 COLOR_CRITICAL="#ff0000"
 COLOR_WARNING="#ffa500"
 COLOR_DEFAULT="#00FF00"
 COLOR_PADDING="#262626"
 SEP=" "
 
-# Map level integer (0, 1, 2) to color string for easy lookup
-declare -A LEVEL_TO_COLOR
-LEVEL_TO_COLOR[0]=$COLOR_DEFAULT
-LEVEL_TO_COLOR[1]=$COLOR_WARNING
-LEVEL_TO_COLOR[2]=$COLOR_CRITICAL
+# --- Micro-Shift Transformation Function ---
+# Extracts the raw HEX channels, adds/subtracts an offset from 0 to 15 based on the time,
+# and generates a newly mutated hardware-level hex code that remains visually identical.
+shift_color() {
+    local target_color=$1
+    local current_min=$(date +%M)
+    local offset_dec=$(( 10#$current_min / 4 )) # Restricts range strictly from 0 to 15
 
-# --- Helper Function for Coloring/Padding ---
-# Handles numeric formatting (e.g., %.0f) and prepends padding zeros in the background color
+    local hex_clean="${target_color#\#}"
+    local r_hex="${hex_clean:0:2}"
+    local g_hex="${hex_clean:2:2}"
+    local b_hex="${hex_clean:4:2}"
+
+    local r_dec=$((16#$r_hex))
+    local g_dec=$((16#$g_hex))
+    local b_dec=$((16#$b_hex))
+
+    local r_mutated g_mutated b_mutated
+    if [ $((10#$current_min % 2)) -eq 0 ]; then
+        r_mutated=$(( r_dec + offset_dec ))
+        g_mutated=$(( g_dec - offset_dec ))
+        b_mutated=$(( b_dec + offset_dec ))
+    else
+        r_mutated=$(( r_dec - offset_dec ))
+        g_mutated=$(( g_dec + offset_dec ))
+        b_mutated=$(( b_dec - offset_dec ))
+    fi
+
+    # Enforce RGB hardware limits
+    [ $r_mutated -gt 255 ] && r_mutated=255; [ $r_mutated -lt 0 ] && r_mutated=0
+    [ $g_mutated -gt 255 ] && g_mutated=255; [ $g_mutated -lt 0 ] && g_mutated=0
+    [ $b_mutated -gt 255 ] && b_mutated=255; [ $b_mutated -lt 0 ] && b_mutated=0
+
+    printf "#%02x%02x%02x" $r_mutated $g_mutated $b_mutated
+}
+
+# Evaluate the active safe colors for this operational cycle
+MUT_DEFAULT=$(shift_color "$COLOR_DEFAULT")
+MUT_WARNING=$(shift_color "$COLOR_WARNING")
+MUT_CRITICAL=$(shift_color "$COLOR_CRITICAL")
+MUT_PADDING=$(shift_color "$COLOR_PADDING")
+
+# Map level integer (0, 1, 2) to mutated color string for easy lookup
+declare -A LEVEL_TO_COLOR
+LEVEL_TO_COLOR[0]=$MUT_DEFAULT
+LEVEL_TO_COLOR[1]=$MUT_WARNING
+LEVEL_TO_COLOR[2]=$MUT_CRITICAL
+
+# --- Helper Function for Coloring/Padding (Updated with Micro-Shifting) ---
 colorize_output() {
     local value=$1
     local unit=$2
     local color=$3
-    local display_format=$4 
+    local display_format=$4
     local min_width=$5
 
+    # Run any incoming status color through the shifting translation block
+    local shifted_color=$(shift_color "$color")
+
     local formatted_value
-    # Use printf for formatting the numeric value
     formatted_value=$(echo "$value" | awk '{printf "'"$display_format"'\n", $1}')
-    
+
     local integer_part=${formatted_value%%.*}
     local current_len=${#integer_part}
     local padding=""
-    
+
     if [ "$min_width" -gt "$current_len" ]; then
         local zeros_to_add=$((min_width - current_len))
         for ((i=0; i<zeros_to_add; i++)); do
             padding="${padding}0"
         done
-        padding="<span foreground='$COLOR_PADDING'>$padding</span>"
+        padding="<span foreground='$MUT_PADDING'>$padding</span>"
     fi
 
-    printf "%s<span foreground='%s'>%s%s</span>" "$padding" "$color" "$formatted_value" "$unit"
+    printf "%s<span foreground='%s'>%s%s</span>" "$padding" "$shifted_color" "$formatted_value" "$unit"
 }
 
-# --- Main Logic (FIXED: Filter Output and Gracefully Handle N/A) ---
+# --- Main Logic ---
 
 # 1. GET METRICS: Query ALL GPUs for their BDF + metrics, then filter for the target BDF.
 if ! NVIDIA_OUTPUT=$($NVIDIA_SMI --query-gpu="$NVIDIA_QUERY_FIELDS" \
@@ -71,34 +113,29 @@ if ! NVIDIA_OUTPUT=$($NVIDIA_SMI --query-gpu="$NVIDIA_QUERY_FIELDS" \
     grep -E "$TARGET_GPU_BUS_ID" | \
     cut -d, -f2- | \
     tr -d '\r' | head -n 1); then
-    
-    DISPLAY_TEXT=$(printf "<span foreground='%s'>NVIDIA-SMI Error (Query Failed)</span>" "$COLOR_CRITICAL")
+
+    DISPLAY_TEXT=$(printf "<span foreground='%s'>NVIDIA-SMI Error (Query Failed)</span>" "$MUT_CRITICAL")
     echo "{\"text\": \"$DISPLAY_TEXT\", \"class\": \"critical\"}"
     exit 1
 fi
 
 # 2. Single-Pass Extraction using CSV read
-# Read the single line CSV output: Temp, Util, Power, VRAM_TOTAL_MIB, VRAM_USED_MIB
 IFS=',' read -r FINAL_TEMP UTIL POWER VRAM_TOTAL_MIB VRAM_USED_MIB <<< "$NVIDIA_OUTPUT"
 
-# Remove any leading/trailing whitespace from the extracted values
 FINAL_TEMP=$(echo $FINAL_TEMP | xargs)
 UTIL=$(echo $UTIL | xargs)
 POWER=$(echo $POWER | xargs)
 VRAM_TOTAL_MIB=$(echo $VRAM_TOTAL_MIB | xargs)
 VRAM_USED_MIB=$(echo $VRAM_USED_MIB | xargs)
 
-# 3. CRITICAL HEALTH CHECK: Check only Temperature (most reliable metric)
+# 3. CRITICAL HEALTH CHECK: Check only Temperature
 if [[ "$FINAL_TEMP" =~ "N/A" ]] || [[ -z "$FINAL_TEMP" ]] ; then
-    # If the card is completely inaccessible, display a critical error
-    DISPLAY_TEXT=$(printf "<span foreground='%s'>%s N/A (Card Unresponsive)</span>" "$COLOR_CRITICAL" "$TARGET_GPU_BUS_ID")
+    DISPLAY_TEXT=$(printf "<span foreground='%s'>%s N/A (Card Unresponsive)</span>" "$MUT_CRITICAL" "$TARGET_GPU_BUS_ID")
     echo "{\"text\": \"$DISPLAY_TEXT\", \"class\": \"critical\"}"
     exit 0
 fi
 
-# --- Prepare Values for Display and Coloring (Handle N/A Gracefully) ---
-
-# Set values for coloring/threshold checks. Use 0 if the actual metric is N/A/empty.
+# --- Prepare Values for Display and Coloring ---
 TEMP_FOR_COLORING=$FINAL_TEMP
 
 if [[ "$UTIL" =~ "N/A" ]] || [[ -z "$UTIL" ]]; then
@@ -119,9 +156,9 @@ fi
 
 # --- Determine Levels and Colorize ---
 HIGHEST_LEVEL=0
-MIB_PER_GB=1024 
+MIB_PER_GB=1024
 
-# 1. TEMPERATURE 
+# 1. TEMPERATURE
 TEMP_LEVEL=0
 TEMP_COLOR=$COLOR_DEFAULT
 if (( $(echo "$TEMP_FOR_COLORING >= $TEMP_CRITICAL" | bc -l) )); then
@@ -142,14 +179,13 @@ elif [ "$UTIL_FOR_COLORING" -ge "$UTIL_WARNING" ]; then
 fi
 
 if [ "$UTIL_DISPLAY_VALUE" = "N/A" ]; then
-    # Manually format N/A to match padding (3 chars wide)
-    COLORED_UTIL=$(printf "<span foreground='%s'>N/A</span><span foreground='%s'>%%</span>" "$COLOR_PADDING" "$UTIL_COLOR")
+    COLORED_UTIL=$(printf "<span foreground='%s'>N/A</span><span foreground='%s'>%%</span>" "$MUT_PADDING" "$(shift_color "$UTIL_COLOR")")
 else
     COLORED_UTIL=$(colorize_output "$UTIL_FOR_COLORING" "%" "$UTIL_COLOR" "%.0f" 3)
 fi
 if [ "$UTIL_LEVEL" -gt $HIGHEST_LEVEL ]; then HIGHEST_LEVEL=$UTIL_LEVEL; fi
 
-# 3. POWER 
+# 3. POWER
 POWER_LEVEL=0
 POWER_COLOR=$COLOR_DEFAULT
 if (( $(echo "$POWER_FOR_COLORING >= $POWER_CRITICAL" | bc -l) )); then
@@ -159,17 +195,17 @@ elif (( $(echo "$POWER_FOR_COLORING >= $POWER_WARNING" | bc -l) )); then
 fi
 
 if [ "$POWER_DISPLAY_VALUE" = "N/A" ]; then
-    COLORED_POWER=$(printf "<span foreground='%s'>N/A</span><span foreground='%s'>W</span>" "$COLOR_PADDING" "$POWER_COLOR")
+    COLORED_POWER=$(printf "<span foreground='%s'>N/A</span><span foreground='%s'>W</span>" "$MUT_PADDING" "$(shift_color "$POWER_COLOR")")
 else
     COLORED_POWER=$(colorize_output "$POWER_FOR_COLORING" "W" "$POWER_COLOR" "%.0f" 3)
 fi
 if [ "$POWER_LEVEL" -gt $HIGHEST_LEVEL ]; then HIGHEST_LEVEL=$POWER_LEVEL; fi
 
-# 4. VRAM 
+# 4. VRAM
 VRAM_LEVEL=0
 VRAM_COLOR=$COLOR_DEFAULT
 VRAM_MIN_WIDTH=2
-COLORED_VRAM_PREFIX=$(printf "<span foreground='%s'>VRAM: </span>" "$COLOR_DEFAULT")
+COLORED_VRAM_PREFIX=$(printf "<span foreground='%s'>VRAM: </span>" "$MUT_DEFAULT")
 
 if [ "$VRAM_TOTAL_MIB" != "0" ] && [ "$VRAM_TOTAL_MIB" != "" ]; then
     VRAM_REMAINING_MIB=$(echo "$VRAM_TOTAL_MIB - $VRAM_USED_MIB" | bc)
@@ -180,14 +216,11 @@ if [ "$VRAM_TOTAL_MIB" != "0" ] && [ "$VRAM_TOTAL_MIB" != "" ]; then
     elif (( $(echo "$VRAM_REMAINING_GB <= $VRAM_MIN_WARNING_GB" | bc -l) )); then
         VRAM_COLOR=$COLOR_WARNING; VRAM_LEVEL=1
     fi
-    
+
     VRAM_DISPLAY_TEXT=$(colorize_output "$VRAM_REMAINING_GB" "GiB" "$VRAM_COLOR" "%.0f" $VRAM_MIN_WIDTH)
     COLORED_VRAM="${COLORED_VRAM_PREFIX}${VRAM_DISPLAY_TEXT}"
-
 else
-    COLORED_VRAM=$(printf "%s<span foreground='%s'>N/AGiB</span>" \
-        "$COLORED_VRAM_PREFIX" \
-        "$COLOR_DEFAULT")
+    COLORED_VRAM=$(printf "%s<span foreground='%s'>N/AGiB</span>" "$COLORED_VRAM_PREFIX" "$MUT_DEFAULT")
 fi
 
 if [ "$VRAM_LEVEL" -gt $HIGHEST_LEVEL ]; then HIGHEST_LEVEL=$VRAM_LEVEL; fi

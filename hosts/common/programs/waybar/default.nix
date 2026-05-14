@@ -74,7 +74,7 @@ let
 
     "custom/gpu_readout" = {
       "exec" = "${pkgs.coreutils}/bin/timeout 1s ${pkgs.bash}/bin/bash ${gpuScript} 0 | ${pkgs.coreutils}/bin/head -n 1";
-      "interval" = 2; "min-length" = 30; "max-length" = 30; "tooltip" = false;
+      "interval" = 2; "min-length" = 35; "max-length" = 35; "tooltip" = false;
     };
 
     "custom/cpu_readout" = {
