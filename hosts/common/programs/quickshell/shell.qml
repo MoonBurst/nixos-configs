@@ -29,23 +29,28 @@ Scope {
     Variants {
         model: Quickshell.screens
 
-        // PRIMARY MONITOR STATUS BAR (Locked strictly to the DP-1 display channel output)
         PanelWindow {
             id: standardBarWindow
             required property var modelData
             screen: modelData
             
-            // This strictly filters out external laptop or mirror displays to prevent double triggers
             visible: modelData.name === "DP-1"
             
             WlrLayershell.layer: WlrLayershell.Top
             WlrLayershell.namespace: "quickshell-bar"
+            WlrLayershell.keyboardFocus: WlrLayershell.None
             
             anchors { top: true; left: true; right: true }
             implicitHeight: visible ? 44 : 0 
+            
+            color: "transparent"
 
             Rectangle {
-                anchors.fill: parent; color: "#1a1a1a"; border.width: 5; border.color: "#003399"; radius: 12 
+                anchors.fill: parent
+                color: "transparent"
+                border.width: 5
+                border.color: "#003399"
+                radius: 12 
 
                 // LEFT SIDE CAPSULES
                 Row {
@@ -63,9 +68,10 @@ Scope {
                         Text { anchors.centerIn: parent; color: Theme.colorNormalText; font.family: "monospace"; font.pixelSize: 15; font.bold: true; text: Qt.formatDateTime(systemTimeGlobal.date, "ddd MMM dd") }
                     }
 
-                    Weather {}
+                    // Direct file loaders use plain string strings natively without Component wrappers
+                    Loader { source: "weather.qml"; anchors.verticalCenter: parent.verticalCenter }
                     AlarmCapsule {}
-                    Music {}
+                    Loader { source: "music.qml"; anchors.verticalCenter: parent.verticalCenter }
                 }
 
                 // CENTER SIDE CAPSULES
@@ -81,7 +87,7 @@ Scope {
                     }
                 }
 
-                // RIGHT SIDE CAPSULES
+                // RIGHT SIDE CAPSULES (Tray aligned at the absolute far-right end of the row)
                 Row {
                     anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; anchors.rightMargin: 16; spacing: 15 
 
@@ -89,6 +95,9 @@ Scope {
                     GpuCapsule {}
                     CpuCapsule {}
                     RamCapsule {}
+                    
+                    // Direct file path string loader maps cleanly to lowercase tray.qml
+                    Loader { source: "tray.qml"; anchors.verticalCenter: parent.verticalCenter }
                 }
             }
         }
