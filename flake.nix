@@ -27,6 +27,8 @@
     moon-numix.url = "github:moonburst/moon-numix-icons";
   };
 
+
+
   outputs = { self, nixpkgs, flake-parts, ... } @ inputs:
     flake-parts.lib.mkFlake { inherit inputs; } ({ ... }: {
       systems = [ "x86_64-linux" ];

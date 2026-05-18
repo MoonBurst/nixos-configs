@@ -3,6 +3,19 @@
 
 let
   unstable = nixpkgs-unstable.legacyPackages.${pkgs.system};
+
+  # 1. Pull the script out into a reusable variable
+  matrixApp = pkgs.writeShellScriptBin "matrix" ''
+    exec ${pkgs.brave}/bin/brave \
+      --app=https://moonburst.net \
+      --class=matrix-app \
+      --name=matrix-app \
+      --user-data-dir="$HOME/.config/matrix-brave" \
+      --no-first-run \
+      --no-singleton-window \
+      --enable-features=UseOzonePlatform \
+      --ozone-platform=wayland
+  '';
 in
 {
   home.packages = with pkgs; [
@@ -10,6 +23,8 @@ in
     unstable.dolphin-emu                # GameCube/Wii emulator
     unstable.archipelago                # Multi-game randomizer
     unstable.poptracker                 # Tracker for randomizers
+    unstable.quickshell
+
     # --- Communication & Social ---
     jami                                # Peer-to-peer video calling and chat
     nicotine-plus                       # Graphical client for the Soulseek file-sharing network
@@ -17,20 +32,11 @@ in
     mission-center
 
     # --- Detached Cinny Instance ---
-    (writeShellScriptBin "matrix" ''
-      exec ${pkgs.brave}/bin/brave \
-        --app=https://moonburst.net \
-        --class=matrix-app \
-        --user-data-dir="$HOME/.config/matrix-brave" \
-        --enable-features=UseOzonePlatform \
-        --ozone-platform=wayland
-    '')
-
+    matrixApp                           # 2. Add the variable to packages here
 
     # --- Media & Graphics ---
     audacious                           # Lightweight, "Winamp-style" audio player
     krita                               # Professional digital painting and illustration tool
-
 
     # --- System & Utilities ---
     sherlock-launcher                   # Minimalist application runner/launcher
@@ -46,6 +52,7 @@ in
     cura-appimage                       # Popular 3D printer slicer (AppImage version)
     orca-slicer                         # High-performance slicer based on Bambu/PrusaSlicer
     openscad                            # Programmatic 3D CAD modeler
+
   ];
 
   # --- Desktop Entry for Launcher ---
@@ -53,7 +60,7 @@ in
     matrix-brave = {
       name = "Matrix (Brave)";
       genericName = "Matrix Client";
-      exec = "matrix";
+      exec = "${matrixApp}/bin/matrix"; # 3. Reference the absolute store path here
       icon = "matrix";
       terminal = false;
       categories = [ "Network" "Chat" ];

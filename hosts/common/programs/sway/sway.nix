@@ -45,7 +45,6 @@
       };
 
       startup = [
-        # Automatically managed through your Systemd user unit mapping
       ];
     };
 
