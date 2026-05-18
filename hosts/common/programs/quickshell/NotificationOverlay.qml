@@ -22,7 +22,7 @@ Scope {
     // Safe Garbage Collector: Periodically scrubs truly dead alerts when no animations are active
     Timer {
         id: garbageCollectorClock
-        interval: 1000
+        interval: 100
         running: true
         repeat: true
         onTriggered: {
@@ -248,7 +248,7 @@ Scope {
         let targetIndex = notificationModel.count;
         root.activeNotifications[n.id] = n;
 
-        // Adds the notification into the display loop model
+        // Adds the notification into the display model tracking map
         notificationModel.append({
             "notifId": n.id,
             "appName": n.appName,
@@ -260,7 +260,7 @@ Scope {
             "forceDismiss": false,
             "isExternalClose": false,
             "isManualDismissing": false,
-            "isDead": false // Added state marker holding the context fully active until the animation resolves
+            "isDead": false
         });
 
         // Triggers the background path loop search if no specific asset was found
@@ -300,7 +300,7 @@ Scope {
     }
 
 
-    // Multi-screen pipeline component creating a native display window layer for every active output target
+    // Multi-screen window instantiation logic
     Variants {
         model: Quickshell.screens
 
@@ -308,8 +308,7 @@ Scope {
             required property var modelData
             screen: modelData
 
-            // Uses our calculated helper function to count only alive cards
-            visible: root.getLivingCount() > 0
+            visible: modelData.name === "DP-1" && root.getLivingCount() > 0
 
             WlrLayershell.layer: WlrLayershell.Overlay
             WlrLayershell.namespace: "quickshell-notifications"
@@ -318,15 +317,24 @@ Scope {
             anchors { top: true; right: true }
             margins { top: 50; right: 15 }
 
+            // Fixed width mapping matches your card layouts
             implicitWidth: 440
-            implicitHeight: root.getLivingCount() > 0 ? 120 + (12 * (root.getLivingCount() - 1)) : 0
+
+            // THE FIX: Giving the window a fixed vertical ceiling stops clipping boundaries.
+            // Because the window color is completely transparent, an oversized ceiling is invisible.
+            implicitHeight: 600
             color: "transparent"
 
             Item {
                 id: stackContainer
                 width: 440
+
+                // Pushes the entire container area down by 15 pixels inside the window canvas scope.
+                // This grants newly spawned entry elements immediate vertical padding to draw borders.
                 anchors.top: parent.top
+                anchors.topMargin: 15
                 anchors.left: parent.left
+
 
                 Repeater {
                     model: notificationModel
@@ -347,7 +355,7 @@ Scope {
                         clip: true
 
                         // Stacking calculations safely adjust to living counts to prevent jumping layouts
-                        y: model.isDead ? y : (root.getLivingCount() - 1 - index) * 12
+                        y: card.state === "slideOut" ? y : ((notificationModel.count - 1 - index) * 12)
                         z: 100 - index
 
                         property real xOffset: 450
@@ -462,7 +470,7 @@ Scope {
                                 spacing: 4
 
                                 Text { text: model.summary; font.bold: true; font.family: "Iosevka Term"; font.pixelSize: 30; color: "#f7f716"; elide: Text.ElideRight; Layout.fillWidth: true }
-                                Text { text: model.body; font.family: "Iosevka Term"; font.pixelSize: 24; color: "#f7f716"; elide: Text.ElideRight; wrapMode: Text.Wrap; maximumLineCount: 2; Layout.fillWidth: true }
+                                 Text { text: model.body; font.family: "Iosevka Term"; font.pixelSize: 24; color: "#f7f716"; elide: Text.ElideRight; wrapMode: Text.Wrap; maximumLineCount: 2; Layout.fillWidth: true }
                             }
                         }
 
