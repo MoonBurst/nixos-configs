@@ -41,9 +41,10 @@ Rectangle {
     Process { id: alarmCancelEngine; running: false; command: ["rm", "-f", "/tmp/waybar_alarm_state"] }
     Process { id: alarmWriteEngine; running: false }
 
-    function confirmAndSaveAlarm() {
-        var rawTimer = timeInput.text.trim();
-        var msg = msgInput.text.trim() || "Alarm Finished!";
+    // FIXED: Passing explicit strings directly into the function guarantees execution parameters
+    function confirmAndSaveAlarm(rawTimerText, rawMsgText) {
+        var rawTimer = rawTimerText.trim();
+        var msg = rawMsgText.trim() || "Alarm Finished!";
         
         var totalSeconds = 0;
         var match;
@@ -112,15 +113,17 @@ Rectangle {
         id: inputPopup
         visible: false
         
+        screen: standardBarWindow.screen
+        
         WlrLayershell.keyboardFocus: WlrLayershell.Exclusive
         WlrLayershell.layer: WlrLayershell.Overlay
         WlrLayershell.namespace: "quickshell-alarm-prompt"
         
         anchors.top: parent.top
-        anchors.right: parent.right
+        anchors.left: parent.left
         
         WlrLayershell.margins.top: 48
-        WlrLayershell.margins.right: 20
+        WlrLayershell.margins.left: 20
         
         implicitWidth: 320
         implicitHeight: 150
@@ -150,8 +153,7 @@ Rectangle {
                     placeholderText: "Duration (e.g. 5m, 1h30m, 45s)"
                     KeyNavigation.tab: msgInput
 
-                    // Maps the clean internal field signals smoothly
-                    onAccepted: alarmBox.confirmAndSaveAlarm()
+                    onAccepted: alarmBox.confirmAndSaveAlarm(timeInput.text, msgInput.text)
                     onRejected: alarmBox.cancelAndClosePopup()
                 }
 
@@ -160,7 +162,7 @@ Rectangle {
                     placeholderText: "Reminder Message"
                     KeyNavigation.backtab: timeInput
 
-                    onAccepted: alarmBox.confirmAndSaveAlarm()
+                    onAccepted: alarmBox.confirmAndSaveAlarm(timeInput.text, msgInput.text)
                     onRejected: alarmBox.cancelAndClosePopup()
                 }
             }
