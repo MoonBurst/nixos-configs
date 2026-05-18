@@ -118,7 +118,7 @@ Scope {
                                     color: Theme.colorDimText || "#aaaaaa"
                                     elide: Text.ElideRight
                                     wrapMode: Text.Wrap
-                                    maximumLineCount: 2
+                                    maximumLineCount: 5
                                     Layout.fillWidth: true
                                 }
                             }
@@ -131,7 +131,7 @@ Scope {
                                 Text {
                                     anchors.centerIn: parent
                                     text: "×"
-                                    font.pixelSize: 24
+                                    font.pixelSize: 20
                                     color: Theme.colorDimText || "#aaaaaa"
                                 }
 

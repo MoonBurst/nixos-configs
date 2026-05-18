@@ -4,26 +4,68 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Services.Notifications
 import Quickshell.Io
+import Quickshell.Widgets
 
 Scope {
     id: root
 
+    // Dictionary tracking active native notification object handles to dismiss or query them later
     property var activeNotifications: ({})
 
+
+    // Main data structure holding the active notification instances currently displayed on screen
     ListModel {
         id: notificationModel
     }
 
-    NotificationServer {
-        id: notificationServer
-        bodyMarkupSupported: true
-        actionsSupported: true
+
+    // Safe Garbage Collector: Periodically scrubs truly dead alerts when no animations are active
+    Timer {
+        id: garbageCollectorClock
+        interval: 1000
+        running: true
+        repeat: true
+        onTriggered: {
+            // Iterates backwards to safely remove data entries without breaking running loops
+            for (let i = notificationModel.count - 1; i >= 0; i--) {
+                let item = notificationModel.get(i);
+                if (item && item.isDead) {
+                    notificationModel.remove(i);
+                }
+            }
+        }
     }
 
-    // UNIFIED PIPELINE ENGINE: Tracks /run/user/1000/quickshell-input perpetually using tail -f
+
+    // Shell process tasked with searching local system paths for matching icons when an app gives a generic string name
+    Process {
+        id: globalIconFinder
+        property int targetIndex: -1
+        property string searchInput: ""
+
+        command: ["sh", "-c", "find -L /run/current-system/sw/share/icons ~/.icons ~/.local/share/icons -name \"*" + searchInput + "*.png\" -o -name \"*" + searchInput + "*.svg\" | head -n 1"]
+
+        onSearchInputChanged: {
+            if (searchInput !== "") {
+                globalIconFinder.running = true;
+            }
+        }
+
+        stdout: SplitParser {
+            onRead: (line) => {
+                if (line && line.trim() !== "" && globalIconFinder.targetIndex >= 0 && globalIconFinder.targetIndex < notificationModel.count) {
+                    notificationModel.setProperty(globalIconFinder.targetIndex, "iconPath", "file://" + line.trim());
+                }
+            }
+        }
+    }
+
+
+    // Background listener socket connecting to a Linux named pipe (/tmp/qs_notification_pipe)
+    // Listens for external keyboard shortcut calls or scripts to run actions via shell echoes
     Process {
         id: pipeListener
-        command: ["sh", "-c", "mkdir -p /run/user/1000 && rm -f /run/user/1000/quickshell-input && mkfifo /run/user/1000/quickshell-input && exec tail -f /run/user/1000/quickshell-input"]
+        command: ["sh", "-c", "mkdir -p /tmp && rm -f /tmp/qs_notification_pipe && mkfifo /tmp/qs_notification_pipe && while true; do if read -r line < /tmp/qs_notification_pipe; then printf '%s\\n' \"$line\"; fi; done"]
         running: true
 
         stdout: SplitParser {
@@ -40,40 +82,55 @@ Scope {
         }
     }
 
-    // Targets and dismisses ONLY the single oldest active notification (index 0)
+
+    // Helper function calculating how many living alerts are remaining on the panel layout
+    function getLivingCount(): int {
+        let living = 0;
+        for (let i = 0; i < notificationModel.count; i++) {
+            if (!notificationModel.get(i).isDead) living++;
+        }
+        return living;
+    }
+
+
+    /**
+     * Function: displayDismissalMessageAndClear
+     * Purpose: Triggered when receiving the "dismiss" command via the pipe.
+     * It transforms the oldest displayed notification card text into an alert banner,
+     * changes the border color to flashing red, and sets up a quick 100ms timer
+     * to transition the item out cleanly.
+     */
     function displayDismissalMessageAndClear(): void {
         if (notificationModel.count === 0) return;
 
         let oldestIndex = 0;
+        let targetId = notificationModel.get(oldestIndex).notifId;
+
+        // Visual modification alerting the user that a dismissal sequence is occurring
         notificationModel.setProperty(oldestIndex, "summary", "System Alert");
         notificationModel.setProperty(oldestIndex, "body", "Dismissing notification...");
         notificationModel.setProperty(oldestIndex, "borderColor", "#ff0000");
         notificationModel.setProperty(oldestIndex, "isManualDismissing", true);
 
-        // Minimal 100ms visual buffer to process the red color flip before accelerating out
         let timer = Qt.createQmlObject('import QtQuick; Timer { interval: 100; running: true; repeat: false; }', root);
         timer.triggered.connect(() => {
-            if (notificationModel.count > 0) {
-                notificationModel.setProperty(oldestIndex, "forceDismiss", true);
+            for (let i = 0; i < notificationModel.count; i++) {
+                if (notificationModel.get(i).notifId === targetId) {
+                    notificationModel.setProperty(i, "forceDismiss", true);
+                    break;
+                }
             }
             timer.destroy();
         });
     }
 
-    Connections {
-        target: notificationServer
-        function onNotification(notification) { root.handleNotification(notification); }
-        function onNotificationClosed(id, reason) {
-            for (let i = 0; i < notificationModel.count; i++) {
-                if (notificationModel.get(i).notifId === id) {
-                    notificationModel.setProperty(i, "forceDismiss", true);
-                    break;
-                }
-            }
-            if (root.activeNotifications[id]) delete root.activeNotifications[id];
-        }
-    }
 
+    /**
+     * Function: updateHotkeyTargetCacheFile
+     * Purpose: Writes the raw ID of the absolute latest notification to a static file in /tmp.
+     * This acts as an API endpoint for external system hotkeys, allowing background scripts
+     * to know exactly which ID to query when interacting with notifications via a pipe.
+     */
     function updateHotkeyTargetCacheFile(): void {
         let currentTargetId = 0;
         if (notificationModel.count > 0) {
@@ -83,12 +140,20 @@ Scope {
         proc.exited.connect(() => { proc.destroy(); });
     }
 
+
+    /**
+     * Function: triggerLatestNotificationAction
+     * Purpose: Triggered when receiving the "action" command via the pipe.
+     * Grabs the most recent notification, resolves its native object instance,
+     * and triggers its action button loop array. If no actions exist, it closes it.
+     */
     function triggerLatestNotificationAction(): void {
         if (notificationModel.count > 0) {
             let latestIndex = notificationModel.count - 1;
             let item = notificationModel.get(latestIndex);
             let nativeNotif = root.activeNotifications[item.notifId];
-            if (nativeNotif) {
+
+            if (nativeNotif && typeof nativeNotif.dismiss === "function") {
                 let actionsList = nativeNotif.actions;
                 if (actionsList && actionsList.length > 0) actionsList.trigger();
                 else nativeNotif.dismiss();
@@ -97,6 +162,13 @@ Scope {
         }
     }
 
+
+    /**
+     * Function: handleNotification
+     * Purpose: The entry point for incoming system notifications.
+     * Manages custom text checks, app title rules, theme matching, playbacks,
+     * and constructs the tracking properties saved to the ListModel.
+     */
     function handleNotification(n: Notification): void {
         let cleanSummary = (n.summary || "").trim().toLowerCase();
         if (cleanSummary.includes("!!action")) {
@@ -105,6 +177,7 @@ Scope {
             return;
         }
 
+        // Checks for screenshot tools like Satty; if active, groups text instead of making a new card
         let appTitle = (n.appName || "").toLowerCase();
         if (appTitle.includes("satty")) {
             for (let i = 0; i < notificationModel.count; i++) {
@@ -118,6 +191,7 @@ Scope {
             }
         }
 
+        // Custom config list linking app keywords to custom border frames and sound files
         let characters = [
             { name: "apogee",        summary: "apogee",        color: "#0CD0CD", sound: false },
             { name: "solar_sonata",  summary: "solar sonata",  color: "#f7f716", sound: true  },
@@ -147,11 +221,34 @@ Scope {
         let baseDir = "file://" + Quickshell.env("HOME") + "/nix/hosts/common/programs/quickshell/resources/";
         let chosenIcon = baseDir + "fallback.png";
 
-        if (matchedName !== "") chosenIcon = baseDir + matchedName + "/" + matchedName + ".png";
-        else if (n.icon && n.icon !== "") chosenIcon = n.icon;
+        // Checks the notification hints array to see if the sending app passed a raw inline byte image buffer
+        let hasRawHint = false;
+        if (n.hints) {
+            let keys = Object.getOwnPropertyNames(n.hints);
+            for (let k = 0; k < keys.length; k++) {
+                let currentKey = keys[k];
+                if (currentKey === "image-data" || currentKey === "image_data" || currentKey === "icon_data") {
+                    hasRawHint = true;
+                    break;
+                }
+            }
+        }
 
+        // Resolves the asset location based on path prefix validations
+        if (matchedName !== "") {
+            chosenIcon = baseDir + matchedName + "/" + matchedName + ".png";
+        } else if (n.icon && n.icon !== "") {
+            if (n.icon.startsWith("/") || n.icon.startsWith("file://")) {
+                chosenIcon = n.icon.startsWith("/") ? "file://" + n.icon : n.icon;
+            } else {
+                chosenIcon = "image://theme/" + n.icon;
+            }
+        }
+
+        let targetIndex = notificationModel.count;
         root.activeNotifications[n.id] = n;
 
+        // Adds the notification into the display loop model
         notificationModel.append({
             "notifId": n.id,
             "appName": n.appName,
@@ -159,22 +256,42 @@ Scope {
             "body": n.body,
             "iconPath": chosenIcon,
             "borderColor": frameColor,
+            "hasRawHint": hasRawHint,
             "forceDismiss": false,
             "isExternalClose": false,
-            "isManualDismissing": false
+            "isManualDismissing": false,
+            "isDead": false // Added state marker holding the context fully active until the animation resolves
         });
+
+        // Triggers the background path loop search if no specific asset was found
+        if (!hasRawHint && chosenIcon === baseDir + "fallback.png" && n.icon && n.icon !== "" && !n.icon.startsWith("/") && !n.icon.startsWith("file://")) {
+            globalIconFinder.targetIndex = targetIndex;
+            globalIconFinder.searchInput = n.icon.toLowerCase();
+        }
+
         root.updateHotkeyTargetCacheFile();
     }
 
-    function removeNotificationCardInstance(id: int, isExternalClose: bool): void {
+
+    /**
+     * Function: removeNotificationCardInstance
+     * Purpose: Performs cleanup for closed notifications.
+     * Flag-deletes references to maintain 100% stable context metrics for running animations.
+     */
+    function removeNotificationCardInstance(id, isExternalClose) {
         for (let i = 0; i < notificationModel.count; i++) {
             let item = notificationModel.get(i);
             if (item.notifId === id) {
                 if (!isExternalClose) {
                     let nativeNotif = root.activeNotifications[id];
-                    if (nativeNotif) nativeNotif.dismiss();
+                    if (nativeNotif && typeof nativeNotif.dismiss === "function") {
+                        try {
+                            nativeNotif.dismiss();
+                        } catch(e) {}
+                    }
                 }
-                notificationModel.remove(i);
+                // Flags the card as dead instead of popping it instantly out of existence
+                notificationModel.setProperty(i, "isDead", true);
                 break;
             }
         }
@@ -182,19 +299,27 @@ Scope {
         root.updateHotkeyTargetCacheFile();
     }
 
+
+    // Multi-screen pipeline component creating a native display window layer for every active output target
     Variants {
         model: Quickshell.screens
+
         PanelWindow {
             required property var modelData
             screen: modelData
-            visible: notificationModel.count > 0
+
+            // Uses our calculated helper function to count only alive cards
+            visible: root.getLivingCount() > 0
+
             WlrLayershell.layer: WlrLayershell.Overlay
             WlrLayershell.namespace: "quickshell-notifications"
             WlrLayershell.keyboardFocus: WlrLayershell.None
+
             anchors { top: true; right: true }
             margins { top: 50; right: 15 }
+
             implicitWidth: 440
-            implicitHeight: notificationModel.count > 0 ? 120 + (12 * (notificationModel.count - 1)) : 0
+            implicitHeight: root.getLivingCount() > 0 ? 120 + (12 * (root.getLivingCount() - 1)) : 0
             color: "transparent"
 
             Item {
@@ -205,28 +330,24 @@ Scope {
 
                 Repeater {
                     model: notificationModel
+
                     delegate: Rectangle {
                         id: card
-                        required property int index
-                        required property int notifId
-                        required property string appName
-                        required property string summary
-                        required property string body
-                        required property string iconPath
-                        required property string borderColor
-                        required property bool forceDismiss
-                        required property bool isExternalClose
-                        required property bool isManualDismissing
 
-                        width: 400
-                        height: 120
+                        property bool isHovered: false
+
+                        // Completely suppresses visibility if marked dead, but leaves the context structure intact
+                        visible: !model.isDead
+                        width: model.isDead ? 0 : 400
+                        height: model.isDead ? 0 : 120
                         radius: 10
                         color: "#000000"
-                        border.width: 5
-                        border.color: borderColor
+                        border.width: model.isDead ? 0 : 5
+                        border.color: model && model.borderColor ? model.borderColor : "#0000ff"
                         clip: true
 
-                        y: (notificationModel.count - 1 - index) * 12
+                        // Stacking calculations safely adjust to living counts to prevent jumping layouts
+                        y: model.isDead ? y : (root.getLivingCount() - 1 - index) * 12
                         z: 100 - index
 
                         property real xOffset: 450
@@ -237,10 +358,6 @@ Scope {
                         Behavior on y { NumberAnimation { duration: 200; easing.type: Easing.OutQuad } }
                         Behavior on border.color { ColorAnimation { duration: 80 } }
 
-                        Component.onCompleted: {
-                            entranceAnimation.start();
-                        }
-
                         NumberAnimation {
                             id: entranceAnimation
                             target: card
@@ -250,26 +367,35 @@ Scope {
                             easing.type: Easing.OutQuad
                         }
 
+                        Component.onCompleted: {
+                            entranceAnimation.start();
+                        }
+
                         Timer {
                             interval: 100
-                            running: card.state !== "slideOut"
+                            running: !model.isDead && card.state !== "slideOut"
                             repeat: true
                             onTriggered: {
-                                if (forceDismiss) {
+                                if (!model || model.isDead) return;
+
+                                if (model.forceDismiss) {
                                     notificationModel.setProperty(index, "isExternalClose", true);
                                     card.state = "slideOut";
                                     return;
                                 }
+
+                                if (card.isHovered) return;
+
                                 if (index === 0) {
                                     if (card.timePromotedToTop === 0) card.timePromotedToTop = Date.now();
-                                    if (!isManualDismissing) {
+                                    if (!model.isManualDismissing) {
                                         let currentLifetime = card.lifetimeRemaining - 100;
                                         card.lifetimeRemaining = currentLifetime;
                                         let timeSpentOnTop = Date.now() - card.timePromotedToTop;
                                         if (currentLifetime <= 0 && timeSpentOnTop >= 2000) card.state = "slideOut";
                                     }
                                 } else {
-                                    if (!isManualDismissing && card.lifetimeRemaining > 0) {
+                                    if (!model.isManualDismissing && card.lifetimeRemaining > 0) {
                                         card.lifetimeRemaining -= 100;
                                     }
                                 }
@@ -282,13 +408,18 @@ Scope {
                                 PropertyChanges { target: card; xOffset: 450 }
                             }
                         ]
+
                         transitions: [
                             Transition {
                                 from: ""
                                 to: "slideOut"
                                 SequentialAnimation {
-                                    NumberAnimation { target: card; property: "xOffset"; duration: 100; easing.type: Easing.InQuad }
-                                    ScriptAction { script: root.removeNotificationCardInstance(notifId, isExternalClose) }
+                                    NumberAnimation { target: card; property: "xOffset"; duration: 150; easing.type: Easing.InQuad }
+                                    ScriptAction {
+                                        script: {
+                                            root.removeNotificationCardInstance(model.notifId, model.isExternalClose);
+                                        }
+                                    }
                                 }
                             }
                         ]
@@ -298,6 +429,7 @@ Scope {
                             height: 120
                             anchors.left: parent.left
                             anchors.top: parent.top
+                            visible: !model.isDead
 
                             Rectangle {
                                 id: iconContainer
@@ -307,9 +439,16 @@ Scope {
                                 anchors.bottom: parent.bottom
                                 anchors.left: parent.left
                                 anchors.margins: 5
-                                visible: iconPath !== ""
                                 color: "transparent"
-                                Image { anchors.fill: parent; source: iconPath; fillMode: Image.PreserveAspectFit; asynchronous: true; cache: true }
+                                visible: !model.isDead && (model.iconPath !== "" || model.hasRawHint)
+
+                                IconImage {
+                                    id: cardIconImage
+                                    anchors.fill: parent
+                                    source: model.hasRawHint ? "image://notification/" + model.notifId : model.iconPath
+                                    mipmap: true
+                                    asynchronous: true
+                                }
                             }
 
                             ColumnLayout {
@@ -320,12 +459,18 @@ Scope {
                                 anchors.leftMargin: 15
                                 anchors.rightMargin: 15
                                 anchors.topMargin: 10
-                                anchors.bottomMargin: 10
                                 spacing: 4
 
-                                Text { text: summary; font.bold: true; font.family: "Iosevka Term"; font.pixelSize: 20; color: "#f7f716"; elide: Text.ElideRight; Layout.fillWidth: true }
-                                Text { text: body; font.family: "Iosevka Term"; font.pixelSize: 18; color: "#f7f716"; elide: Text.ElideRight; wrapMode: Text.Wrap; maximumLineCount: 2; Layout.fillWidth: true }
+                                Text { text: model.summary; font.bold: true; font.family: "Iosevka Term"; font.pixelSize: 30; color: "#f7f716"; elide: Text.ElideRight; Layout.fillWidth: true }
+                                Text { text: model.body; font.family: "Iosevka Term"; font.pixelSize: 24; color: "#f7f716"; elide: Text.ElideRight; wrapMode: Text.Wrap; maximumLineCount: 2; Layout.fillWidth: true }
                             }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: !model.isDead
+                            onEntered: card.isHovered = true
+                            onExited: card.isHovered = false
                         }
                     }
                 }

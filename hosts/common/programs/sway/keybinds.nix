@@ -36,8 +36,8 @@ in
    # "${super}+h" = "exec ${pkgs.dunst}/bin/dunstctl history-pop";
     #"${super}+Tab" = "exec ${pkgs.dunst}/bin/dunstctl action";
 
-"${super}+Tab"    = "exec echo action > /run/user/1000/quickshell-input";
-"${super}+Escape" = "exec echo "dismiss" > /tmp/qs_notification_pipe";
+"${super}+Tab"    = "exec echo action > /tmp/qs_notification_pipe";
+"${super}+Escape" = "exec echo \"dismiss\" > /tmp/qs_notification_pipe";
 
 
 
