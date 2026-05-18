@@ -1,8 +1,11 @@
+//@ pragma UseQApplication
 import Quickshell
-import Quickshell.Io 
+import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
 import QtQuick.Controls
+
+import "." as Modules
 
 Scope {
     id: root
@@ -33,16 +36,14 @@ Scope {
             id: standardBarWindow
             required property var modelData
             screen: modelData
-            
             visible: modelData.name === "DP-1"
-            
+
             WlrLayershell.layer: WlrLayershell.Top
             WlrLayershell.namespace: "quickshell-bar"
             WlrLayershell.keyboardFocus: WlrLayershell.None
-            
+
             anchors { top: true; left: true; right: true }
-            implicitHeight: visible ? 44 : 0 
-            
+            implicitHeight: visible ? 44 : 0
             color: "transparent"
 
             Rectangle {
@@ -50,35 +51,42 @@ Scope {
                 color: "transparent"
                 border.width: 5
                 border.color: "#003399"
-                radius: 12 
+                radius: 12
 
-                // LEFT SIDE CAPSULES
+                // LEFT SIDE MODULE CAPSULES
                 Row {
-                    anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; anchors.leftMargin: 16; spacing: 15 
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.leftMargin: 16
+                    spacing: 15
 
                     Rectangle {
                         color: Theme.colorBaseBg; radius: Theme.capsuleRadius; border.width: Theme.capsuleBorderWidth; border.color: Theme.colorOutline
                         width: 115; height: Theme.capsuleHeight; anchors.verticalCenter: parent.verticalCenter
                         HoverHandler { id: calendarHover }
                         ToolTip {
-                            visible: calendarHover.hovered; delay: 100 
+                            visible: calendarHover.hovered; delay: 100
                             contentItem: Text { text: root.calendarTooltipText; color: Theme.colorNormalText; font.family: "monospace"; font.pixelSize: 13 }
                             background: Rectangle { color: Theme.colorBaseBg; border.color: "#003399"; border.width: Theme.capsuleBorderWidth; radius: 6 }
                         }
                         Text { anchors.centerIn: parent; color: Theme.colorNormalText; font.family: "monospace"; font.pixelSize: 15; font.bold: true; text: Qt.formatDateTime(systemTimeGlobal.date, "ddd MMM dd") }
                     }
 
-                    // Direct file loaders use plain string strings natively without Component wrappers
-                    Loader { source: "weather.qml"; anchors.verticalCenter: parent.verticalCenter }
+                    Modules.Weather {}
                     AlarmCapsule {}
-                    Loader { source: "music.qml"; anchors.verticalCenter: parent.verticalCenter }
+                    Modules.Music {}
+                    Modules.Borg {}
                 }
 
-                // CENTER SIDE CAPSULES
+                // CENTER SIDE MODULE CAPSULES
                 Row {
-                    anchors.horizontalCenter: parent.horizontalCenter; anchors.verticalCenter: parent.verticalCenter; spacing: 15 
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 15
 
-                    AudioCapsule {}
+                    // Instantiates both split capsules here
+                    Modules.AudioCapsule {}
+                    Modules.MicCapsule {}
 
                     Rectangle {
                         color: Theme.colorBaseBg; radius: Theme.capsuleRadius; border.width: Theme.capsuleBorderWidth; border.color: Theme.colorOutline
@@ -87,21 +95,27 @@ Scope {
                     }
                 }
 
-                // RIGHT SIDE CAPSULES (Tray aligned at the absolute far-right end of the row)
+                // RIGHT SIDE MODULE CAPSULES
                 Row {
-                    anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; anchors.rightMargin: 16; spacing: 15 
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.rightMargin: 16
+                    spacing: 15
 
                     NetCapsule {}
                     GpuCapsule {}
                     CpuCapsule {}
                     RamCapsule {}
-                    
-                    // Direct file path string loader maps cleanly to lowercase tray.qml
-                    Loader { source: "tray.qml"; anchors.verticalCenter: parent.verticalCenter }
+
+                    Modules.Tray {
+                        barWindow: standardBarWindow
+                    }
                 }
             }
         }
     }
 
     SystemClock { id: systemTimeGlobal; precision: SystemClock.Seconds }
+
+    NotificationOverlay {}
 }
