@@ -13,7 +13,6 @@ Item {
         id: notificationList
         model: notifServer.trackedNotifications
 
-        // Triggers dynamically on every add, remove, or change event
         onCountChanged: {
             console.log("--> Current Live Count in Model: " + count)
         }

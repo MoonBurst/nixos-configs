@@ -7,7 +7,6 @@ ShellRoot {
     Variants {
         model: Quickshell.screens
 
-        // 1. YOUR STATUS BAR
         PanelWindow {
             id: barWindow
             WlrLayershell.layer: WlrLayershell.Top
@@ -20,7 +19,7 @@ ShellRoot {
             height: 40
             color: "#111111"
 
-            // Arranges your capsule modules horizontally across the bar
+
             Row {
                 anchors.centerIn: parent
                 spacing: 15
@@ -34,13 +33,13 @@ ShellRoot {
             }
         }
 
-        // 2. YOUR NOTIFICATIONS LAYER WINDOW
+
         PanelWindow {
             id: notificationWindow
             WlrLayershell.layer: WlrLayershell.Overlay
             WlrLayershell.namespace: "quickshell-notifications"
             
-            WlrLayershell.margins.top: 50 // Drops the notifications just below the top bar
+            WlrLayershell.margins.top: 50
             WlrLayershell.margins.right: 20
             
             anchors.top: parent.top
@@ -50,7 +49,6 @@ ShellRoot {
             height: 400
             color: "transparent"
 
-            // Dedicated sub-container for notification stream rendering
             Item {
                 anchors.fill: parent
 

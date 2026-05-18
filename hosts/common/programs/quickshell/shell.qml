@@ -60,7 +60,7 @@ Scope {
                 var p = data.trim().split("|");
                 if (p.length < 2) return;
                 
-                // Native JavaScript conversions cleanly eliminate printf parsing bugs
+
                 var kelvin = parseFloat(p[0]);
                 var fahrenheit = 0;
                 if (kelvin > 0) {
