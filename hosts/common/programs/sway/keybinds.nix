@@ -32,9 +32,17 @@ in
     # ░▀▀█░░█░░▀▀█░░█░░█▀▀░█░█
     # ░▀▀▀░░▀░░▀▀▀░░▀░░▀▀▀░▀░▀
     # **Notifications (Dunst)**
-    "${super}+Escape" = "exec ${pkgs.dunst}/bin/dunstctl close";
-    "${super}+h" = "exec ${pkgs.dunst}/bin/dunstctl history-pop";
-    "${super}+Tab" = "exec ${pkgs.dunst}/bin/dunstctl action";
+   # "${super}+Escape" = "exec ${pkgs.dunst}/bin/dunstctl close";
+   # "${super}+h" = "exec ${pkgs.dunst}/bin/dunstctl history-pop";
+    #"${super}+Tab" = "exec ${pkgs.dunst}/bin/dunstctl action";
+
+"${super}+Tab"    = "exec echo action > /run/user/1000/quickshell-input";
+"${super}+Escape" = "exec echo "dismiss" > /tmp/qs_notification_pipe";
+
+
+
+
+
 
     # ░█▀▀░█▀▀░█▀▄░█▀▀░█▀▀░█▀█░█▀▀░█░█░█▀█░▀█▀
     # ░▀▀█░█░░░█▀▄░█▀▀░█▀▀░█░█░▀▀█░█▀█░█░█░░█░
