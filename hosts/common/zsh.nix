@@ -91,6 +91,7 @@
     GDK_BACKEND = "wayland,x11";
     NIXOS_OZONE_WL = "1";
     OBS_PLATFORM = "wayland";
+    QML_XHR_ALLOW_FILE_READ = "1";
     WLR_DRM_NO_MODIFIERS = "1";
     WLR_NO_HARDWARE_CURSORS = "1";
     WLR_RENDERER_ALLOW_SOFTWARE = "1";

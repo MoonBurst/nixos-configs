@@ -26,11 +26,6 @@
         command = "floating enable, sticky enable, border none, border csd, fullscreen disable, focus, opacity set 1, resize set 700 500, move position center";
         criteria = { app_id = "walker"; };
       }
-      # Catching class just in case Sway is seeing it as an XWayland or generic window
-      {
-        command = "floating enable, sticky enable, border none, border csd, fullscreen disable, focus, opacity set 1, resize set 700 500, move position center";
-        criteria = { class = "walker"; };
-      }
     ];
     workspaceLayout = "tabbed";
   };

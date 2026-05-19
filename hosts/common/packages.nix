@@ -86,6 +86,7 @@
     unifont        # Ultimate BMP coverage
     unifont_upper  # Ultimate SMP coverage
 
-
+hyprland
+vesktop
   ];
 }

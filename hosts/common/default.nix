@@ -16,6 +16,7 @@
     ./programs/brave.nix
     ./programs/audacious.nix
     ./programs/walker.nix
+    ./programs/hyprland.nix
   ];
 
   home-manager.users.moonburst = {
