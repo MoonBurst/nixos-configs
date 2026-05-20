@@ -9,9 +9,9 @@ import Quickshell.Io
 Scope {
     id: root
 
-    // #######################################################
-    // #################### USER VARIABLES ###################
-    // #######################################################
+    // #
+    // # USER VARIABLES #
+    // #
 
     property int uiFontSize: 20
     property int rowHeight: 68
@@ -19,41 +19,34 @@ Scope {
     property int launcherHeight: 640
     property int imagePreviewSize: 420
     property int borderRadius: 20
+    property int uiLocationFontSize: 20
 
-    // #######################################################
-    // ######################## STATE ########################
-    // #######################################################
+    // #
+    // # STATE #
+    // #
 
     property bool isMenuOpen: false
     property bool isMathMode: false
     property bool isClipboardMode: false
-
     property string mathResultString: ""
     property string activeImageCachePath: ""
     property string dictDataBuffer: ""
-
     property var masterAppsList: []
     property var masterClipboardList: []
-
-    // #######################################################
-    // ####################### HELPERS #######################
-    // #######################################################
+    // #
+    // # HELPERS #
+    // #
 
     function resetLauncherState() {
-
         root.mathResultString = ""
         root.dictDataBuffer = ""
         root.activeImageCachePath = ""
-
         root.isMathMode = false
-
         filteredAppsModel.clear()
-
         appsListView.currentIndex = -1
     }
 
     function focusSearch() {
-
         Qt.callLater(function() {
             appSearchInputField.forceActiveFocus()
         })
@@ -61,13 +54,35 @@ Scope {
 
     function rebuildClipboardModel(searchTerm) {
 
+        let previousIndex =
+        appsListView.currentIndex
+
+        let previousItem = null
+
+        if (
+            previousIndex >= 0
+            && previousIndex < filteredAppsModel.count
+        ) {
+
+            previousItem =
+            filteredAppsModel.get(previousIndex)
+        }
+
         filteredAppsModel.clear()
 
-        let query = (searchTerm || "").trim().toLowerCase()
+        let query =
+        (searchTerm || "")
+        .trim()
+        .toLowerCase()
 
-        for (let i = 0; i < root.masterClipboardList.length; ++i) {
+        for (
+            let i = 0;
+        i < root.masterClipboardList.length;
+        ++i
+        ) {
 
-            let item = root.masterClipboardList[i]
+            let item =
+            root.masterClipboardList[i]
 
             let haystack =
             (
@@ -85,31 +100,71 @@ Scope {
             }
         }
 
-        appsListView.currentIndex =
-        filteredAppsModel.count > 0
-        ? 0
-        : -1
+        // preserve selection instead of resetting
+        if (
+            previousItem
+            && filteredAppsModel.count > 0
+        ) {
 
-        if (filteredAppsModel.count <= 0) {
+            let restored = -1
+
+            for (
+                let i = 0;
+            i < filteredAppsModel.count;
+            ++i
+            ) {
+
+                let item =
+                filteredAppsModel.get(i)
+
+                if (
+                    item.clipId
+                    === previousItem.clipId
+                ) {
+
+                    restored = i
+                    break
+                }
+            }
+
+            appsListView.currentIndex =
+            restored >= 0
+            ? restored
+            : 0
+
+        } else {
+
+            appsListView.currentIndex =
+            filteredAppsModel.count > 0
+            ? 0
+            : -1
+        }
+
+        if (
+            filteredAppsModel.count <= 0
+        ) {
+
             root.activeImageCachePath = ""
         }
     }
 
     function rebuildAppsModel(searchTerm) {
-
         filteredAppsModel.clear()
-
         let query = (searchTerm || "").trim().toLowerCase()
 
         for (let i = 0; i < root.masterAppsList.length; ++i) {
-
             let app = root.masterAppsList[i]
+            let haystack =
+            (
+                app.labelName
+                + " "
+                + app.desktopPath
+            ).toLowerCase()
 
             if (
                 query.length === 0
-                || app.labelName.toLowerCase().includes(query)
+                || haystack.includes(query)
             ) {
-
                 filteredAppsModel.append(app)
             }
         }
@@ -121,52 +176,45 @@ Scope {
     }
 
     function removeClipboardItem(clipId) {
-
         let proc = Qt.createQmlObject(
-            'import Quickshell; Process {}',
+            'import Quickshell.Io; Process {}',
             root
         )
 
         proc.command = [
             "sh",
             "-c",
-            "cliphist delete " + clipId
+            `cliphist delete ${clipId}`
         ]
 
         proc.running = true
-
         for (let i = 0; i < root.masterClipboardList.length; ++i) {
-
             if (root.masterClipboardList[i].clipId === clipId) {
-
                 root.masterClipboardList.splice(i, 1)
                 break
             }
         }
 
-        rebuildClipboardModel(
-            appSearchInputField.text
-            .replace(/^clip\s*/i, "")
-        )
+        Qt.callLater(function() {
+            rebuildClipboardModel(
+                appSearchInputField.text
+                .replace(/^clip\\s*/i, "")
+            )
+        })
     }
 
-    // #######################################################
-    // ######################## TOGGLE #######################
-    // #######################################################
+    // #
+    // # TOGGLE #
+    // #
 
     function toggleMenu() {
-
         root.isMenuOpen = !root.isMenuOpen
 
         if (!root.isMenuOpen)
             return
-
             resetLauncherState()
-
             root.isClipboardMode = false
-
             appSearchInputField.text = ""
-
             root.masterAppsList = []
 
             appsIndexer.running = false
@@ -188,32 +236,42 @@ Scope {
 
         appSearchInputField.text = ""
 
-        root.masterClipboardList = []
+        focusSearch()
 
+        // already loaded before
+        if (root.masterClipboardList.length > 0) {
+
+            rebuildClipboardModel("")
+
+            Qt.callLater(function() {
+
+                if (filteredAppsModel.count > 0) {
+                    appsListView.currentIndex = 0
+                }
+            })
+
+            return
+        }
+
+        // first load only
         clipboardIndexer.running = false
 
         Qt.callLater(function() {
             clipboardIndexer.running = true
         })
-
-        focusSearch()
     }
 
     function closeMenu() {
-
         root.isMenuOpen = false
-
         appSearchInputField.text = ""
-
         root.activeImageCachePath = ""
-
         clipboardIndexer.running = false
         dictFetcher.running = false
     }
 
-    // #######################################################
-    // ###################### APP INDEXER ####################
-    // #######################################################
+    // #
+    // # APP INDEXER #
+    // #
 
     Process {
         id: appsIndexer
@@ -229,25 +287,32 @@ Scope {
 
             while read -r f; do
 
-                name=$(grep -m1 '^Name=' "$f" | sed 's/^Name=//')
+                name=$(grep -m1 '^Name=' "$f" | cut -d= -f2-)
 
-                exec_cmd=$(grep -m1 '^Exec=' "$f" |
-                sed 's/^Exec=//' |
-                sed 's/ *%[fFuUdDnNickvm]//g' |
-                tr -d '"'
-                )
+                exec_cmd=$(grep -m1 '^Exec=' "$f" | cut -d= -f2-)
 
-                icon_name=$(grep -m1 '^Icon=' "$f" |
-                sed 's/^Icon=//')
+                icon=$(grep -m1 '^Icon=' "$f" | cut -d= -f2-)
 
-                [ -z "$icon_name" ] && icon_name="system-run"
+                terminal=$(grep -m1 '^Terminal=' "$f" | cut -d= -f2-)
 
-                if [ -n "$name" ] && [ -n "$exec_cmd" ]; then
-                    echo "$name|$exec_cmd|$icon_name"
-                    fi
+                # remove desktop entry field codes safely
+                exec_cmd=$(printf '%s\n' "$exec_cmd" | \
+                sed -E 's/[[:space:]]+%[fFuUdDnNickvm]//g')
 
-                    done | sort -u
-                    `
+                # trim whitespace
+                exec_cmd=$(echo "$exec_cmd" | sed 's/^ *//;s/ *$//')
+
+                # skip invalid entries
+                [ -z "$name" ] && continue
+                [ -z "$exec_cmd" ] && continue
+
+                # fallback icon
+                [ -z "$icon" ] && icon="application-x-executable"
+
+                echo "$name|$exec_cmd|$icon|$f|$terminal"
+
+                done | sort -u
+                `
         ]
 
         stdout: SplitParser {
@@ -257,34 +322,39 @@ Scope {
                 if (!data || root.isClipboardMode)
                     return
 
-                    let lines = data.split("\n")
+                    let lines = data.split("\\n")
 
                     for (let line of lines) {
 
                         line = line.trim()
 
-                        if (line.length === 0)
+                        if (!line)
                             continue
 
                             let parts = line.split("|")
 
-                            if (parts.length < 3)
+                            if (parts.length < 5)
                                 continue
 
-                                let obj = {
+                                root.masterAppsList.push({
 
                                     labelName: parts[0],
+
                                     execCmd: parts[1],
+
                                     iconName: parts[2],
+
+                                    desktopPath: parts[3],
+
+                                    runInTerminal:
+                                    parts[4] === "true",
 
                                     isClipboard: false,
                                     isImageClip: false,
 
                                     imagePath: "",
                                     clipId: ""
-                                }
-
-                                root.masterAppsList.push(obj)
+                                })
                     }
 
                     rebuildAppsModel(appSearchInputField.text)
@@ -292,7 +362,9 @@ Scope {
         }
     }
 
-    // ####### CLIPBOARD PROCESS #######
+    // #
+    // # CLIPBOARD PROCESS #
+    // #
 
     Process {
         id: clipboardIndexer
@@ -319,7 +391,9 @@ Scope {
 
                 else
 
-                    text=$(cliphist decode "$id" 2>/dev/null | tr '\\n' ' ' | head -c 300)
+                    text=$(cliphist decode "$id" 2>/dev/null \
+                    | tr '\\n' ' ' \
+                    | head -c 300)
 
                     text=$(echo "$text" | tr '|' ' ')
 
@@ -338,13 +412,13 @@ Scope {
                 if (!root.isClipboardMode || !data)
                     return
 
-                    let lines = data.split("\n")
+                    let lines = data.split("\\n")
 
                     for (let line of lines) {
 
                         line = line.trim()
 
-                        if (line.length === 0)
+                        if (!line)
                             continue
 
                             let parts = line.split("|||")
@@ -356,16 +430,20 @@ Scope {
                                 let clipId = parts[1]
 
                                 let obj = {
+
                                     labelName: "",
                                     searchText: "",
+
                                     execCmd: clipId,
 
-                                    iconName: type === "IMAGE"
-                                    ? "image"
+                                    iconName:
+                                    type === "IMAGE"
+                                    ? "image-x-generic"
                                     : "text-x-generic",
 
                                     isClipboard: true,
-                                    isImageClip: type === "IMAGE",
+                                    isImageClip:
+                                    type === "IMAGE",
 
                                     imagePath: "",
                                     clipId: clipId
@@ -374,7 +452,9 @@ Scope {
                                 if (type === "IMAGE") {
 
                                     obj.labelName = "[IMAGE]"
-                                    obj.searchText = "image png jpg screenshot photo"
+
+                                    obj.searchText =
+                                    "image png jpg jpeg bmp photo screenshot"
 
                                     obj.imagePath =
                                     "file://" +
@@ -385,61 +465,73 @@ Scope {
                                 } else {
 
                                     obj.labelName = parts[2]
-                                    obj.searchText = parts[2].toLowerCase()
+
+                                    obj.searchText =
+                                    parts[2].toLowerCase()
                                 }
 
                                 root.masterClipboardList.push(obj)
                     }
-
-                    root.refreshClipboardFilter()
             }
         }
+
+        onExited: {
+
+            if (!root.isClipboardMode)
+                return
+
+                rebuildClipboardModel(
+                    appSearchInputField.text
+                    .replace(/^clip\\s*/i, "")
+                )
+
+                Qt.callLater(function() {
+
+                    if (
+                        filteredAppsModel.count > 0
+                        && appsListView.currentIndex < 0
+                    ) {
+
+                        appsListView.currentIndex = 0
+                    }
+                })
+        }
     }
-    // #######################################################
-    // ###################### DICTIONARY #####################
-    // #######################################################
+    // #
+    // # DICTIONARY #
+    // #
 
     Process {
         id: dictFetcher
-
         stdout: SplitParser {
-
             onRead: data => {
                 root.dictDataBuffer += data
             }
         }
 
         onExited: {
-
             if (root.dictDataBuffer.trim().length === 0) {
-
                 root.mathResultString =
                 "Dictionary lookup failed."
-
                 return
             }
 
             try {
-
                 let response =
                 JSON.parse(root.dictDataBuffer)
-
                 if (
                     Array.isArray(response)
                     && response.length > 0
                 ) {
 
                     let wordData = response[0]
-
                     let output = ""
-
                     output +=
                     "WORD: "
                     + (wordData.word || "")
                     + "\n\n"
 
                     if (wordData.phonetic) {
-
                         output +=
                         "PHONETIC: "
                         + wordData.phonetic
@@ -455,7 +547,6 @@ Scope {
                         wordData.meanings[0]
 
                         if (meaning.partOfSpeech) {
-
                             output +=
                             "TYPE: "
                             + meaning.partOfSpeech
@@ -477,22 +568,20 @@ Scope {
                     root.mathResultString = output
 
                 } else {
-
                     root.mathResultString =
                     "No dictionary results."
                 }
 
             } catch (e) {
-
                 root.mathResultString =
                 "Dictionary parse error."
             }
         }
     }
 
-    // #######################################################
-    // ######################## RUNNER #######################
-    // #######################################################
+    // #
+    // # RUNNER #
+    // #
 
     Process {
         id: nativeAppRunner
@@ -502,13 +591,12 @@ Scope {
         id: filteredAppsModel
     }
 
-    // #######################################################
-    // ######################### IPC #########################
-    // #######################################################
+    // #
+    // # IPC #
+    // #
 
     IpcHandler {
         id: launcherIpc
-
         target: "global_launcher"
 
         function toggleMenu() {
@@ -528,19 +616,15 @@ Scope {
         }
     }
 
-    // #######################################################
-    // ###################### DICTIONARY #####################
-    // #######################################################
+    // #
+    // # DICTIONARY #
+    // #
 
     function fetchWordDefinition(word) {
-
         root.dictDataBuffer = ""
-
         root.mathResultString =
         `Searching "${word}"...`
-
         dictFetcher.running = false
-
         dictFetcher.command = [
             "sh",
             "-c",
@@ -550,12 +634,11 @@ Scope {
         dictFetcher.running = true
     }
 
-    // #######################################################
-    // ###################### CONVERSIONS ####################
-    // #######################################################
+    // #
+    // # CONVERSIONS #
+    // #
 
     function runMeasurementConversion(lowerQuery) {
-
         let match =
         lowerQuery.match(
             /^([0-9.]+)\s*([a-zA-Z]+)(?:\s+to\s+([a-zA-Z]+))?$/
@@ -563,112 +646,127 @@ Scope {
 
         if (!match)
             return false
-
             let value = parseFloat(match[1])
-
             let from = match[2].toLowerCase()
-
             let target =
             match[3]
             ? match[3].toLowerCase()
             : ""
 
-            let units = {
+            let categories = {
+                distance: {
+                    mm: 0.001,
+                    cm: 0.01,
+                    m: 1,
+                    km: 1000,
+                    in: 0.0254,
+                    ft: 0.3048,
+                    yd: 0.9144,
+                    mi: 1609.34
+                },
 
-                mm: 0.001,
-                cm: 0.01,
-                m: 1,
-                km: 1000,
+                weight: {
+                    mg: 0.001,
+                    g: 1,
+                    kg: 1000,
+                    oz: 28.3495,
+                    lb: 453.592,
+                    ton: 907185
+                },
 
-                in: 0.0254,
-                ft: 0.3048,
-                yd: 0.9144,
-                mi: 1609.34
+                liquid: {
+                    ml: 1,
+                    l: 1000,
+                    tsp: 4.92892,
+                    tbsp: 14.7868,
+                    floz: 29.5735,
+                    cup: 236.588,
+                    pint: 473.176,
+                    quart: 946.353,
+                    gal: 3785.41,
+                    barrel: 119240,
+                    shot: 44.3603,
+                    drop: 0.05,
+                    cubiccm: 1,
+                    cubicm: 1000000
+                }
             }
 
-            if (units[from] === undefined)
+            let matchedCategory = null
+            for (let category in categories) {
+                if (categories[category][from] !== undefined) {
+                    matchedCategory =
+                    categories[category]
+                    break
+                }
+            }
+
+            if (!matchedCategory)
                 return false
-
-                let meters = value * units[from]
-
+                let baseValue =
+                value * matchedCategory[from]
                 let results = []
-
-                for (let key in units) {
-
+                for (let key in matchedCategory) {
                     let converted =
-                    meters / units[key]
-
+                    baseValue / matchedCategory[key]
                     let line =
-                    converted.toFixed(3)
+                    converted.toFixed(4)
                     + " "
                     + key
-
                     if (
                         target.length === 0
                         || line.toLowerCase().includes(target)
                     ) {
-
                         results.push(line)
                     }
                 }
 
                 root.isMathMode = true
-
                 root.mathResultString =
                 results.join("\n")
-
                 return true
     }
 
-    // #######################################################
-    // ######################## FILTER #######################
-    // #######################################################
+    // #
+    // # FILTER #
+    // #
 
     function filterApplications(query) {
-
         let cleanQuery = query.trim()
-
         let lowerQuery =
         cleanQuery.toLowerCase()
 
-        // ====================================================
+        // #
         // DICTIONARY
-        // ====================================================
+        // #
 
         if (
             lowerQuery === "def"
             || lowerQuery.startsWith("def ")
         ) {
-
             root.isMathMode = true
             root.isClipboardMode = false
-
             let word =
             cleanQuery.substring(4).trim()
 
             if (word.length > 0) {
-
                 fetchWordDefinition(word)
-
             } else {
-
                 root.mathResultString =
                 "Format: def <word>"
             }
-
             return
         }
 
-        // ====================================================
+        // #
         // CLIPBOARD MODE
-        // ====================================================
+        // #
 
         if (
             root.isClipboardMode
             || lowerQuery === "clip"
             || lowerQuery.startsWith("clip ")
         ) {
-
             root.isClipboardMode = true
             root.isMathMode = false
 
@@ -682,74 +780,91 @@ Scope {
 
         root.isClipboardMode = false
 
-        // ====================================================
+        // #
         // CONVERSIONS
-        // ====================================================
+        // #
 
         if (runMeasurementConversion(lowerQuery))
             return
 
-            // ====================================================
+            // #
             // CALCULATOR
-            // ====================================================
+            // #
 
             if (
                 cleanQuery.length > 0
-                && /^[0-9+\-*/().\s]+$/.test(cleanQuery)
+                // Expanded regex to allow lowercase and uppercase alphabetic characters (a-zA-Z)
+                && /^[0-9a-zA-Z+\-*/().\s,]+$/.test(cleanQuery)
             ) {
 
                 root.isMathMode = true
 
                 try {
+                    // 1. Automatically turn words like "sin(" into "Math.sin("
+                    let mathExpression = cleanQuery
+                    .replace(/\b(sin|cos|tan|sqrt|log|ln|pow|abs|round|floor|ceil|min|max|random|PI|E)\b/gi, function(match) {
+                        if (match.toLowerCase() === 'ln') return 'Math.log';
+                        if (match.toUpperCase() === 'PI') return 'Math.PI';
+                        if (match.toUpperCase() === 'E') return 'Math.E';
+                        return 'Math.' + match.toLowerCase();
+                    });
 
+                    // 2. Evaluate the new Math expression safely
                     let result =
                     Function(
-                        `"use strict"; return (${cleanQuery})`
+                        `"use strict"; return (${mathExpression})`
                     )()
+
+                    // 3. Round long decimals cleanly so they look nice in the launcher
+                    if (typeof result === "number" && !Number.isInteger(result)) {
+                        result = parseFloat(result.toFixed(6));
+                    }
 
                     root.mathResultString =
                     String(result)
 
                 } catch (e) {
-
-                    root.mathResultString =
-                    "Calculation error."
+                    // Fail silently or fallback to app search if it's just a regular word typed out
+                    root.isMathMode = false
                 }
 
-                return
+                // Only stop execution if a valid math string was generated
+                if (root.isMathMode) return
             }
 
-            // ====================================================
+            // #
             // APPS
-            // ====================================================
+            // #
 
             root.isMathMode = false
-
             rebuildAppsModel(lowerQuery)
     }
 
-    // #######################################################
-    // ####################### EXECUTION #####################
-    // #######################################################
+    // #
+    // # EXECUTION #
+    // #
 
     function handleSelectionExecution(
         execCmd,
         isClipboardRow,
-        clipId
+        clipId,
+        runInTerminal
     ) {
 
         if (isClipboardRow) {
 
             let proc =
             Qt.createQmlObject(
-                'import Quickshell; Process {}',
+                'import Quickshell.Io; Process {}',
                 root
             )
 
             proc.command = [
                 "sh",
                 "-c",
-                `cliphist decode ${clipId} | wl-copy`
+                `
+                cliphist decode ${clipId} | wl-copy --foreground
+                `
             ]
 
             proc.running = true
@@ -758,11 +873,25 @@ Scope {
 
             nativeAppRunner.running = false
 
-            nativeAppRunner.command = [
-                "bash",
-                "-c",
-                execCmd + " &"
-            ]
+            // launch directly instead of through bash mangling
+            if (runInTerminal) {
+
+                nativeAppRunner.command = [
+                    "foot",
+                    "-e",
+                    "sh",
+                    "-c",
+                    execCmd
+                ]
+
+            } else {
+
+                nativeAppRunner.command = [
+                    "sh",
+                    "-c",
+                    `setsid ${execCmd} >/dev/null 2>&1 &`
+                ]
+            }
 
             nativeAppRunner.running = true
         }
@@ -770,20 +899,16 @@ Scope {
         root.closeMenu()
     }
 
-    // #######################################################
-    // ######################## WINDOW #######################
-    // #######################################################
+    // #
+    // # WINDOW #
+    // #
 
     Window {
         id: launcherWindow
-
         visible: root.isMenuOpen
-
         width: root.launcherWidth
         height: root.launcherHeight
-
         color: "transparent"
-
         flags:
         Qt.Window
         | Qt.FramelessWindowHint
@@ -792,32 +917,25 @@ Scope {
         Rectangle {
 
             anchors.fill: parent
-
             radius: root.borderRadius
-
             color:
             Quickshell.env("STYLIX_BASE00")
             || "#1a1a1a"
-
             border.width: 4
-
             border.color:
+
             Quickshell.env("STYLIX_BASE03")
             || "#003399"
-
             clip: true
 
             RowLayout {
-
                 anchors.fill: parent
-
                 anchors.margins: 20
-
                 spacing: 16
 
-                // ###################################################
-                // ###################### LEFT #######################
-                // ###################################################
+                // #
+                // # LEFT #
+                // #
 
                 ColumnLayout {
 
@@ -828,39 +946,38 @@ Scope {
 
                     TextField {
                         id: appSearchInputField
-
                         Layout.fillWidth: true
-
                         placeholderText:
                         "Apps, clip, math, def <word>..."
-
                         font.family: "monospace"
-
                         font.pixelSize:
                         root.uiFontSize
-
                         color: "white"
-
                         selectByMouse: true
 
                         background: Rectangle {
-
                             radius: 8
-
                             color: "#080808"
-
                             border.width: 2
-
                             border.color:
                             appSearchInputField.activeFocus
                             ? "red"
                             : "#333333"
                         }
 
-                        onTextChanged: {
-                            root.filterApplications(text)
-                        }
+                        property string lastFilterText: ""
 
+                        onTextChanged: {
+
+                            if (text === lastFilterText)
+                                return
+
+                                lastFilterText = text
+
+                                Qt.callLater(function() {
+                                    root.filterApplications(text)
+                                })
+                        }
                         Keys.onPressed: function(event) {
 
                             // ESC
@@ -876,7 +993,7 @@ Scope {
                             if (
                                 (
                                     event.key === Qt.Key_Delete
-                                    || event.key === Qt.Key_Backspace
+                                    //  || event.key === Qt.Key_Backspace
                                 )
                                 && root.isClipboardMode
                                 && filteredAppsModel.count > 0
@@ -907,6 +1024,11 @@ Scope {
                                 ) {
 
                                     appsListView.currentIndex++
+
+                                    appsListView.positionViewAtIndex(
+                                        appsListView.currentIndex,
+                                        ListView.Contain
+                                    )
                                 }
 
                                 event.accepted = true
@@ -921,6 +1043,11 @@ Scope {
                                 ) {
 
                                     appsListView.currentIndex--
+
+                                    appsListView.positionViewAtIndex(
+                                        appsListView.currentIndex,
+                                        ListView.Contain
+                                    )
                                 }
 
                                 event.accepted = true
@@ -963,7 +1090,8 @@ Scope {
                                     handleSelectionExecution(
                                         item.execCmd,
                                         item.isClipboard,
-                                        item.clipId
+                                        item.clipId,
+                                        item.runInTerminal
                                     )
                                 }
 
@@ -972,9 +1100,9 @@ Scope {
                         }
                     }
 
-                    // ###################################################
-                    // ##################### LISTVIEW ####################
-                    // ###################################################
+                    // #
+                    // # LISTVIEW #
+                    // #
 
                     ListView {
                         id: appsListView
@@ -987,8 +1115,12 @@ Scope {
                         model: filteredAppsModel
 
                         clip: true
-
                         spacing: 4
+
+                        interactive: false
+                        focus: false
+
+                        boundsBehavior: Flickable.StopAtBounds
 
                         onCurrentIndexChanged: {
 
@@ -1016,8 +1148,15 @@ Scope {
 
                                 root.activeImageCachePath = ""
                             }
-                        }
 
+                            Qt.callLater(function() {
+
+                                appsListView.positionViewAtIndex(
+                                    currentIndex,
+                                    ListView.Contain
+                                )
+                            })
+                        }
                         delegate: Rectangle {
 
                             width: appsListView.width
@@ -1029,6 +1168,16 @@ Scope {
                             color:
                             appsListView.currentIndex === index
                             ? "#252538"
+                            : "transparent"
+
+                            border.width:
+                            appsListView.currentIndex === index
+                            ? 2
+                            : 0
+
+                            border.color:
+                            appsListView.currentIndex === index
+                            ? "#6666ff"
                             : "transparent"
 
                             RowLayout {
@@ -1055,144 +1204,155 @@ Scope {
 
                                         anchors.fill: parent
 
-                                        source:
-                                        model.isImageClip
-                                        ? model.imagePath
-                                        : "image://icon/" + model.iconName
-
-                                        fillMode:
-                                        Image.PreserveAspectFit
+                                        fillMode: Image.PreserveAspectFit
 
                                         cache: false
+                                        smooth: true
+                                        mipmap: true
+
+                                        sourceSize.width: 64
+                                        sourceSize.height: 64
+
+                                        source: {
+
+                                            if (model.isImageClip) {
+                                                return model.imagePath
+                                            }
+
+                                            if (
+                                                model.iconName
+                                                && model.iconName.startsWith("/")
+                                            ) {
+                                                return "file://" + model.iconName
+                                            }
+
+                                            if (
+                                                model.iconName
+                                                && model.iconName.length > 0
+                                            ) {
+                                                return "image://icon/" + model.iconName
+                                            }
+
+                                            return "image://icon/utilities-terminal"
+                                        }
+
+                                        onStatusChanged: {
+
+                                            if (status === Image.Error) {
+
+                                                source =
+                                                "image://icon/utilities-terminal"
+                                            }
+                                        }
                                     }
                                 }
 
-                                Text {
+                                ColumnLayout {
 
                                     Layout.fillWidth: true
 
-                                    text: model.labelName
+                                    spacing: 2
 
-                                    color: "white"
+                                    Text {
 
-                                    font.family: "monospace"
+                                        Layout.fillWidth: true
 
-                                    font.pixelSize:
-                                    root.uiFontSize
+                                        text: model.labelName
 
-                                    elide: Text.ElideRight
-                                }
-                            }
+                                        color: "white"
 
-                            MouseArea {
+                                        font.family: "monospace"
 
-                                anchors.fill: parent
+                                        font.pixelSize:
+                                        root.uiFontSize
 
-                                hoverEnabled: true
+                                        elide: Text.ElideRight
+                                    }
 
-                                onEntered: {
-                                    appsListView.currentIndex =
-                                    index
-                                }
+                                    Text {
 
-                                onClicked: {
+                                        visible:
+                                        !model.isClipboard
+                                        && model.desktopPath !== undefined
 
-                                    handleSelectionExecution(
-                                        model.execCmd,
-                                        model.isClipboard,
-                                        model.clipId
-                                    )
+                                        Layout.fillWidth: true
+
+                                        text: model.desktopPath || ""
+
+                                        color: "#cccccc"
+
+                                        font.family: "monospace"
+
+                                        font.pixelSize:
+                                        root.uiLocationFontSize
+
+                                        elide: Text.ElideMiddle
+                                    }
                                 }
                             }
                         }
+
+                        ScrollBar.vertical: ScrollBar {
+                            policy: ScrollBar.AsNeeded
+                        }
                     }
 
-                    // ###################################################
-                    // ###################### MATH #######################
-                    // ###################################################
-
+                    // #
+                    // # MATH #
+                    // #
                     Rectangle {
-
                         visible: root.isMathMode
-
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-
                         radius: 12
-
                         color: "#0c0c12"
-
                         border.width: 2
-
                         border.color: "red"
 
                         ScrollView {
-
                             anchors.fill: parent
-
                             anchors.margins: 20
-
                             clip: true
-
                             Text {
-
                                 width: parent.width
-
                                 text:
                                 root.mathResultString
-
                                 color: "#ffff88"
-
                                 font.family:
                                 "monospace"
-
                                 font.pixelSize:
                                 root.uiFontSize
-
                                 wrapMode: Text.Wrap
                             }
                         }
                     }
                 }
 
-                // ###################################################
-                // ################ IMAGE PREVIEW ###################
-                // ###################################################
+                // #
+                // # IMAGE PREVIEW #
+                // #
 
                 Rectangle {
-
                     visible:
                     root.isClipboardMode
                     && root.activeImageCachePath !== ""
-
                     Layout.preferredWidth:
                     root.imagePreviewSize
-
                     Layout.preferredHeight:
                     root.imagePreviewSize
-
                     radius: 12
-
                     color: "#111111"
-
                     border.width: 2
-
                     border.color: "#333333"
-
                     clip: true
 
                     Image {
-
                         anchors.fill: parent
-
                         anchors.margins: 8
-
                         source:
                         root.activeImageCachePath
-
                         fillMode:
                         Image.PreserveAspectFit
-
                         cache: false
                     }
                 }

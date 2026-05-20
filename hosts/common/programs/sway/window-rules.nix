@@ -29,10 +29,11 @@
 
       # FIXED DIMENSIONS RULE: Added an explicit "resize set 400 500" instruction here.
       # This forcefully overrides Sway's layout manager and creates a compact centered look.
-      {
-        command = "floating enable, border none, fullscreen disable, focus, resize set 800 500, move position center";
-        criteria = { title = "quickshell-centered-launcher"; };
-      }
+{
+  command = "floating enable, sticky enable, border none, border csd, resize set 700 500, move position center, focus";
+  criteria = { app_id = "org.quickshell"; };
+}
+
     ];
     workspaceLayout = "tabbed";
   };
