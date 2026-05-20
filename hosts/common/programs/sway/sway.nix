@@ -28,27 +28,33 @@
 
       focus.followMouse = false;
 
-      keybindings = lib.mkOptionDefault {
-        "${modifier}+m" = "output \"AOC 24G2W1G4 0x0000E8FA\" toggle ; output \"LG Electronics LG ULTRAWIDE 0x0003CBC2\" toggle";
-        "button1" = "nop";
-        "button4" = "nop";
-        "button5" = "nop";
-        "button6" = "nop";
-        "button7" = "nop";
-        "${modifier}+w" = "layout tabbed";
-        "${modifier}+f" = "fullscreen";
-        "${modifier}+Shift+f" = "fullscreen global";
-        "${modifier}+Shift+space" = "floating toggle";
-        "${modifier}+Shift+minus" = "move scratchpad";
-        "${modifier}+Shift+equal" = "scratchpad show";
-        "--release ${modifier}+Shift+l" = "exec ${pkgs.bash}/bin/bash ../../scripts/swaylock.sh";
-      };
-
+      # FIXED AUTOSTART LAUNCHER: Wrapped the variables in an explicit bash wrapper execution string
+      # to prevent Sway's internal parser engine from throwing syntax line crashes.
       startup = [
+        {
+          command = (
+            let
+              colors = config.lib.stylix.colors.withHashtag;
+            in ''
+              exec ${pkgs.bash}/bin/bash -c " \
+                ${pkgs.toybox}/bin/killall -q quickshell || true; \
+                STYLIX_BASE00='${colors.base00}' \
+                STYLIX_BASE01='${colors.base01}' \
+                STYLIX_BASE03='${colors.base03}' \
+                STYLIX_BASE05='${colors.base05}' \
+                STYLIX_BASE08='${colors.base08}' \
+                NIXOS_SWAYMSG_PATH='${pkgs.sway}/bin/swaymsg' \
+                NIXOS_DBUSSEND_PATH='${pkgs.dbus}/bin/dbus-send' \
+                quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml \
+              "
+            ''
+          );
+          always = true;
+        }
       ];
     };
 
-    # Extract system colors with native hashtags built-in
+    # Extract system colors from your theme with native hashtags built-in
     extraConfig = let
       colors  = config.lib.stylix.colors.withHashtag;
       base00  = colors.base00;
@@ -58,8 +64,10 @@
       gray0b  = colors.base0B;
     in ''
       set $primary "HGC CR270HDM 0x00000001"
+      no_focus [window_role="pop-up"]
+      # Forces apps to focus smoothly when requested by deep-linking widgets
+      focus_on_window_activation focus
 
-      # Fixed: Using standard hash markers instead of CSS slash-stars
       # Syntax: client.<class> <border> <background> <text> <indicator> <child_border>
       client.focused          ${base08} ${base00} ${base05} ${base08} ${base08}
       client.focused_inactive ${gray0b} ${base00} ${gray0b} ${base01} ${base01}

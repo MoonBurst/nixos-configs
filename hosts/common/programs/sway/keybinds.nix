@@ -36,12 +36,8 @@ in
    # "${super}+h" = "exec ${pkgs.dunst}/bin/dunstctl history-pop";
     #"${super}+Tab" = "exec ${pkgs.dunst}/bin/dunstctl action";
 
-      "${super}+Tab"    = "exec echo \"action\" > /tmp/qs_notification_pipe";
-      "${super}+Escape" = "exec echo \"dismiss\" > /tmp/qs_notification_pipe";
-
-
-
-
+        "${super}+Tab"     = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call global_notif jumpToLatest";
+        "${super}+Escape" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call global_notif dismissLatest";
 
 
     # ░█▀▀░█▀▀░█▀▄░█▀▀░█▀▀░█▀█░█▀▀░█░█░█▀█░▀█▀
