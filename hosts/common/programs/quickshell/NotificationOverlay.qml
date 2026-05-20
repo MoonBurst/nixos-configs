@@ -105,7 +105,7 @@ Scope {
                 { name: "apogee",        match: "apogee",       color: "#0CD0CD", sound: false },
                 { name: "solar_sonata",  match: "solarsonata",  color: "#f7f716", sound: true  },
                 { name: "cageheart",     match: "cageheart",    color: "#8ad5a6", sound: true  },
-                { name: "olivia",        color: "#18FFD5", sound: true  },
+                { name: "olivia",        match: "olivia",       color: "#18FFD5", sound: true  },
                 { name: "genesis_frost", match: "genesisfrost", color: "#9ce8ff", sound: false },
                 { name: "luster_dawn",   match: "luster",       color: "#e041de", sound: true  }
             ];
@@ -203,14 +203,13 @@ Scope {
                     RowLayout {
                         anchors.fill: parent; anchors.margins: 16; spacing: 16
                         Rectangle {
+                            id: iconContainer
                             Layout.preferredWidth: 100; Layout.preferredHeight: 100; radius: 50
                             color: Quickshell.env("STYLIX_BASE00") || "#1a1a1a"
                             border.width: 1; border.color: card.border.color; clip: true
                             Image { anchors.fill: parent; source: card.icon; fillMode: Image.PreserveAspectCrop; visible: card.icon !== "" }
                             Text { anchors.centerIn: parent; visible: !card.icon; text: "?"; font.pixelSize: 24; font.bold: true; color: Quickshell.env("STYLIX_BASE05") || "#F7F700" }
                         }
-
-
                         ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 4
@@ -221,6 +220,7 @@ Scope {
                                 font.pixelSize: 24
                                 font.bold: true
                                 elide: Text.ElideRight
+                                clip: true
                                 Layout.fillWidth: true
                             }
 
@@ -231,6 +231,7 @@ Scope {
                                 wrapMode: Text.Wrap
                                 maximumLineCount: 2
                                 elide: Text.ElideRight
+                                clip: true
                                 Layout.fillWidth: true
                             }
                         }

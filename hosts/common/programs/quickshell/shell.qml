@@ -1,10 +1,13 @@
 //@ pragma UseQApplication
-import Quickshell
-import Quickshell.Io
-import Quickshell.Wayland
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls 2
+import QtQuick.Layouts
+import QtQuick.Window
+
+import Quickshell
+import Quickshell.Wayland // FIXED: Restored to resolve the non-existent attached object layer window error
 import Quickshell.Services.Notifications
+import Quickshell.Io
 import "." as Modules
 
 Scope {
@@ -69,8 +72,6 @@ Scope {
             implicitHeight: 50
             color: "transparent"
 
-            // FIXED: Removed the redundant mask Region block entirely.
-
             Rectangle {
                 anchors.fill: parent
                 color: "transparent"
@@ -101,16 +102,17 @@ Scope {
                             height: 30
                             anchors.verticalCenter: parent.verticalCenter
 
+                            HoverHandler { id: calendarHover }
+
                             ToolTip {
-                                visible: parent.hovered; delay: 100
-                                contentItem: Text { id: tooltipTextElement; text: root.calendarTooltipText; font.family: "monospace"; font.pixelSize: 13; color: "#ffffff" }
-                                background: Rectangle { id: tooltipBackgroundElement; color: "#000000"; border.color: "#003399"; border.width: 2; radius: 6 }
+                                visible: calendarHover.hovered; delay: 100
+                                contentItem: Text { id: tooltipTextElement; text: root.calendarTooltipText; font.family: "monospace"; font.pixelSize: 13 }
+                                background: Rectangle { id: tooltipBackgroundElement; border.color: "#003399"; radius: 6 }
                             }
 
                             Text {
                                 id: clockDateDisplay
                                 anchors.centerIn: parent
-                                color: "#ffffff"
                                 font.family: "monospace"
                                 font.pixelSize: 15
                                 font.bold: true
@@ -155,7 +157,6 @@ Scope {
                             Text {
                                 id: clockTimeDisplay
                                 anchors.centerIn: parent
-                                color: "#ffffff"
                                 font.family: "monospace"
                                 font.pixelSize: 15
                                 font.bold: true
