@@ -3,7 +3,7 @@
     assigns = {
       "1" = [ { class = "vesktop"; } ];
       "2" = [ { app_id = "edopro"; } ];
-      "5" = [{ class = "Audacious"; }];
+      "5" = [ { class = "Audacious"; } ];
     };
 
     window.commands = [
@@ -25,6 +25,13 @@
       {
         command = "floating enable, sticky enable, border none, border csd, fullscreen disable, focus, opacity set 1, resize set 700 500, move position center";
         criteria = { app_id = "walker"; };
+      }
+
+      # FIXED DIMENSIONS RULE: Added an explicit "resize set 400 500" instruction here.
+      # This forcefully overrides Sway's layout manager and creates a compact centered look.
+      {
+        command = "floating enable, border none, fullscreen disable, focus, resize set 800 500, move position center";
+        criteria = { title = "quickshell-centered-launcher"; };
       }
     ];
     workspaceLayout = "tabbed";

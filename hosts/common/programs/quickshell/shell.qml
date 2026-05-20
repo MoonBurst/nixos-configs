@@ -187,8 +187,6 @@ Scope {
     }
 
     SystemClock { id: systemTimeGlobal; precision: SystemClock.Seconds }
-
-    NotificationOverlay {
-        id: notificationOverlay
-    }
+    NotificationOverlay {  id: notificationOverlay  }
+    LauncherOverlay {   id: systemApplicationLauncher }
 }
