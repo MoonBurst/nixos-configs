@@ -4,6 +4,27 @@ import Quickshell.Io
 Item {
     id: root
 
+    // ------------------------
+    // MODULES
+    // ------------------------
+
+    AppLauncher {
+        id: appLauncher
+    }
+
+    Clipboard {
+        id: clipboard
+    }
+
+    Dictionary {
+        id: dictionary
+    }
+
+    MathEngine {
+        id: mathEngine
+        root: uiRoot
+    }
+
     // -------------------------
     // STATE MIRROR (FOR IPC)
     // -------------------------
@@ -14,7 +35,6 @@ Item {
     // -------------------------
     // CONNECT TO ROOT VIA PROPERTY LOOKUP
     // -------------------------
-    // This is the key fix: we mutate the actual UI instance if present
     property var uiRoot: null
 
     function ensureUI() {
@@ -33,6 +53,7 @@ Item {
         mode = "apps"
 
         if (uiRoot) {
+            appLauncher.loadApps(uiRoot.filteredAppsModel)
             uiRoot.isMenuOpen = true
             uiRoot.isClipboardMode = false
             uiRoot.isMathMode = false
@@ -47,6 +68,7 @@ Item {
         mode = "clipboard"
 
         if (uiRoot) {
+            clipboard.loadClipboard(uiRoot)
             uiRoot.isMenuOpen = true
             uiRoot.openClipboardMenu()
         }
@@ -94,11 +116,23 @@ Item {
         query = word || ""
 
         if (uiRoot) {
+            dictionary.fetch(uiRoot, word)
             uiRoot.isMenuOpen = true
             uiRoot.isMathMode = true
             uiRoot.fetchWordDefinition(word)
         }
     }
+
+    function runMath(query) {
+        ensureUI()
+        if(mathEngine.runMeasurementConversion(query)) return
+            if(mathEngine.runCalculator(query)) return
+    }
+
+    function filterApps(searchTerm) {
+        appLauncher.filter(searchTerm);
+    }
+
 
     // -------------------------
     // IPC HELPERS

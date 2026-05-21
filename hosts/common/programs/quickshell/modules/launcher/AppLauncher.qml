@@ -3,39 +3,57 @@ import Quickshell
 import Quickshell.Io
 
 Item {
+    id: appLauncherRoot
 
-    function loadApps(root) {
+    property var masterAppsList: []
+    property var targetModel: null
 
-        root.masterAppsList = []
-
-        appsIndexer.running = false
+    function loadApps(model) {
+        if (!model) {
+            console.log("AppLauncher: loadApps called with null model!")
+            return;
+        }
+        targetModel = model;
+        masterAppsList = []
         appsIndexer.running = true
     }
 
-    Process {
+    function filter(searchTerm) {
+        if (!targetModel) return;
 
+        targetModel.clear();
+        let query = (searchTerm || "").trim().toLowerCase();
+
+        for (let i = 0; i < masterAppsList.length; ++i) {
+            let app = masterAppsList[i];
+            let haystack = (app.labelName + " " + app.desktopPath).toLowerCase();
+
+            if (query.length === 0 || haystack.includes(query)) {
+                targetModel.append(app);
+            }
+        }
+    }
+
+    Process {
         id: appsIndexer
 
         command: [
             "sh",
             "-c",
             `
-            find \
-            /run/current-system/sw/share/applications \
-            ~/.local/share/applications \
+            find \\
+            /run/current-system/sw/share/applications \\
+            ~/.local/share/applications \\
             -name '*.desktop' 2>/dev/null |
 
             while read -r f; do
 
                 name=$(grep -m1 '^Name=' "$f" | cut -d= -f2-)
-
                 exec_cmd=$(grep -m1 '^Exec=' "$f" | cut -d= -f2-)
-
                 icon=$(grep -m1 '^Icon=' "$f" | cut -d= -f2-)
-
                 terminal=$(grep -m1 '^Terminal=' "$f" | cut -d= -f2-)
 
-                exec_cmd=$(printf '%s\n' "$exec_cmd" | \
+                exec_cmd=$(printf '%s\\n' "$exec_cmd" | \\
                 sed -E 's/[[:space:]]+%[fFuUdDnNickvm]//g')
 
                 exec_cmd=$(echo "$exec_cmd" | sed 's/^ *//;s/ *$//')
@@ -52,51 +70,35 @@ Item {
         ]
 
         stdout: SplitParser {
-
             onRead: data => {
-
                 if (!data)
                     return
 
-                    let lines = data.split("\n")
-
+                    let lines = data.split("\\n")
                     for (let line of lines) {
-
                         line = line.trim()
-
-                        if (!line)
-                            continue
+                        if (!line) continue
 
                             let parts = line.split("|")
+                            if (parts.length < 5) continue
 
-                            if (parts.length < 5)
-                                continue
-
-                                root.masterAppsList.push({
-
+                                appLauncherRoot.masterAppsList.push({
                                     labelName: parts[0],
-
                                     execCmd: parts[1],
-
                                     iconName: parts[2],
-
                                     desktopPath: parts[3],
-
-                                    runInTerminal:
-                                    parts[4] === "true",
-
+                                    runInTerminal: parts[4] === "true",
                                     isClipboard: false,
-
                                     isImageClip: false,
-
                                     imagePath: "",
-
                                     clipId: ""
                                 })
                     }
-
-                    root.rebuildAppsModel("")
             }
+        }
+
+        onExited: {
+            appLauncherRoot.filter("")
         }
     }
 }

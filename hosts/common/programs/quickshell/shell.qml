@@ -129,10 +129,6 @@ Scope {
                             }
                         }
 
-                        Modules.Weather {}
-                        AlarmCapsule {}
-                        Modules.Music {}
-                        Modules.Borg {}
                     }
 
                     // CENTER CAPSULES
@@ -174,10 +170,6 @@ Scope {
                         anchors.rightMargin: 15
                         spacing: 15
 
-                        NetCapsule {}
-                        GpuCapsule {}
-                        CpuCapsule {}
-                        RamCapsule {}
 
                         Modules.Tray { barWindow: standardBarWindow }
                     }
