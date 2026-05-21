@@ -5,7 +5,7 @@ import QtQuick.Controls
 
 Rectangle {
     id: weatherCapsule
-    width: 70
+    width: 100
 
     property var barWindow: null
 
@@ -128,11 +128,14 @@ Rectangle {
     // --- Main Text Display ---
     Text {
         id: weatherTextElement
-        anchors.centerIn: parent
+        anchors.fill: parent
+        anchors.margins: 10
         text: weatherCapsule.weatherText
         font.pixelSize: 20
         font.bold: true
+        textFormat: Text.PlainText
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight
-        width: parent.width - 20
     }
 }

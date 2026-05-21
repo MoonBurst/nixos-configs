@@ -4,7 +4,7 @@ import Quickshell.Io
 
 Rectangle {
     id: netBox
-    width: 250
+    width: 230
 
     property string netDisplayText: "NET: --"
 
@@ -43,7 +43,8 @@ Rectangle {
 
     Text {
         id: netText
-        anchors.centerIn: parent;
+        anchors.centerIn: parent     // <---- changed
+        anchors.margins: 10         // <---- still applies minimum margin from edge
         textFormat: Text.RichText;
         text: netBox.netDisplayText;
         font.family: "monospace";

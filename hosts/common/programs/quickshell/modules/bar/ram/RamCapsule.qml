@@ -3,12 +3,9 @@ import Quickshell.Io
 
 Rectangle {
     id: ramBox
-    width: 130
+    width: 150
 
-    // --- Data Properties ---
     property int ramAvailable: 0
-
-    // --- Thresholds ---
     property int ramWarn: 16
     property int ramCrit: 8
 
@@ -18,7 +15,6 @@ Rectangle {
         }
     }
 
-    // --- Data Fetching Process ---
     Process {
         id: ramStatsProc
         running: true
@@ -35,28 +31,33 @@ Rectangle {
 
     Text {
         id: ramText
-        anchors.centerIn: parent
+        anchors.fill: parent
+        anchors.margins: 10
         textFormat: Text.RichText
         font.family: "monospace"
         font.pixelSize: 20
         font.bold: true
-
+        horizontalAlignment: Text.AlignLeft
+        verticalAlignment: Text.AlignVCenter
         text: {
             if (!root.theme) {
                 return "<font color='green'>RAM:</font>   -- GiB";
             }
 
             const greenColor    = root.theme.base0C.toString();
-            const normalColor   = root.theme.base05.toString(); // yellow
-            const warningColor  = root.theme.base0A.toString(); // orange
-            const criticalColor = root.theme.base08.toString(); // red
+            const normalColor   = root.theme.base05.toString();
+            const warningColor  = root.theme.base0A.toString();
+            const criticalColor = root.theme.base08.toString();
 
-            var ram_color = (ramBox.ramAvailable < ramBox.ramCrit) ? criticalColor : (ramBox.ramAvailable < ramBox.ramWarn) ? warningColor : normalColor;
+            var ram_color = (ramBox.ramAvailable < ramBox.ramCrit) ? criticalColor
+            : (ramBox.ramAvailable < ramBox.ramWarn) ? warningColor
+            : normalColor;
+            var valueStr = ramBox.ramAvailable === 0
+            ? " -- GiB"
+            : (" " + ramBox.ramAvailable + " GiB").padStart(8, ' ');
 
-            const ramStr = ramBox.ramAvailable === 0 ? " -- GiB" : (ramBox.ramAvailable + " GiB").padStart(7, ' ');
-
-            return "<font color='" + greenColor + "'>RAM:</font>&nbsp;" +
-            "<font color='" + ram_color + "'>" + ramStr + "</font>";
+            return "<font color='" + greenColor + "'>RAM:</font>" +
+            "<font color='" + ram_color + "'>" + valueStr + "</font>";
         }
     }
 

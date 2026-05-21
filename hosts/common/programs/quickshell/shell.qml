@@ -90,8 +90,11 @@ Scope {
     Connections {
         target: notificationServer
         function onNotification(notification) {
-            if (notificationOverlayLoader && notificationOverlayLoader.item && notificationOverlayLoader.item.handleNotification) {
+            if (notificationOverlayLoader.item && notificationOverlayLoader.item.handleNotification) {
                 notificationOverlayLoader.item.handleNotification(notification);
+            } else {
+                console.log("Overlay still not loaded or missing handleNotification! Queuing notification.");
+                pendingNotifications.push(notification);
             }
         }
     }
@@ -247,27 +250,8 @@ Scope {
                     SoundModule.AudioCapsule {}
                     SoundModule.MicCapsule {}
 
-                    Rectangle {
-                        id: clockTimeCapsuleFrame
-                        color: "#000000"
-                        radius: 6
-                        border.width: 5
-                        border.color: "#111111"
-                        width: 145
-                        anchors.verticalCenter: parent.verticalCenter
-
-                        Text {
-                            id: clockTimeDisplay
-                            anchors.centerIn: parent
-                            font.family: "monospace"
-                            font.pixelSize: 20
-                            font.bold: true
-                            color: "yellow"
-                            text: systemTimeGlobal ? Qt.formatDateTime(systemTimeGlobal.date, "hh:mm:ss AP") : "Loading..."
-                        }
-
-                        Component.onCompleted: root.applyCapsuleTheme(clockTimeCapsuleFrame, clockTimeDisplay)
-                    }
+                    // REPLACEMENT: Modular clock loader!
+                    Loader { active: true; source: "./modules/bar/clock/ClockCapsule.qml" }
                 }
 
                 // 3. RIGHT CONTAINER ROW

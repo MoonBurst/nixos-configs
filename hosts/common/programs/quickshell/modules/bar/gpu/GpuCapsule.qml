@@ -3,7 +3,7 @@ import Quickshell.Io
 
 Rectangle {
     id: gpuBox
-    width:300
+    width: 280
 
     Component.onCompleted: {
         if (typeof(root.applyCapsuleTheme) !== 'undefined') {
@@ -105,11 +105,14 @@ Rectangle {
 
     Text {
         id: gpuText
-        anchors.centerIn: parent
+        anchors.fill: parent
+        anchors.margins: 10
         textFormat: Text.RichText
         font.family: "monospace"
         font.pixelSize: 20
         font.bold: true
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
         text: gpuDisplayText
     }
 

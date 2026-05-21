@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import "../.config/quickshell/Theme.qml" as Theme
 
 TextField {
     id: field
@@ -7,12 +8,13 @@ TextField {
     font.family: "monospace"
     font.pixelSize: 20
     font.bold: true
-    color: root.theme ? root.theme.base05 : ""
+    color: Theme.base05
+
     background: Rectangle {
-        color: root.theme ? root.theme.base01 : ""
+        color: Theme.base01
         radius: 6
         border.width: 2
-        border.color: root.theme ? root.theme.base03 : "#"
+        border.color: Theme.base03
     }
 
     signal rejected

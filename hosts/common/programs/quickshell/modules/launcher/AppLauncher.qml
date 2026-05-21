@@ -1,104 +1,166 @@
 import QtQuick
-import Quickshell
 import Quickshell.Io
 
 Item {
-    id: appLauncherRoot
+    id: root
 
-    property var masterAppsList: []
-    property var targetModel: null
+    // === THEME VARIABLES: GROUPED AT TOP ===
+    property int fontSize: 20
+    property color mainColor: "#F7F700"
+    property color backgroundColor: "#1a1a1a"
+    property color borderColor: "#F7F700"
+    property int borderRadius: 8
+    property int borderWidth: 2
 
-    function loadApps(model) {
-        if (!model) {
-            console.log("AppLauncher: loadApps called with null model!")
-            return;
-        }
-        targetModel = model;
-        masterAppsList = []
-        appsIndexer.running = true
+    // ------------------------
+    // MODULES
+    // ------------------------
+
+    AppLauncher {
+        id: appLauncher
     }
 
-    function filter(searchTerm) {
-        if (!targetModel) return;
+    Clipboard {
+        id: clipboard
+    }
 
-        targetModel.clear();
-        let query = (searchTerm || "").trim().toLowerCase();
+    Dictionary {
+        id: dictionary
+    }
 
-        for (let i = 0; i < masterAppsList.length; ++i) {
-            let app = masterAppsList[i];
-            let haystack = (app.labelName + " " + app.desktopPath).toLowerCase();
+    MathEngine {
+        id: mathEngine
+        root: uiRoot
+    }
 
-            if (query.length === 0 || haystack.includes(query)) {
-                targetModel.append(app);
-            }
+    // -------------------------
+    // STATE MIRROR (FOR IPC)
+    // -------------------------
+    property bool active: false
+    property string mode: "apps"
+    property string query: ""
+
+    // -------------------------
+    // CONNECT TO ROOT VIA PROPERTY LOOKUP
+    // -------------------------
+    property var uiRoot: null
+
+    function ensureUI() {
+        if (!uiRoot)
+            uiRoot = root.parent
+    }
+
+    // -------------------------
+    // CORE OPEN/CLOSE
+    // -------------------------
+
+    function openApps() {
+        ensureUI()
+
+        active = true
+        mode = "apps"
+
+        if (uiRoot) {
+            appLauncher.loadApps(uiRoot.filteredAppsModel)
+            uiRoot.isMenuOpen = true
+            uiRoot.isClipboardMode = false
+            uiRoot.isMathMode = false
+            uiRoot.activeImageCachePath = ""
         }
     }
 
-    Process {
-        id: appsIndexer
+    function openClipboard() {
+        ensureUI()
 
-        command: [
-            "sh",
-            "-c",
-            `
-            find \\
-            /run/current-system/sw/share/applications \\
-            ~/.local/share/applications \\
-            -name '*.desktop' 2>/dev/null |
+        active = true
+        mode = "clipboard"
 
-            while read -r f; do
+        if (uiRoot) {
+            clipboard.loadClipboard(uiRoot)
+            uiRoot.isMenuOpen = true
+            uiRoot.openClipboardMenu()
+        }
+    }
 
-                name=$(grep -m1 '^Name=' "$f" | cut -d= -f2-)
-                exec_cmd=$(grep -m1 '^Exec=' "$f" | cut -d= -f2-)
-                icon=$(grep -m1 '^Icon=' "$f" | cut -d= -f2-)
-                terminal=$(grep -m1 '^Terminal=' "$f" | cut -d= -f2-)
+    function openMath() {
+        ensureUI()
 
-                exec_cmd=$(printf '%s\\n' "$exec_cmd" | \\
-                sed -E 's/[[:space:]]+%[fFuUdDnNickvm]//g')
+        active = true
+        mode = "math"
 
-                exec_cmd=$(echo "$exec_cmd" | sed 's/^ *//;s/ *$//')
+        if (uiRoot) {
+            uiRoot.isMenuOpen = true
+            uiRoot.isMathMode = true
+        }
+    }
 
-                [ -z "$name" ] && continue
-                [ -z "$exec_cmd" ] && continue
+    function close() {
+        ensureUI()
 
-                [ -z "$icon" ] && icon="application-x-executable"
+        active = false
+        mode = ""
 
-                echo "$name|$exec_cmd|$icon|$f|$terminal"
+        if (uiRoot) {
+            uiRoot.closeMenu()
+        }
+    }
 
-                done | sort -u
-                `
-        ]
+    function toggleMenu() {
+        ensureUI()
 
-        stdout: SplitParser {
-            onRead: data => {
-                if (!data)
-                    return
-
-                    let lines = data.split("\\n")
-                    for (let line of lines) {
-                        line = line.trim()
-                        if (!line) continue
-
-                            let parts = line.split("|")
-                            if (parts.length < 5) continue
-
-                                appLauncherRoot.masterAppsList.push({
-                                    labelName: parts[0],
-                                    execCmd: parts[1],
-                                    iconName: parts[2],
-                                    desktopPath: parts[3],
-                                    runInTerminal: parts[4] === "true",
-                                    isClipboard: false,
-                                    isImageClip: false,
-                                    imagePath: "",
-                                    clipId: ""
-                                })
-                    }
-            }
+        if (uiRoot && uiRoot.isMenuOpen && mode === "apps") {
+            close()
+            return
         }
 
-        onExited: {
-            appLauncherRoot.filter("")
+        openApps()
+    }
+
+    function openDictionary(word) {
+        ensureUI()
+
+        active = true
+        mode = "dict"
+        query = word || ""
+
+        if (uiRoot) {
+            dictionary.fetch(uiRoot, word)
+            uiRoot.isMenuOpen = true
+            uiRoot.isMathMode = true
+            uiRoot.fetchWordDefinition(word)
+        }
+    }
+
+    function runMath(query) {
+        ensureUI()
+        if (mathEngine.runMeasurementConversion(query)) return
+            if (mathEngine.runCalculator(query)) return
+    }
+
+    function filterApps(searchTerm) {
+        appLauncher.filter(searchTerm);
+    }
+
+    // -------------------------
+    // IPC HELPERS
+    // -------------------------
+
+    function activate(modeName) {
+        switch (modeName) {
+            case "apps":
+                openApps()
+                break
+            case "clipboard":
+                openClipboard()
+                break
+            case "math":
+                openMath()
+                break
+            case "dict":
+                openDictionary("")
+                break
+            default:
+                openApps()
         }
     }
 }
