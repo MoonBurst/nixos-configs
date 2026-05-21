@@ -5,12 +5,19 @@ import Quickshell.Io
 
 Rectangle {
     id: micBox
-    color: Theme.colorBaseBg
-    radius: Theme.capsuleRadius
-    border.width: Theme.capsuleBorderWidth
-    border.color: Theme.colorOutline
     width: 115
-    height: Theme.capsuleHeight
+
+    property color colorLabelGreen: "#00FF00"
+    property color colorLabelYellow: "#FFFF00"
+    property color colorMuted: "#FF0000"
+
+    Component.onCompleted: {
+        if (typeof(root.applyCapsuleTheme) !== 'undefined') {
+            root.applyCapsuleTheme(micBox, micText);
+            micBox.colorLabelGreen = Theme.colorLabelGreen;
+            micBox.colorLabelYellow = Theme.colorLabelYellow;
+        }
+    }
 
     property string micDisplayText: "Mic: --"
 
@@ -33,24 +40,24 @@ Rectangle {
                 if (!isMuted) {
                     var mMatch = raw.match(/[0-9.]+/);
                     if (mMatch) mNum = Math.round(parseFloat(mMatch[0]) * 100) + "%";
-                } else { 
-                    mNum = "MUTED"; 
+                } else {
+                    mNum = "MUTED";
                 }
 
-                var mCol = isMuted ? "#FF0000" : Theme.colorNormalText;
-                micBox.micDisplayText = "<font color='" + Theme.colorLabelGreen + "'>Mic:</font> <font color='" + mCol + "'>" + mNum + "</font>";
+                var mCol = isMuted ? micBox.colorMuted : micBox.colorLabelYellow;
+                micBox.micDisplayText = "<font color='" + micBox.colorLabelGreen.toString() + "'>Mic:</font> <font color='" + mCol.toString() + "'>" + mNum + "</font>";
             }
         }
     }
 
-    TapHandler { 
-        onTapped: { 
-            micMuteCmd.running = false; micMuteCmd.running = true; 
+    TapHandler {
+        onTapped: {
+            micMuteCmd.running = false; micMuteCmd.running = true;
             micProc.running = false; micProc.running = true;
-        } 
+        }
     }
 
-    Text { anchors.centerIn: parent; textFormat: Text.RichText; text: micBox.micDisplayText; font.family: "monospace"; font.pixelSize: 15; font.bold: true }
+    Text { id: micText; anchors.centerIn: parent; textFormat: Text.RichText; text: micBox.micDisplayText; font.family: "monospace"; font.pixelSize: 15; font.bold: true }
 
     Timer { interval: 2000; running: true; repeat: true; onTriggered: micProc.running = true }
 }

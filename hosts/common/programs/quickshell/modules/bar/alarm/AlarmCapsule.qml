@@ -3,18 +3,20 @@ import QtQuick.Controls
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
+import "." as AlarmInput
 
 Rectangle {
     id: alarmBox
-    color: Theme.colorBaseBg
-    radius: Theme.capsuleRadius
-    border.width: Theme.capsuleBorderWidth
-    border.color: Theme.colorOutline
     width: 130
-    height: Theme.capsuleHeight
 
     property string alarmDisplayText: "⏰ Off"
     property string stateFile: "/tmp/waybar_alarm_state"
+    
+    Component.onCompleted: {
+        if (typeof(root.applyCapsuleTheme) !== 'undefined') {
+            root.applyCapsuleTheme(alarmBox, alarmText);
+        }
+    }
 
     Process {
         id: alarmFetcher
@@ -101,9 +103,9 @@ Rectangle {
     }
 
     Text { 
+        id: alarmText
         anchors.centerIn: parent 
         text: alarmBox.alarmDisplayText 
-        color: Theme.colorNormalText 
         font.family: "monospace" 
         font.pixelSize: 15 
         font.bold: true 
@@ -148,7 +150,7 @@ Rectangle {
                     font.bold: true
                 }
 
-                AlarmInputField {
+                AlarmInput.AlarmInputField {
                     id: timeInput
                     placeholderText: "Duration (e.g. 5m, 1h30m, 45s)"
                     KeyNavigation.tab: msgInput
@@ -157,7 +159,7 @@ Rectangle {
                     onRejected: alarmBox.cancelAndClosePopup()
                 }
 
-                AlarmInputField {
+                AlarmInput.AlarmInputField {
                     id: msgInput
                     placeholderText: "Reminder Message"
                     KeyNavigation.backtab: timeInput

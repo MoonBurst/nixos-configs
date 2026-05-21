@@ -1,5 +1,25 @@
-{ pkgs, lib, inputs, ... }:
+{ pkgs, lib, inputs, config, ... }:
 
+let
+  colorScheme = {
+    base00 = "1a1a1a";
+    base01 = "0F0F0F";
+    base02 = "1a1a1a";
+    base03 = "003399";
+    base04 = "4D4E93";
+    base05 = "F7F700";
+    base06 = "EBDBB2";
+    base07 = "cccccc";
+    base08 = "FF0000";
+    base09 = "FE8019";
+    base0A = "FABD2F";
+    base0B = "545454";
+    base0C = "8EC07C";
+    base0D = "675DDB";
+    base0E = "675DDB";
+    base0F = "FF8019";
+  };
+in
 {
   imports = [
     inputs.stylix.nixosModules.stylix
@@ -25,24 +45,7 @@
     homeManagerIntegration.autoImport = true;
     homeManagerIntegration.followSystem = true;
 
-    base16Scheme = {
-      base00 = "#1a1a1a";
-      base01 = "#0F0F0F";
-      base02 = "#1a1a1a";
-      base03 = "#003399";
-      base04 = "#4D4E93";
-      base05 = "#F7F700";
-      base06 = "#EBDBB2";
-      base07 = "#cccccc";
-      base08 = "#FF0000";
-      base09 = "#FE8019";
-      base0A = "#FABD2F";
-      base0B = "#545454";
-      base0C = "#8EC07C";
-      base0D = "#675DDB";
-      base0E = "#675DDB";
-      base0F = "#FF8019";
-    };
+    base16Scheme = colorScheme;
 
     icons = {
       enable = true;
@@ -65,8 +68,34 @@
       emoji = { package = pkgs.noto-fonts-color-emoji; name = "Noto Color Emoji"; };
     };
   };
-    home-manager.users.moonburst = {
+
+  home-manager.users.moonburst = {
     home.file.".local/share/icons/Numix".source = "${inputs.moon-numix.packages.${pkgs.system}.default}/share/icons/Numix";
     home.file.".local/share/icons/Numix-Light".source = "${inputs.moon-numix.packages.${pkgs.system}.default}/share/icons/Numix-Light";
+
+    # Generate Theme.qml from stylix colors
+    home.file.".config/quickshell/Theme.qml".text = ''
+      pragma Singleton
+      import QtQuick 2.0
+
+      QtObject {
+          property color base00: "#${colorScheme.base00}"
+          property color base01: "#${colorScheme.base01}"
+          property color base02: "#${colorScheme.base02}"
+          property color base03: "#${colorScheme.base03}"
+          property color base04: "#${colorScheme.base04}"
+          property color base05: "#${colorScheme.base05}"
+          property color base06: "#${colorScheme.base06}"
+          property color base07: "#${colorScheme.base07}"
+          property color base08: "#${colorScheme.base08}"
+          property color base09: "#${colorScheme.base09}"
+          property color base0A: "#${colorScheme.base0A}"
+          property color base0B: "#${colorScheme.base0B}"
+          property color base0C: "#${colorScheme.base0C}"
+          property color base0D: "#${colorScheme.base0D}"
+          property color base0E: "#${colorScheme.base0E}"
+          property color base0F: "#${colorScheme.base0F}"
+      }
+    '';
   };
 }

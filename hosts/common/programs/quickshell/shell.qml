@@ -9,6 +9,13 @@ import Quickshell.Wayland // FIXED: Restored to resolve the non-existent attache
 import Quickshell.Services.Notifications
 import Quickshell.Io
 import "." as Modules
+import "./modules/bar/music" as MusicModule
+import "./modules/bar/alarm" as AlarmModule
+import "./modules/bar/borg" as BorgModule
+import "./modules/bar/sound" as SoundModule
+import "./modules/bar/network" as NetworkModule
+import "./modules/bar/cpu" as CpuModule
+import "./modules/bar/gpu" as GpuModule
 
 Scope {
     id: root
@@ -52,6 +59,11 @@ Scope {
             frameItem.border.color = Theme.colorOutline;
             frameItem.height = Theme.capsuleHeight;
             if (textItem) textItem.color = Theme.colorNormalText;
+
+            if (frameItem.hasOwnProperty("colorLabelGreen")) frameItem.colorLabelGreen = Theme.colorLabelGreen;
+            if (frameItem.hasOwnProperty("colorLabelYellow")) frameItem.colorLabelYellow = Theme.colorLabelYellow;
+            if (frameItem.hasOwnProperty("colorMuted")) frameItem.colorMuted = Theme.colorMuted;
+            if (frameItem.hasOwnProperty("colorNormalText")) frameItem.colorNormalText = Theme.colorNormalText;
         } catch(e) {}
     }
 
@@ -129,6 +141,12 @@ Scope {
                             }
                         }
 
+                        MusicModule.Music {}
+                        AlarmModule.AlarmCapsule {}
+                        BorgModule.BorgCapsule {}
+                        NetworkModule.NetCapsule {}
+                        CpuModule.CpuCapsule {}
+                        GpuModule.GpuCapsule {}
                     }
 
                     // CENTER CAPSULES
@@ -136,9 +154,6 @@ Scope {
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 15
-
-                        Modules.AudioCapsule {}
-                        Modules.MicCapsule {}
 
                         Rectangle {
                             id: clockTimeCapsuleFrame
@@ -161,6 +176,8 @@ Scope {
 
                             Component.onCompleted: root.applyCapsuleTheme(clockTimeCapsuleFrame, clockTimeDisplay)
                         }
+                        SoundModule.AudioCapsule {}
+                        SoundModule.MicCapsule {}
                     }
 
                     // RIGHT CAPSULES

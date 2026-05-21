@@ -2,7 +2,12 @@
 { pkgs, config, lib, nixpkgs-unstable, ... }:
 
 let
-  unstable = nixpkgs-unstable.legacyPackages.${pkgs.system};
+  unstable = import nixpkgs-unstable {
+    system = pkgs.system;
+    config.allowUnfree = true;
+  };
+
+  quickshellWithPulse = unstable.quickshell.override { enablePulse = true; };
 
   # 1. Pull the script out into a reusable variable
   matrixApp = pkgs.writeShellScriptBin "matrix" ''
@@ -23,7 +28,7 @@ in
     unstable.dolphin-emu                # GameCube/Wii emulator
     unstable.archipelago                # Multi-game randomizer
     unstable.poptracker                 # Tracker for randomizers
-    unstable.quickshell
+    quickshellWithPulse
 
     # --- Communication & Social ---
     jami                                # Peer-to-peer video calling and chat

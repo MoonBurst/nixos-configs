@@ -1,0 +1,2 @@
+module Quickshell.Cpu
+CpuCapsule 1.0 CpuCapsule.qml
