@@ -124,7 +124,7 @@ Rectangle {
         anchors.top: parent.top
         anchors.left: parent.left
         
-        WlrLayershell.margins.top: 48
+        WlrLayershell.margins.top: 50
         WlrLayershell.margins.left: 20
         
         implicitWidth: 320
@@ -135,12 +135,12 @@ Rectangle {
             color: "#1a1a1a"
             border.color: "#003399"
             border.width: 3
-            radius: 8
+            radius: 10
 
             Column {
                 anchors.fill: parent
                 anchors.margins: 15
-                spacing: 12
+                spacing: 10
 
                 Text {
                     id: alarmTitle

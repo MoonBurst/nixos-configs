@@ -3,7 +3,7 @@ import Quickshell.Io
 
 Rectangle {
     id: gpuBox
-    width: 300
+    width:300
 
     Component.onCompleted: {
         if (typeof(root.applyCapsuleTheme) !== 'undefined') {

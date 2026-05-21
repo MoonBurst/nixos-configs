@@ -9,13 +9,13 @@ Rectangle {
 
     // Fallback static bindings preserve layout consistency if theme loops are refreshing
     color: (root && root.theme) ? root.theme.base00 : "black"
-    radius: 6
-    border.width: 2
+    radius: 10
+    border.width: 3
     border.color: (root && root.theme) ? root.theme.base05 : "yellow"
 
     // Explicit calculations scale boundaries properly alongside your size 20 font rows
     width: Math.max(45, trayLayoutRow.implicitWidth + 20)
-    height: 34
+    height: 35
     anchors.verticalCenter: parent.verticalCenter
 
     property var barWindow: null
@@ -23,14 +23,14 @@ Rectangle {
     Row {
         id: trayLayoutRow
         anchors.centerIn: parent
-        spacing: 8
+        spacing: 5
 
         Repeater {
             model: SystemTray.items
 
             delegate: Item {
                 id: iconDelegateItem
-                width: 22
+                width: 30
                 height: 22
                 anchors.verticalCenter: parent.verticalCenter
 
@@ -50,7 +50,7 @@ Rectangle {
                     text: iconDelegateItem.itemData.title ? iconDelegateItem.itemData.title.substring(0,2).toUpperCase() : "★"
                     color: (root && root.theme) ? root.theme.base05 : "yellow"
                     font.family: "monospace"
-                    font.pixelSize: 11
+                    font.pixelSize: 20
                     font.bold: true
                     visible: !delegateAppletIconImage.visible
                 }

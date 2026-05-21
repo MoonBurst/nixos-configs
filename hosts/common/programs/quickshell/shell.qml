@@ -122,15 +122,9 @@ Scope {
         if (!found) { themableItems.push({frame: frameItem, text: textItem}); }
 
         try {
-            frameItem.height = 34;
-            frameItem.radius = 6;
-            frameItem.border.width = 2;
-
-            // FIX 1: Boosted RAM container target frame box width to 220px to prevent string truncations
-            if (frameItem.parent && frameItem.parent.toString().includes("RamCapsule")) {
-                frameItem.width = 200;
-            }
-
+            frameItem.height = 35;
+            frameItem.radius = 10;
+            frameItem.border.width = 3;
             frameItem.color = "black";
             frameItem.border.color = "yellow";
 
@@ -159,35 +153,32 @@ Scope {
         anchors.top: true
         anchors.left: true
         anchors.right: true
-
         implicitHeight: 50
-
-        // FIX 3: Enforcing black layout context blocks clears out bright background leaks completely
         color: "black"
 
         Rectangle {
             anchors.fill: parent
             color: "black"
             border.color: "#003399"
-            border.width: 5
-            radius: 12
+            border.width:5
+            radius: 10
 
             Item {
                 anchors.fill: parent
 
-                // 1. LEFT CONTAINER ROW
+                // LEFT CONTAINER ROW
                 Row {
                     id: leftRow
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
-                    anchors.leftMargin: 16
-                    spacing: 15
+                    anchors.leftMargin: 15
+                    spacing: 5
 
                     Rectangle {
                         id: clockDateCapsuleFrame
                         color: "#000000"
-                        radius: 6
-                        border.width: 2
+                        radius:5
+                        border.width: 3
                         border.color: "#111111"
                         width: 150
                         anchors.verticalCenter: parent.verticalCenter
@@ -199,14 +190,11 @@ Scope {
                             anchor.window: standardBarWindow
                             anchor.rect: Qt.rect(leftRow.x + clockDateCapsuleFrame.x, standardBarWindow.implicitHeight, clockDateCapsuleFrame.width, 0)
                             color: "transparent"
-                            implicitWidth: calendarText.implicitWidth + 30
-                            implicitHeight: calendarText.implicitHeight + 30
-
                             Rectangle {
                                 anchors.fill: parent
                                 border.color: "yellow"
-                                border.width: 2
-                                radius: 6
+                                border.width: 3
+                                radius: 5
                                 color: "black"
 
                                 Text {
@@ -240,9 +228,7 @@ Scope {
                     Loader { active: root.shouldLoad(0); source: "./modules/bar/music/Music.qml" }
                     Loader { active: root.shouldLoad(1); source: "./modules/bar/alarm/AlarmCapsule.qml" }
                     Loader { active: root.shouldLoad(2); source: "./modules/bar/borg/BorgCapsule.qml" }
-                    Loader {
-                        active: root.shouldLoad(3);
-                        source: "./modules/bar/weather/Weather.qml"
+                    Loader { active: root.shouldLoad(3); source: "./modules/bar/weather/Weather.qml"
                         onLoaded: {
                             if (item && typeof item.barWindow !== "undefined") {
                                 item.barWindow = standardBarWindow;
@@ -265,7 +251,7 @@ Scope {
                         id: clockTimeCapsuleFrame
                         color: "#000000"
                         radius: 6
-                        border.width: 2
+                        border.width: 5
                         border.color: "#111111"
                         width: 145
                         anchors.verticalCenter: parent.verticalCenter
@@ -289,13 +275,13 @@ Scope {
                     id: rightRow
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
-                    anchors.rightMargin: 15
-                    spacing: 15
+                    anchors.rightMargin: 10
+                    spacing: 5
 
-                    Loader { active: root.shouldLoad(6); source: "./modules/bar/network/NetCapsule.qml" }
+                    Loader { active: root.shouldLoad(5); source: "./modules/bar/network/NetCapsule.qml" }
                     Loader { active: root.shouldLoad(6); source: "./modules/bar/cpu/CpuCapsule.qml" }
-                    Loader { active: root.shouldLoad(6); source: "./modules/bar/gpu/GpuCapsule.qml" }
-                    Loader { active: root.shouldLoad(7); source: "./modules/bar/ram/RamCapsule.qml" }
+                    Loader { active: root.shouldLoad(7); source: "./modules/bar/gpu/GpuCapsule.qml" }
+                    Loader { active: root.shouldLoad(8); source: "./modules/bar/ram/RamCapsule.qml" }
 
                     TrayModule.Tray { barWindow: standardBarWindow }
                 }
