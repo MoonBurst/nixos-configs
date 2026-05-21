@@ -7,7 +7,7 @@ let
     config.allowUnfree = true;
   };
 
-  quickshellWithPulse = unstable.quickshell.override { enablePulse = true; };
+
 
   # 1. Pull the script out into a reusable variable
   matrixApp = pkgs.writeShellScriptBin "matrix" ''
@@ -28,7 +28,7 @@ in
     unstable.dolphin-emu                # GameCube/Wii emulator
     unstable.archipelago                # Multi-game randomizer
     unstable.poptracker                 # Tracker for randomizers
-    quickshellWithPulse
+    unstable.quickshell
 
     # --- Communication & Social ---
     jami                                # Peer-to-peer video calling and chat
