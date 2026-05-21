@@ -1,22 +1,25 @@
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls 2
+import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.SystemTray
 
 Rectangle {
     id: trayBox
-    color: Theme.colorBaseBg
-    radius: Theme.capsuleRadius
-    border.width: Theme.capsuleBorderWidth
-    border.color: Theme.colorOutline
-    
+
+    // Fallback static bindings preserve layout consistency if theme loops are refreshing
+    color: (root && root.theme) ? root.theme.base00 : "black"
+    radius: 6
+    border.width: 2
+    border.color: (root && root.theme) ? root.theme.base05 : "yellow"
+
+    // Explicit calculations scale boundaries properly alongside your size 20 font rows
     width: Math.max(45, trayLayoutRow.implicitWidth + 20)
-    height: Theme.capsuleHeight
+    height: 34
     anchors.verticalCenter: parent.verticalCenter
-    
-    // FIXED: Adding the missing property back to the active uppercase file
+
     property var barWindow: null
-    
+
     Row {
         id: trayLayoutRow
         anchors.centerIn: parent
@@ -34,6 +37,7 @@ Rectangle {
                 property var itemData: modelData
 
                 Image {
+                    id: delegateAppletIconImage
                     anchors.fill: parent
                     source: iconDelegateItem.itemData.icon || ""
                     fillMode: Image.PreserveAspectFit
@@ -44,11 +48,11 @@ Rectangle {
                 Text {
                     anchors.centerIn: parent
                     text: iconDelegateItem.itemData.title ? iconDelegateItem.itemData.title.substring(0,2).toUpperCase() : "★"
-                    color: Theme.colorNormalText
+                    color: (root && root.theme) ? root.theme.base05 : "yellow"
                     font.family: "monospace"
                     font.pixelSize: 11
                     font.bold: true
-                    visible: !parent.children.visible
+                    visible: !delegateAppletIconImage.visible
                 }
 
                 QsMenuAnchor {
@@ -56,7 +60,7 @@ Rectangle {
                     anchor.window: trayBox.barWindow
                     menu: iconDelegateItem.itemData.menu
                     anchor.edges: PopupAnchor.Bottom | PopupAnchor.Left
-                    
+
                     anchor.rect: {
                         if (trayBox.barWindow) {
                             var globalPoint = iconDelegateItem.mapToItem(trayBox.barWindow.contentItem, 0, 0);
@@ -69,7 +73,7 @@ Rectangle {
                 MouseArea {
                     anchors.fill: parent
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
-                    
+
                     onClicked: (mouse) => {
                         if (mouse.button === Qt.LeftButton) {
                             iconDelegateItem.itemData.activate();

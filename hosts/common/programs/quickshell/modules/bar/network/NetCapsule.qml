@@ -4,18 +4,15 @@ import Quickshell.Io
 
 Rectangle {
     id: netBox
-    width: 270
+    width: 250
 
-    property color colorLabelGreen: "#00FF00"
-    property color colorNormalText: "#FFFFFF"
+    property string netDisplayText: "NET: --"
 
     Component.onCompleted: {
         if (typeof(root.applyCapsuleTheme) !== 'undefined') {
-            root.applyCapsuleTheme(netBox);
+            root.applyCapsuleTheme(netBox, netText);
         }
     }
-
-    property string netDisplayText: "NET: --"
 
     Process {
         id: netProc
@@ -36,15 +33,23 @@ Rectangle {
                 var rx = parseInt(speed[0]), tx = parseInt(speed[1]);
                 var rxStr = rx > 1048576 ? (rx / 1048576).toFixed(1) + "M" : Math.round(rx / 1024) + "K";
                 var txStr = tx > 1048576 ? (tx / 1048576).toFixed(1) + "M" : Math.round(tx / 1024) + "K";
-                
-                netBox.netDisplayText = "<font color='" + netBox.colorLabelGreen + "'>NET:</font> " +
-                                        "<font color='" + netBox.colorNormalText + "'>▼" + rxStr.padStart(5, ' ') + "</font> " +
-                                        "<font color='" + netBox.colorNormalText + "'>▲" + txStr.padStart(5, ' ') + "</font>";
+
+                netBox.netDisplayText = "<font color='" + (root.theme ? root.theme.base0C : "green") + "'>NET:</font> " +
+                "<font color='" + (root.theme ? root.theme.base05 : "white") + "'>▼" + rxStr.padStart(5, ' ') + "</font> " +
+                "<font color='" + (root.theme ? root.theme.base05 : "white") + "'>▲" + txStr.padStart(5, ' ') + "</font>";
             }
         }
     }
 
-    Text { anchors.centerIn: parent; textFormat: Text.RichText; text: netBox.netDisplayText; font.family: "monospace"; font.pixelSize: 15; font.bold: true }
+    Text {
+        id: netText
+        anchors.centerIn: parent;
+        textFormat: Text.RichText;
+        text: netBox.netDisplayText;
+        font.family: "monospace";
+        font.pixelSize: 20;
+        font.bold: true
+    }
 
     Timer { interval: 2000; running: true; repeat: true; onTriggered: netProc.running = true }
 }

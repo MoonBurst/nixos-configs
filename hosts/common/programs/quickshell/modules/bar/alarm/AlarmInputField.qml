@@ -3,16 +3,16 @@ import QtQuick.Controls
 
 TextField {
     id: field
-    property alias größtenbacher: field.text
+    property alias text: field.text
     font.family: "monospace"
-    font.pixelSize: 15
+    font.pixelSize: 20
     font.bold: true
-    color: "#FFFFFF"
+    color: root.theme ? root.theme.base05 : ""
     background: Rectangle {
-        color: "#000000"
+        color: root.theme ? root.theme.base01 : ""
         radius: 6
         border.width: 2
-        border.color: "#111111"
+        border.color: root.theme ? root.theme.base03 : "#"
     }
 
     signal rejected

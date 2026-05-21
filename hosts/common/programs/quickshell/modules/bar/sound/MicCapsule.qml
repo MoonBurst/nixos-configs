@@ -5,17 +5,16 @@ import Quickshell.Io
 
 Rectangle {
     id: micBox
-    width: 115
+    width: 140
 
     property color colorLabelGreen: "#00FF00"
     property color colorLabelYellow: "#FFFF00"
     property color colorMuted: "#FF0000"
+    property color colorNormalText: "#FFFFFF"
 
     Component.onCompleted: {
         if (typeof(root.applyCapsuleTheme) !== 'undefined') {
             root.applyCapsuleTheme(micBox, micText);
-            micBox.colorLabelGreen = Theme.colorLabelGreen;
-            micBox.colorLabelYellow = Theme.colorLabelYellow;
         }
     }
 
@@ -45,7 +44,7 @@ Rectangle {
                 }
 
                 var mCol = isMuted ? micBox.colorMuted : micBox.colorLabelYellow;
-                micBox.micDisplayText = "<font color='" + micBox.colorLabelGreen.toString() + "'>Mic:</font> <font color='" + mCol.toString() + "'>" + mNum + "</font>";
+                micBox.micDisplayText = "<font color='" + micBox.colorLabelGreen + "'>Mic:</font> <font color='" + mCol + "'>" + mNum + "</font>";
             }
         }
     }
@@ -57,7 +56,7 @@ Rectangle {
         }
     }
 
-    Text { id: micText; anchors.centerIn: parent; textFormat: Text.RichText; text: micBox.micDisplayText; font.family: "monospace"; font.pixelSize: 15; font.bold: true }
+    Text { id: micText; anchors.centerIn: parent; textFormat: Text.RichText; text: micBox.micDisplayText; font.family: "monospace"; font.pixelSize: 20; font.bold: true }
 
     Timer { interval: 2000; running: true; repeat: true; onTriggered: micProc.running = true }
 }

@@ -1,30 +1,77 @@
 import QtQuick
-import Quickshell.Pulse
+import QtQuick.Controls
+import Quickshell
+import Quickshell.Io
 
 Rectangle {
     id: micBox
-    width: 140
-
-    property color colorLabelYellow: "#FFFF00"
-    property color colorMuted: "#FF0000"
 
     Component.onCompleted: {
         if (typeof(root.applyCapsuleTheme) !== 'undefined') {
-            root.applyCapsuleTheme(micBox);
+            root.applyCapsuleTheme(micBox, micText);
+        }
+        updateDisplayText("0.0", false); // Initial display
+    }
+
+    property string micDisplayText: "Mic: --"
+
+    function updateDisplayText(raw, isMuted) {
+        if (!root.theme) {
+            micText.text = "<font color='green'>Mic:</font> --%";
+            return;
+        }
+
+        const greenColor = root.theme.base0C.toString();
+        const yellowColor = root.theme.base05.toString();
+        const redColor = root.theme.base08.toString();
+
+        var mNum = "0%";
+        if (!isMuted) {
+            var mMatch = raw.match(/[0-9.]+/);
+            if (mMatch) mNum = Math.round(parseFloat(mMatch[0]) * 100) + "%";
+        } else {
+            mNum = "MUTED";
+        }
+
+        var mCol = isMuted ? redColor : yellowColor;
+        micDisplayText = "<font color='" + greenColor + "'>Mic:</font> <font color='" + mCol + "'>" + mNum + "</font>";
+    }
+
+    Process { id: micMuteCmd; command: ["/bin/sh", "-c", "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"] }
+
+    Process {
+        id: micProc
+        running: true
+        command: [
+            "sh", "-c",
+            "wpctl get-volume @DEFAULT_AUDIO_SOURCE@ 2>/dev/null || echo 'Volume: 0.00'"
+        ]
+        stdout: SplitParser {
+            onRead: data => {
+                if (!data) return;
+                var raw = data.trim();
+                var isMuted = raw.indexOf("[MUTED]") !== -1;
+                updateDisplayText(raw, isMuted);
+            }
         }
     }
 
-    property string micDisplayText: "MIC: --"
-
-    PulseAudio {
-        id: pulse
-        onSourceChanged: {
-            var name = pulse.source.description.replace(/\s/g, "");
-            var muted = pulse.source.muted;
-            var text = muted ? "<font color='" + micBox.colorMuted + "'>MUTED</font>" : (name.length > 10 ? name.substring(0, 10) + "..." : name);
-            micBox.micDisplayText = "<font color='" + micBox.colorLabelYellow + "'>MIC:</font> " + text;
+    TapHandler {
+        onTapped: {
+            micMuteCmd.running = false; micMuteCmd.running = true;
+            micProc.running = false; micProc.running = true;
         }
     }
 
-    Text { anchors.centerIn: parent; textFormat: Text.RichText; text: micBox.micDisplayText; font.family: "monospace"; font.pixelSize: 15; font.bold: true }
+    Text {
+        id: micText
+        anchors.centerIn: parent
+        textFormat: Text.RichText
+        text: micDisplayText
+        font.family: "monospace"
+        font.pixelSize: 15
+        font.bold: true
+    }
+
+    Timer { interval: 2000; running: true; repeat: true; onTriggered: micProc.running = true }
 }

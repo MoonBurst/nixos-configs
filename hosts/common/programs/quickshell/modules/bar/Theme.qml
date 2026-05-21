@@ -14,7 +14,7 @@ QtObject {
     property color base09: "#FE8019"
     property color base0A: "#FABD2F"
     property color base0B: "#545454"
-    property color base0C: "#8EC07C"
+    property color base0C: "#04f100"
     property color base0D: "#675DDB"
     property color base0E: "#675DDB"
     property color base0F: "#FF8019"

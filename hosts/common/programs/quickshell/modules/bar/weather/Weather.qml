@@ -1,63 +1,138 @@
 import QtQuick
-import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
+import QtQuick.Controls
 
 Rectangle {
     id: weatherCapsule
-    color: Theme.colorBaseBg
-    radius: Theme.capsuleRadius
-    border.width: Theme.capsuleBorderWidth
-    border.color: Theme.colorOutline
     width: 70
-    height: Theme.capsuleHeight
-    anchors.verticalCenter: parent.verticalCenter
 
-    property string weatherDisplayText: "晴 --°F"
-    property string weatherTooltipText: "Fetching forecast..."
+    property var barWindow: null
 
+    // Expose the hover state for the parent component
+    property alias isHovered: weatherHover.hovered
+
+    // This function is called by the root shell to apply the consistent theme
+    Component.onCompleted: {
+        if (typeof(root.applyCapsuleTheme) !== 'undefined') {
+            root.applyCapsuleTheme(weatherCapsule, weatherTextElement);
+        }
+    }
+
+    // --- Properties for Weather Data ---
+    property string weatherText: "Loading..."
+    property string weatherTooltipText: "Loading forecast..."
+
+    // --- Data Fetching Processes ---
     Process {
-        id: weatherProc
+        id: weatherFetcher
         running: true
-        command: [
-            "sh", "-c",
-            "C=$(cat /run/secrets/weather_city 2>/dev/null | xargs || :); K=$(cat /run/secrets/weather_api_key 2>/dev/null | xargs || :); " +
-            "[ -z \"$C\" ] || [ -z \"$K\" ] && echo \"ERR|Missing API secrets\" && exit 0; " +
-            "cur=$(curl -s \"https://openweathermap.org{C}&appid=${K}\"); " +
-            "fc=$(curl -s \"https://openweathermap.org{C}&appid=${K}\"); " +
-            "k_temp=$(echo \"$cur\" | jq -r '.main.temp // 0'); " +
-            "t_out=\"Hourly Forecast:\\n\"; for row in $(echo \"$fc\" | jq -c '.list[]'); do " +
-            "  dr=$(echo \"$row\" | jq -r '.dt'); ds=$(date -d @$dr +'%H:%M' 2>/dev/null || echo '--:--'); " +
-            "  fk=$(echo \"$row\" | jq -r '.main.temp'); ff=$(awk -v k=\"$fk\" 'BEGIN{printf \"%.0f\", ((k-273.15)*9/5)+32}'); " +
-            "  dc=$(echo \"$row\" | jq -r '.weather[0].description // \".\"'); dcap=$(echo \"$dc\" | awk '{print toupper(substr($0,1,1)) substr($0,2)}'); " +
-            "  t_out=\"${t_out}${ds}: ${ff}°F, ${dcap}\\n\"; done; " +
-            "echo \"$k_temp|$t_out\""
-        ]
+        command: ["curl", "-s", "wttr.in?format=%t"]
         stdout: SplitParser {
             onRead: data => {
-                if (!data) return;
-                var p = data.trim().split("|");
-                if (p.length < 2) return;
-                var kelvin = parseFloat(p[0]);
-                var fahrenheit = 0;
-                if (kelvin > 0) fahrenheit = Math.round(((kelvin - 273.15) * 9 / 5) + 32);
-                var col = fahrenheit >= 86 ? '#FF0000' : (fahrenheit >= 77 ? 'yellow' : '#33FF33');
-                weatherCapsule.weatherDisplayText = "<font color='" + col + "'>" + fahrenheit + "°F</font>";
-                weatherCapsule.weatherTooltipText = p[1];
+                if (data) {
+                    weatherCapsule.weatherText = data.trim();
+                }
             }
         }
     }
 
-    Timer {
-        interval: 1800000; running: true; repeat: true; triggeredOnStart: true
-        onTriggered: weatherProc.running = true
+    Process {
+        id: forecastFetcher
+        running: true
+        command: ["sh", "-c", "curl -s 'wttr.in/?format=j1' | tr -d '\n'"]
+        stdout: SplitParser {
+            onRead: data => {
+                if (data) {
+                    try {
+                        var forecast = JSON.parse(data);
+                        var tooltipString = "Today:\n";
+                        var today = forecast.weather[0];
+                        for (var i = 0; i < today.hourly.length; i++) {
+                            var hourData = today.hourly[i];
+                            var time = parseInt(hourData.time, 10) / 100;
+                            var ampm = time < 12 ? "AM" : "PM";
+                            var displayHour = time % 12;
+                            if (displayHour === 0) displayHour = 12;
+                            tooltipString += (displayHour < 10 ? " " : "") + displayHour + ":00 " + ampm + ": ";
+                            tooltipString += hourData.tempF + "°F, ";
+                            tooltipString += hourData.weatherDesc[0].value + "\n";
+                        }
+
+                        tooltipString += "\nTomorrow:\n";
+                        var tomorrow = forecast.weather[1];
+                        for (var i = 0; i < tomorrow.hourly.length; i++) {
+                            var hourData = tomorrow.hourly[i];
+                            var time = parseInt(hourData.time, 10) / 100;
+                            var ampm = time < 12 ? "AM" : "PM";
+                            var displayHour = time % 12;
+                            if (displayHour === 0) displayHour = 12;
+                            tooltipString += (displayHour < 10 ? " " : "") + displayHour + ":00 " + ampm + ": ";
+                            tooltipString += hourData.tempF + "°F, ";
+                            tooltipString += hourData.weatherDesc[0].value + "\n";
+                        }
+
+                        weatherCapsule.weatherTooltipText = tooltipString.trim();
+                    } catch (e) {
+                        weatherCapsule.weatherTooltipText = "Error parsing forecast.";
+                    }
+                }
+            }
+        }
     }
 
-    HoverHandler { id: weatherHover }
-    ToolTip {
-        visible: weatherHover.hovered; delay: 100
-        contentItem: Text { text: weatherCapsule.weatherTooltipText; color: Theme.colorNormalText; font.family: "monospace"; font.pixelSize: 13 }
-        background: Rectangle { color: Theme.colorBaseBg; border.color: "#003399"; border.width: Theme.capsuleBorderWidth; radius: 6 }
+    // --- Refresh Timer ---
+    Timer {
+        interval: 900000 // 15 minutes
+        running: true
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: {
+            weatherFetcher.running = true;
+            forecastFetcher.running = true;
+        }
     }
-    Text { anchors.centerIn: parent; textFormat: Text.RichText; text: weatherCapsule.weatherDisplayText; font.family: "monospace"; font.pixelSize: 15; font.bold: true }
+
+    // --- Hover Handler & Tooltip ---
+    HoverHandler { id: weatherHover }
+
+    PopupWindow {
+        visible: weatherCapsule.barWindow && weatherHover.hovered
+        anchor.window: weatherCapsule.barWindow
+        anchor.rect: Qt.rect(weatherCapsule.mapToItem(barWindow.contentItem, 0, 0).x, barWindow.implicitHeight, weatherCapsule.width, 0)
+        color: "transparent"
+
+        // Width and height applied to the OS window bounds
+        implicitWidth: tooltipText.implicitWidth + 24
+        implicitHeight: tooltipText.implicitHeight + 24
+
+        Rectangle {
+            anchors.fill: parent
+            border.color: root.theme ? root.theme.base05 : "yellow"
+            border.width: 2
+            radius: 6
+            color: root.theme ? root.theme.base00 : "black"
+
+            Text {
+                id: tooltipText
+                anchors.centerIn: parent
+                text: weatherCapsule.weatherTooltipText
+                font.family: "monospace"
+                font.pixelSize: 20
+                color: root.theme ? root.theme.base05 : "yellow"
+                lineHeight: 1.2
+            }
+        }
+    }
+
+    // --- Main Text Display ---
+    Text {
+        id: weatherTextElement
+        anchors.centerIn: parent
+        text: weatherCapsule.weatherText
+        font.pixelSize: 20
+        font.bold: true
+        elide: Text.ElideRight
+        width: parent.width - 20
+    }
 }

@@ -3,33 +3,87 @@ import Quickshell.Io
 
 Rectangle {
     id: cpuBox
-    width: 140
+    width: 200
 
-    property color colorLabelGreen: "#00FF00"
-    property color colorNormalText: "#FFFFFF"
+    // --- Data Properties ---
+    property int cpuUsage: 0
+    property int cpuTemp: 0
+
+    // --- Thresholds ---
+    property int tempWarn: 65
+    property int tempCrit: 70
+    property int usageWarn: 50
+    property int usageCrit: 80
 
     Component.onCompleted: {
         if (typeof(root.applyCapsuleTheme) !== 'undefined') {
-            root.applyCapsuleTheme(cpuBox);
+            root.applyCapsuleTheme(cpuBox, cpuText);
         }
     }
 
-    property string cpuDisplayText: "CPU: --"
-
+    // --- Data Fetching Process ---
     Process {
-        id: cpuProc
+        id: cpuStatsProc
         running: true
-        command: ["sh", "-c", "awk '/cpu / {p=$2+$4; t=$2+$4+$5} {print (p-p0)*100/(t-t0)\"\"} {p0=p; t0=t}' /proc/stat | tail -n 1"]
+        command: ["sh", "-c", "temp_raw=$(cat /sys/class/hwmon/hwmon2/temp1_input 2>/dev/null); temp=$(($temp_raw/1000)); usage=$(top -bn2 | grep '^%Cpu' | tail -1 | awk '{print int(100-$8)}'); echo \"${temp:-0} ${usage:-0}\""]
         stdout: SplitParser {
             onRead: data => {
-                if (!data) return;
-                var load = Math.round(parseFloat(data.trim()));
-                cpuBox.cpuDisplayText = "<font color='" + cpuBox.colorLabelGreen + "'>CPU:</font> <font color='" + cpuBox.colorNormalText + "'>" + (isNaN(load) ? "--" : load + "%").padStart(4, ' ') + "</font>";
+                if (data && data.includes(' ')) {
+                    var stats = data.trim().split(' ');
+                    if (stats.length === 2) {
+                        var temp = parseInt(stats[0]);
+                        var usage = parseInt(stats[1]);
+                        if (!isNaN(temp)) {
+                            cpuBox.cpuTemp = temp;
+                        }
+                        if (!isNaN(usage)) {
+                            cpuBox.cpuUsage = usage;
+                        }
+                    }
+                } else {
+                    cpuBox.cpuTemp = 0;
+                    cpuBox.cpuUsage = 0;
+                }
             }
         }
     }
 
-    Text { anchors.centerIn: parent; textFormat: Text.RichText; text: cpuBox.cpuDisplayText; font.family: "monospace"; font.pixelSize: 15; font.bold: true }
+    Text {
+        id: cpuText
+        anchors.centerIn: parent
+        textFormat: Text.RichText
+        font.family: "monospace"
+        font.pixelSize: 20
+        font.bold: true
 
-    Timer { interval: 1000; running: true; repeat: true; onTriggered: cpuProc.running = true }
+        text: {
+            if (!root.theme) {
+                return "<font color='green'>CPU:</font>   --%   --°C";
+            }
+
+            const greenColor    = root.theme.base0C.toString();
+            const normalColor   = root.theme.base05.toString(); // yellow
+            const warningColor  = root.theme.base0A.toString(); // orange
+            const criticalColor = root.theme.base08.toString(); // red
+
+            var temp_color = (cpuBox.cpuTemp >= cpuBox.tempCrit) ? criticalColor : (cpuBox.cpuTemp >= cpuBox.tempWarn) ? warningColor : normalColor;
+            var usage_color = (cpuBox.cpuUsage >= cpuBox.usageCrit) ? criticalColor : (cpuBox.cpuUsage >= cpuBox.usageWarn) ? warningColor : normalColor;
+
+            const usageStr = cpuBox.cpuUsage === 0 ? " --%" : (cpuBox.cpuUsage + "%").padStart(4, ' ');
+            const tempStr  = cpuBox.cpuTemp === 0 ? " --°C" : (cpuBox.cpuTemp + "°C").padStart(4, ' ');
+
+            return "<font color='" + greenColor + "'>CPU:</font>&nbsp;" +
+            "<font color='" + usage_color + "'>" + usageStr + "</font>" + "&nbsp;&nbsp;" +
+            "<font color='" + temp_color + "'>" + tempStr + "</font>";
+        }
+    }
+
+    Timer {
+        interval: 2000
+        running: true
+        repeat: true
+        onTriggered: {
+            cpuStatsProc.running = true;
+        }
+    }
 }

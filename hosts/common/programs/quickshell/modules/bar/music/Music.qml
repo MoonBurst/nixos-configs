@@ -1,57 +1,56 @@
-import QtQuick
-import Quickshell
-import Quickshell.Io
+ import QtQuick
+ import Quickshell
+ import Quickshell.Io
 
-Rectangle {
-    id: musicCapsule
-    
-    // Explicit sizing constraint rules prevent text from overflowing into neighbors
-    width: 180
-    height: 30 // Set a default height
-    anchors.verticalCenter: parent.verticalCenter
-    
-    // Force canvas boundaries to cut off long track names cleanly
-    clip: true
+ Rectangle {
+     id: musicCapsule
 
-    property string currentSongText: "No Song Playing"
+     width: 180
 
-    Component.onCompleted: {
-        // Apply the theme from the root
-        if (typeof(root.applyCapsuleTheme) !== "undefined") {
+     clip: true
+
+     property string currentSongText: "No Song Playing"
+
+     Component.onCompleted: {
+         if (typeof(root.applyCapsuleTheme) !== "undefined") {
              root.applyCapsuleTheme(musicCapsule, musicText);
-        }
-    }
+         }
+     }
 
-    Process { id: musicToggleCmd; command: ["/bin/sh", "-c", "audtool current-song >/dev/null 2>&1 && ( [ \"$(audtool playback-status)\" = \"playing\" ] && audtool playback-pause || audtool playback-play ) || ( audacious & sleep 2 && audtool mainwin-show on && audtool playback-play )"] }
+     Process { id: musicToggleCmd; command: ["/bin/sh", "-c", "audtool current-song >/dev/null 2>&1 && ( [ \"$(audtool playback-status)\" = \"playing\" ] && audtool playback-pause || audtool playback-play ) || ( audacious & sleep 2 && audtool mainwin-show on && audtool playback-play )"] }
 
-    Process {
-        id: musicFetcher
-        running: true
-        command: [
-            "sh", "-c",
-            "if audtool current-song >/dev/null 2>&1; then " +
-            "  [ \"$(audtool playback-status)\" = \"playing\" ] && p=\"▶ \" || p=\"⏸ \"; echo \"$p$(audtool current-song)\"; " +
-            "else echo \"Music Offline\"; fi"
-        ]
-        stdout: SplitParser { onRead: data => { if (data) musicCapsule.currentSongText = data.trim(); } }
-    }
+     Process {
+         id: musicFetcher
+         running: true
+         command: [
+             "sh", "-c",
+             "if audtool current-song >/dev/null 2>&1; then " +
+             "  [ \"$(audtool playback-status)\" = \"playing\" ] && p=\"▶ \" || p=\"⏸ \"; echo \"$p$(audtool current-song)\"; " +
+             "else echo \"Music Offline\"; fi"
+         ]
+         stdout: SplitParser {
+             onRead: data => {
+                 if (data) {
+                     musicCapsule.currentSongText = data.trim()
+                 }
+             }
+         }
+     }
 
-    Timer {
-        interval: 2000; running: true; repeat: true; triggeredOnStart: true
-        onTriggered: musicFetcher.running = true
-    }
+     Timer {
+         interval: 2000; running: true; repeat: true; triggeredOnStart: true
+         onTriggered: musicFetcher.running = true
+     }
 
-    TapHandler { onTapped: { musicToggleCmd.running = false; musicToggleCmd.running = true; } }
-    
-    Text { 
-        id: musicText
-        anchors.centerIn: parent 
-        text: musicCapsule.currentSongText 
-        font.pixelSize: 15 
-        font.bold: true 
-        
-        // Adds clean retro dot structures (...) if a track name is too wide
-        elide: Text.ElideRight
-        width: parent.width - 20
-    }
-}
+     TapHandler { onTapped: { musicToggleCmd.running = false; musicToggleCmd.running = true; } }
+
+     Text {
+         id: musicText
+         anchors.centerIn: parent
+         text: musicCapsule.currentSongText
+         font.pixelSize: 20
+         font.bold: true
+         elide: Text.ElideRight
+         width: parent.width - 20
+     }
+ }

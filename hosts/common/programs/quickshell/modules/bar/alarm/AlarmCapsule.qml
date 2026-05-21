@@ -107,7 +107,7 @@ Rectangle {
         anchors.centerIn: parent 
         text: alarmBox.alarmDisplayText 
         font.family: "monospace" 
-        font.pixelSize: 15 
+        font.pixelSize: 20
         font.bold: true 
     }
 
@@ -143,11 +143,17 @@ Rectangle {
                 spacing: 12
 
                 Text {
+                    id: alarmTitle
                     text: "Set Native System Alarm"
-                    color: "#ffffff"
                     font.family: "monospace"
-                    font.pixelSize: 15
+                    font.pixelSize: 20
                     font.bold: true
+                    
+                    Component.onCompleted: {
+                        if (typeof(root.applyCapsuleTheme) !== 'undefined') {
+                            root.applyCapsuleTheme(alarmBox, alarmTitle);
+                        }
+                    }
                 }
 
                 AlarmInput.AlarmInputField {
