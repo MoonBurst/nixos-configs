@@ -1,34 +1,25 @@
 #!/usr/bin/env bash
-# Author: Ruben Lopez (Logon84) <rubenlogon@yahoo.es> (Fixed by AI helper)
-# Description: Cleaned script using robust regex to target raw WirePlumber ID mapping layouts
+# Author: Ruben Lopez (Logon84) <rubenlogon@yahoo.es>
+# Description: A shell script to switch pipewire sinks (outputs). Optinally it requires notify-send.sh for showing notifications.
 
-SINKS_TO_SKIP="other_sink_name1|Blue_Microphones|iec958-stereo"
+# Add sink names (separated with '|') to SKIP while switching with this script. Choose names to skip from the output of this command:
+# wpctl status -n | grep -zoP '(?<=Sinks:)(?s).*?(?=├─)' | grep -a "vol:"
+# if no skip names are added, this script will switch between every available audio sink (output).
+SINKS_TO_SKIP=("other_sink_name1|Blue_Microphones|iec958-stereo")
 
-# 1. Grab all clean Sink ID numbers from the wpctl Sinks section block
-ALL_SINKS=($(wpctl status | sed -n '/Sinks:/,/^$/p' | grep -E '^[[:space:]]*[*[:space:]][[:space:]]*[0-9]+\.' | grep -Ev "$SINKS_TO_SKIP" | sed -E 's/^[[:space:]]*[*[:space:]][[:space:]]*([0-9]+)\..*/\1/'))
-TOTAL_ELEMENTS=${#ALL_SINKS[@]}
+#Create array of sink names to switch to
+declare -a SINKS_TO_SWITCH=($(wpctl status -n | grep -zoP '(?<=Sinks:)(?s).*?(?=├─)' | grep -a "vol:" | tr -d \* | awk '{print ($3)}' | grep -Ev $SINKS_TO_SKIP))
+SINK_ELEMENTS=$(echo ${#SINKS_TO_SWITCH[@]})
 
-if [ "$TOTAL_ELEMENTS" -le 1 ]; then
-    echo "Only 1 available audio device detected. Skipping toggle pass."
-    exit 0
-fi
+#get current sink name and array position
+ACTIVE_SINK_NAME=$(wpctl status -n | grep -zoP '(?<=Sinks:)(?s).*?(?=├─)' | grep -a '*' | awk '{print ($4)}')
+ACTIVE_ARRAY_INDEX=$(echo ${SINKS_TO_SWITCH[@]/$ACTIVE_SINK_NAME//} | cut -d/ -f1 | wc -w | tr -d ' ')
 
-# 2. Isolate the exact ID number that has the active '*' pointer marker flag
-ACTIVE_ID=$(wpctl status | sed -n '/Sinks:/,/^$/p' | grep -E '^[[:space:]]*\*' | sed -E 's/^[[:space:]]*\*[[:space:]]*([0-9]+)\..*/\1/')
+#get next array name and then its ID to switch to
+NEXT_ARRAY_INDEX=$((($ACTIVE_ARRAY_INDEX+1)%$SINK_ELEMENTS))
+NEXT_SINK_NAME=${SINKS_TO_SWITCH[$NEXT_ARRAY_INDEX]}
+NEXT_SINK_ID=$(wpctl status -n | grep -zoP '(?<=Sinks:)(?s).*?(?=├─)' | grep -a $NEXT_SINK_NAME | awk '{print ($2+0)}')
 
-# 3. Step through the array indices to find where the active path sits
-ACTIVE_INDEX=-1
-for i in "${!ALL_SINKS[@]}"; do
-   if [ "${ALL_SINKS[$i]}" "${ACTIVE_ID}" ]; then
-       ACTIVE_INDEX=$i
-       break
-   fi
-done
-
-# 4. Cycle to the next array index position cleanly
-NEXT_INDEX=$(( (ACTIVE_INDEX + 1) % TOTAL_ELEMENTS ))
-NEXT_SINK_ID=${ALL_SINKS[$NEXT_INDEX]}
-
-# 5. Execute switch default rule pass
-wpctl set-default "$NEXT_SINK_ID"
-/run/current-system/sw/bin/notify-send "Audio Switcher" "Switched default output sink endpoint to ID: $NEXT_SINK_ID" --icon=audio-speakers
+#switch to sink & notify
+wpctl set-default $NEXT_SINK_ID
+#notify-send.sh -s $(</tmp/sss.id) || true && notify-send.sh Audioswitch "Switching to $NEXT_SINK_ID : $NEXT_SINK_NAME" -p > /tmp/sss.id || true

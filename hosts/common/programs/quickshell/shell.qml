@@ -17,6 +17,49 @@ Scope {
 
     property string calendarTooltipText: ""
     property bool launcherVisible: false
+    // ============================================================================
+    // 🎛️ DIAGNOSTIC SWITCH CONTROL (TOGGLE TRUE TO ENABLE ALL LIVE DEBUG MESSAGES)
+    // ============================================================================
+    property bool showDiagnostics: true
+
+    // FIXED: Formatted as an arrow property lambda expression to bypass the QML parser bug
+    property var debugLog: (msg) => {
+        if (root.showDiagnostics) console.log("⚡ [Shell-Debug] " + msg);
+    }
+
+    // Intercepts global state changes to log exactly what's blocking the window
+    onLauncherVisibleChanged: root.debugLog("🔄 State Variable Changed: launcherVisible is now -> " + launcherVisible)
+    onIsMenuOpenChanged:      root.debugLog("🔳 State Variable Changed: isMenuOpen is now -> " + isMenuOpen)
+
+    // Overrides global launcher controllers with safety wrappers
+    function toggleMenu() {
+        root.debugLog("▶ toggleMenu() was called from an external hotkey/trigger.");
+        if (launcherControlLoader && launcherControlLoader.item) {
+            root.debugLog("Pkg context parameters look good. Checking current states before calling toggle...");
+            root.debugLog("   - Controller visible state is: " + launcherControlLoader.item.visible);
+            root.debugLog("   - Current shell root.isMenuOpen is: " + root.isMenuOpen);
+
+            launcherControlLoader.item.toggleMenu();
+
+            root.debugLog("📥 Post-toggle check:");
+            root.debugLog("   - Controller visible state updated to: " + launcherControlLoader.item.visible);
+            root.launcherVisible = launcherControlLoader.item.visible;
+            root.debugLog("   - root.launcherVisible synchronized to: " + root.launcherVisible);
+        } else {
+            root.debugLog("❌ ERROR: launcherControlLoader.item is NULL! The back-end controller failed to load entirely.");
+        }
+    }
+
+    function openClipboard() {
+        root.debugLog("▶ openClipboard() was called from an external hotkey/trigger.");
+        if (launcherControlLoader && launcherControlLoader.item) {
+            launcherControlLoader.item.openClipboard();
+            root.launcherVisible = launcherControlLoader.item.visible;
+            root.debugLog("📥 Post-clipboard check: root.launcherVisible is now -> " + root.launcherVisible);
+        } else {
+            root.debugLog("❌ ERROR: launcherControlLoader.item is NULL during clipboard call.");
+        }
+    }
 
     // State definitions maintained cleanly for tracking parameters
     property var theme: Theme
@@ -38,21 +81,6 @@ Scope {
     }
 
     property alias global_launcher: root
-
-    function toggleMenu() {
-        if (launcherControlLoader.item) {
-            launcherControlLoader.item.toggleMenu();
-            root.launcherVisible = launcherControlLoader.item.active;
-        }
-    }
-
-    function openClipboard() {
-        if (launcherControlLoader.item) {
-            launcherControlLoader.item.openClipboard();
-            root.launcherVisible = launcherControlLoader.item.active;
-            console.log("Clipboard path requested safely via root IPC routing properties.");
-        }
-    }
 
     property var primaryScreen: {
         if (!Quickshell.screens || Quickshell.screens.length === 0) return null;
@@ -358,10 +386,6 @@ Scope {
         id: launcherControlLoader
         active: true
         source: Qt.resolvedUrl("modules/overlays/launcher/LauncherController.qml")
-        onLoaded: {
-            if (item) {
-                item.uiRoot = root;
-            }
-        }
     }
+
 }

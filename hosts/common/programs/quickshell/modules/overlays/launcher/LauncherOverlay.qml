@@ -1,333 +1,109 @@
-//@ pragma UseQApplication
 import QtQuick
 import QtQuick.Controls 2
 import QtQuick.Layouts
-import QtQuick.Window
 import Quickshell
 import Quickshell.Wayland
-import Quickshell.Services.Notifications
-import Quickshell.Io
 
-import "./modules/bar/sound" as SoundModule
-import "./modules/bar/tray" as TrayModule
+import "../../../" // Points back cleanly to your local root Theme.qml configuration
 
-Scope {
-    id: root
+Rectangle {
+    id: overlayRoot
+    anchors.fill: parent
 
-    property string calendarTooltipText: ""
-    property bool launcherVisible: false
+    // ============================================================================
+    // #### MODULE LOGIC: THEME COLOR LOOKUPS MAPPED TO LOCAL STYLIX FIELDS ####
+    // ============================================================================
+    // Reads directly from your local profile instead of relying on a micro-managing parent function
+    color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
+    opacity: 0.92
 
-    property QtObject theme: null
-    property QtObject themeData: null
+    // State parameters mapping visibility signals to the root panel windows
+    signal requestClose()
 
-    // State structural variables cleanly linking your backend mathematical logic lines
-    property var filteredAppsModel: ListModel {}
-    property bool isMenuOpen: false
-    property bool isClipboardMode: false
-    property bool isMathMode: false
-    property string activeImageCachePath: ""
-    property string mathResultString: ""
-
-    property var themableItems: []
-
-    property var pendingNotifications: [] // <--- added here
-
-    function shouldLoad(moduleIndex) {
-        return moduleIndex <= 8;
+    // ============================================================================
+    // #### MODULE LOGIC: FOCUS AND KEYBOARD CAPTURE HANDLING ####
+    // ============================================================================
+    // Forces the text field to automatically grab input focus as soon as the menu opens
+    Component.onCompleted: {
+        console.log("🚀 LauncherOverlay loaded into window scene memory.");
+        appSearchInput.forceActiveFocus();
     }
 
-    // =========================================================================
-    // NATIVE NO-CRASH IPC ROOT CHANNELS
-    // =========================================================================
-    property alias global_launcher: root
-
-    function toggleMenu() {
-        if (launcherControlLoader.item) {
-            launcherControlLoader.item.toggleMenu();
-            root.launcherVisible = launcherControlLoader.item.active;
+    Keys.onPressed: (event) => {
+        if (event.key === Qt.Key_Escape) {
+            console.log("📥 Escape key intercepted. Closing launcher overlay...");
+            overlayRoot.requestClose();
+            event.accepted = true;
         }
     }
 
-    function openClipboard() {
-        if (launcherControlLoader.item) {
-            launcherControlLoader.item.openClipboard();
-            root.launcherVisible = launcherControlLoader.item.active;
-            console.log("Clipboard path requested safely via root IPC routing properties.");
-        }
-    }
-
-    // Lazy property binding loop dynamically tracks screen DP-1 as it mounts on boot
-    property var primaryScreen: {
-        if (!Quickshell.screens || Quickshell.screens.length === 0) return null;
-        var found = Quickshell.screens.find(s => s.name === "DP-1");
-        return found ? found : Quickshell.screens;
-    }
-
-    Loader {
-        id: themeLoader
-        source: "file:///home/moonburst/.config/quickshell/Theme.qml"
-        onLoaded: {
-            console.log("Stylix theme loaded successfully.");
-            root.theme = item;
-            root.themeData = item;
-            if (root.themableItems && root.themableItems.length !== undefined) {
-                for (var i = 0; i < root.themableItems.length; ++i) {
-                    var themable = root.themableItems[i];
-                    root.applyCapsuleTheme(themable.frame, themable.text);
-                }
-            }
-        }
-    }
-
-    Process {
-        id: calFetcher
-        running: true
-        command: ["sh", "-c", "cal --color=never"]
-        stdout: SplitParser { onRead: data => root.calendarTooltipText = data }
-    }
-
-    Timer {
-        id: calendarRefreshTimer
-        interval: 3600000; running: true; repeat: true; triggeredOnStart: true
-        onTriggered: calFetcher.running = true
-    }
-
-    // =========================================================================
-    // UNIFIED CAPSULE FORMATTING GENERATOR
-    // =========================================================================
-    function applyCapsuleTheme(frameItem, textItem) {
-        if (!frameItem) return;
-
-        var found = false;
-        for (var i = 0; i < themableItems.length; i++) {
-            if (themableItems[i].frame === frameItem) { found = true; break; }
-        }
-        if (!found) { themableItems.push({frame: frameItem, text: textItem}); }
-
-        try {
-            frameItem.height = 35;
-            frameItem.radius = 10;
-            frameItem.border.width = 3;
-            frameItem.color = "black";
-            frameItem.border.color = "yellow";
-
-            if (textItem) {
-                textItem.color = "yellow";
-                textItem.font.pixelSize = 20;
-            }
-        } catch(e) {}
-    }
-
-    SystemClock { id: systemTimeGlobal; precision: SystemClock.Seconds }
-
-    // =========================================================================
-    // NATIVE DESKTOP BAR PANEL WINDOW TRACK
-    // =========================================================================
-    PanelWindow {
-        id: standardBarWindow
-        screen: root.primaryScreen
-        visible: root.primaryScreen !== null
-
-        WlrLayershell.layer: WlrLayershell.Top
-        WlrLayershell.namespace: "quickshell-bar"
-        WlrLayershell.keyboardFocus: WlrLayershell.None
-        exclusiveZone: implicitHeight
-
-        anchors.top: true
-        anchors.left: true
-        anchors.right: true
-        implicitHeight: 50
-        color: "black"
+    // ============================================================================
+    // #### MODULE LOGIC: APP LAUNCHER SEARCH BAR INTERFACE ROW ####
+    // ============================================================================
+    ColumnLayout {
+        anchors.centerIn: parent
+        width: Math.min(parent.width * 0.6, 650)
+        spacing: 20
 
         Rectangle {
-            anchors.fill: parent
-            color: "black"
-            border.color: "#003399"
-            border.width:5
-            radius: 10
+            id: searchBarContainer
+            Layout.fillWidth: true
+            height: 55
+            radius: 8
 
-            Item {
+            // Decoupled color values linked straight to your theme variables
+            color: (typeof Theme !== 'undefined' && Theme.base01 !== undefined) ? Theme.base01 : "#1a1a1a"
+            border.width: 2
+            border.color: (typeof Theme !== 'undefined' && Theme.base0D !== undefined) ? Theme.base0D : "yellow"
+
+            TextField {
+                id: appSearchInput
                 anchors.fill: parent
+                anchors.leftMargin: 15
+                anchors.rightMargin: 15
 
-                // LEFT CONTAINER ROW
-                Row {
-                    id: leftRow
-                    anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.leftMargin: 15
-                    spacing: 5
+                placeholderText: "Search apps, run calculations, query definitions..."
+                placeholderTextColor: "#666666"
 
-                    Rectangle {
-                        id: clockDateCapsuleFrame
-                        color: "#000000"
-                        radius:5
-                        border.width: 3
-                        border.color: "#111111"
-                        width: 150
-                        anchors.verticalCenter: parent.verticalCenter
+                font.family: "monospace"
+                font.pixelSize: 18
 
-                        HoverHandler { id: calendarHover }
+                color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "white"
+                background: null
 
-                        PopupWindow {
-                            visible: calendarHover.hovered
-                            anchor.window: standardBarWindow
-                            anchor.rect: Qt.rect(leftRow.x + clockDateCapsuleFrame.x, standardBarWindow.implicitHeight, clockDateCapsuleFrame.width, 0)
-                            color: "transparent"
-                            Rectangle {
-                                anchors.fill: parent
-                                border.color: "yellow"
-                                border.width: 3
-                                radius: 5
-                                color: "black"
-
-                                Text {
-                                    id: calendarText
-                                    anchors.centerIn: parent
-                                    text: root.calendarTooltipText
-                                    font.family: "monospace"
-                                    font.pixelSize: 20
-                                    color: "yellow"
-                                }
-                            }
-                        }
-
-                        Text {
-                            id: clockDateDisplay
-                            anchors.centerIn: parent
-                            font.family: "monospace"
-                            font.pixelSize: 20
-                            font.bold: true
-                            color: "yellow"
-                            text: systemTimeGlobal ? Qt.formatDateTime(systemTimeGlobal.date, "ddd MMM dd") : "Loading..."
-                        }
-
-                        Component.onCompleted: {
-                            root.applyCapsuleTheme(clockDateCapsuleFrame, clockDateDisplay);
-                        }
-                    }
-
-                    Item { width: 1; height: 34 }
-
-                    Loader { active: root.shouldLoad(0); source: "./modules/bar/music/Music.qml" }
-                    Loader { active: root.shouldLoad(1); source: "./modules/bar/alarm/AlarmCapsule.qml" }
-                    Loader { active: root.shouldLoad(2); source: "./modules/bar/borg/BorgCapsule.qml" }
-                    Loader { active: root.shouldLoad(3); source: "./modules/bar/weather/Weather.qml"
-                        onLoaded: {
-                            if (item && typeof item.barWindow !== "undefined") {
-                                item.barWindow = standardBarWindow;
-                            }
-                        }
+                onTextChanged: {
+                    if (launcherControlLoader.item) {
+                        launcherControlLoader.item.filterApps(text);
                     }
                 }
 
-                // 2. CENTER CONTAINER ROW
-                Row {
-                    id: centerRow
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 15
-
-                    SoundModule.AudioCapsule {}
-                    SoundModule.MicCapsule {}
-
-                    Rectangle {
-                        id: clockTimeCapsuleFrame
-                        color: "#000000"
-                        radius: 6
-                        border.width: 5
-                        border.color: "#111111"
-                        width: 145
-                        anchors.verticalCenter: parent.verticalCenter
-
-                        Text {
-                            id: clockTimeDisplay
-                            anchors.centerIn: parent
-                            font.family: "monospace"
-                            font.pixelSize: 20
-                            font.bold: true
-                            color: "yellow"
-                            text: systemTimeGlobal ? Qt.formatDateTime(systemTimeGlobal.date, "hh:mm:ss AP") : "Loading..."
-                        }
-
-                        Component.onCompleted: root.applyCapsuleTheme(clockTimeCapsuleFrame, clockTimeDisplay)
+                onAccepted: {
+                    console.log("⚡ Executing search submission value string: " + text);
+                    if (launcherControlLoader.item) {
+                        launcherControlLoader.item.runMath(text);
                     }
                 }
-
-                // 3. RIGHT CONTAINER ROW
-                Row {
-                    id: rightRow
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.rightMargin: 10
-                    spacing: 5
-
-                    Loader { active: root.shouldLoad(5); source: "./modules/bar/network/NetCapsule.qml" }
-                    Loader { active: root.shouldLoad(6); source: "./modules/bar/cpu/CpuCapsule.qml" }
-                    Loader { active: root.shouldLoad(7); source: "./modules/bar/gpu/GpuCapsule.qml" }
-                    Loader { active: root.shouldLoad(8); source: "./modules/bar/ram/RamCapsule.qml" }
-
-                    TrayModule.Tray { barWindow: standardBarWindow }
-                }
             }
         }
-    }
 
-    // APPLICATION LAUNCHER OVERLAY WINDOW
-    PanelWindow {
-        id: appLauncherWindow
-        screen: root.primaryScreen
-        visible: root.launcherVisible && root.primaryScreen !== null
+        // ============================================================================
+        // #### MODULE LOGIC: RESULTS MATRIX VIEW BOX ####
+        // ============================================================================
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.minimumHeight: 300
+            radius: 8
+            color: (typeof Theme !== 'undefined' && Theme.base01 !== undefined) ? Theme.base01 : "#1a1a1a"
+            border.width: 1
+            border.color: (typeof Theme !== 'undefined' && Theme.base02 !== undefined) ? Theme.base02 : "#333333"
 
-        WlrLayershell.layer: WlrLayershell.Overlay
-        WlrLayershell.namespace: "quickshell-launcher"
-        WlrLayershell.keyboardFocus: root.launcherVisible ? WlrLayershell.OnDemand : WlrLayershell.None
-
-        anchors { top: true; bottom: true; left: true; right: true }
-        color: "transparent"
-
-        Loader {
-            anchors.fill: parent
-            active: appLauncherWindow.visible
-            source: Qt.resolvedUrl("modules/overlays/launcher/LauncherOverlay.qml")
-            onLoaded: {
-                if (item) {
-                    item.requestClose.connect(function() {
-                        root.launcherVisible = false;
-                        if (launcherControlLoader.item) {
-                            launcherControlLoader.item.close();
-                        }
-                    });
-                }
-            }
-        }
-    }
-
-    // =========================================================================
-    // ISOLATED LOADING PATHS
-    // =========================================================================
-    Loader {
-        id: notificationOverlayLoader
-        active: true
-        source: Qt.resolvedUrl("NotificationOverlay.qml")
-        onLoaded: {
-            console.log("NotificationOverlay loaded:", item)
-            // deliver any pending notifications queued before overlay was loaded
-            for (let i = 0; i < root.pendingNotifications.length; ++i) {
-                if (item && item.handleNotification) {
-                    item.handleNotification(root.pendingNotifications[i]);
-                }
-            }
-            root.pendingNotifications = []; // clear after sending
-        }
-    }
-
-    Loader {
-        id: launcherControlLoader
-        active: true
-        source: Qt.resolvedUrl("modules/overlays/launcher/LauncherController.qml")
-        onLoaded: {
-            if (item) {
-                item.uiRoot = root;
+            Text {
+                anchors.centerIn: parent
+                text: "Application Search Grid Settle Layer Area"
+                font.family: "monospace"
+                font.pixelSize: 16
+                color: (typeof Theme !== 'undefined' && Theme.base04 !== undefined) ? Theme.base04 : "#888888"
             }
         }
     }
