@@ -2,22 +2,67 @@
 
 let
   colorScheme = {
-    base00 = "1a1a1a";
-    base01 = "0F0F0F";
-    base02 = "1a1a1a";
-    base03 = "003399";
-    base04 = "4D4E93";
-    base05 = "F7F700";
-    base06 = "EBDBB2";
-    base07 = "cccccc";
-    base08 = "FF0000";
-    base09 = "FE8019";
-    base0A = "FABD2F";
-    base0B = "545454";
-    base0C = "04f100";
-    base0D = "675DDB";
-    base0E = "675DDB";
-    base0F = "FF8019";
+    base00 = "#1a1a1a";
+    base01 = "#0F0F0F";
+    base02 = "#1a1a1a";
+    base03 = "#003399";
+    base04 = "#4D4E93";
+    base05 = "#F7F700";
+    base06 = "#EBDBB2";
+    base07 = "#cccccc";
+    base08 = "#FF0000";
+    base09 = "#FE8019";
+    base0A = "#FABD2F";
+    base0B = "#545454";
+    base0C = "#04f100";
+    base0D = "#675DDB";
+    base0E = "#675DDB";
+    base0F = "#FF8019";
+  };
+
+  # 1. Compile the Theme.qml file nested in a /Theme folder structure
+  compiledTheme = pkgs.writeTextFile {
+    name = "quickshell-stylix-theme";
+    destination = "/Theme/Theme.qml";
+    text = ''
+      pragma Singleton
+      import QtQuick 2.0
+
+      QtObject {
+          property color base00: "${colorScheme.base00}"
+          property color base01: "${colorScheme.base01}"
+          property color base02: "${colorScheme.base02}"
+          property color base03: "${colorScheme.base03}"
+          property color base04: "${colorScheme.base04}"
+          property color base05: "${colorScheme.base05}"
+          property color base06: "${colorScheme.base06}"
+          property color base07: "${colorScheme.base07}"
+          property color base08: "${colorScheme.base08}"
+          property color base09: "${colorScheme.base09}"
+          property color base0A: "${colorScheme.base0A}"
+          property color base0B: "${colorScheme.base0B}"
+          property color base0C: "${colorScheme.base0C}"
+          property color base0D: "${colorScheme.base0D}"
+          property color base0E: "${colorScheme.base0E}"
+          property color base0F: "${colorScheme.base0F}"
+      }
+    '';
+  };
+
+  # 2. Generate the missing qmldir manifest so the QML engine can resolve the "Theme" namespace module
+  compiledQmldir = pkgs.writeTextFile {
+    name = "quickshell-stylix-qmldir";
+    destination = "/Theme/qmldir";
+    text = ''
+      module Theme
+      singleton Theme 1.0 Theme.qml
+    '';
+  };
+
+  # 3. Join both files into a singular, clean Nix store path directory module
+  themeModuleDir = pkgs.symlinkJoin {
+    name = "quickshell-theme-module";
+    paths = [ compiledTheme compiledQmldir ];
   };
 in
 {
@@ -27,10 +72,17 @@ in
 
   programs.dconf.enable = true;
   programs.gdk-pixbuf.modulePackages = [ pkgs.librsvg ];
+
   environment.systemPackages = [
     inputs.moon-numix.packages.${pkgs.stdenv.hostPlatform.system}.default
     pkgs.glib
     pkgs.gsettings-desktop-schemas
+
+    # 4. Expose our unified Nix store location path straight into Quickshell's QML import engine loop
+    (pkgs.writeShellScriptBin "quickshell-stylix" ''
+      export QML2_IMPORT_PATH="${themeModuleDir}:$QML2_IMPORT_PATH"
+      exec ${pkgs.quickshell}/bin/quickshell "$@"
+    '')
   ];
 
   stylix = {
@@ -72,30 +124,5 @@ in
   home-manager.users.moonburst = {
     home.file.".local/share/icons/Numix".source = "${inputs.moon-numix.packages.${pkgs.system}.default}/share/icons/Numix";
     home.file.".local/share/icons/Numix-Light".source = "${inputs.moon-numix.packages.${pkgs.system}.default}/share/icons/Numix-Light";
-
-    # Generate Theme.qml from stylix colors
-    home.file.".config/quickshell/Theme.qml".text = ''
-      pragma Singleton
-      import QtQuick 2.0
-
-      QtObject {
-          property color base00: "#${colorScheme.base00}"
-          property color base01: "#${colorScheme.base01}"
-          property color base02: "#${colorScheme.base02}"
-          property color base03: "#${colorScheme.base03}"
-          property color base04: "#${colorScheme.base04}"
-          property color base05: "#${colorScheme.base05}"
-          property color base06: "#${colorScheme.base06}"
-          property color base07: "#${colorScheme.base07}"
-          property color base08: "#${colorScheme.base08}"
-          property color base09: "#${colorScheme.base09}"
-          property color base0A: "#${colorScheme.base0A}"
-          property color base0B: "#${colorScheme.base0B}"
-          property color base0C: "#${colorScheme.base0C}"
-          property color base0D: "#${colorScheme.base0D}"
-          property color base0E: "#${colorScheme.base0E}"
-          property color base0F: "#${colorScheme.base0F}"
-      }
-    '';
   };
 }

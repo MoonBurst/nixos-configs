@@ -1,180 +1,119 @@
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls 2
 import Quickshell
-import Quickshell.Wayland
 import Quickshell.Io
-import "." as AlarmInput
+
+import Theme
 
 Rectangle {
-    id: alarmBox
+    id: audioBox
+    width: 140
+    height: 35
+    radius: 8
+    border.width: 2
 
-    property string alarmDisplayText: "⏰ Off"
-    property string stateFile: "/tmp/waybar_alarm_state"
+    color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
+    border.color: (typeof Theme !== 'undefined' && Theme.base03 !== undefined) ? Theme.base03 : "blue"
+
+    property string audioDisplayText: "Audio: --%"
 
     Component.onCompleted: {
-        if (typeof(root.applyCapsuleTheme) !== 'undefined') {
-            root.applyCapsuleTheme(alarmBox, alarmText);
+        if (typeof root !== 'undefined' && typeof root.applyCapsuleTheme !== 'undefined') {
+            root.applyCapsuleTheme(audioBox, audioText);
         }
     }
 
     Process {
-        id: alarmFetcher
+        id: audioFetcher
         running: true
-        command: [
-            "sh", "-c",
-            "SF='/tmp/waybar_alarm_state'; [ ! -f \"$SF\" ] && echo \"⏰ Off\" && exit 0; " +
-            "read start total msg < \"$SF\"; cur=$(date +%s); el=$((cur - start)); rem=$((total - el)); " +
-            "if [ $rem -le 0 ]; then " +
-            "  /run/current-system/sw/bin/notify-send -t 10000 \"Alarm Alert\" \"$(echo \"$msg\" | sed 's/\"//g')\"; " +
-            "  /run/current-system/sw/bin/play ~/Documents/communicator.mp3 & " +
-            "  echo \"⏰ Off\"; rm -f \"$SF\"; " +
-            "else " +
-            "  h=$((rem / 3600)); m=$(((rem % 3600) / 60)); s=$((rem % 60)); " +
-            "  printf \"⏰ %02dh %02dm %02ds\\n\" $h $m $s; " +
-            "fi"
-        ]
-        environment: [ "PATH=" + root.pathEnv, "HOME=" + root.homeEnv ]
+        command: ["sh", "-c", "wpctl get-volume @DEFAULT_AUDIO_SINK@"]
+
         stdout: SplitParser {
-            onRead: data => { alarmBox.alarmDisplayText = data ? data.trim() : "⏰ Off" }
+            onRead: data => {
+                if (!data) return;
+                var cleanData = data.trim();
+                var isMuted = cleanData.indexOf("[MUTED]") !== -1;
+
+                var match = cleanData.match(/Volume:\s+([0-9.]+)/);
+                var vNum = "--%";
+                if (match && match[1] !== undefined) {
+                    var val = parseFloat(match[1]);
+                    vNum = Math.round(val * 100) + "%";
+                }
+
+                var textColor = "white";
+                if (typeof Theme !== 'undefined' && Theme.base05 !== undefined && Theme.base08 !== undefined) {
+                    textColor = isMuted ? Theme.base08 : Theme.base05;
+                } else {
+                    textColor = isMuted ? "red" : "white";
+                }
+
+                var tagColor = (typeof Theme !== 'undefined' && Theme.base0C !== undefined) ? Theme.base0C : "green";
+                audioBox.audioDisplayText = "<font color='" + tagColor + "'>Audio:</font> <font color='" + textColor + "'>" + vNum + "</font>";
+            }
         }
     }
-
-    Process { id: alarmCancelEngine; running: false; command: ["rm", "-f", "/tmp/waybar_alarm_state"] }
-    Process { id: alarmWriteEngine; running: false }
-
-    function confirmAndSaveAlarm(rawTimerText, rawMsgText) {
-        var rawTimer = rawTimerText.trim();
-        var msg = rawMsgText.trim() || "Alarm Finished!";
-
-        var totalSeconds = 0;
-        var match;
-        var regex = /(\d+)([hms])/g;
-        while ((match = regex.exec(rawTimer)) !== null) {
-            var num = parseInt(match[1], 10);
-            var unit = match[2];
-            if (unit === 'h') totalSeconds += num * 3600;
-            if (unit === 'm') totalSeconds += num * 60;
-            if (unit === 's') totalSeconds += num;
-        }
-
-        if (totalSeconds === 0 && /^\d+$/.test(rawTimer)) {
-            totalSeconds = parseInt(rawTimer, 10) * 60;
-        }
-
-        if (totalSeconds > 0) {
-            var currentEpoch = Math.floor(Date.now() / 1000);
-            var stateString = currentEpoch + " " + totalSeconds + " \"" + msg + "\"";
-
-            alarmWriteEngine.command = ["sh", "-c", "echo '" + stateString + "' > /tmp/waybar_alarm_state"];
-            alarmWriteEngine.running = false;
-            alarmWriteEngine.running = true;
-        }
-
-        timeInput.text = "";
-        msgInput.text = "";
-        inputPopup.visible = false;
-    }
-
-    function cancelAndClosePopup() {
-        timeInput.text = "";
-        msgInput.text = "";
-        inputPopup.visible = false;
-    }
-
     MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton
 
         onClicked: (mouse) => {
             if (mouse.button === Qt.LeftButton) {
-                inputPopup.visible = !inputPopup.visible;
-                if (inputPopup.visible) {
-                    timeInput.forceActiveFocus();
-                }
+                // Left click now reliably switches between your available headphones/speakers
+                deviceToggleProcess.running = true;
             } else if (mouse.button === Qt.RightButton) {
-                alarmCancelEngine.running = false;
-                alarmCancelEngine.running = true;
-                alarmBox.alarmDisplayText = "⏰ Off";
-                cancelAndClosePopup();
+                mixerOpenProcess.running = true;
+            }
+        }
+
+        onWheel: (wheel) => {
+            if (wheel.angleDelta.y > 0) {
+                volUpProcess.running = true;
+            } else if (wheel.angleDelta.y < 0) {
+                volDownProcess.running = true;
             }
         }
     }
 
     Text {
-        id: alarmText
-        anchors.centerIn: parent
-        text: alarmBox.alarmDisplayText
+        id: audioText
+        anchors.fill: parent
+        text: audioBox.audioDisplayText
         font.family: "monospace"
         font.pixelSize: 20
         font.bold: true
+        color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
+        textFormat: Text.RichText
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
     }
 
-    PanelWindow {
-        id: inputPopup
-        visible: false
-
-        screen: standardBarWindow.screen
-
-        WlrLayershell.keyboardFocus: WlrLayershell.Exclusive
-        WlrLayershell.layer: WlrLayershell.Overlay
-        WlrLayershell.namespace: "quickshell-alarm-prompt"
-
-        anchors.top: parent.top
-        anchors.left: parent.left
-
-        WlrLayershell.margins.top: 48
-        WlrLayershell.margins.left: 20
-
-        implicitWidth: 200
-        implicitHeight: 150
-
-        Rectangle {
-            anchors.fill: parent
-            color: root.theme ? root.theme.base00 : "black"
-            border.color: root.theme ? root.theme.base03 : "blue"
-            border.width: 3
-            radius: 8
-
-            Column {
-                anchors.fill: parent
-                anchors.margins: 15
-                spacing: 12
-
-                Text {
-                    id: alarmTitle
-                    text: "Set Native System Alarm"
-                    font.family: "monospace"
-                    font.pixelSize: 20
-                    font.bold: true
-                    color: root.theme ? root.theme.base05 : "yellow"
-                }
-
-                AlarmInput.AlarmInputField {
-                    id: timeInput
-                    placeholderText: "Duration (e.g. 5m, 1h30m, 45s)"
-                    KeyNavigation.tab: msgInput
-
-                    onAccepted: alarmBox.confirmAndSaveAlarm(timeInput.text, msgInput.text)
-                    onRejected: alarmBox.cancelAndClosePopup()
-                }
-
-                AlarmInput.AlarmInputField {
-                    id: msgInput
-                    placeholderText: "Reminder Message"
-                    KeyNavigation.backtab: timeInput
-
-                    onAccepted: alarmBox.confirmAndSaveAlarm(timeInput.text, msgInput.text)
-                    onRejected: alarmBox.cancelAndClosePopup()
-                }
-            }
-        }
+    // Automatically gathers your sinks and switches your system default profile to the next available device
+    Process {
+        id: deviceToggleProcess
+        running: false
+        command: [
+            "sh", "-c",
+            "sinks=$(wpctl status | sed -n '/Audio/,/^$/p' | grep -E '^[[:space:]]*[*[:space:]][[:space:]]*[0-9]+\\.' | sed -E 's/^[[:space:]]*[*[:space:]][[:space:]]*([0-9]+)\\..*/\\1/'); " +
+            "current=$(wpctl status | sed -n '/Audio/,/^$/p' | grep -E '^[[:space:]]*\\*' | sed -E 's/^[[:space:]]*\\*[[:space:]]*([0-9]+)\\..*/\\1/'); " +
+            "next=$(echo \"$sinks\" | grep -A1 \"^$current$\" | tail -n1); " +
+            "[ \"$next\" = \"$current\" ] || [ -z \"$next\" ] && next=$(echo \"$sinks\" | head -n1); " +
+            "[ -n \"$next\" ] && wpctl set-default \"$next\""
+        ]
     }
+
+    Process { id: volUpProcess; running: false; command: ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "5%+"] }
+    Process { id: volDownProcess; running: false; command: ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "5%-"] }
+    Process { id: mixerOpenProcess; running: false; command: ["pavucontrol"] }
 
     Timer {
-        interval: 1000; running: true; repeat: true; triggeredOnStart: true
+        interval: 500
+        running: true
+        repeat: true
+        triggeredOnStart: true
         onTriggered: {
-            alarmFetcher.running = false;
-            alarmFetcher.running = true;
+            audioFetcher.running = false;
+            audioFetcher.running = true;
         }
     }
 }

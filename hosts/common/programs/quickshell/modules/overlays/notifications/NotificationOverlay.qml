@@ -57,12 +57,14 @@ Item {
 
             width: 300
             height: 80
-            color: root.theme ? root.theme.base00 : "#333"
+            // Fixed fallback string value to prevent type constructor cast warnings
+            color: root.theme ? root.theme.base00 : "black"
             radius: 10
 
             Text {
                 id: summary
                 text: notification.summary
+                // Fixed fallback string value to prevent type constructor cast warnings
                 color: root.theme ? root.theme.base05 : "white"
                 font.bold: true
                 anchors.top: parent.top
@@ -74,6 +76,7 @@ Item {
             Text {
                 id: body
                 text: notification.body
+                // Fixed fallback string value to prevent type constructor cast warnings
                 color: root.theme ? root.theme.base05 : "white"
                 wrapMode: Text.WordWrap
                 anchors.top: summary.bottom

@@ -8,6 +8,7 @@ import Quickshell.Wayland
 import Quickshell.Services.Notifications
 import Quickshell.Io
 
+import Theme
 import "./modules/bar/sound" as SoundModule
 import "./modules/bar/tray" as TrayModule
 
@@ -17,8 +18,8 @@ Scope {
     property string calendarTooltipText: ""
     property bool launcherVisible: false
 
-    property QtObject theme: null
-    property QtObject themeData: null
+    property var theme: null
+    property var themeData: null
     property bool themeLoaded: false
 
     property var filteredAppsModel: ListModel {}
@@ -62,22 +63,18 @@ Scope {
     property var notificationScreen: {
         if (!Quickshell.screens || Quickshell.screens.length === 0) return null;
         var found = Quickshell.screens.find(s => s.name === "DP-2");
-        return found ? found : (Quickshell.screens.length > 0 ? Quickshell.screens[0] : null);
+        return found ? found : (Quickshell.screens.length > 0 ? Quickshell.screens : null);
     }
 
-    Loader {
-        id: themeLoader
-        source: "file:///home/moonburst/.config/quickshell/Theme.qml"
-        onLoaded: {
-            console.log("Stylix theme loaded successfully.");
-            root.theme = item;
-            root.themeData = item;
-            for (var i = 0; i < root.themableItems.length; ++i) {
-                var themable = root.themableItems[i];
-                root.applyCapsuleTheme(themable.frame, themable.text);
-            }
-            root.themeLoaded = true;
+    Component.onCompleted: {
+        console.log("Stylix Nix-Store theme attached successfully.");
+        root.theme = Theme;
+        root.themeData = Theme;
+        for (var i = 0; i < root.themableItems.length; ++i) {
+            var themable = root.themableItems[i];
+            root.applyCapsuleTheme(themable.frame, themable.text);
         }
+        root.themeLoaded = true;
     }
 
     NotificationServer {
@@ -160,13 +157,14 @@ Scope {
         anchors.left: true
         anchors.right: true
         implicitHeight: 50
-        color: root.theme ? root.theme.base00 : "black"
+        color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
 
         Rectangle {
             anchors.fill: parent
-            color: root.theme ? root.theme.base00 : "black"
-            border.color: root.theme ? root.theme.base02 : "#003399"
-            border.width:5
+            // Fixed: Utilizes global store namespace guards to silence startup warnings
+            color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
+            border.color: (typeof Theme !== 'undefined' && Theme.base02 !== undefined) ? Theme.base02 : "#003399"
+            border.width: 5
             radius: 10
 
             Item {
@@ -180,7 +178,7 @@ Scope {
 
                     Rectangle {
                         id: clockDateCapsuleFrame
-                        width: 150
+                        implicitWidth: 150
                         anchors.verticalCenter: parent.verticalCenter
 
                         HoverHandler { id: calendarHover }
@@ -192,10 +190,11 @@ Scope {
                             color: "transparent"
                             Rectangle {
                                 anchors.fill: parent
-                                border.color: root.theme ? root.theme.base0D : "yellow"
+                                // Fixed: Utilizes global store namespace guards to silence startup warnings
+                                border.color: (typeof Theme !== 'undefined' && Theme.base0D !== undefined) ? Theme.base0D : "yellow"
                                 border.width: 3
                                 radius: 5
-                                color: root.theme ? root.theme.base00 : "black"
+                                color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
 
                                 Text {
                                     id: calendarText
@@ -203,7 +202,8 @@ Scope {
                                     text: root.calendarTooltipText
                                     font.family: "monospace"
                                     font.pixelSize: 20
-                                    color: root.theme ? root.theme.base0D : "yellow"
+                                    color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
+
                                 }
                             }
                         }
@@ -235,7 +235,6 @@ Scope {
                         }
                     }
                 }
-
                 Row {
                     id: centerRow
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -247,7 +246,7 @@ Scope {
 
                     Rectangle {
                         id: clockTimeCapsuleFrame
-                        width: 145
+                        implicitWidth: 145
                         anchors.verticalCenter: parent.verticalCenter
 
                         Text {
@@ -319,14 +318,14 @@ Scope {
         WlrLayershell.namespace: "quickshell-notifications"
         anchors.top: true
         anchors.right: true
-        width: 350
-        height: 800
+        implicitWidth: 350
+        implicitHeight: 800
         color: "transparent"
 
         Loader {
             id: notificationOverlayLoader
             anchors.fill: parent
-            active: true
+            active: root.themeLoaded
             source: Qt.resolvedUrl("modules/overlays/notifications/NotificationOverlay.qml")
             onLoaded: {
                 console.log("NotificationOverlay content loaded:", item)
@@ -337,6 +336,31 @@ Scope {
                     }
                     root.pendingNotifications = [];
                 }
+            }
+        }
+    }
+
+    PanelWindow {
+        id: alarmPromptWindow
+        screen: root.primaryScreen
+        property var activeInputItem: null
+        visible: activeInputItem !== null && root.primaryScreen !== null && root.themeLoaded
+
+        WlrLayershell.layer: WlrLayershell.Overlay
+        WlrLayershell.namespace: "quickshell-alarm-prompt"
+        WlrLayershell.keyboardFocus: visible ? WlrLayershell.Exclusive : WlrLayershell.None
+
+        anchors.top: true
+        anchors.left: true
+        WlrLayershell.margins.top: 50
+        WlrLayershell.margins.left: 20
+
+        implicitWidth: activeInputItem ? activeInputItem.implicitWidth : 0
+        implicitHeight: activeInputItem ? activeInputItem.implicitHeight : 0
+
+        onVisibleChanged: {
+            if (visible && activeInputItem && activeInputItem.timeInputRef) {
+                activeInputItem.timeInputRef.forceActiveFocus();
             }
         }
     }
