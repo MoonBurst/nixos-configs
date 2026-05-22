@@ -8,64 +8,22 @@ import Quickshell.Wayland
 import Quickshell.Services.Notifications
 import Quickshell.Io
 
-import Theme
 import "./modules/bar/sound" as SoundModule
 import "./modules/bar/tray" as TrayModule
 
 Scope {
     id: root
 
+    // ============================================================================
+    // #### MODULE LOGIC: GLOBAL PROPERTY CORE AND STATE STORAGE ####
+    // ============================================================================
     property string calendarTooltipText: ""
     property bool launcherVisible: false
-    // ============================================================================
-    // 🎛️ DIAGNOSTIC SWITCH CONTROL (TOGGLE TRUE TO ENABLE ALL LIVE DEBUG MESSAGES)
-    // ============================================================================
-    property bool showDiagnostics: true
 
-    // FIXED: Formatted as an arrow property lambda expression to bypass the QML parser bug
-    property var debugLog: (msg) => {
-        if (root.showDiagnostics) console.log("⚡ [Shell-Debug] " + msg);
-    }
+    property QtObject theme: null
+    property QtObject themeData: null
 
-    // Intercepts global state changes to log exactly what's blocking the window
-    onLauncherVisibleChanged: root.debugLog("🔄 State Variable Changed: launcherVisible is now -> " + launcherVisible)
-    onIsMenuOpenChanged:      root.debugLog("🔳 State Variable Changed: isMenuOpen is now -> " + isMenuOpen)
-
-    // Overrides global launcher controllers with safety wrappers
-    function toggleMenu() {
-        root.debugLog("▶ toggleMenu() was called from an external hotkey/trigger.");
-        if (launcherControlLoader && launcherControlLoader.item) {
-            root.debugLog("Pkg context parameters look good. Checking current states before calling toggle...");
-            root.debugLog("   - Controller visible state is: " + launcherControlLoader.item.visible);
-            root.debugLog("   - Current shell root.isMenuOpen is: " + root.isMenuOpen);
-
-            launcherControlLoader.item.toggleMenu();
-
-            root.debugLog("📥 Post-toggle check:");
-            root.debugLog("   - Controller visible state updated to: " + launcherControlLoader.item.visible);
-            root.launcherVisible = launcherControlLoader.item.visible;
-            root.debugLog("   - root.launcherVisible synchronized to: " + root.launcherVisible);
-        } else {
-            root.debugLog("❌ ERROR: launcherControlLoader.item is NULL! The back-end controller failed to load entirely.");
-        }
-    }
-
-    function openClipboard() {
-        root.debugLog("▶ openClipboard() was called from an external hotkey/trigger.");
-        if (launcherControlLoader && launcherControlLoader.item) {
-            launcherControlLoader.item.openClipboard();
-            root.launcherVisible = launcherControlLoader.item.visible;
-            root.debugLog("📥 Post-clipboard check: root.launcherVisible is now -> " + root.launcherVisible);
-        } else {
-            root.debugLog("❌ ERROR: launcherControlLoader.item is NULL during clipboard call.");
-        }
-    }
-
-    // State definitions maintained cleanly for tracking parameters
-    property var theme: Theme
-    property var themeData: Theme
-    property bool themeLoaded: true
-
+    // State structural variables cleanly linking your backend mathematical logic lines
     property var filteredAppsModel: ListModel {}
     property bool isMenuOpen: false
     property bool isClipboardMode: false
@@ -73,49 +31,64 @@ Scope {
     property string activeImageCachePath: ""
     property string mathResultString: ""
 
-    // Completely decoupled: Deleted themableItems tracking metrics arrays and loops
+    property var themableItems: []
     property var pendingNotifications: []
 
     function shouldLoad(moduleIndex) {
         return moduleIndex <= 8;
     }
 
+    // ============================================================================
+    // #### MODULE LOGIC: LAUNCHER INTER-PROCESS COMMUNICATION SHORTCUTS ####
+    // ============================================================================
     property alias global_launcher: root
 
+    function toggleMenu() {
+        if (launcherControlLoader.item) {
+            launcherControlLoader.item.toggleMenu();
+            root.launcherVisible = launcherControlLoader.item.visible;
+        }
+    }
+
+    function openClipboard() {
+        if (launcherControlLoader.item) {
+            launcherControlLoader.item.openClipboard();
+            root.launcherVisible = launcherControlLoader.item.visible;
+            console.log("Clipboard path requested safely via root IPC routing properties.");
+        }
+    }
+
+    // ============================================================================
+    // #### MODULE LOGIC: SYSTEM HARDWARE DISPATCH SCREEN DETECTORS ####
+    // ============================================================================
+    // Lazy property binding loop dynamically tracks screen DP-1 as it mounts on boot
     property var primaryScreen: {
         if (!Quickshell.screens || Quickshell.screens.length === 0) return null;
         var found = Quickshell.screens.find(s => s.name === "DP-1");
         return found ? found : Quickshell.screens;
     }
-
-    property var notificationScreen: {
-        if (!Quickshell.screens || Quickshell.screens.length === 0) return null;
-        var found = Quickshell.screens.find(s => s.name === "DP-2");
-        return found ? found : (Quickshell.screens.length > 0 ? Quickshell.screens : null);
-    }
-
-    NotificationServer {
-        id: notificationServer
-        bodySupported: true
-        bodyMarkupSupported: true
-        bodyHyperlinksSupported: true
-        imageSupported: true
-        actionsSupported: true
-        keepOnReload: true
-    }
-
-    Connections {
-        target: notificationServer
-        function onNotification(notification) {
-            if (notificationOverlayLoader.item && notificationOverlayLoader.item.handleNotification) {
-                notificationOverlayLoader.item.handleNotification(notification);
-            } else {
-                console.log("Overlay still not loaded or missing handleNotification! Queuing notification.");
-                root.pendingNotifications.push(notification);
+    // ============================================================================
+    // #### MODULE LOGIC: SYSTEM STYLIX LOCAL PROFILE LOAD TRACKER ####
+    // ============================================================================
+    Loader {
+        id: themeLoader
+        source: "file:///home/moonburst/.config/quickshell/Theme.qml"
+        onLoaded: {
+            console.log("Stylix theme loaded successfully.");
+            root.theme = item;
+            root.themeData = item;
+            if (root.themableItems && root.themableItems.length !== undefined) {
+                for (var i = 0; i < root.themableItems.length; ++i) {
+                    var themable = root.themableItems[i];
+                    root.applyCapsuleTheme(themable.frame, themable.text);
+                }
             }
         }
     }
 
+    // ============================================================================
+    // #### MODULE LOGIC: CALENDAR TEXT GENERATOR TOOL ####
+    // ============================================================================
     Process {
         id: calFetcher
         running: true
@@ -129,15 +102,40 @@ Scope {
         onTriggered: calFetcher.running = true
     }
 
-    // Completely Decoupled: Structural applyCapsuleTheme override code loop has been deleted.
-    // Sub-components are now sovereign and layout/style themselves internally.
+    // ============================================================================
+    // #### MODULE LOGIC: UNIFIED CAPSULE FORMATTING GENERATOR ####
+    // ============================================================================
+    function applyCapsuleTheme(frameItem, textItem) {
+        if (!frameItem) return;
+
+        var found = false;
+        for (var i = 0; i < themableItems.length; i++) {
+            if (themableItems[i].frame === frameItem) { found = true; break; }
+        }
+        if (!found) { themableItems.push({frame: frameItem, text: textItem}); }
+
+        try {
+            frameItem.height = 35;
+            frameItem.radius = 10;
+            frameItem.border.width = 3;
+            frameItem.color = "black";
+            frameItem.border.color = "yellow";
+
+            if (textItem) {
+                textItem.color = "yellow";
+                textItem.font.pixelSize = 20;
+            }
+        } catch(e) {}
+    }
 
     SystemClock { id: systemTimeGlobal; precision: SystemClock.Seconds }
-
+    // ============================================================================
+    // #### MODULE LOGIC: MASTER MAIN STATUS BAR WINDOW PRIMITIVE ####
+    // ============================================================================
     PanelWindow {
         id: standardBarWindow
         screen: root.primaryScreen
-        visible: root.primaryScreen !== null && root.themeLoaded
+        visible: root.primaryScreen !== null
 
         WlrLayershell.layer: WlrLayershell.Top
         WlrLayershell.namespace: "quickshell-bar"
@@ -148,17 +146,21 @@ Scope {
         anchors.left: true
         anchors.right: true
         implicitHeight: 50
-        color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
+        color: "black"
 
         Rectangle {
             anchors.fill: parent
-            color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
-            border.color: (typeof Theme !== 'undefined' && Theme.base02 !== undefined) ? Theme.base02 : "#003399"
+            color: "black"
+            border.color: "#003399"
             border.width: 5
             radius: 10
 
             Item {
                 anchors.fill: parent
+
+                // ============================================================================
+                // #### MODULE LOGIC: LEFT BAR REGION TIMING AND TOOLTIP POPS ####
+                // ============================================================================
                 Row {
                     id: leftRow
                     anchors.left: parent.left
@@ -168,13 +170,12 @@ Scope {
 
                     Rectangle {
                         id: clockDateCapsuleFrame
-                        implicitWidth: 150
-                        anchors.verticalCenter: parent.verticalCenter
-                        height: 35
-                        radius: 10
+                        color: "#000000"
+                        radius: 5
                         border.width: 3
-                        color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
-                        border.color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
+                        border.color: "#111111"
+                        width: 150
+                        anchors.verticalCenter: parent.verticalCenter
 
                         HoverHandler { id: calendarHover }
 
@@ -185,10 +186,10 @@ Scope {
                             color: "transparent"
                             Rectangle {
                                 anchors.fill: parent
-                                border.color: (typeof Theme !== 'undefined' && Theme.base0D !== undefined) ? Theme.base0D : "yellow"
+                                border.color: "yellow"
                                 border.width: 3
                                 radius: 5
-                                color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
+                                color: "black"
 
                                 Text {
                                     id: calendarText
@@ -196,23 +197,29 @@ Scope {
                                     text: root.calendarTooltipText
                                     font.family: "monospace"
                                     font.pixelSize: 20
-                                    color: (typeof Theme !== 'undefined' && Theme.base0D !== undefined) ? Theme.base0D : "yellow"
+                                    color: "yellow"
                                 }
                             }
                         }
+
                         Text {
                             id: clockDateDisplay
                             anchors.centerIn: parent
                             font.family: "monospace"
                             font.pixelSize: 20
                             font.bold: true
-                            color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "white"
+                            color: "yellow"
                             text: systemTimeGlobal ? Qt.formatDateTime(systemTimeGlobal.date, "ddd MMM dd") : "Loading..."
+                        }
+
+                        Component.onCompleted: {
+                            root.applyCapsuleTheme(clockDateCapsuleFrame, clockDateDisplay);
                         }
                     }
 
                     Item { width: 1; height: 34 }
 
+                    // ASYNCHRONOUS SYSTEM WIDGET MODULE LOADERS
                     Loader { active: root.shouldLoad(0); source: "./modules/bar/music/Music.qml" }
                     Loader { active: root.shouldLoad(1); source: "./modules/bar/alarm/AlarmCapsule.qml" }
                     Loader { active: root.shouldLoad(2); source: "./modules/bar/borg/BorgCapsule.qml" }
@@ -224,7 +231,9 @@ Scope {
                         }
                     }
                 }
-
+                // ============================================================================
+                // #### MODULE LOGIC: CENTER BAR REGION SOUND AND PRIMARY CLOCK COMPONENT HUBS ####
+                // ============================================================================
                 Row {
                     id: centerRow
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -234,28 +243,72 @@ Scope {
                     SoundModule.AudioCapsule {}
                     SoundModule.MicCapsule {}
 
-                    Rectangle {
-                        id: clockTimeCapsuleFrame
-                        implicitWidth: 145
+                    Item {
+                        id: clockContainerBox
+                        width: 145
                         height: 35
-                        radius: 10
-                        border.width: 3
-                        anchors.verticalCenter: parent.verticalCenter
-                        color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
-                        border.color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
 
-                        Text {
-                            id: clockTimeDisplay
-                            anchors.centerIn: parent
-                            font.family: "monospace"
-                            font.pixelSize: 20
-                            font.bold: true
-                            color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "white"
-                            text: systemTimeGlobal ? Qt.formatDateTime(systemTimeGlobal.date, "hh:mm:ss AP") : "Loading..."
+                        HoverHandler {
+                            id: mainClockHoverTracker
+                        }
+
+                        Loader {
+                            id: clockModuleLoader
+                            active: root.shouldLoad(4)
+                            anchors.fill: parent
+                            source: "./modules/bar/clock/ClockCapsule.qml"
+
+                            onLoaded: {
+                                if (item && typeof item.barWindow !== "undefined") {
+                                    item.barWindow = standardBarWindow;
+                                    if (typeof item.isHoveredExternal !== "undefined") {
+                                        item.isHoveredExternal = Qt.binding(function() { return mainClockHoverTracker.hovered; });
+                                    }
+                                }
+                            }
                         }
                     }
                 }
+                // ============================================================================
+                // #### FIXED: UPGRADED FROM POPUPWINDOW TO AN INDEPENDENT PANELWINDOW OVERLAY ####
+                // #### This completely breaks through Wayland multi-monitor boundary clipping walls! ####
+                // ============================================================================
+                PanelWindow {
+                    id: globalClockMatrixOverlayWindow
 
+                    // Dynamically inherits the exact monitor screen profile where your status bar is active
+                    screen: standardBarWindow.screen
+                    // Change this back to "mainClockHoverTracker.hovered" when you are done taking screenshots!
+                    visible: true
+
+                    WlrLayershell.layer: WlrLayershell.Overlay
+                    WlrLayershell.namespace: "quickshell-clock-matrix-overlay"
+                    WlrLayershell.keyboardFocus: WlrLayershell.None
+
+                    anchors.top: true
+                    anchors.left: true
+
+                    WlrLayershell.margins.left: standardBarWindow ? Math.max(0, (standardBarWindow.width / 2) - (760 / 2)) : 0
+
+
+                    implicitWidth: 760
+                    implicitHeight: 325
+                    color: "transparent"
+
+                    Loader {
+                        anchors.fill: parent
+                        source: "./modules/bar/clock/ClockMatrixPopupView.qml"
+                    }
+                }
+
+
+
+
+
+
+    // ============================================================================
+    // #### MODULE LOGIC: RIGHT BAR REGION PERFORMANCE MONITOR PACKS ####
+     // ============================================================================
                 Row {
                     id: rightRow
                     anchors.right: parent.right
@@ -274,14 +327,17 @@ Scope {
         }
     }
 
+    // ============================================================================
+    // #### MODULE LOGIC: INTERACTIVE SYSTEM APP LAUNCHER CONTAINER OVERLAY ####
+    // ============================================================================
     PanelWindow {
         id: appLauncherWindow
         screen: root.primaryScreen
-        visible: root.launcherVisible && root.primaryScreen !== null && root.themeLoaded
+        visible: root.launcherVisible && root.primaryScreen !== null
 
         WlrLayershell.layer: WlrLayershell.Overlay
         WlrLayershell.namespace: "quickshell-launcher"
-        WlrLayershell.keyboardFocus: root.launcherVisible ? WlrLayershell.OnDemand : WlrLayershell.None
+        WlrLayershell.keyboardFocus: root.launcherVisible ? WlrLayershell.Exclusive : WlrLayershell.None
 
         anchors { top: true; bottom: true; left: true; right: true }
         color: "transparent"
@@ -302,83 +358,21 @@ Scope {
             }
         }
     }
-
-    PanelWindow {
-        id: notificationPanelWindow
-        screen: root.notificationScreen
-        visible: root.notificationScreen !== null && root.themeLoaded
-
-        WlrLayershell.layer: WlrLayershell.Overlay
-        WlrLayershell.namespace: "quickshell-notifications"
-
-        // 1. Anchor tightly to the top right wall layout edge
-        anchors.top: true
-        anchors.right: true
-
-        // 2. HARDWARE MARGIN: Pushes the entire window container down by 600px from the top edge
-        // This overrides any conflicting background script code loops completely
-        WlrLayershell.margins.top:200
-        WlrLayershell.margins.right: 0
-        //These lines mark where notifications can be. They will ALWAYS go to the top of their bounding block
-        implicitWidth: 600
-        implicitHeight: 500
-        //commenting out transparent puts a white block where notification bounding block is
-       color: "transparent"
-
-        Loader {
-            id: notificationOverlayLoader
-            anchors.fill: parent
-            active: root.themeLoaded
-            source: Qt.resolvedUrl("modules/overlays/notifications/NotificationOverlay.qml")
-            onLoaded: {
-                console.log("NotificationOverlay content loaded:", item)
-                if (item) {
-                    item.theme = root.theme;
-                    for (let i = 0; i < root.pendingNotifications.length; ++i) {
-                        item.handleNotification(root.pendingNotifications[i]);
-                    }
-                    root.pendingNotifications = [];
+    // ============================================================================
+    // #### MODULE LOGIC: BACKGROUND ISOLATED LOADER SERVICES ####
+    // ============================================================================
+    Loader {
+        id: notificationOverlayLoader
+        active: true
+        source: Qt.resolvedUrl("NotificationOverlay.qml")
+        onLoaded: {
+            console.log("NotificationOverlay loaded:", item)
+            for (let i = 0; i < root.pendingNotifications.length; ++i) {
+                if (item && item.handleNotification) {
+                    item.handleNotification(root.pendingNotifications[i]);
                 }
             }
-        }
-    }
-
-
-
-    PanelWindow {
-        id: alarmPromptWindow
-        screen: root.primaryScreen
-        property var activeInputItem: null
-        visible: activeInputItem !== null && root.primaryScreen !== null && root.themeLoaded
-
-        WlrLayershell.layer: WlrLayershell.Overlay
-        WlrLayershell.namespace: "quickshell-alarm-prompt"
-        WlrLayershell.keyboardFocus: visible ? WlrLayershell.Exclusive : WlrLayershell.None
-
-        anchors.top: true
-        anchors.left: true
-        WlrLayershell.margins.top: 50
-        WlrLayershell.margins.left: 20
-
-        implicitWidth: activeInputItem ? activeInputItem.implicitWidth : 0
-        implicitHeight: activeInputItem ? activeInputItem.implicitHeight : 0
-
-        onVisibleChanged: {
-            if (visible && activeInputItem && activeInputItem.timeInputRef) {
-                activeInputItem.timeInputRef.forceActiveFocus();
-            }
-        }
-    }
-
-    Connections {
-        target: root
-        function onNotificationScreenChanged() {
-            notificationPanelWindow.screen = root.notificationScreen;
-        }
-        function onThemeChanged() {
-            if (notificationOverlayLoader.item) {
-                notificationOverlayLoader.item.theme = root.theme;
-            }
+            root.pendingNotifications = [];
         }
     }
 
@@ -386,6 +380,10 @@ Scope {
         id: launcherControlLoader
         active: true
         source: Qt.resolvedUrl("modules/overlays/launcher/LauncherController.qml")
+        onLoaded: {
+            if (item) {
+                item.uiRoot = root;
+            }
+        }
     }
-
 }
