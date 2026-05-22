@@ -30,6 +30,8 @@ Scope {
 
     property var themableItems: []
 
+    property var pendingNotifications: [] // <--- added here
+
     function shouldLoad(moduleIndex) {
         return moduleIndex <= 8;
     }
@@ -94,7 +96,7 @@ Scope {
                 notificationOverlayLoader.item.handleNotification(notification);
             } else {
                 console.log("Overlay still not loaded or missing handleNotification! Queuing notification.");
-                pendingNotifications.push(notification);
+                root.pendingNotifications.push(notification);
             }
         }
     }
@@ -250,8 +252,27 @@ Scope {
                     SoundModule.AudioCapsule {}
                     SoundModule.MicCapsule {}
 
-                    // REPLACEMENT: Modular clock loader!
-                    Loader { active: true; source: "./modules/bar/clock/ClockCapsule.qml" }
+                    Rectangle {
+                        id: clockTimeCapsuleFrame
+                        color: "#000000"
+                        radius: 6
+                        border.width: 5
+                        border.color: "#111111"
+                        width: 145
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        Text {
+                            id: clockTimeDisplay
+                            anchors.centerIn: parent
+                            font.family: "monospace"
+                            font.pixelSize: 20
+                            font.bold: true
+                            color: "yellow"
+                            text: systemTimeGlobal ? Qt.formatDateTime(systemTimeGlobal.date, "hh:mm:ss AP") : "Loading..."
+                        }
+
+                        Component.onCompleted: root.applyCapsuleTheme(clockTimeCapsuleFrame, clockTimeDisplay)
+                    }
                 }
 
                 // 3. RIGHT CONTAINER ROW
@@ -304,12 +325,35 @@ Scope {
     }
 
     // =========================================================================
-    // ISOLATED LOADING PATHS
+    // NOTIFICATION OVERLAY WINDOW
     // =========================================================================
-    Loader {
-        id: notificationOverlayLoader
-        active: true
-        source: Qt.resolvedUrl("NotificationOverlay.qml")
+    PanelWindow {
+        id: notificationOverlayWindow
+        screen: root.primaryScreen
+        visible: true
+        WlrLayershell.layer: WlrLayershell.Overlay
+        WlrLayershell.namespace: "quickshell-notifications"
+        anchors.top: parent.top
+        anchors.right: parent.right
+        width: 350
+        height: 800
+        color: "transparent"
+
+        Loader {
+            id: notificationOverlayLoader
+            anchors.fill: parent
+            active: true
+            source: Qt.resolvedUrl("modules/overlays/notifications/NotificationOverlay.qml")
+            onLoaded: {
+                console.log("NotificationOverlay loaded:", item)
+                for (let i = 0; i < root.pendingNotifications.length; ++i) {
+                    if (item && item.handleNotification) {
+                        item.handleNotification(root.pendingNotifications[i]);
+                    }
+                }
+                root.pendingNotifications = [];
+            }
+        }
     }
 
     Loader {
