@@ -19,8 +19,8 @@ Scope {
 
     property QtObject theme: null
     property QtObject themeData: null
+    property bool themeLoaded: false
 
-    // State structural variables cleanly linking your backend mathematical logic lines
     property var filteredAppsModel: ListModel {}
     property bool isMenuOpen: false
     property bool isClipboardMode: false
@@ -30,15 +30,12 @@ Scope {
 
     property var themableItems: []
 
-    property var pendingNotifications: [] // <--- added here
+    property var pendingNotifications: []
 
     function shouldLoad(moduleIndex) {
         return moduleIndex <= 8;
     }
 
-    // =========================================================================
-    // NATIVE NO-CRASH IPC ROOT CHANNELS
-    // =========================================================================
     property alias global_launcher: root
 
     function toggleMenu() {
@@ -56,11 +53,16 @@ Scope {
         }
     }
 
-    // Lazy property binding loop dynamically tracks screen DP-1 as it mounts on boot
     property var primaryScreen: {
         if (!Quickshell.screens || Quickshell.screens.length === 0) return null;
         var found = Quickshell.screens.find(s => s.name === "DP-1");
         return found ? found : Quickshell.screens;
+    }
+
+    property var notificationScreen: {
+        if (!Quickshell.screens || Quickshell.screens.length === 0) return null;
+        var found = Quickshell.screens.find(s => s.name === "DP-2");
+        return found ? found : (Quickshell.screens.length > 0 ? Quickshell.screens[0] : null);
     }
 
     Loader {
@@ -70,12 +72,11 @@ Scope {
             console.log("Stylix theme loaded successfully.");
             root.theme = item;
             root.themeData = item;
-            if (root.themableItems && root.themableItems.length !== undefined) {
-                for (var i = 0; i < root.themableItems.length; ++i) {
-                    var themable = root.themableItems[i];
-                    root.applyCapsuleTheme(themable.frame, themable.text);
-                }
+            for (var i = 0; i < root.themableItems.length; ++i) {
+                var themable = root.themableItems[i];
+                root.applyCapsuleTheme(themable.frame, themable.text);
             }
+            root.themeLoaded = true;
         }
     }
 
@@ -114,9 +115,6 @@ Scope {
         onTriggered: calFetcher.running = true
     }
 
-    // =========================================================================
-    // UNIFIED CAPSULE FORMATTING GENERATOR
-    // =========================================================================
     function applyCapsuleTheme(frameItem, textItem) {
         if (!frameItem) return;
 
@@ -126,29 +124,32 @@ Scope {
         }
         if (!found) { themableItems.push({frame: frameItem, text: textItem}); }
 
+        if (!root.theme) {
+            return;
+        }
+
         try {
             frameItem.height = 35;
             frameItem.radius = 10;
             frameItem.border.width = 3;
-            frameItem.color = "black";
-            frameItem.border.color = "yellow";
+            frameItem.color = root.theme.base00;
+            frameItem.border.color = root.theme.base05;
 
             if (textItem) {
-                textItem.color = "yellow";
+                textItem.color = root.theme.base05;
                 textItem.font.pixelSize = 20;
             }
-        } catch(e) {}
+        } catch(e) {
+            console.log("Error applying theme colors: " + e)
+        }
     }
 
     SystemClock { id: systemTimeGlobal; precision: SystemClock.Seconds }
 
-    // =========================================================================
-    // NATIVE DESKTOP BAR PANEL WINDOW TRACK
-    // =========================================================================
     PanelWindow {
         id: standardBarWindow
         screen: root.primaryScreen
-        visible: root.primaryScreen !== null
+        visible: root.primaryScreen !== null && root.themeLoaded
 
         WlrLayershell.layer: WlrLayershell.Top
         WlrLayershell.namespace: "quickshell-bar"
@@ -159,19 +160,17 @@ Scope {
         anchors.left: true
         anchors.right: true
         implicitHeight: 50
-        color: "black"
+        color: root.theme ? root.theme.base00 : "black"
 
         Rectangle {
             anchors.fill: parent
-            color: "black"
-            border.color: "#003399"
+            color: root.theme ? root.theme.base00 : "black"
+            border.color: root.theme ? root.theme.base02 : "#003399"
             border.width:5
             radius: 10
 
             Item {
                 anchors.fill: parent
-
-                // LEFT CONTAINER ROW
                 Row {
                     id: leftRow
                     anchors.left: parent.left
@@ -181,10 +180,6 @@ Scope {
 
                     Rectangle {
                         id: clockDateCapsuleFrame
-                        color: "#000000"
-                        radius:5
-                        border.width: 3
-                        border.color: "#111111"
                         width: 150
                         anchors.verticalCenter: parent.verticalCenter
 
@@ -197,10 +192,10 @@ Scope {
                             color: "transparent"
                             Rectangle {
                                 anchors.fill: parent
-                                border.color: "yellow"
+                                border.color: root.theme ? root.theme.base0D : "yellow"
                                 border.width: 3
                                 radius: 5
-                                color: "black"
+                                color: root.theme ? root.theme.base00 : "black"
 
                                 Text {
                                     id: calendarText
@@ -208,7 +203,7 @@ Scope {
                                     text: root.calendarTooltipText
                                     font.family: "monospace"
                                     font.pixelSize: 20
-                                    color: "yellow"
+                                    color: root.theme ? root.theme.base0D : "yellow"
                                 }
                             }
                         }
@@ -219,7 +214,6 @@ Scope {
                             font.family: "monospace"
                             font.pixelSize: 20
                             font.bold: true
-                            color: "yellow"
                             text: systemTimeGlobal ? Qt.formatDateTime(systemTimeGlobal.date, "ddd MMM dd") : "Loading..."
                         }
 
@@ -242,7 +236,6 @@ Scope {
                     }
                 }
 
-                // 2. CENTER CONTAINER ROW
                 Row {
                     id: centerRow
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -254,10 +247,6 @@ Scope {
 
                     Rectangle {
                         id: clockTimeCapsuleFrame
-                        color: "#000000"
-                        radius: 6
-                        border.width: 5
-                        border.color: "#111111"
                         width: 145
                         anchors.verticalCenter: parent.verticalCenter
 
@@ -267,7 +256,6 @@ Scope {
                             font.family: "monospace"
                             font.pixelSize: 20
                             font.bold: true
-                            color: "yellow"
                             text: systemTimeGlobal ? Qt.formatDateTime(systemTimeGlobal.date, "hh:mm:ss AP") : "Loading..."
                         }
 
@@ -275,7 +263,6 @@ Scope {
                     }
                 }
 
-                // 3. RIGHT CONTAINER ROW
                 Row {
                     id: rightRow
                     anchors.right: parent.right
@@ -294,11 +281,10 @@ Scope {
         }
     }
 
-    // APPLICATION LAUNCHER OVERLAY WINDOW
     PanelWindow {
         id: appLauncherWindow
         screen: root.primaryScreen
-        visible: root.launcherVisible && root.primaryScreen !== null
+        visible: root.launcherVisible && root.primaryScreen !== null && root.themeLoaded
 
         WlrLayershell.layer: WlrLayershell.Overlay
         WlrLayershell.namespace: "quickshell-launcher"
@@ -324,17 +310,15 @@ Scope {
         }
     }
 
-    // =========================================================================
-    // NOTIFICATION OVERLAY WINDOW
-    // =========================================================================
     PanelWindow {
-        id: notificationOverlayWindow
-        screen: root.primaryScreen
-        visible: true
+        id: notificationPanelWindow
+        screen: root.notificationScreen
+        visible: root.notificationScreen !== null && root.themeLoaded
+
         WlrLayershell.layer: WlrLayershell.Overlay
         WlrLayershell.namespace: "quickshell-notifications"
-        anchors.top: parent.top
-        anchors.right: parent.right
+        anchors.top: true
+        anchors.right: true
         width: 350
         height: 800
         color: "transparent"
@@ -345,13 +329,26 @@ Scope {
             active: true
             source: Qt.resolvedUrl("modules/overlays/notifications/NotificationOverlay.qml")
             onLoaded: {
-                console.log("NotificationOverlay loaded:", item)
-                for (let i = 0; i < root.pendingNotifications.length; ++i) {
-                    if (item && item.handleNotification) {
+                console.log("NotificationOverlay content loaded:", item)
+                if (item) {
+                    item.theme = root.theme;
+                    for (let i = 0; i < root.pendingNotifications.length; ++i) {
                         item.handleNotification(root.pendingNotifications[i]);
                     }
+                    root.pendingNotifications = [];
                 }
-                root.pendingNotifications = [];
+            }
+        }
+    }
+
+    Connections {
+        target: root
+        function onNotificationScreenChanged() {
+            notificationPanelWindow.screen = root.notificationScreen;
+        }
+        function onThemeChanged() {
+            if (notificationOverlayLoader.item) {
+                notificationOverlayLoader.item.theme = root.theme;
             }
         }
     }

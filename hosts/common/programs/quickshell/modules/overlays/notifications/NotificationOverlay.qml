@@ -4,11 +4,13 @@ import Quickshell.Services.Notifications
 
 Item {
     id: root
+
+    property var theme: null
+
     anchors.fill: parent
 
     property var notifications: []
 
-    // --- Core notification handler ---
     function handleNotification(notification) {
         console.log("handleNotification called:", notification && notification.summary, notification && notification.body);
 
@@ -47,7 +49,6 @@ Item {
         }
     }
 
-    // --- Notification pop-up component ---
     Component {
         id: notificationComponent
         Rectangle {
@@ -56,13 +57,13 @@ Item {
 
             width: 300
             height: 80
-            color: "#333"
+            color: root.theme ? root.theme.base00 : "#333"
             radius: 10
 
             Text {
                 id: summary
                 text: notification.summary
-                color: "white"
+                color: root.theme ? root.theme.base05 : "white"
                 font.bold: true
                 anchors.top: parent.top
                 anchors.left: parent.left
@@ -73,7 +74,7 @@ Item {
             Text {
                 id: body
                 text: notification.body
-                color: "white"
+                color: root.theme ? root.theme.base05 : "white"
                 wrapMode: Text.WordWrap
                 anchors.top: summary.bottom
                 anchors.left: parent.left
