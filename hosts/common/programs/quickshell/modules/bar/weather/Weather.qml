@@ -1,29 +1,33 @@
 import QtQuick
+import QtQuick.Controls 2
 import Quickshell
 import Quickshell.Io
-import QtQuick.Controls
+
+import Theme
 
 Rectangle {
     id: weatherCapsule
+
+    // Sovereign layout dimensions restore visibility independent of shell.qml micro-management
     width: 100
+    height: 35
+    radius: 10
+    border.width: 3
+
+    // Directly read colors from your immutable compiled Nix Store profile module
+    color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
+    border.color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
 
     property var barWindow: null
 
     // Expose the hover state for the parent component
     property alias isHovered: weatherHover.hovered
 
-    // This function is called by the root shell to apply the consistent theme
-    Component.onCompleted: {
-        if (typeof(root.applyCapsuleTheme) !== 'undefined') {
-            root.applyCapsuleTheme(weatherCapsule, weatherTextElement);
-        }
-    }
-
-    // --- Properties for Weather Data ---
+    // properties for Weather Data
     property string weatherText: "Loading..."
     property string weatherTooltipText: "Loading forecast..."
 
-    // --- Data Fetching Processes ---
+    // Data Fetching Processes
     Process {
         id: weatherFetcher
         running: true
@@ -81,7 +85,7 @@ Rectangle {
         }
     }
 
-    // --- Refresh Timer ---
+    // Refresh Timer
     Timer {
         interval: 900000 // 15 minutes
         running: true
@@ -93,25 +97,31 @@ Rectangle {
         }
     }
 
-    // --- Hover Handler & Tooltip ---
+    // Hover Handler & Tooltip
     HoverHandler { id: weatherHover }
 
     PopupWindow {
         visible: weatherCapsule.barWindow && weatherHover.hovered
         anchor.window: weatherCapsule.barWindow
-        anchor.rect: Qt.rect(weatherCapsule.mapToItem(barWindow.contentItem, 0, 0).x, barWindow.implicitHeight, weatherCapsule.width, 0)
+
+        // Robust position mapping prevents layout calculation crashes from dynamic shell loaders
+        anchor.rect: (weatherCapsule.barWindow && weatherCapsule.barWindow.contentItem) ?
+        Qt.rect(weatherCapsule.mapToItem(weatherCapsule.barWindow.contentItem, 0, 0).x, weatherCapsule.barWindow.implicitHeight, weatherCapsule.width, 0) :
+        Qt.rect(0, 50, weatherCapsule.width, 0)
+
         color: "transparent"
 
-        // Width and height applied to the OS window bounds
         implicitWidth: tooltipText.implicitWidth + 24
         implicitHeight: tooltipText.implicitHeight + 24
 
         Rectangle {
             anchors.fill: parent
-            border.color: root.theme ? root.theme.base05 : "yellow"
             border.width: 2
             radius: 6
-            color: root.theme ? root.theme.base00 : "black"
+
+            // Decoupled color hooks mapped to your Nix Store module
+            color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
+            border.color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
 
             Text {
                 id: tooltipText
@@ -119,23 +129,25 @@ Rectangle {
                 text: weatherCapsule.weatherTooltipText
                 font.family: "monospace"
                 font.pixelSize: 20
-                color: root.theme ? root.theme.base05 : "yellow"
                 lineHeight: 1.2
+                color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
             }
         }
     }
 
-    // --- Main Text Display ---
+    // Main Text Display
     Text {
         id: weatherTextElement
         anchors.fill: parent
-        anchors.margins: 10
+        anchors.margins: 5
         text: weatherCapsule.weatherText
+        font.family: "monospace"
         font.pixelSize: 20
         font.bold: true
         textFormat: Text.PlainText
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight
+        color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "white"
     }
 }

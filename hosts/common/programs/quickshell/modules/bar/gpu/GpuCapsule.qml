@@ -1,17 +1,22 @@
 import QtQuick
 import Quickshell.Io
 
+import Theme
+
 Rectangle {
     id: gpuBox
+
+    // Sovereign sizing rules restore visual visibility matching your bar grid
     width: 280
+    height: 35
+    radius: 10
+    border.width: 3
 
-    Component.onCompleted: {
-        if (typeof(root.applyCapsuleTheme) !== 'undefined') {
-            root.applyCapsuleTheme(gpuBox, gpuText);
-        }
-    }
+    // Direct memory lookups pointing straight to your immutable compiled Nix-Store colors
+    color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
+    border.color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
 
-    property string gpuDisplayText: "<font color='" + (root.theme ? root.theme.base0C : "green") + "'>GPU:</font> --%  --°C  --W"
+    property string gpuDisplayText: "<font color='" + ((typeof Theme !== 'undefined' && Theme.base0C !== undefined) ? Theme.base0C : "green") + "'>GPU:</font> --%  --°C  --W"
 
     property int tempWarn: 76
     property int tempCrit: 90
@@ -30,14 +35,11 @@ Rectangle {
     }
 
     function updateGpuDisplay(usage, temp, power) {
-        if (!root.theme) {
-            return;
-        }
-
-        const normalColor   = root.theme.base05.toString(); // yellow
-        const greenColor    = root.theme.base0C.toString(); // green
-        const warningColor  = root.theme.base0A.toString(); // orange
-        const criticalColor = root.theme.base08.toString(); // red
+        // Secure validation checks against our global singleton namespace variables
+        const normalColor   = (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05.toString() : "yellow";
+        const greenColor    = (typeof Theme !== 'undefined' && Theme.base0C !== undefined) ? Theme.base0C.toString() : "green";
+        const warningColor  = (typeof Theme !== 'undefined' && Theme.base0A !== undefined) ? Theme.base0A.toString() : "orange";
+        const criticalColor = (typeof Theme !== 'undefined' && Theme.base08 !== undefined) ? Theme.base08.toString() : "red";
 
         let valueColor = normalColor;
 
@@ -106,7 +108,7 @@ Rectangle {
     Text {
         id: gpuText
         anchors.fill: parent
-        anchors.margins: 10
+        anchors.margins: 5
         textFormat: Text.RichText
         font.family: "monospace"
         font.pixelSize: 20

@@ -1,17 +1,22 @@
 import QtQuick
+import QtQuick.Controls 2
 import Quickshell
 import Quickshell.Io
-import QtQuick.Controls
+
+import Theme
 
 Rectangle {
     id: clockCapsule
-    width: 145
-    height: 38
 
-    // Capsule colors: fallback to yellow/black if no theme
-    property color capsuleBg: typeof root !== "undefined" && root.theme ? root.theme.base00 : "#000000"
-    property color capsuleFg: typeof root !== "undefined" && root.theme ? root.theme.base05 : "yellow"
-    property color capsuleBorder: typeof root !== "undefined" && root.theme ? root.theme.base05 : "yellow"
+    // Sovereign sizing rules restore visual visibility matching your bar grid layout
+    width: 145
+    height: 35
+    radius: 10
+    border.width: 3
+
+    // Direct lookups pointing straight to your immutable compiled Nix-Store colors
+    color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
+    border.color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
 
     // Provide barWindow for tooltip anchoring (must be set by parent Loader!)
     property var barWindow: null
@@ -20,7 +25,7 @@ Rectangle {
     property var timezones: [
         "UTC",
         "America/New_York",
-        "America/Chicago",   // Central
+        "America/Chicago",
         "America/Denver",
         "America/Los_Angeles",
         "Europe/London",
@@ -32,22 +37,18 @@ Rectangle {
     property string localTime: "---"
     property string localZoneName: ""
 
-    // --- Local Time Calculation ---
-    Timer {
-        interval: 1000
-        running: true
-        repeat: true
-        triggeredOnStart: true
-        onTriggered: {
-            var d = new Date();
-            // 12-hour w/ uppercase AM/PM, no zone
-            var hr = d.getHours() % 12; hr = hr === 0 ? 12 : hr;
-            var min = ("0" + d.getMinutes()).slice(-2);
-            var sec = ("0" + d.getSeconds()).slice(-2);
-            var ap = d.getHours() >= 12 ? "PM" : "AM";
-            clockCapsule.localTime = `${hr}:${min}:${sec} ${ap}`;
-            clockCapsule.localZoneName = d.toLocaleTimeString(Qt.locale(), "zzzz");
-        }
+    SystemClock { id: systemTime; precision: SystemClock.Seconds }
+
+    // --- Local Time Calculation via High-Performance Native Engines ---
+    Binding {
+        target: clockCapsule
+        property: "localTime"
+        value: systemTime.date ? Qt.formatDateTime(systemTime.date, "hh:mm:ss AP") : "---"
+    }
+    Binding {
+        target: clockCapsule
+        property: "localZoneName"
+        value: systemTime.date ? Qt.formatDateTime(systemTime.date, "t") : ""
     }
 
     // --- Fetch World Times for Tooltip ---
@@ -61,6 +62,7 @@ Rectangle {
             }
         }
     }
+
     Timer {
         interval: 10000 // 10 seconds
         running: true
@@ -80,39 +82,39 @@ Rectangle {
         }
     }
 
-    // --- Capsule Style ---
-    radius: 7
-    border.width: 3
-    border.color: capsuleBorder
-    color: capsuleBg
-
     // --- Hover Handler & Tooltip ---
     HoverHandler { id: clockHover }
 
     PopupWindow {
         visible: clockCapsule.barWindow && clockHover.hovered
         anchor.window: clockCapsule.barWindow
-        anchor.rect: Qt.rect(clockCapsule.mapToItem(barWindow.contentItem, 0, 0).x, barWindow.implicitHeight, clockCapsule.width, 0)
+
+        // Robust coordinate mapping fixes the popup positioning under decoupled loaders
+        anchor.rect: (clockCapsule.barWindow && clockCapsule.barWindow.contentItem) ?
+        Qt.rect(clockCapsule.mapToItem(clockCapsule.barWindow.contentItem, 0, 0).x, clockCapsule.barWindow.implicitHeight, clockCapsule.width, 0) :
+        Qt.rect(0, 50, clockCapsule.width, 0)
+
         color: "transparent"
         implicitWidth: tooltipText.implicitWidth + 24
         implicitHeight: tooltipText.implicitHeight + 38
 
         Rectangle {
             anchors.fill: parent
-            border.color: clockCapsule.capsuleFg
             border.width: 2
             radius: 6
-            color: clockCapsule.capsuleBg
+            color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
+            border.color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
 
             Column {
                 anchors.fill: parent
                 anchors.margins: 12
                 spacing: 6
+
                 Text {
                     text: "Local TZ: " + clockCapsule.localZoneName
                     font.family: "monospace"
                     font.pixelSize: 14
-                    color: clockCapsule.capsuleFg
+                    color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
                 }
                 Rectangle {
                     width: parent.width
@@ -124,10 +126,10 @@ Rectangle {
                     text: clockCapsule.timezoneTooltipText
                     font.family: "monospace"
                     font.pixelSize: 15
-                    color: clockCapsule.capsuleFg
                     horizontalAlignment: Text.AlignLeft
                     verticalAlignment: Text.AlignTop
                     wrapMode: Text.Wrap
+                    color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
                 }
             }
         }
@@ -137,14 +139,14 @@ Rectangle {
     Text {
         id: timeText
         anchors.fill: parent
-        anchors.margins: 6
+        anchors.margins: 5
         text: clockCapsule.localTime
         font.family: "monospace"
         font.pixelSize: 20
         font.bold: true
-        color: clockCapsule.capsuleFg
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight
+        color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
     }
 }

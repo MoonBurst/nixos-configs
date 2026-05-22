@@ -3,20 +3,20 @@ import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 
+import Theme
+
 Rectangle {
     id: micBox
+
+    // Sovereign layout rules ensure visibility independent of shell configuration passes
     width: 140
+    height: 35
+    radius: 10
+    border.width: 3
 
-    property color colorLabelGreen: "#00FF00"
-    property color colorLabelYellow: "#FFFF00"
-    property color colorMuted: "#FF0000"
-    property color colorNormalText: "#FFFFFF"
-
-    Component.onCompleted: {
-        if (typeof(root.applyCapsuleTheme) !== 'undefined') {
-            root.applyCapsuleTheme(micBox, micText);
-        }
-    }
+    // Direct color references bound securely to your global user profile setup
+    color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
+    border.color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
 
     property string micDisplayText: "Mic: --"
 
@@ -43,8 +43,16 @@ Rectangle {
                     mNum = "MUTED";
                 }
 
-                var mCol = isMuted ? micBox.colorMuted : micBox.colorLabelYellow;
-                micBox.micDisplayText = "<font color='" + micBox.colorLabelGreen + "'>Mic:</font> <font color='" + mCol + "'>" + mNum + "</font>";
+                // Map tags directly to your Stylix colors (Base05 for yellow labels, Base08 for muted red)
+                var labelColor = (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow";
+                var mCol = "white";
+                if (typeof Theme !== 'undefined' && Theme.base08 !== undefined && Theme.base05 !== undefined) {
+                    mCol = isMuted ? Theme.base08 : Theme.base05;
+                } else {
+                    mCol = isMuted ? "red" : "white";
+                }
+
+                micBox.micDisplayText = "<font color='" + labelColor + "'>Mic:</font> <font color='" + mCol + "'>" + mNum + "</font>";
             }
         }
     }
@@ -56,7 +64,15 @@ Rectangle {
         }
     }
 
-    Text { id: micText; anchors.centerIn: parent; textFormat: Text.RichText; text: micBox.micDisplayText; font.family: "monospace"; font.pixelSize: 20; font.bold: true }
+    Text {
+        id: micText;
+        anchors.centerIn: parent;
+        textFormat: Text.RichText;
+        text: micBox.micDisplayText;
+        font.family: "monospace";
+        font.pixelSize: 20;
+        font.bold: true
+    }
 
     Timer { interval: 2000; running: true; repeat: true; onTriggered: micProc.running = true }
 }

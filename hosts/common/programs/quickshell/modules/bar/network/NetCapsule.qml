@@ -1,18 +1,24 @@
 import QtQuick
+import QtQuick.Controls 2
 import Quickshell
 import Quickshell.Io
 
+import Theme
+
 Rectangle {
     id: netBox
+
+    // Sovereign sizing rules restore visual visibility matching your bar grid
     width: 230
+    height: 35
+    radius: 10
+    border.width: 3
+
+    // Direct lookups pointing straight to your immutable compiled Nix-Store colors
+    color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
+    border.color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
 
     property string netDisplayText: "NET: --"
-
-    Component.onCompleted: {
-        if (typeof(root.applyCapsuleTheme) !== 'undefined') {
-            root.applyCapsuleTheme(netBox, netText);
-        }
-    }
 
     Process {
         id: netProc
@@ -34,22 +40,27 @@ Rectangle {
                 var rxStr = rx > 1048576 ? (rx / 1048576).toFixed(1) + "M" : Math.round(rx / 1024) + "K";
                 var txStr = tx > 1048576 ? (tx / 1048576).toFixed(1) + "M" : Math.round(tx / 1024) + "K";
 
-                netBox.netDisplayText = "<font color='" + (root.theme ? root.theme.base0C : "green") + "'>NET:</font> " +
-                "<font color='" + (root.theme ? root.theme.base05 : "white") + "'>▼" + rxStr.padStart(5, ' ') + "</font> " +
-                "<font color='" + (root.theme ? root.theme.base05 : "white") + "'>▲" + txStr.padStart(5, ' ') + "</font>";
+                // Secure color formatting strings safely bound to your global layout theme
+                var netLabelColor = (typeof Theme !== 'undefined' && Theme.base0C !== undefined) ? Theme.base0C : "green";
+                var netStatusColor = (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "white";
+
+                netBox.netDisplayText = "<font color='" + netLabelColor + "'>NET:</font> " +
+                "<font color='" + netStatusColor + "'>▼" + rxStr.padStart(5, ' ') + "</font> " +
+                "<font color='" + netStatusColor + "'>▲" + txStr.padStart(5, ' ') + "</font>";
             }
         }
     }
 
     Text {
         id: netText
-        anchors.centerIn: parent     // <---- changed
-        anchors.margins: 10         // <---- still applies minimum margin from edge
-        textFormat: Text.RichText;
-        text: netBox.netDisplayText;
-        font.family: "monospace";
-        font.pixelSize: 20;
+        anchors.centerIn: parent
+        textFormat: Text.RichText
+        text: netBox.netDisplayText
+        font.family: "monospace"
+        font.pixelSize: 20
         font.bold: true
+        // Set dynamic base fallback color tracking
+        color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "white"
     }
 
     Timer { interval: 2000; running: true; repeat: true; onTriggered: netProc.running = true }

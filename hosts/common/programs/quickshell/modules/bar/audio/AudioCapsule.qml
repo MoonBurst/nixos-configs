@@ -7,21 +7,20 @@ import Theme
 
 Rectangle {
     id: audioBox
+
+    // Explicit sizing rules keep it completely separate from your mic container frame
     width: 140
     height: 35
-    radius: 8
-    border.width: 2
+    radius: 10
+    border.width: 3
+
+    // Explicit anchoring stops it from overlapping or getting buried inside horizontal rows
+    anchors.verticalCenter: parent ? parent.verticalCenter : undefined
 
     color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
-    border.color: (typeof Theme !== 'undefined' && Theme.base03 !== undefined) ? Theme.base03 : "blue"
+    border.color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
 
     property string audioDisplayText: "Audio: --%"
-
-    Component.onCompleted: {
-        if (typeof root !== 'undefined' && typeof root.applyCapsuleTheme !== 'undefined') {
-            root.applyCapsuleTheme(audioBox, audioText);
-        }
-    }
 
     Process {
         id: audioFetcher
@@ -36,7 +35,7 @@ Rectangle {
 
                 var match = cleanData.match(/Volume:\s+([0-9.]+)/);
                 var vNum = "--%";
-                if (match && match[1] !== undefined) {
+                if (match && match !== undefined) {
                     var val = parseFloat(match[1]);
                     vNum = Math.round(val * 100) + "%";
                 }
@@ -48,18 +47,18 @@ Rectangle {
                     textColor = isMuted ? "red" : "white";
                 }
 
-                var tagColor = (typeof Theme !== 'undefined' && Theme.base0C !== undefined) ? Theme.base0C : "green";
+                var tagColor = (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow";
                 audioBox.audioDisplayText = "<font color='" + tagColor + "'>Audio:</font> <font color='" + textColor + "'>" + vNum + "</font>";
             }
         }
     }
+
     MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton
 
         onClicked: (mouse) => {
             if (mouse.button === Qt.LeftButton) {
-                // Left click now reliably switches between your available headphones/speakers
                 deviceToggleProcess.running = true;
             } else if (mouse.button === Qt.RightButton) {
                 mixerOpenProcess.running = true;
@@ -82,28 +81,19 @@ Rectangle {
         font.family: "monospace"
         font.pixelSize: 20
         font.bold: true
-        color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
         textFormat: Text.RichText
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
     }
 
-    // Automatically gathers your sinks and switches your system default profile to the next available device
     Process {
         id: deviceToggleProcess
         running: false
-        command: [
-            "sh", "-c",
-            "sinks=$(wpctl status | sed -n '/Audio/,/^$/p' | grep -E '^[[:space:]]*[*[:space:]][[:space:]]*[0-9]+\\.' | sed -E 's/^[[:space:]]*[*[:space:]][[:space:]]*([0-9]+)\\..*/\\1/'); " +
-            "current=$(wpctl status | sed -n '/Audio/,/^$/p' | grep -E '^[[:space:]]*\\*' | sed -E 's/^[[:space:]]*\\*[[:space:]]*([0-9]+)\\..*/\\1/'); " +
-            "next=$(echo \"$sinks\" | grep -A1 \"^$current$\" | tail -n1); " +
-            "[ \"$next\" = \"$current\" ] || [ -z \"$next\" ] && next=$(echo \"$sinks\" | head -n1); " +
-            "[ -n \"$next\" ] && wpctl set-default \"$next\""
-        ]
+        command: ["/home/moonburst/nix/hosts/common/scripts/sound_sink_switcher.sh"]
     }
 
-    Process { id: volUpProcess; running: false; command: ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "5%+"] }
-    Process { id: volDownProcess; running: false; command: ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "5%-"] }
+    Process { id: volUpProcess; running: false; command: ["sh", "-c", "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"] }
+    Process { id: volDownProcess; running: false; command: ["sh", "-c", "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"] }
     Process { id: mixerOpenProcess; running: false; command: ["pavucontrol"] }
 
     Timer {

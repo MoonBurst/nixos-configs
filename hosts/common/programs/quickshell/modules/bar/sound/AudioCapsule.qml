@@ -1,71 +1,109 @@
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls 2
 import Quickshell
 import Quickshell.Io
 
+import Theme
+
 Rectangle {
     id: audioBox
+
+    // Explicit sizing rules keep it completely separate from your mic container frame
     width: 140
+    height: 35
+    radius: 10
+    border.width: 3
 
-    property string audioDisplayText: "Audio: --"
+    // Explicit anchoring stops it from overlapping or getting buried inside horizontal rows
+    anchors.verticalCenter: parent ? parent.verticalCenter : undefined
 
-    Component.onCompleted: {
-        if (typeof(root.applyCapsuleTheme) !== 'undefined') {
-            root.applyCapsuleTheme(audioBox, audioText);
-        }
-    }
+    color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
+    border.color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
 
-    Process { id: volumeUpCmd; command: ["/bin/sh", "-c", "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+ --limit 0.70"] }
-    Process { id: volumeDownCmd; command: ["/bin/sh", "-c", "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"] }
+    property string audioDisplayText: "Audio: --%"
 
     Process {
-        id: audioProc
+        id: audioFetcher
         running: true
-        command: [
-            "sh", "-c",
-            "wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null || echo 'Volume: 0.00'"
-        ]
+        command: ["sh", "-c", "wpctl get-volume @DEFAULT_AUDIO_SINK@"]
+
         stdout: SplitParser {
             onRead: data => {
                 if (!data) return;
-                var raw = data.trim();
-                var isMuted = raw.indexOf("[MUTED]") !== -1;
+                var cleanData = data.trim();
+                var isMuted = cleanData.indexOf("[MUTED]") !== -1;
 
-                var vNum = "0%";
-                if (!isMuted) {
-                    var vMatch = raw.match(/[0-9.]+/);
-                    if (vMatch) vNum = Math.round(parseFloat(vMatch[0]) * 100) + "%";
-                } else {
-                    vNum = "MUTED";
+                var match = cleanData.match(/Volume:\s+([0-9.]+)/);
+                var vNum = "--%";
+                if (match && match !== undefined) {
+                    var val = parseFloat(match[1]);
+                    vNum = Math.round(val * 100) + "%";
                 }
 
-                const textColor = isMuted ? (root.theme ? root.theme.base08 : "red") : (root.theme ? root.theme.base05 : "white");
+                var textColor = "white";
+                if (typeof Theme !== 'undefined' && Theme.base05 !== undefined && Theme.base08 !== undefined) {
+                    textColor = isMuted ? Theme.base08 : Theme.base05;
+                } else {
+                    textColor = isMuted ? "red" : "white";
+                }
 
-                audioBox.audioDisplayText = "<font color='" + (root.theme ? root.theme.base0C : "green") + "'>Audio:</font> <font color='" + textColor + "'>" + vNum + "</font>";
+                var tagColor = (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow";
+                audioBox.audioDisplayText = "<font color='" + tagColor + "'>Audio:</font> <font color='" + textColor + "'>" + vNum + "</font>";
             }
         }
     }
 
-    WheelHandler {
-        onWheel: (event) => {
-            if (event.angleDelta.y > 0) {
-                volumeUpCmd.running = false; volumeUpCmd.running = true;
-            } else if (event.angleDelta.y < 0) {
-                volumeDownCmd.running = false; volumeDownCmd.running = true;
+    MouseArea {
+        anchors.fill: parent
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
+
+        onClicked: (mouse) => {
+            if (mouse.button === Qt.LeftButton) {
+                deviceToggleProcess.running = true;
+            } else if (mouse.button === Qt.RightButton) {
+                mixerOpenProcess.running = true;
             }
-            audioProc.running = false; audioProc.running = true;
+        }
+
+        onWheel: (wheel) => {
+            if (wheel.angleDelta.y > 0) {
+                volUpProcess.running = true;
+            } else if (wheel.angleDelta.y < 0) {
+                volDownProcess.running = true;
+            }
         }
     }
 
     Text {
-        id: audioText;
-        anchors.centerIn: parent;
-        textFormat: Text.RichText;
-        text: audioBox.audioDisplayText;
-        font.family: "monospace";
-        font.pixelSize: 20;
+        id: audioText
+        anchors.fill: parent
+        text: audioBox.audioDisplayText
+        font.family: "monospace"
+        font.pixelSize: 20
         font.bold: true
+        textFormat: Text.RichText
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
     }
 
-    Timer { interval: 2000; running: true; repeat: true; onTriggered: audioProc.running = true }
+    Process {
+        id: deviceToggleProcess
+        running: false
+        command: ["/home/moonburst/nix/hosts/common/scripts/sound_sink_switcher.sh"]
+    }
+
+    Process { id: volUpProcess; running: false; command: ["sh", "-c", "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"] }
+    Process { id: volDownProcess; running: false; command: ["sh", "-c", "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"] }
+    Process { id: mixerOpenProcess; running: false; command: ["pavucontrol"] }
+
+    Timer {
+        interval: 500
+        running: true
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: {
+            audioFetcher.running = false;
+            audioFetcher.running = true;
+        }
+    }
 }

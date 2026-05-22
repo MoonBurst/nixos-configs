@@ -1,19 +1,24 @@
 import QtQuick
 import Quickshell.Io
 
+import Theme
+
 Rectangle {
     id: ramBox
+
+    // Sovereign sizing rules restore visual visibility matching your bar grid
     width: 150
+    height: 35
+    radius: 10
+    border.width: 3
+
+    // Direct memory lookups pointing straight to your immutable compiled Nix-Store colors
+    color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
+    border.color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
 
     property int ramAvailable: 0
     property int ramWarn: 16
     property int ramCrit: 8
-
-    Component.onCompleted: {
-        if (typeof(root.applyCapsuleTheme) !== 'undefined') {
-            root.applyCapsuleTheme(ramBox, ramText);
-        }
-    }
 
     Process {
         id: ramStatsProc
@@ -32,26 +37,25 @@ Rectangle {
     Text {
         id: ramText
         anchors.fill: parent
-        anchors.margins: 10
+        anchors.margins: 5
         textFormat: Text.RichText
         font.family: "monospace"
         font.pixelSize: 20
         font.bold: true
-        horizontalAlignment: Text.AlignLeft
+        horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
-        text: {
-            if (!root.theme) {
-                return "<font color='green'>RAM:</font>   -- GiB";
-            }
 
-            const greenColor    = root.theme.base0C.toString();
-            const normalColor   = root.theme.base05.toString();
-            const warningColor  = root.theme.base0A.toString();
-            const criticalColor = root.theme.base08.toString();
+        text: {
+            // Secure nested checks guarantee silent initialization logs
+            const greenColor    = (typeof Theme !== 'undefined' && Theme.base0C !== undefined) ? Theme.base0C.toString() : "green";
+            const normalColor   = (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05.toString() : "yellow";
+            const warningColor  = (typeof Theme !== 'undefined' && Theme.base0A !== undefined) ? Theme.base0A.toString() : "orange";
+            const criticalColor = (typeof Theme !== 'undefined' && Theme.base08 !== undefined) ? Theme.base08.toString() : "red";
 
             var ram_color = (ramBox.ramAvailable < ramBox.ramCrit) ? criticalColor
             : (ramBox.ramAvailable < ramBox.ramWarn) ? warningColor
             : normalColor;
+
             var valueStr = ramBox.ramAvailable === 0
             ? " -- GiB"
             : (" " + ramBox.ramAvailable + " GiB").padStart(8, ' ');

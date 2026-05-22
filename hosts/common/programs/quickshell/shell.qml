@@ -18,9 +18,10 @@ Scope {
     property string calendarTooltipText: ""
     property bool launcherVisible: false
 
-    property var theme: null
-    property var themeData: null
-    property bool themeLoaded: false
+    // State definitions maintained cleanly for tracking parameters
+    property var theme: Theme
+    property var themeData: Theme
+    property bool themeLoaded: true
 
     property var filteredAppsModel: ListModel {}
     property bool isMenuOpen: false
@@ -29,8 +30,7 @@ Scope {
     property string activeImageCachePath: ""
     property string mathResultString: ""
 
-    property var themableItems: []
-
+    // Completely decoupled: Deleted themableItems tracking metrics arrays and loops
     property var pendingNotifications: []
 
     function shouldLoad(moduleIndex) {
@@ -64,17 +64,6 @@ Scope {
         if (!Quickshell.screens || Quickshell.screens.length === 0) return null;
         var found = Quickshell.screens.find(s => s.name === "DP-2");
         return found ? found : (Quickshell.screens.length > 0 ? Quickshell.screens : null);
-    }
-
-    Component.onCompleted: {
-        console.log("Stylix Nix-Store theme attached successfully.");
-        root.theme = Theme;
-        root.themeData = Theme;
-        for (var i = 0; i < root.themableItems.length; ++i) {
-            var themable = root.themableItems[i];
-            root.applyCapsuleTheme(themable.frame, themable.text);
-        }
-        root.themeLoaded = true;
     }
 
     NotificationServer {
@@ -112,34 +101,8 @@ Scope {
         onTriggered: calFetcher.running = true
     }
 
-    function applyCapsuleTheme(frameItem, textItem) {
-        if (!frameItem) return;
-
-        var found = false;
-        for (var i = 0; i < themableItems.length; i++) {
-            if (themableItems[i].frame === frameItem) { found = true; break; }
-        }
-        if (!found) { themableItems.push({frame: frameItem, text: textItem}); }
-
-        if (!root.theme) {
-            return;
-        }
-
-        try {
-            frameItem.height = 35;
-            frameItem.radius = 10;
-            frameItem.border.width = 3;
-            frameItem.color = root.theme.base00;
-            frameItem.border.color = root.theme.base05;
-
-            if (textItem) {
-                textItem.color = root.theme.base05;
-                textItem.font.pixelSize = 20;
-            }
-        } catch(e) {
-            console.log("Error applying theme colors: " + e)
-        }
-    }
+    // Completely Decoupled: Structural applyCapsuleTheme override code loop has been deleted.
+    // Sub-components are now sovereign and layout/style themselves internally.
 
     SystemClock { id: systemTimeGlobal; precision: SystemClock.Seconds }
 
@@ -161,7 +124,6 @@ Scope {
 
         Rectangle {
             anchors.fill: parent
-            // Fixed: Utilizes global store namespace guards to silence startup warnings
             color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
             border.color: (typeof Theme !== 'undefined' && Theme.base02 !== undefined) ? Theme.base02 : "#003399"
             border.width: 5
@@ -180,6 +142,11 @@ Scope {
                         id: clockDateCapsuleFrame
                         implicitWidth: 150
                         anchors.verticalCenter: parent.verticalCenter
+                        height: 35
+                        radius: 10
+                        border.width: 3
+                        color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
+                        border.color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
 
                         HoverHandler { id: calendarHover }
 
@@ -190,7 +157,6 @@ Scope {
                             color: "transparent"
                             Rectangle {
                                 anchors.fill: parent
-                                // Fixed: Utilizes global store namespace guards to silence startup warnings
                                 border.color: (typeof Theme !== 'undefined' && Theme.base0D !== undefined) ? Theme.base0D : "yellow"
                                 border.width: 3
                                 radius: 5
@@ -202,23 +168,18 @@ Scope {
                                     text: root.calendarTooltipText
                                     font.family: "monospace"
                                     font.pixelSize: 20
-                                    color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
-
+                                    color: (typeof Theme !== 'undefined' && Theme.base0D !== undefined) ? Theme.base0D : "yellow"
                                 }
                             }
                         }
-
                         Text {
                             id: clockDateDisplay
                             anchors.centerIn: parent
                             font.family: "monospace"
                             font.pixelSize: 20
                             font.bold: true
+                            color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "white"
                             text: systemTimeGlobal ? Qt.formatDateTime(systemTimeGlobal.date, "ddd MMM dd") : "Loading..."
-                        }
-
-                        Component.onCompleted: {
-                            root.applyCapsuleTheme(clockDateCapsuleFrame, clockDateDisplay);
                         }
                     }
 
@@ -235,6 +196,7 @@ Scope {
                         }
                     }
                 }
+
                 Row {
                     id: centerRow
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -247,7 +209,12 @@ Scope {
                     Rectangle {
                         id: clockTimeCapsuleFrame
                         implicitWidth: 145
+                        height: 35
+                        radius: 10
+                        border.width: 3
                         anchors.verticalCenter: parent.verticalCenter
+                        color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
+                        border.color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
 
                         Text {
                             id: clockTimeDisplay
@@ -255,10 +222,9 @@ Scope {
                             font.family: "monospace"
                             font.pixelSize: 20
                             font.bold: true
+                            color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "white"
                             text: systemTimeGlobal ? Qt.formatDateTime(systemTimeGlobal.date, "hh:mm:ss AP") : "Loading..."
                         }
-
-                        Component.onCompleted: root.applyCapsuleTheme(clockTimeCapsuleFrame, clockTimeDisplay)
                     }
                 }
 
@@ -316,11 +282,20 @@ Scope {
 
         WlrLayershell.layer: WlrLayershell.Overlay
         WlrLayershell.namespace: "quickshell-notifications"
+
+        // 1. Anchor tightly to the top right wall layout edge
         anchors.top: true
         anchors.right: true
-        implicitWidth: 350
-        implicitHeight: 800
-        color: "transparent"
+
+        // 2. HARDWARE MARGIN: Pushes the entire window container down by 600px from the top edge
+        // This overrides any conflicting background script code loops completely
+        WlrLayershell.margins.top:200
+        WlrLayershell.margins.right: 0
+        //These lines mark where notifications can be. They will ALWAYS go to the top of their bounding block
+        implicitWidth: 600
+        implicitHeight: 500
+        //commenting out transparent puts a white block where notification bounding block is
+       color: "transparent"
 
         Loader {
             id: notificationOverlayLoader
@@ -339,6 +314,8 @@ Scope {
             }
         }
     }
+
+
 
     PanelWindow {
         id: alarmPromptWindow

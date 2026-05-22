@@ -3,39 +3,20 @@ import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 
+import Theme
+
 Rectangle {
     id: micBox
+    width: 140
+    height: 35
+    radius: 10
+    border.width: 3
 
-    Component.onCompleted: {
-        if (typeof(root.applyCapsuleTheme) !== 'undefined') {
-            root.applyCapsuleTheme(micBox, micText);
-        }
-        updateDisplayText("0.0", false); // Initial display
-    }
+    // Decoupled color hooks mapped to your Nix Store module constants
+    color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
+    border.color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
 
     property string micDisplayText: "Mic: --"
-
-    function updateDisplayText(raw, isMuted) {
-        if (!root.theme) {
-            micText.text = "<font color='green'>Mic:</font> --%";
-            return;
-        }
-
-        const greenColor = root.theme.base0C.toString();
-        const yellowColor = root.theme.base05.toString();
-        const redColor = root.theme.base08.toString();
-
-        var mNum = "0%";
-        if (!isMuted) {
-            var mMatch = raw.match(/[0-9.]+/);
-            if (mMatch) mNum = Math.round(parseFloat(mMatch[0]) * 100) + "%";
-        } else {
-            mNum = "MUTED";
-        }
-
-        var mCol = isMuted ? redColor : yellowColor;
-        micDisplayText = "<font color='" + greenColor + "'>Mic:</font> <font color='" + mCol + "'>" + mNum + "</font>";
-    }
 
     Process { id: micMuteCmd; command: ["/bin/sh", "-c", "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"] }
 
@@ -51,7 +32,25 @@ Rectangle {
                 if (!data) return;
                 var raw = data.trim();
                 var isMuted = raw.indexOf("[MUTED]") !== -1;
-                updateDisplayText(raw, isMuted);
+
+                var mNum = "0%";
+                if (!isMuted) {
+                    var mMatch = raw.match(/[0-9.]+/);
+                    if (mMatch) mNum = Math.round(parseFloat(mMatch[0]) * 100) + "%";
+                } else {
+                    mNum = "MUTED";
+                }
+
+                // Secure color formatting variables safely bound to your global layout theme
+                var micLabelColor = (typeof Theme !== 'undefined' && Theme.base0C !== undefined) ? Theme.base0C : "green";
+                var micStatusColor = "yellow";
+                if (typeof Theme !== 'undefined' && Theme.base08 !== undefined && Theme.base05 !== undefined) {
+                    micStatusColor = isMuted ? Theme.base08 : Theme.base05;
+                } else {
+                    micStatusColor = isMuted ? "red" : "yellow";
+                }
+
+                micBox.micDisplayText = "<font color='" + micLabelColor + "'>Mic:</font> <font color='" + micStatusColor + "'>" + mNum + "</font>";
             }
         }
     }
@@ -64,13 +63,15 @@ Rectangle {
     }
 
     Text {
-        id: micText
-        anchors.centerIn: parent
-        textFormat: Text.RichText
-        text: micDisplayText
-        font.family: "monospace"
-        font.pixelSize: 15
+        id: micText;
+        anchors.centerIn: parent;
+        textFormat: Text.RichText;
+        text: micBox.micDisplayText;
+        font.family: "monospace";
+        font.pixelSize: 20;
         font.bold: true
+        // Sync base fallback string configuration parameters dynamically
+        color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "white"
     }
 
     Timer { interval: 2000; running: true; repeat: true; onTriggered: micProc.running = true }

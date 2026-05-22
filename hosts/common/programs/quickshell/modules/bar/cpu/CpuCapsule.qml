@@ -1,27 +1,32 @@
 import QtQuick
 import Quickshell.Io
 
+import Theme
+
 Rectangle {
     id: cpuBox
-    width: 200
 
-    // --- Data Properties ---
+    // Sovereign sizing rules restore visual visibility matching your bar grid
+    width: 200
+    height: 35
+    radius: 10
+    border.width: 3
+
+    // Direct memory lookups pointing straight to your immutable compiled Nix-Store colors
+    color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
+    border.color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
+
+    // Data Properties
     property int cpuUsage: 0
     property int cpuTemp: 0
 
-    // --- Thresholds ---
+    // Thresholds
     property int tempWarn: 65
     property int tempCrit: 70
     property int usageWarn: 50
     property int usageCrit: 80
 
-    Component.onCompleted: {
-        if (typeof(root.applyCapsuleTheme) !== 'undefined') {
-            root.applyCapsuleTheme(cpuBox, cpuText);
-        }
-    }
-
-    // --- Data Fetching Process ---
+    // Data Fetching Process
     Process {
         id: cpuStatsProc
         running: true
@@ -57,14 +62,11 @@ Rectangle {
         font.bold: true
 
         text: {
-            if (!root.theme) {
-                return "<font color='green'>CPU:</font>   --%   --°C";
-            }
-
-            const greenColor    = root.theme.base0C.toString();
-            const normalColor   = root.theme.base05.toString(); // yellow
-            const warningColor  = root.theme.base0A.toString(); // orange
-            const criticalColor = root.theme.base08.toString(); // red
+            // Secure nested checks guarantee silent initialization logs
+            const greenColor    = (typeof Theme !== 'undefined' && Theme.base0C !== undefined) ? Theme.base0C.toString() : "green";
+            const normalColor   = (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05.toString() : "yellow";
+            const warningColor  = (typeof Theme !== 'undefined' && Theme.base0A !== undefined) ? Theme.base0A.toString() : "orange";
+            const criticalColor = (typeof Theme !== 'undefined' && Theme.base08 !== undefined) ? Theme.base08.toString() : "red";
 
             var temp_color = (cpuBox.cpuTemp >= cpuBox.tempCrit) ? criticalColor : (cpuBox.cpuTemp >= cpuBox.tempWarn) ? warningColor : normalColor;
             var usage_color = (cpuBox.cpuUsage >= cpuBox.usageCrit) ? criticalColor : (cpuBox.cpuUsage >= cpuBox.usageWarn) ? warningColor : normalColor;
