@@ -1,3 +1,4 @@
+
 import QtQuick
 import QtQuick.Controls
 import Quickshell
@@ -11,6 +12,8 @@ Rectangle {
     color: "#00000088"
     focus: visible
     enabled: visible
+
+    property string currentDefinition: ""
 
     function open() {
         launcherWindow.visible = true
@@ -99,36 +102,22 @@ Rectangle {
         }
 
     }
+
+    Process {
+        id: dictionaryProcess
+        stdout: SplitParser {
+            onRead: data => {
+                launcherRoot.currentDefinition = data.trim() ? data : "No definition found."
+            }
+        }
+    }
+
     Process {
         id: appLoader
         command: [
             "sh",
             "-c",
-            "
-            find \
-            /run/current-system/sw/share/applications \
-            $HOME/.local/share/applications \
-            -name '*.desktop' 2>/dev/null |
-            while read -r file; do
-                name=$(grep -m1 '^Name=' \"$file\" | cut -d= -f2-)
-
-                exec_cmd=$(grep -m1 '^Exec=' \"$file\" | cut -d= -f2-)
-                icon=$(grep -m1 '^Icon=' \"$file\" | cut -d= -f2-)
-
-                exec_cmd=$(printf '%s\n' \"$exec_cmd\" | \
-                sed -E 's/[[:space:]]+%[fFuUdDnNickvm]//g')
-
-                exec_cmd=$(echo \"$exec_cmd\" | sed 's/^ *//;s/ *$//')
-
-                [ -z \"$name\" ] && continue
-                [ -z \"$exec_cmd\" ] && continue
-
-                [ -z \"$icon\" ] && icon='application-x-executable'
-
-                echo \"$name|$exec_cmd|$icon\"
-
-                done
-                "
+            "\n            find \\\n            /run/current-system/sw/share/applications \\\n            $HOME/.local/share/applications \\\n            -name '*.desktop' 2>/dev/null |\n            while read -r file; do\n                name=$(grep -m1 '^Name=' \"$file\" | cut -d= -f2-)\n\n                exec_cmd=$(grep -m1 '^Exec=' \"$file\" | cut -d= -f2-)\n                icon=$(grep -m1 '^Icon=' \"$file\" | cut -d= -f2-)\n\n                exec_cmd=$(printf '%s\\n' \"$exec_cmd\" | \\\n                sed -E 's/[[:space:]]+%[fFuUdDnNickvm]//g')\n\n                exec_cmd=$(echo \"$exec_cmd\" | sed 's/^ *//;s/ *$//')\n\n                [ -z \"$name\" ] && continue\n                [ -z \"$exec_cmd\" ] && continue\n\n                [ -z \"$icon\" ] && icon='application-x-executable'\n\n                echo \"$name|$exec_cmd|$icon\"\n\n                done\n                "
         ]
 
         stdout: SplitParser {
@@ -199,18 +188,36 @@ Rectangle {
                 }
 
                 onTextChanged: {
-                    refreshFilter()
-                    listView.currentIndex = 0
+                    if (searchField.text.startsWith("def ")) {
+                        listView.visible = false
+                        dictionaryView.visible = true
+                        let word = searchField.text.substring(4).trim()
+                        if (word.length > 0) {
+                            launcherRoot.currentDefinition = "Loading definition for '" + word + "'..."
+                            dictionaryProcess.command = ["sh", "-c", `dict "${word}" 2>/dev/null || echo "No definition found."`]
+                            dictionaryProcess.running = true
+                        } else {
+                            launcherRoot.currentDefinition = "Enter a word to define."
+                        }
+                    } else {
+                        launcherRoot.currentDefinition = ""
+                        listView.visible = true
+                        dictionaryView.visible = false
+                        refreshFilter()
+                        if (filteredModel.count > 0) {
+                            listView.currentIndex = 0
+                        }
+                    }
                 }
 
                 Keys.onUpPressed: {
-                    if (listView.currentIndex > 0) {
+                    if (listView.visible && listView.currentIndex > 0) {
                         listView.currentIndex--
                     }
                 }
 
                 Keys.onDownPressed: {
-                    if (listView.currentIndex < listView.count - 1) {
+                    if (listView.visible && listView.currentIndex < listView.count - 1) {
                         listView.currentIndex++
                     }
                 }
@@ -220,7 +227,7 @@ Rectangle {
                 }
 
                 Keys.onReturnPressed: {
-                    if (listView.currentIndex >= 0) {
+                    if (listView.visible && listView.currentIndex >= 0) {
                         launch(filteredModel.get(listView.currentIndex).exec)
                     }
                 }
@@ -303,6 +310,21 @@ Rectangle {
                             launch(model.exec)
                         }
                     }
+                }
+            }
+            ScrollView {
+                id: dictionaryView
+                width: parent.width
+                height: parent.height - 70
+                visible: false
+                clip: true
+
+                Text {
+                    width: parent.width - 10
+                    text: launcherRoot.currentDefinition
+                    color: shell.theme.base05
+                    wrapMode: Text.WordWrap
+                    font.pixelSize: 16
                 }
             }
         }

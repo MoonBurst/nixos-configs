@@ -58,7 +58,9 @@ Item {
 
             console.log(
                 "Notification received:",
-                notification.summary
+                notification.summary,
+                "resident:",
+                notification.resident
             );
 
             root.handleNotification(notification);
@@ -69,22 +71,41 @@ Item {
     // STATE
     // =========================
     function handleNotification(notification) {
-        // Pass rulesLoader inside the initialization dictionary
-        let popupCard = cardComponentTemplate.createObject(root, {
-            notification: notification,
-            rulesLoader: rulesLoader // <-- FIX: Injected at creation time
-        });
+        const isShowEvent = notification.summary && notification.summary.length > 0;
 
-        let entry = {
-            card: popupCard,
-            notification: notification
-        };
+        if (!isShowEvent) {
+            // This is likely a close event. Let's see if we have a card to close.
+            let existingEntry = activeNotifications.find(entry => entry.notification.id === notification.id);
+            if (existingEntry) {
+                notificationIPC.dismiss(existingEntry.card);
+            }
+            return; // Nothing more to do for a close event.
+        }
 
-        activeNotifications.unshift(entry);
-        positionNotificationsDeck();
-        rulesLoader.handleIncomingNotificationCues(notification);
+        // If we reach here, it's a "show" or "update" event.
+        let existingEntry = activeNotifications.find(entry => entry.notification.id === notification.id);
+
+        if (existingEntry) {
+            // It's an update for an existing notification.
+            existingEntry.card.notification = notification;
+            existingEntry.notification = notification;
+        } else {
+            // It's a new notification. Create a card.
+            let popupCard = cardComponentTemplate.createObject(root, {
+                notification: notification,
+                rulesLoader: rulesLoader
+            });
+
+            let entry = {
+                card: popupCard,
+                notification: notification
+            };
+
+            activeNotifications.unshift(entry);
+            positionNotificationsDeck();
+            rulesLoader.handleIncomingNotificationCues(notification);
+        }
     }
-
 
 
 

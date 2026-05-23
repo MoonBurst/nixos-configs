@@ -1,3 +1,4 @@
+
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -12,33 +13,25 @@ Item {
 
         stdout: SplitParser {
             onRead: data => {
-                root.currentDefinition = data
+                let trimmedData = data.trim()
+                root.currentDefinition = trimmedData ? trimmedData : "No definition found."
             }
         }
     }
 
-    function fetch(rootObject, word) {
-
+    function fetch(word) {
         if (!word || word.length === 0) {
-            rootObject.mathResultString = "No word provided."
+            root.currentDefinition = "Please enter a word to define."
             return
         }
 
-        rootObject.isMathMode = true
-
+        root.currentDefinition = `Loading definition for '${word}'...`
         dictionaryProcess.running = false
-
         dictionaryProcess.command = [
             "sh",
             "-c",
-            `dict "${word}" 2>/dev/null || echo "No definition found."`
+            `dict "${word}"`
         ]
-
         dictionaryProcess.running = true
-
-        Qt.callLater(function() {
-            rootObject.mathResultString =
-            root.currentDefinition || "Loading..."
-        })
     }
 }
