@@ -5,18 +5,11 @@ import Quickshell.Io
 
 Rectangle {
     id: launcherRoot
-
     property var shell
-
+    property var launcherWindow
     anchors.fill: parent
-
-    visible: false
-    enabled: visible
-
     color: "#00000088"
-
     focus: visible
-
     Keys.onEscapePressed: {
         close()
     }
@@ -31,12 +24,9 @@ Rectangle {
 
     function refreshFilter() {
         filteredModel.clear()
-
         let query = searchField.text.toLowerCase()
-
         for (let i = 0; i < launcherModel.count; ++i) {
             let app = launcherModel.get(i)
-
             if (
                 query === "" ||
                 app.name.toLowerCase().includes(query)
@@ -48,53 +38,44 @@ Rectangle {
 
     function launch(command) {
         console.log("Launching:", command)
-
         Quickshell.execDetached([
             "sh",
             "-c",
             command
         ])
-
-        launcherRoot.visible = false
     }
 
 
 IpcHandler {
     target: "launcher"
-
     function open() {
         launcherRoot.visible = true
-
         if (launcherRoot.visible) {
             searchField.forceActiveFocus()
         }
-
         console.log("IPC OPEN:", launcherRoot.visible)
     }
 
     function close() {
         launcherRoot.visible = false
-
         console.log("IPC CLOSE:", launcherRoot.visible)
     }
 
     function toggle() {
         launcherRoot.visible = !launcherRoot.visible
-
         if (launcherRoot.visible) {
             searchField.forceActiveFocus()
         }
-
         console.log("IPC TOGGLE:", launcherRoot.visible)
     }
 
     function clipboard() {
         console.log("IPC CLIPBOARD")
     }
+
 }
     Process {
         id: appLoader
-
         command: [
             "sh",
             "-c",
@@ -103,10 +84,9 @@ IpcHandler {
             /run/current-system/sw/share/applications \
             $HOME/.local/share/applications \
             -name '*.desktop' 2>/dev/null |
-
             while read -r file; do
-
                 name=$(grep -m1 '^Name=' \"$file\" | cut -d= -f2-)
+
                 exec_cmd=$(grep -m1 '^Exec=' \"$file\" | cut -d= -f2-)
                 icon=$(grep -m1 '^Icon=' \"$file\" | cut -d= -f2-)
 

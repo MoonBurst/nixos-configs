@@ -332,20 +332,20 @@ ShellRoot {
 
         color: "transparent"
 
-        mask: launcherOverlay.visible
+
 
         WlrLayershell.layer: WlrLayer.Overlay
 
         WlrLayershell.keyboardFocus:
-        launcherOverlay.visible
+        visible
         ? WlrKeyboardFocus.Exclusive
         : WlrKeyboardFocus.None
 
         LauncherModule.LauncherOverlay {
             id: launcherOverlay
-
             anchors.fill: parent
             shell: shell
+            launcherWindow: launcherOverlayWindow
         }
     }
 
