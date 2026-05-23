@@ -11,6 +11,38 @@ Rectangle {
     color: "#00000088"
     focus: visible
     enabled: visible
+
+    function open() {
+        launcherWindow.visible = true
+        if (launcherWindow.visible) {
+            searchField.forceActiveFocus()
+        }
+        console.log("IPC OPEN:", launcherWindow.visible)
+    }
+
+    function close() {
+        launcherWindow.visible = false
+        searchField.text = ""
+        console.log("IPC CLOSE:", launcherWindow.visible)
+    }
+
+    function toggle() {
+        launcherWindow.visible = !launcherWindow.visible
+        if (launcherWindow.visible) {
+            searchField.forceActiveFocus()
+        } else {
+            searchField.text = ""
+        }
+        console.log("IPC TOGGLE:", launcherWindow.visible)
+    }
+
+    MouseArea {
+        anchors.fill: parent
+        onClicked: {
+            close()
+        }
+    }
+
     Keys.onEscapePressed: {
         close()
     }
@@ -44,33 +76,22 @@ Rectangle {
             "-c",
             command
         ])
+        close()
     }
 
 
     IpcHandler {
         target: "launcher"
         function open() {
-            launcherWindow.visible = true
-            if (launcherWindow.visible) {
-                searchField.forceActiveFocus()
-            }
-            console.log("IPC OPEN:", launcherWindow.visible)
+            launcherRoot.open()
         }
 
         function close() {
-            launcherWindow.visible = false
-            searchField.text = ""
-            console.log("IPC CLOSE:", launcherWindow.visible)
+            launcherRoot.close()
         }
 
         function toggle() {
-            launcherWindow.visible = !launcherWindow.visible
-            if (launcherWindow.visible) {
-                searchField.forceActiveFocus()
-            } else {
-                searchField.text = ""
-            }
-            console.log("IPC TOGGLE:", launcherWindow.visible)
+            launcherRoot.toggle()
         }
 
         function clipboard() {
@@ -147,6 +168,10 @@ Rectangle {
         border.width: 3
         border.color: shell.theme.base03
 
+        MouseArea {
+            anchors.fill: parent
+        }
+
         Column {
             anchors.fill: parent
             anchors.margins: 20
@@ -160,6 +185,7 @@ Rectangle {
                 height: 50
 
                 color: shell.theme.base05
+                activeFocusOnPress: false
 
                 font.pixelSize: 20
 
@@ -174,9 +200,18 @@ Rectangle {
 
                 onTextChanged: {
                     refreshFilter()
+                    listView.currentIndex = 0
+                }
 
-                    if (text.startsWith("def ")) {
-                        console.log("Dictionary mode:", text)
+                Keys.onUpPressed: {
+                    if (listView.currentIndex > 0) {
+                        listView.currentIndex--
+                    }
+                }
+
+                Keys.onDownPressed: {
+                    if (listView.currentIndex < listView.count - 1) {
+                        listView.currentIndex++
                     }
                 }
 
@@ -185,13 +220,14 @@ Rectangle {
                 }
 
                 Keys.onReturnPressed: {
-                    if (filteredModel.count > 0) {
-                        launch(filteredModel.get(0).exec)
+                    if (listView.currentIndex >= 0) {
+                        launch(filteredModel.get(listView.currentIndex).exec)
                     }
                 }
             }
 
             ListView {
+                id: listView
                 width: parent.width
                 height: parent.height - 70
 
@@ -200,6 +236,13 @@ Rectangle {
                 spacing: 4
 
                 model: filteredModel
+                focus: true
+
+                Keys.onReturnPressed: {
+                    if (currentIndex >= 0) {
+                        launch(filteredModel.get(currentIndex).exec)
+                    }
+                }
 
                 delegate: Rectangle {
                     width: ListView.view.width
@@ -207,9 +250,9 @@ Rectangle {
 
                     radius: 8
 
-                    color: mouse.containsMouse
+                    color: ListView.isCurrentItem
                     ? shell.theme.base02
-                    : "transparent"
+                    : (mouse.containsMouse ? shell.theme.base02 : "transparent")
 
                     Row {
                         anchors.verticalCenter: parent.verticalCenter
