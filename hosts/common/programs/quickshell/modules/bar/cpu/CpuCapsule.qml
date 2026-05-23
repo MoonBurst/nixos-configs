@@ -3,42 +3,32 @@ import QtQuick.Controls 2
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
-import Theme
 
 Rectangle {
     id: cpuBox
 
-    // ============================================================================
-    // ⚙️ CUSTOMIZABLE CONFIGURATION ZONE (EDIT THESE VALUES)
-    // ============================================================================
-
-    // TAG: Width of the tooltip window popup canvas box (in pixels)
     property int tooltipWidth: 320
-
-    // TAG: Height of the tooltip window popup canvas box (in pixels)
-    // FIXED: Expanded the default height scale boundary limits up to 400px
     property int tooltipHeight: 400
 
-    // ============================================================================
-    // 🧠 CORE ENGINE LAYERS (DO NOT TOUCH)
-    // ============================================================================
+    // FIXED: Bounds, outlines, and metrics scale cleanly to match your global design specifications
     width: 175
-    height: 35
-    radius: 10
-    border.width: 3
+    height: parent.height
+    radius: shell.theme.defaultCardRadius
+    border.width: shell.theme.globalBorderWidth
 
-    color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
-    border.color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
+    color: shell.theme.base00
+    border.color: shell.theme.base05
 
-    property string cpuUsageStr: "--%"
-    property string cpuTempStr: "--°C"
+    property string cpuUsageStr: "0%"
+    property string cpuTempStr: "0°C"
     property string topProcessesText: "Loading CPU processes..."
     property string textAccumulatorBuffer: ""
+    property var barWindow: null
 
     Process {
         id: cpuStatsProc
         running: true
-        command: ["sh", "-c", "usage=$(awk '/cpu / {print int(($2+$4)*100/($2+$4+$5))}' /proc/stat); temp=$(sensors 2>/dev/null | awk '/Package id 0:/ {print $4}' | tr -d '+'); echo \"${usage:-0}%:${temp:-0°C}\""]
+        command: ["sh", "-c", "usage=$(awk '/cpu / {print int(($2+$4)*100/($2+$4+$5))}' /proc/stat); temp=$(cat /sys/class/hwmon/hwmon*/temp*_input 2>/dev/null | head -n 1 || echo '0'); if [ \"$temp\" -gt 0 ]; then temp=$(echo \"scale=0; $temp/1000\" | bc); fi; echo \"$usage%:${temp}°C\""]
         stdout: SplitParser {
             onRead: data => {
                 var parts = data.trim().split(":");
@@ -56,17 +46,9 @@ Rectangle {
         command: ["sh", "-c", "ps -eo comm,%cpu --sort=-%cpu | head -n 11 | awk 'NR>1 {printf \"%-13s %6s%%\\n\", substr($1,1,13), $2}'"]
         stdout: SplitParser {
             splitMarker: "\n"
-            onRead: data => {
-                if (data && data.trim() !== "") {
-                    cpuBox.textAccumulatorBuffer += data + "\n";
-                }
-            }
+            onRead: data => { if (data && data.trim() !== "") cpuBox.textAccumulatorBuffer += data + "\n"; }
         }
-        onExited: {
-            if (cpuBox.textAccumulatorBuffer.trim() !== "") {
-                cpuBox.topProcessesText = cpuBox.textAccumulatorBuffer.trim();
-            }
-        }
+        onExited: { if (cpuBox.textAccumulatorBuffer.trim() !== "") cpuBox.topProcessesText = cpuBox.textAccumulatorBuffer.trim(); }
     }
 
     Text {
@@ -74,46 +56,42 @@ Rectangle {
         anchors.fill: parent
         anchors.margins: 5
         textFormat: Text.RichText
-        font.family: "monospace"
-        font.pixelSize: 20
+        font.family: shell.theme.fontFamily
+        font.pixelSize: shell.theme.globalFontSize
         font.bold: true
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
 
         text: {
-            const greenColor = (typeof Theme !== 'undefined' && Theme.base0C !== undefined) ? Theme.base0C.toString() : "green";
-            const whiteColor = (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05.toString() : "white";
-
+            const greenColor = shell.theme.base0C.toString();
+            const yellowColor = shell.theme.base05.toString();
             return "<font color='" + greenColor + "'>CPU:</font> " +
-            "<font color='" + whiteColor + "'>" + cpuBox.cpuUsageStr + " " + cpuBox.cpuTempStr + "</font>";
+            "<font color='" + yellowColor + "'>" + cpuBox.cpuUsageStr + " " + cpuBox.cpuTempStr + "</font>";
         }
     }
 
     HoverHandler {
         id: cpuHoverTracker
-        onHoveredChanged: {
-            if (hovered) {
-                cpuBox.textAccumulatorBuffer = "";
-                topProcFetcher.running = false;
-                topProcFetcher.running = true;
-            }
-        }
+        onHoveredChanged: { if (hovered) { cpuBox.textAccumulatorBuffer = ""; topProcFetcher.running = false; topProcFetcher.running = true; } }
     }
 
     PanelWindow {
         id: fixedTooltipWindow
-        screen: standardBarWindow.screen
+        screen: cpuBox.barWindow ? cpuBox.barWindow.screen : null
         visible: cpuHoverTracker.hovered
 
-        WlrLayershell.layer: WlrLayershell.Overlay
+        WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "quickshell-cpu-tooltip"
-        WlrLayershell.keyboardFocus: WlrLayershell.None
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
         anchors.top: true
         anchors.right: true
 
-        WlrLayershell.margins.top: 55
-        WlrLayershell.margins.right: Math.max(10, standardBarWindow.width - cpuBox.mapToItem(null, 0, 0).x - (cpuBox.width / 2) - (cpuBox.tooltipWidth / 2))
+        // FIXED: Dropdown shifts pull accurately from global padding profiles
+        WlrLayershell.margins.top: 55 + shell.theme.globalPadding
+
+        // FIXED: Correctly uses cpuBox.barWindow to calculate precise horizontal layout offsets
+        WlrLayershell.margins.right: cpuBox.barWindow ? Math.max(10 + shell.theme.globalPadding, cpuBox.barWindow.width - cpuBox.mapToItem(null, 0, 0).x - (cpuBox.width / 2) - (cpuBox.tooltipWidth / 2)) : 10
 
         implicitWidth: cpuBox.tooltipWidth
         implicitHeight: cpuBox.tooltipHeight
@@ -121,34 +99,28 @@ Rectangle {
 
         Rectangle {
             anchors.fill: parent
-            radius: 8
-            border.width: 3
-
-            color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
-            border.color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
+            radius: shell.theme.defaultCardRadius
+            border.width: shell.theme.globalBorderWidth
+            color: shell.theme.base00
+            border.color: shell.theme.base05
 
             Column {
                 anchors.fill: parent
-                anchors.margins: 12
-                spacing: 8
+                anchors.margins: shell.theme.globalPadding
+                spacing: 10
 
                 Text {
                     text: "📊 TOP PROCESSORS LOAD:"
-                    font.family: "monospace"
-                    font.pixelSize: 20
+                    font.family: shell.theme.fontFamily
+                    font.pixelSize: shell.theme.globalFontSize
                     font.bold: true
-                    color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
+                    color: shell.theme.base05
                 }
 
-                Rectangle {
-                    width: parent.width
-                    height: 2
-                    color: (typeof Theme !== 'undefined' && Theme.base03 !== undefined) ? Theme.base03 : "#333333"
-                }
+                Rectangle { width: parent.width; height: 2; color: shell.theme.base02 }
 
                 Flickable {
-                    width: parent.width
-                    height: cpuBox.tooltipHeight - 70
+                    width: parent.width; height: cpuBox.tooltipHeight - 70
                     contentWidth: processDisplayLines.paintedWidth
                     contentHeight: processDisplayLines.paintedHeight
                     clip: true
@@ -156,10 +128,9 @@ Rectangle {
                     Text {
                         id: processDisplayLines
                         text: cpuBox.topProcessesText
-                        font.family: "monospace"
-                        // FIXED: Scaled up font tracking profile readouts to size 20
-                        font.pixelSize: 20
-                        color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "white"
+                        font.family: shell.theme.fontFamily
+                        font.pixelSize: shell.theme.globalFontSize
+                        color: shell.theme.base05
                         lineHeight: 1.15
                         wrapMode: Text.NoWrap
                     }
@@ -169,19 +140,11 @@ Rectangle {
     }
 
     Timer {
-        interval: 2000
-        running: true
-        repeat: true
-        triggeredOnStart: true
+        interval: 2000; running: true; repeat: true; triggeredOnStart: true
         onTriggered: {
             cpuStatsProc.running = false;
             cpuStatsProc.running = true;
-
-            if (cpuHoverTracker.hovered) {
-                cpuBox.textAccumulatorBuffer = "";
-                topProcFetcher.running = false;
-                topProcFetcher.running = true;
-            }
+            if (cpuHoverTracker.hovered) { cpuBox.textAccumulatorBuffer = ""; topProcFetcher.running = false; topProcFetcher.running = true; }
         }
     }
 }

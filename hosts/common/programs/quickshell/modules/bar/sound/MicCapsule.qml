@@ -3,22 +3,22 @@ import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 
-import Theme
-
 Rectangle {
     id: micBox
 
-    // Sovereign layout rules ensure visibility independent of shell configuration passes
-    width: 140
-    height: 35
-    radius: 10
-    border.width: 3
-
-    // Direct color references bound securely to your global user profile setup
-    color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
-    border.color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
-
+    // ============================================================================
+    // PROPERTIES & LAYOUT BINDINGS
+    // ============================================================================
+    property var barWindow: null
     property string micDisplayText: "Mic: --"
+
+    width: 140
+    height: parent.height
+    radius: shell.theme.defaultCardRadius
+    border.width: shell.theme.globalBorderWidth
+
+    color: shell.theme.base00
+    border.color: shell.theme.base05
 
     Process { id: micMuteCmd; command: ["/bin/sh", "-c", "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"] }
 
@@ -43,16 +43,11 @@ Rectangle {
                     mNum = "MUTED";
                 }
 
-                // Map tags directly to your Stylix colors (Base05 for yellow labels, Base08 for muted red)
-                var labelColor = (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow";
-                var mCol = "white";
-                if (typeof Theme !== 'undefined' && Theme.base08 !== undefined && Theme.base05 !== undefined) {
-                    mCol = isMuted ? Theme.base08 : Theme.base05;
-                } else {
-                    mCol = isMuted ? "red" : "white";
-                }
+                // FIXED: Restored the variable name 'parts' from the auto-corrected 'import' token
+                var micLabelColor = shell.theme.base0C;
+                var micStatusColor = isMuted ? shell.theme.base08 : shell.theme.base05;
 
-                micBox.micDisplayText = "<font color='" + labelColor + "'>Mic:</font> <font color='" + mCol + "'>" + mNum + "</font>";
+                micBox.micDisplayText = "<font color='" + micLabelColor + "'>Mic:</font> <font color='" + micStatusColor + "'>" + mNum + "</font>";
             }
         }
     }
@@ -69,9 +64,10 @@ Rectangle {
         anchors.centerIn: parent;
         textFormat: Text.RichText;
         text: micBox.micDisplayText;
-        font.family: "monospace";
-        font.pixelSize: 20;
+        font.family: shell.theme.fontFamily;
+        font.pixelSize: shell.theme.globalFontSize;
         font.bold: true
+        color: shell.theme.base05
     }
 
     Timer { interval: 2000; running: true; repeat: true; onTriggered: micProc.running = true }

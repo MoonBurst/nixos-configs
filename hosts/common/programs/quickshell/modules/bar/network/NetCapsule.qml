@@ -3,65 +3,91 @@ import QtQuick.Controls 2
 import Quickshell
 import Quickshell.Io
 
-import Theme
-
 Rectangle {
     id: netBox
 
-    // Sovereign sizing rules restore visual visibility matching your bar grid
-    width: 230
-    height: 35
-    radius: 10
-    border.width: 3
+    // FIXED: Layout frames and outlines natively scale to match your global design rule profiles
+    width: 200
+    height: parent.height
+    radius: shell.theme.defaultCardRadius
+    border.width: shell.theme.globalBorderWidth
 
-    // Direct lookups pointing straight to your immutable compiled Nix-Store colors
-    color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
-    border.color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
+    color: shell.theme.base00
+    border.color: shell.theme.base05
 
-    property string netDisplayText: "NET: --"
+    property string downSpeedStr: "0B"
+    property string upSpeedStr: "0B"
+    property var barWindow: null
 
     Process {
-        id: netProc
+        id: netStatsProc
         running: true
-        command: [
-            "sh", "-c",
-            "I=$(ip route | awk '/default/ {print $5; exit}'); [ -z \"$I\" ] && echo \"0|0\" && exit 0; " +
-            "R1=$(awk -v i=\"$I\" '$1 ~ i {print $2}' /proc/net/dev); T1=$(awk -v i=\"$I\" '$1 ~ i {print $10}' /proc/net/dev); sleep 1; " +
-            "R2=$(awk -v i=\"$I\" '$1 ~ i {print $2}' /proc/net/dev); T2=$(awk -v i=\"$I\" '$1 ~ i {print $10}' /proc/net/dev); " +
-            "echo \"$((R2 - R1))|$((T2 - T1))\""
-        ]
+        command: ["sh", "-c", "interface=$(ip route | awk '/default/ {print $5; exit}'); awk -v iface=\"$interface\" '$1 ~ iface {down=$2; up=$10; print down \":\" up}' /proc/net/dev"]
+
+        property real lastDown: 0
+        property real lastUp: 0
+        property bool isFirstRun: true
+
+        function formatSpeed(bytesDiff) {
+            if (bytesDiff < 1024) return Math.round(bytesDiff) + "B";
+            var kb = bytesDiff / 1024;
+            if (kb < 1024) return Math.round(kb) + "K";
+            var mb = kb / 1024;
+            if (mb < 1024) return mb.toFixed(1) + "M";
+            var gb = mb / 1024;
+            return gb.toFixed(1) + "G";
+        }
+
         stdout: SplitParser {
             onRead: data => {
-                if (!data) return;
-                var speed = data.trim().split("|");
-                if (speed.length < 2) return;
+                var parts = data.trim().split(":");
+                if (parts.length === 2) {
+                    var currentDown = parseFloat(parts[0]);
+                    var currentUp = parseFloat(parts[1]);
 
-                var rx = parseInt(speed[0]), tx = parseInt(speed[1]);
-                var rxStr = rx > 1048576 ? (rx / 1048576).toFixed(1) + "M" : Math.round(rx / 1024) + "K";
-                var txStr = tx > 1048576 ? (tx / 1048576).toFixed(1) + "M" : Math.round(tx / 1024) + "K";
+                    if (!netStatsProc.isFirstRun) {
+                        var diffDown = currentDown - netStatsProc.lastDown;
+                        var diffUp = currentUp - netStatsProc.lastUp;
 
-                // Secure color formatting strings safely bound to your global layout theme
-                var netLabelColor = (typeof Theme !== 'undefined' && Theme.base0C !== undefined) ? Theme.base0C : "green";
-                var netStatusColor = (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "white";
+                        netBox.downSpeedStr = netStatsProc.formatSpeed(diffDown);
+                        netBox.upSpeedStr = netStatsProc.formatSpeed(diffUp);
+                    }
 
-                netBox.netDisplayText = "<font color='" + netLabelColor + "'>NET:</font> " +
-                "<font color='" + netStatusColor + "'>▼" + rxStr.padStart(5, ' ') + "</font> " +
-                "<font color='" + netStatusColor + "'>▲" + txStr.padStart(5, ' ') + "</font>";
+                    netStatsProc.lastDown = currentDown;
+                    netStatsProc.lastUp = currentUp;
+                    netStatsProc.isFirstRun = false;
+                }
             }
         }
     }
 
     Text {
         id: netText
-        anchors.centerIn: parent
+        anchors.fill: parent
+        anchors.margins: 5
         textFormat: Text.RichText
-        text: netBox.netDisplayText
-        font.family: "monospace"
-        font.pixelSize: 20
+        font.family: shell.theme.fontFamily
+        font.pixelSize: shell.theme.globalFontSize
         font.bold: true
-        // Set dynamic base fallback color tracking
-        color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "white"
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
+
+        text: {
+            // FIXED: Pointed style colors to your global shell theme contexts
+            const greenColor = shell.theme.base0C.toString();
+            const yellowColor = shell.theme.base05.toString();
+
+            return "<font color='" + greenColor + "'>NET:</font> " +
+            "<font color='" + yellowColor + "'>▼</font><font color='" + yellowColor + "'>" + netBox.downSpeedStr + "</font> " +
+            "<font color='" + yellowColor + "'>▲</font><font color='" + yellowColor + "'>" + netBox.upSpeedStr + "</font>";
+        }
     }
 
-    Timer { interval: 2000; running: true; repeat: true; onTriggered: netProc.running = true }
+    Timer {
+        interval: 1000; running: true; repeat: true; triggeredOnStart: true
+        onTriggered: {
+            netStatsProc.running = false;
+            netStatsProc.running = true;
+        }
+    }
 }

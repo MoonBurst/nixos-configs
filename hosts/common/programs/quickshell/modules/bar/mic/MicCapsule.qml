@@ -3,20 +3,21 @@ import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 
-import Theme
-
 Rectangle {
     id: micBox
-    width: 140
-    height: 35
-    radius: 10
-    border.width: 3
 
-    // Decoupled color hooks mapped to your Nix Store module constants
-    color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
-    border.color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
-
+    // FIXED: Added property target definition so shell.qml mapping context works flawlessly
+    property var barWindow: null
     property string micDisplayText: "Mic: --"
+
+    // FIXED: Geometry outlines and dimensions scale natively to match your global design rule profiles
+    width: 140
+    height: parent.height
+    radius: shell.theme.defaultCardRadius
+    border.width: shell.theme.globalBorderWidth
+
+    color: shell.theme.base00
+    border.color: shell.theme.base05
 
     Process { id: micMuteCmd; command: ["/bin/sh", "-c", "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"] }
 
@@ -41,14 +42,9 @@ Rectangle {
                     mNum = "MUTED";
                 }
 
-                // Secure color formatting variables safely bound to your global layout theme
-                var micLabelColor = (typeof Theme !== 'undefined' && Theme.base0C !== undefined) ? Theme.base0C : "green";
-                var micStatusColor = "yellow";
-                if (typeof Theme !== 'undefined' && Theme.base08 !== undefined && Theme.base05 !== undefined) {
-                    micStatusColor = isMuted ? Theme.base08 : Theme.base05;
-                } else {
-                    micStatusColor = isMuted ? "red" : "yellow";
-                }
+                // FIXED: Pointed WirePlumber runtime string formatting colors directly to global shell tokens
+                var micLabelColor = shell.theme.base0C;
+                var micStatusColor = isMuted ? shell.theme.base08 : shell.theme.base05;
 
                 micBox.micDisplayText = "<font color='" + micLabelColor + "'>Mic:</font> <font color='" + micStatusColor + "'>" + mNum + "</font>";
             }
@@ -67,11 +63,10 @@ Rectangle {
         anchors.centerIn: parent;
         textFormat: Text.RichText;
         text: micBox.micDisplayText;
-        font.family: "monospace";
-        font.pixelSize: 20;
+        font.family: shell.theme.fontFamily;
+        font.pixelSize: shell.theme.globalFontSize;
         font.bold: true
-        // Sync base fallback string configuration parameters dynamically
-        color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "white"
+        color: shell.theme.base05
     }
 
     Timer { interval: 2000; running: true; repeat: true; onTriggered: micProc.running = true }

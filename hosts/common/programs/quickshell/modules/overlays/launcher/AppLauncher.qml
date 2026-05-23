@@ -1,122 +1,159 @@
 import QtQuick
+import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 
 Item {
     id: appLauncherRoot
 
-    property var masterAppsList: []
-    property var targetModel: null
+    property alias query: searchField.text
+    property var appModel: launcherModel
 
-    function loadApps(model) {
-        if (!model) {
-            console.log("AppLauncher: loadApps called with null model!")
-            return;
+    signal requestDictionary(string word)
+    signal requestLaunch(string command)
+
+    ListModel {
+        id: launcherModel
+
+        ListElement {
+            name: "Firefox"
+            exec: "firefox"
+            icon: ""
         }
-        targetModel = model;
-        masterAppsList = []
-        appsIndexer.running = true
+
+        ListElement {
+            name: "Alacritty"
+            exec: "alacritty"
+            icon: ""
+        }
+
+        ListElement {
+            name: "Files"
+            exec: "nautilus"
+            icon: ""
+        }
     }
 
-    function filter(searchTerm) {
-        if (!targetModel) return;
-
-        targetModel.beginReset()
-        targetModel.data = masterAppsList.filter(function(item) {
-            return item.name.toLowerCase().indexOf(searchTerm.toLowerCase()) !== -1
-        })
-        targetModel.endReset()
+    Rectangle {
+        anchors.fill: parent
+        color: "#000000AA"
     }
 
-    Process {
-        id: appsIndexer
+    Rectangle {
+        id: launcherBox
 
-        command: [
-            "sh",
-            "-c",
-            `
-            find \\
-            /run/current-system/sw/share/applications \\
-            $HOME/.local/share/applications \\
-            -name '*.desktop' 2>/dev/null |
+        width: 800
+        height: 600
+        anchors.centerIn: parent
 
-            while read -r f; do
+        radius: 16
+        color: launcherRoot.theme.base00
 
-                name=$(grep -m1 '^Name=' "$f" | cut -d= -f2-)
-                exec_cmd=$(grep -m1 '^Exec=' "$f" | cut -d= -f2-)
-                icon=$(grep -m1 '^Icon=' "$f" | cut -d= -f2-)
-                terminal=$(grep -m1 '^Terminal=' "$f" | cut -d= -f2-)
+        border.width: 3
+        border.color: launcherRoot.theme.base03
 
-                exec_cmd=$(printf '%s\\n' "$exec_cmd" | \\
-                sed -E 's/[[:space:]]+%[fFuUdDnNickvm]//g')
+        Column {
+            anchors.fill: parent
+            anchors.margins: 20
+            spacing: 16
 
-                exec_cmd=$(echo "$exec_cmd" | sed 's/^ *//;s/ *$//')
+            TextField {
+                id: searchField
 
-                [ -z "$name" ] && continue
-                [ -z "$exec_cmd" ] && continue
+                width: parent.width
+                height: 52
 
-                [ -z "$icon" ] && icon="application-x-executable"
+                color: launcherRoot.theme.base05
+                font.pixelSize: 20
 
-                echo "$name|$exec_cmd|$icon|$f|$terminal"
+                placeholderText: "Search applications..."
 
-                done
-                `
-        ]
-
-        // FIX: Replaced invalid "onTicked" with native, high-performance SplitParser data streaming hook
-        stdout: SplitParser {
-            onRead: data => {
-                function iconLookup(iconName) {
-                    if (!iconName || iconName.startsWith('/')) {
-                        return iconName;
-                    }
-
-                    const fallbackPaths = [
-                        "/run/current-system/sw/share/icons/hicolor/48x48/apps/",
-                        "/run/current-system/sw/share/icons/hicolor/scalable/apps/",
-                        "/run/current-system/sw/share/pixmaps/"
-                    ];
-
-                    for (var i = 0; i < fallbackPaths.length; i++) {
-                        var potentialIcon = fallbackPaths[i] + iconName + ".png";
-                        return potentialIcon;
-                    }
-
-                    return "application-x-executable";
+                background: Rectangle {
+                    radius: 12
+                    color: launcherRoot.theme.base01
+                    border.width: 2
+                    border.color: launcherRoot.theme.base08
                 }
 
-                const apps = data.split("|")
-                if (apps.length < 5) return;
-
-                const appName = apps[0]
-                const appExec = apps[1]
-                const appIcon = apps[2]
-                const appPath = apps[3]
-                const appTerminal = apps[4]
-
-                const iconPath = iconLookup(appIcon);
-
-                if (appName) {
-                    masterAppsList.push({
-                        name: appName,
-                        iconName: iconPath,
-                        path: appPath,
-                        isApp: true,
-                        exec: appExec,
-                        isTerminal: appTerminal === "true"
-                    });
+                onTextChanged: {
+                    if (text.indexOf("def ") === 0) {
+                        appLauncherRoot.requestDictionary(
+                            text.substring(4)
+                        )
+                    }
                 }
             }
-        }
 
-        // FIX: Swapping "onFinished" with the native Quickshell onExited hook binds your application indexing loops perfectly
-        onExited: (exitCode, exitStatus) => {
-            if (targetModel) {
-                targetModel.beginReset()
-                targetModel.data = masterAppsList
-                targetModel.endReset()
+            ListView {
+                id: appsView
+
+                width: parent.width
+                height: parent.height - 80
+
+                spacing: 8
+                clip: true
+
+                model: launcherModel
+
+                delegate: Rectangle {
+                    width: appsView.width
+                    height: 56
+                    radius: 10
+
+                    color: mouseArea.containsMouse
+                    ? launcherRoot.theme.base02
+                    : launcherRoot.theme.base01
+
+                    Row {
+                        anchors.fill: parent
+                        anchors.margins: 12
+                        spacing: 14
+
+                        Rectangle {
+                            width: 32
+                            height: 32
+                            radius: 6
+                            color: launcherRoot.theme.base03
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: name.charAt(0)
+                                color: launcherRoot.theme.base05
+                                font.pixelSize: 16
+                            }
+                        }
+
+                        Column {
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 2
+
+                            Text {
+                                text: name
+                                color: launcherRoot.theme.base05
+                                font.pixelSize: 20
+                                font.bold: true
+                            }
+
+                            Text {
+                                text: exec
+                                color: launcherRoot.theme.base07
+                                font.pixelSize: 14
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        id: mouseArea
+
+                        anchors.fill: parent
+                        hoverEnabled: true
+
+                        onClicked: {
+                            appLauncherRoot.requestLaunch(exec)
+                        }
+                    }
+                }
             }
         }
     }
 }
-

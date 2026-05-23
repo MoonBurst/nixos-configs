@@ -1,109 +1,282 @@
 import QtQuick
-import QtQuick.Controls 2
-import QtQuick.Layouts
+import QtQuick.Controls
 import Quickshell
-import Quickshell.Wayland
-
-import "../../../" // Points back cleanly to your local root Theme.qml configuration
+import Quickshell.Io
 
 Rectangle {
-    id: overlayRoot
+    id: launcherRoot
+
+    property var shell
+
     anchors.fill: parent
 
-    // ============================================================================
-    // #### MODULE LOGIC: THEME COLOR LOOKUPS MAPPED TO LOCAL STYLIX FIELDS ####
-    // ============================================================================
-    // Reads directly from your local profile instead of relying on a micro-managing parent function
-    color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
-    opacity: 0.92
+    visible: false
+    enabled: visible
 
-    // State parameters mapping visibility signals to the root panel windows
-    signal requestClose()
+    color: "#00000088"
 
-    // ============================================================================
-    // #### MODULE LOGIC: FOCUS AND KEYBOARD CAPTURE HANDLING ####
-    // ============================================================================
-    // Forces the text field to automatically grab input focus as soon as the menu opens
-    Component.onCompleted: {
-        console.log("🚀 LauncherOverlay loaded into window scene memory.");
-        appSearchInput.forceActiveFocus();
+    focus: visible
+
+    Keys.onEscapePressed: {
+        close()
     }
 
-    Keys.onPressed: (event) => {
-        if (event.key === Qt.Key_Escape) {
-            console.log("📥 Escape key intercepted. Closing launcher overlay...");
-            overlayRoot.requestClose();
-            event.accepted = true;
+    ListModel {
+        id: launcherModel
+    }
+
+    ListModel {
+        id: filteredModel
+    }
+
+    function refreshFilter() {
+        filteredModel.clear()
+
+        let query = searchField.text.toLowerCase()
+
+        for (let i = 0; i < launcherModel.count; ++i) {
+            let app = launcherModel.get(i)
+
+            if (
+                query === "" ||
+                app.name.toLowerCase().includes(query)
+            ) {
+                filteredModel.append(app)
+            }
         }
     }
 
-    // ============================================================================
-    // #### MODULE LOGIC: APP LAUNCHER SEARCH BAR INTERFACE ROW ####
-    // ============================================================================
-    ColumnLayout {
-        anchors.centerIn: parent
-        width: Math.min(parent.width * 0.6, 650)
-        spacing: 20
+    function launch(command) {
+        console.log("Launching:", command)
 
-        Rectangle {
-            id: searchBarContainer
-            Layout.fillWidth: true
-            height: 55
-            radius: 8
+        Quickshell.execDetached([
+            "sh",
+            "-c",
+            command
+        ])
 
-            // Decoupled color values linked straight to your theme variables
-            color: (typeof Theme !== 'undefined' && Theme.base01 !== undefined) ? Theme.base01 : "#1a1a1a"
-            border.width: 2
-            border.color: (typeof Theme !== 'undefined' && Theme.base0D !== undefined) ? Theme.base0D : "yellow"
+        launcherRoot.visible = false
+    }
 
-            TextField {
-                id: appSearchInput
-                anchors.fill: parent
-                anchors.leftMargin: 15
-                anchors.rightMargin: 15
 
-                placeholderText: "Search apps, run calculations, query definitions..."
-                placeholderTextColor: "#666666"
+IpcHandler {
+    target: "launcher"
 
-                font.family: "monospace"
-                font.pixelSize: 18
+    function open() {
+        launcherRoot.visible = true
 
-                color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "white"
-                background: null
+        if (launcherRoot.visible) {
+            searchField.forceActiveFocus()
+        }
 
-                onTextChanged: {
-                    if (launcherControlLoader.item) {
-                        launcherControlLoader.item.filterApps(text);
-                    }
+        console.log("IPC OPEN:", launcherRoot.visible)
+    }
+
+    function close() {
+        launcherRoot.visible = false
+
+        console.log("IPC CLOSE:", launcherRoot.visible)
+    }
+
+    function toggle() {
+        launcherRoot.visible = !launcherRoot.visible
+
+        if (launcherRoot.visible) {
+            searchField.forceActiveFocus()
+        }
+
+        console.log("IPC TOGGLE:", launcherRoot.visible)
+    }
+
+    function clipboard() {
+        console.log("IPC CLIPBOARD")
+    }
+}
+    Process {
+        id: appLoader
+
+        command: [
+            "sh",
+            "-c",
+            "
+            find \
+            /run/current-system/sw/share/applications \
+            $HOME/.local/share/applications \
+            -name '*.desktop' 2>/dev/null |
+
+            while read -r file; do
+
+                name=$(grep -m1 '^Name=' \"$file\" | cut -d= -f2-)
+                exec_cmd=$(grep -m1 '^Exec=' \"$file\" | cut -d= -f2-)
+                icon=$(grep -m1 '^Icon=' \"$file\" | cut -d= -f2-)
+
+                exec_cmd=$(printf '%s\n' \"$exec_cmd\" | \
+                sed -E 's/[[:space:]]+%[fFuUdDnNickvm]//g')
+
+                exec_cmd=$(echo \"$exec_cmd\" | sed 's/^ *//;s/ *$//')
+
+                [ -z \"$name\" ] && continue
+                [ -z \"$exec_cmd\" ] && continue
+
+                [ -z \"$icon\" ] && icon='application-x-executable'
+
+                echo \"$name|$exec_cmd|$icon\"
+
+                done
+                "
+        ]
+
+        stdout: SplitParser {
+            onRead: function(data) {
+                let lines = data.trim().split("\n")
+
+                for (let i = 0; i < lines.length; ++i) {
+                    let parts = lines[i].split("|")
+
+                    if (parts.length < 3)
+                        continue
+
+                        launcherModel.append({
+                            "name": parts[0],
+                            "exec": parts[1],
+                            "icon": parts[2]
+                        })
                 }
 
-                onAccepted: {
-                    console.log("⚡ Executing search submission value string: " + text);
-                    if (launcherControlLoader.item) {
-                        launcherControlLoader.item.runMath(text);
-                    }
-                }
+                refreshFilter()
             }
         }
 
-        // ============================================================================
-        // #### MODULE LOGIC: RESULTS MATRIX VIEW BOX ####
-        // ============================================================================
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            Layout.minimumHeight: 300
-            radius: 8
-            color: (typeof Theme !== 'undefined' && Theme.base01 !== undefined) ? Theme.base01 : "#1a1a1a"
-            border.width: 1
-            border.color: (typeof Theme !== 'undefined' && Theme.base02 !== undefined) ? Theme.base02 : "#333333"
+        running: true
+    }
 
-            Text {
-                anchors.centerIn: parent
-                text: "Application Search Grid Settle Layer Area"
-                font.family: "monospace"
-                font.pixelSize: 16
-                color: (typeof Theme !== 'undefined' && Theme.base04 !== undefined) ? Theme.base04 : "#888888"
+    Rectangle {
+        width: 800
+        height: 600
+
+        anchors.centerIn: parent
+
+        radius: 12
+
+        color: shell.theme.base01
+
+        border.width: 3
+        border.color: shell.theme.base03
+
+        Column {
+            anchors.fill: parent
+            anchors.margins: 20
+
+            spacing: 16
+
+            TextField {
+                id: searchField
+
+                width: parent.width
+                height: 50
+
+                color: shell.theme.base08
+
+                font.pixelSize: 20
+
+                background: Rectangle {
+                    radius: 8
+
+                    color: "transparent"
+
+                    border.width: 2
+                    border.color: shell.theme.base03
+                }
+
+                onTextChanged: {
+                    refreshFilter()
+
+                    if (text.startsWith("def ")) {
+                        console.log("Dictionary mode:", text)
+                    }
+                }
+
+                Keys.onEscapePressed: {
+                    launcherRoot.close()
+                }
+
+                Keys.onReturnPressed: {
+                    if (filteredModel.count > 0) {
+                        launch(filteredModel.get(0).exec)
+                    }
+                }
+            }
+
+            ListView {
+                width: parent.width
+                height: parent.height - 70
+
+                clip: true
+
+                spacing: 4
+
+                model: filteredModel
+
+                delegate: Rectangle {
+                    width: ListView.view.width
+                    height: 56
+
+                    radius: 8
+
+                    color: mouse.containsMouse
+                    ? shell.theme.base02
+                    : "transparent"
+
+                    Row {
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.left: parent.left
+                        anchors.leftMargin: 16
+
+                        spacing: 16
+
+                        Text {
+                            text: "◉"
+
+                            color: shell.theme.base05
+
+                            font.pixelSize: 18
+                        }
+
+                        Column {
+                            anchors.verticalCenter: parent.verticalCenter
+
+                            spacing: 2
+
+                            Text {
+                                text: model.name
+
+                                color: shell.theme.base05
+
+                                font.pixelSize: 20
+                            }
+
+                            Text {
+                                text: model.exec
+
+                                color: shell.theme.base07
+
+                                font.pixelSize: 14
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        id: mouse
+
+                        anchors.fill: parent
+
+                        hoverEnabled: true
+
+                        onClicked: {
+                            launch(model.exec)
+                        }
+                    }
+                }
             }
         }
     }

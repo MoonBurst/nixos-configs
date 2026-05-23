@@ -4,25 +4,25 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 import "." as AlarmInput
-import Theme
 
 Rectangle {
     id: alarmBox
 
-    // Expanded width prevents character clipping on countdown strings
-    width: 165
-    height: 35
-    radius: 10
-    border.width: 3
-
-    color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
-    border.color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
-
+    // FIXED: Added the property target definition so shell.qml mapping context works flawlessly
+    property var barWindow: null
     property string alarmDisplayText: "No Alarm"
     property string stateFile: "/tmp/waybar_alarm_state"
     property bool popupVisible: false
-
     property int globalX: 0
+
+    // Geometry parameters and frames scale dynamically to match your global design rule profiles
+    width: 140
+    height: parent.height
+    radius: shell.theme.defaultCardRadius
+    border.width: shell.theme.globalBorderWidth
+
+    color: shell.theme.base00
+    border.color: shell.theme.base05
 
     Process {
         id: alarmFetcher
@@ -33,16 +33,17 @@ Rectangle {
             "read start total msg < \"$SF\"; cur=$(date +%s); el=$((cur - start)); rem=$((total - el)); " +
             "if [ $rem -le 0 ]; then " +
             "  /run/current-system/sw/bin/notify-send -t 10000 \"Alarm Alert\" \"$(echo \"$msg\" | sed 's/\"//g')\"; " +
-            "  ${pkgs.pw-cat}/bin/pw-play ~/Documents/communicator.mp3 || /run/current-system/sw/bin/play ~/Documents/communicator.mp3 || true & " +
+            "  pw-cat -p ~/Documents/communicator.mp3 || play ~/Documents/communicator.mp3 || true & " +
             "  echo \"No Alarm\"; rm -f \"$SF\"; " +
             "else " +
             "  h=$((rem / 3600)); m=$(((rem % 3600) / 60)); s=$((rem % 60)); " +
             "  printf \"%02dh %02dm %02ds\\n\" $h $m $s; " +
             "fi"
         ]
+        // FIXED: Hardcoded paths match standard Linux structures safely rather than falling back to broken root vars
         environment: [
-            "PATH=" + root.pathEnv,
-            "HOME=" + root.homeEnv,
+            "PATH=/run/current-system/sw/bin:/usr/bin:/bin",
+            "HOME=/home/moonburst",
             "XDG_RUNTIME_DIR=/run/user/1000",
             "PULSE_SERVER=unix:/run/user/1000/pulse/native"
         ]
@@ -93,8 +94,9 @@ Rectangle {
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onClicked: (mouse) => {
             if (mouse.button === Qt.LeftButton) {
-                if (standardBarWindow && standardBarWindow.contentItem) {
-                    var globalCoords = alarmBox.mapToItem(standardBarWindow.contentItem, 0, 0);
+                // FIXED: Dynamically tracks map positions against the injected barWindow reference safely
+                if (alarmBox.barWindow && alarmBox.barWindow.contentItem) {
+                    var globalCoords = alarmBox.mapToItem(alarmBox.barWindow.contentItem, 0, 0);
                     alarmBox.globalX = globalCoords.x;
                 }
                 alarmBox.popupVisible = !alarmBox.popupVisible;
@@ -111,25 +113,35 @@ Rectangle {
         id: alarmText
         anchors.fill: parent
         text: alarmBox.alarmDisplayText
-        font.family: "monospace"
-        font.pixelSize: 20
+        font.family: shell.theme.fontFamily
+        font.pixelSize: shell.theme.globalFontSize
         font.bold: true
-        color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "#F7F700"
+        color: shell.theme.base05
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
     }
 
+    // ============================================================================
+    // ALARM CONFIGURATION PROMPT OVERLAY PANEL WINDOW
+    // ============================================================================
     PanelWindow {
         id: inputPopup
         visible: alarmBox.popupVisible
-        screen: standardBarWindow.screen
+
+        // FIXED: References your dynamic barWindow hook to isolate multi-head monitor spaces
+        screen: alarmBox.barWindow ? alarmBox.barWindow.screen : null
+
         WlrLayershell.keyboardFocus: visible ? WlrLayershell.Exclusive : WlrLayershell.None
-        WlrLayershell.layer: WlrLayershell.Overlay
+        WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "quickshell-alarm-prompt"
 
         anchors.top: true
         anchors.left: true
-        WlrLayershell.margins.top: 50
+        anchors.right: false
+        anchors.bottom: false
+
+        // FIXED: Dropdown shifts pull accurately from global padding profiles
+        WlrLayershell.margins.top: 55 + shell.theme.globalPadding
         WlrLayershell.margins.left: alarmBox.globalX
 
         implicitWidth: 300
@@ -145,19 +157,10 @@ Rectangle {
         Rectangle {
             id: popupRect
             anchors.fill: parent
-            radius: 10
-            border.width: 2
-
-            Binding {
-                target: popupRect
-                property: "color"
-                value: (typeof Theme !== 'undefined' && Theme.base01 !== undefined) ? Theme.base01 : "#0F0F0F"
-            }
-            Binding {
-                target: popupRect
-                property: "border.color"
-                value: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "#F7F700"
-            }
+            radius: shell.theme.defaultCardRadius
+            border.width: shell.theme.globalBorderWidth
+            color: shell.theme.base01
+            border.color: shell.theme.base05
 
             Column {
                 id: alarmCol
@@ -167,10 +170,10 @@ Rectangle {
                 Text {
                     id: alarmTitle
                     text: "Set Native System Alarm"
-                    font.family: "monospace"
-                    font.pixelSize: 18
+                    font.family: shell.theme.fontFamily
+                    font.pixelSize: shell.theme.globalFontSize - 2
                     font.bold: true
-                    color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "#F7F700"
+                    color: shell.theme.base05
                     horizontalAlignment: Text.AlignHCenter
                     anchors.horizontalCenter: parent.horizontalCenter
                 }

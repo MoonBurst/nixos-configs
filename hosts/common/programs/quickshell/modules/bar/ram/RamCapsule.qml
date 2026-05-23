@@ -3,34 +3,24 @@ import QtQuick.Controls 2
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
-import Theme
 
 Rectangle {
     id: ramBox
 
-    // ============================================================================
-    // ⚙️ CUSTOMIZABLE CONFIGURATION ZONE (EDIT THESE RATIO PROFILES)
-    // ============================================================================
-    property real ramWarnRatio: 0.20
-    property real ramCritRatio: 0.10
-
-    // ============================================================================
-    // 🧠 CORE ENGINE LAYERS (DO NOT TOUCH)
-    // ============================================================================
+    // FIXED: Layout geometry and strokes match global design definitions natively
     width: 175
-    height: 35
-    radius: 10
-    border.width: 3
+    height: parent.height
+    radius: shell.theme.defaultCardRadius
+    border.width: shell.theme.globalBorderWidth
 
-    color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
-    border.color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
+    color: shell.theme.base00
+    border.color: shell.theme.base05
 
     property real totalGiB: 0.0
     property real availableGiB: 0.0
     property string topProcessesText: "Loading system processes..."
-
-    // Accumulator string buffer to store multi-line terminal outputs safely
     property string textAccumulatorBuffer: ""
+    property var barWindow: null
 
     Process {
         id: ramStatsProc
@@ -55,20 +45,11 @@ Rectangle {
         id: topProcFetcher
         running: false
         command: ["sh", "-c", "total_mem=$(awk '/MemTotal/ {print $2/1024}' /proc/meminfo); ps -eo comm,%mem --sort=-%mem | head -n 11 | awk -v total=\"$total_mem\" 'NR>1 { mem_mb = ($2 / 100) * total; if (mem_mb >= 1024) { size_str = sprintf(\"%.1fG\", mem_mb/1024) } else { size_str = sprintf(\"%dM\", mem_mb) }; printf \"%-15s %6s (%s%%)\\n\", substr($1, 1, 15), size_str, $2 }'"]
-
-        // FIXED: Using standard SplitParser with an explicit multi-line append handler string loop
         stdout: SplitParser {
-            onRead: data => {
-                ramBox.textAccumulatorBuffer += data + "\n";
-            }
+            splitMarker: "\n"
+            onRead: data => { ramBox.textAccumulatorBuffer += data + "\n"; }
         }
-
-        // Triggers as soon as the bash script terminates completely to copy the full list on screen
-        onExited: {
-            if (ramBox.textAccumulatorBuffer.trim() !== "") {
-                ramBox.topProcessesText = ramBox.textAccumulatorBuffer.trim();
-            }
-        }
+        onExited: { if (ramBox.textAccumulatorBuffer.trim() !== "") ramBox.topProcessesText = ramBox.textAccumulatorBuffer.trim(); }
     }
 
     Text {
@@ -76,121 +57,84 @@ Rectangle {
         anchors.fill: parent
         anchors.margins: 5
         textFormat: Text.RichText
-        font.family: "monospace"
-        font.pixelSize: 20
+        font.family: shell.theme.fontFamily
+        font.pixelSize: shell.theme.globalFontSize
         font.bold: true
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
 
         text: {
-            const greenColor    = (typeof Theme !== 'undefined' && Theme.base0C !== undefined) ? Theme.base0C.toString() : "green";
-            const normalColor   = (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05.toString() : "yellow";
-            const warningColor  = (typeof Theme !== 'undefined' && Theme.base0A !== undefined) ? Theme.base0A.toString() : "orange";
-            const criticalColor = (typeof Theme !== 'undefined' && Theme.base08 !== undefined) ? Theme.base08.toString() : "red";
+            const greenColor = shell.theme.base0C.toString();
 
-            var ram_color = (ramBox.availableGiB < (ramBox.totalGiB * ramBox.ramCritRatio)) ? criticalColor
-            : (ramBox.availableGiB < (ramBox.totalGiB * ramBox.ramWarnRatio)) ? warningColor
-            : normalColor;
+            var usedGiB = ramBox.totalGiB - ramBox.availableGiB;
+            var usageRatio = (ramBox.totalGiB > 0) ? (usedGiB / ramBox.totalGiB) : 0.0;
 
-            var valueStr = ramBox.availableGiB === 0.0
-            ? " -- GiB"
-            : (" " + ramBox.availableGiB.toFixed(1) + " GiB");
+            var normalYellow = shell.theme.base05.toString();
+            var warnOrange = shell.theme.base09.toString();
+            var critRed = shell.theme.base08.toString();
 
-            return "<font color='" + greenColor + "'>RAM:</font>" +
-            "<font color='" + ram_color + "'>" + valueStr + "</font>";
+            var dataColor = normalYellow;
+            if (usageRatio >= 0.85) {
+                dataColor = critRed;
+            } else if (usageRatio >= 0.50) {
+                dataColor = warnOrange;
+            }
+
+            var valueStr = ramBox.availableGiB === 0.0 ? " -- GiB" : (" " + ramBox.availableGiB.toFixed(1) + " GiB");
+            return "<font color='" + greenColor + "'>RAM:</font><font color='" + dataColor + "'>" + valueStr + "</font>";
         }
     }
 
     HoverHandler {
         id: ramHoverTracker
-        onHoveredChanged: {
-            if (hovered) {
-                // Clear the string buffer container right before launching the new scan sweep pass
-                ramBox.textAccumulatorBuffer = "";
-                topProcFetcher.running = false;
-                topProcFetcher.running = true;
-            }
-        }
+        onHoveredChanged: { if (hovered) { ramBox.textAccumulatorBuffer = ""; topProcFetcher.running = false; topProcFetcher.running = true; } }
     }
 
     PanelWindow {
         id: fixedTooltipWindow
-        screen: standardBarWindow.screen
+        screen: ramBox.barWindow ? ramBox.barWindow.screen : null
         visible: ramHoverTracker.hovered
-
-        WlrLayershell.layer: WlrLayershell.Overlay
+        WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "quickshell-ram-tooltip"
-        WlrLayershell.keyboardFocus: WlrLayershell.None
-
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
         anchors.top: true
         anchors.right: true
 
-        WlrLayershell.margins.top: 55
-        WlrLayershell.margins.right: 15
+        // FIXED: Dropdown alignment offsets pull natively from global layout padding profiles
+        WlrLayershell.margins.top: 55 + shell.theme.globalPadding
+        WlrLayershell.margins.right: 15 + shell.theme.globalPadding
 
-        implicitWidth: 375
-        implicitHeight: 375
+        implicitWidth: 460
+        implicitHeight: 380
         color: "transparent"
 
         Rectangle {
             anchors.fill: parent
-            radius: 8
-            border.width: 3
-
-            color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
-            border.color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
+            radius: shell.theme.defaultCardRadius
+            border.width: shell.theme.globalBorderWidth
+            color: shell.theme.base00
+            border.color: shell.theme.base05
 
             Column {
                 anchors.fill: parent
-                anchors.margins: 12
-                spacing: 8
-
-                Text {
-                    text: "📊 TOP MEMORY CONSUMERS:"
-                    font.family: "monospace"
-                    font.pixelSize: 20
-                    font.bold: true
-                    color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
-                }
-
-                Rectangle {
-                    width: parent.width
-                    height: 2
-                    color: (typeof Theme !== 'undefined' && Theme.base03 !== undefined) ? Theme.base03 : "#333333"
-                }
-
+                anchors.margins: shell.theme.globalPadding
+                spacing: 10
+                Text { text: "📊 TOP MEMORY CONSUMERS:"; font.family: shell.theme.fontFamily; font.pixelSize: shell.theme.globalFontSize; font.bold: true; color: shell.theme.base05 }
+                Rectangle { width: parent.width; height: 2; color: shell.theme.base02 }
                 ScrollView {
-                    width: parent.width
-                    height: 300
-                    clip: true
-
-                    Text {
-                        width: parent.width
-                        text: ramBox.topProcessesText
-                        font.family: "monospace"
-                        font.pixelSize: 20
-                        color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "white"
-                        lineHeight: 1.25
-                    }
+                    width: parent.width; height: 300; clip: true
+                    Text { width: parent.width; text: ramBox.topProcessesText; font.family: shell.theme.fontFamily; font.pixelSize: shell.theme.globalFontSize; color: shell.theme.base05; lineHeight: 1.15 }
                 }
             }
         }
     }
 
     Timer {
-        interval: 2000
-        running: true
-        repeat: true
-        triggeredOnStart: true
+        interval: 2000; running: true; repeat: true; triggeredOnStart: true
         onTriggered: {
             ramStatsProc.running = false;
             ramStatsProc.running = true;
-
-            if (ramHoverTracker.hovered) {
-                ramBox.textAccumulatorBuffer = "";
-                topProcFetcher.running = false;
-                topProcFetcher.running = true;
-            }
+            if (ramHoverTracker.hovered) { ramBox.textAccumulatorBuffer = ""; topProcFetcher.running = false; topProcFetcher.running = true; }
         }
     }
 }

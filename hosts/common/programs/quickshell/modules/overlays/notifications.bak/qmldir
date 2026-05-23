@@ -1,0 +1,2 @@
+module Quickshell.Modules.Overlays.Notifications
+NotificationOverlay 1.0 NotificationOverlay.qml

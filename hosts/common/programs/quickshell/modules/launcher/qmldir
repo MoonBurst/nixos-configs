@@ -1,5 +1,0 @@
-singleton LauncherOverlay LauncherOverlay.qml
-AppLauncher AppLauncher.qml
-Clipboard Clipboard.qml
-Dictionary Dictionary.qml
-MathEngine MathEngine.qml

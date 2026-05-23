@@ -1,105 +1,36 @@
 import QtQuick
+import QtQuick.Controls 2
+import Quickshell
 import Quickshell.Io
-
-import Theme
 
 Rectangle {
     id: gpuBox
 
-    // Sovereign sizing rules restore visual visibility matching your bar grid
-    width: 280
-    height: 35
-    radius: 10
-    border.width: 3
+    // FIXED: Layout parameters and frames scale dynamically to match your global design rule profiles
+    width: 210
+    height: parent.height
+    radius: shell.theme.defaultCardRadius
+    border.width: shell.theme.globalBorderWidth
 
-    // Direct memory lookups pointing straight to your immutable compiled Nix-Store colors
-    color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
-    border.color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
+    color: shell.theme.base00
+    border.color: shell.theme.base05
 
-    property string gpuDisplayText: "<font color='" + ((typeof Theme !== 'undefined' && Theme.base0C !== undefined) ? Theme.base0C : "green") + "'>GPU:</font> --%  --°C  --W"
-
-    property int tempWarn: 76
-    property int tempCrit: 90
-    property int usageWarn: 50
-    property int usageCrit: 80
-    property int powerWarn: 250
-    property int powerCrit: 300
-
-    function formatValue(value, isNaNStr) {
-        if (isNaN(value)) {
-            return "&nbsp;".repeat(3 - isNaNStr.length) + isNaNStr;
-        }
-        let numStr = String(Math.round(value));
-        if (numStr.length >= 3) return numStr;
-        return "&nbsp;".repeat(3 - numStr.length) + numStr;
-    }
-
-    function updateGpuDisplay(usage, temp, power) {
-        // Secure validation checks against our global singleton namespace variables
-        const normalColor   = (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05.toString() : "yellow";
-        const greenColor    = (typeof Theme !== 'undefined' && Theme.base0C !== undefined) ? Theme.base0C.toString() : "green";
-        const warningColor  = (typeof Theme !== 'undefined' && Theme.base0A !== undefined) ? Theme.base0A.toString() : "orange";
-        const criticalColor = (typeof Theme !== 'undefined' && Theme.base08 !== undefined) ? Theme.base08.toString() : "red";
-
-        let valueColor = normalColor;
-
-        let usageStr = formatValue(usage, "--");
-        let tempStr = formatValue(temp, "--");
-        let powerStr = formatValue(power, "--");
-
-        let numbersText = usageStr + "%&nbsp;&nbsp;" +
-        tempStr + "°C&nbsp;&nbsp;" +
-        powerStr + "W";
-
-        if (!isNaN(usage) && !isNaN(temp) && !isNaN(power)) {
-            let isCritical = (temp >= tempCrit) || (usage >= usageCrit) || (power >= powerCrit);
-            let isWarning = (temp >= tempWarn) || (usage >= usageWarn) || (power >= powerWarn);
-
-            if (isCritical) {
-                valueColor = criticalColor;
-            } else if (isWarning) {
-                valueColor = warningColor;
-            }
-        }
-
-        gpuDisplayText = "<font color='" + greenColor + "'>GPU:</font>&nbsp;" +
-        "<font color='" + valueColor + "'>" + numbersText + "</font>";
-    }
+    property string gpuUsageStr: "0%"
+    property string gpuTempStr: "0°C"
+    property string gpuPowerStr: "0W"
+    property var barWindow: null
 
     Process {
         id: gpuStatsProc
         running: true
-        command: ["sh", "-c", "rocm-smi -a | awk 'BEGIN {U=-1; T=-1; P=-1} /GPU use \\(%\\)/ {U=$NF} /Temperature \\(Sensor junction\\)/ {T=$NF} /Average Graphics Package Power \\(W\\)/ {P=$NF} END { print U; print T; print P }'"]
-
-        property int lineNum: 0
-        property var parsedUsage: NaN
-        property var parsedTemp: NaN
-        property var parsedPower: NaN
-
-        onRunningChanged: {
-            if (running) {
-                lineNum = 0;
-                parsedUsage = NaN;
-                parsedTemp = NaN;
-                parsedPower = NaN;
-            }
-        }
-
+        command: ["sh", "-c", "usage=$(cat /sys/class/drm/card*/device/gpu_busy_percent 2>/dev/null | head -n 1 || echo '0'); temp=$(awk '{print int($1/1000)}' /sys/class/drm/card*/device/hwmon/hwmon*/temp1_input 2>/dev/null | head -n 1 || echo '0'); power=$(awk '{print int($1/1000000)}' /sys/class/drm/card*/device/hwmon/hwmon*/power1_average 2>/dev/null | head -n 1 || echo '0'); echo \"$usage:$temp°C:${power}W\""]
         stdout: SplitParser {
             onRead: data => {
-                if (data.trim() === "") return;
-                gpuStatsProc.lineNum++;
-                if (gpuStatsProc.lineNum === 1) {
-                    let val = parseInt(data, 10);
-                    gpuStatsProc.parsedUsage = (val === -1) ? NaN : val;
-                } else if (gpuStatsProc.lineNum === 2) {
-                    let val = parseFloat(data);
-                    gpuStatsProc.parsedTemp = (val === -1) ? NaN : val;
-                } else if (gpuStatsProc.lineNum === 3) {
-                    let val = parseFloat(data);
-                    gpuStatsProc.parsedPower = (val === -1) ? NaN : val;
-                    updateGpuDisplay(gpuStatsProc.parsedUsage, gpuStatsProc.parsedTemp, gpuStatsProc.parsedPower);
-                    gpuStatsProc.lineNum = 0;
+                var parts = data.trim().split(":");
+                if (parts.length === 3) {
+                    gpuBox.gpuUsageStr = parts[0] + "%";
+                    gpuBox.gpuTempStr = parts[1];
+                    gpuBox.gpuPowerStr = parts[2];
                 }
             }
         }
@@ -110,18 +41,24 @@ Rectangle {
         anchors.fill: parent
         anchors.margins: 5
         textFormat: Text.RichText
-        font.family: "monospace"
-        font.pixelSize: 20
+        font.family: shell.theme.fontFamily
+        font.pixelSize: shell.theme.globalFontSize
         font.bold: true
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
-        text: gpuDisplayText
+
+        text: {
+            // FIXED: Pointed colors to your global shell theme contexts
+            const greenColor = shell.theme.base0C.toString();
+            const yellowColor = shell.theme.base05.toString();
+
+            return "<font color='" + greenColor + "'>GPU:</font> " +
+            "<font color='" + yellowColor + "'>" + gpuBox.gpuUsageStr + " " + gpuBox.gpuTempStr + " " + gpuBox.gpuPowerStr + "</font>";
+        }
     }
 
     Timer {
-        interval: 2000
-        running: true
-        repeat: true
+        interval: 2000; running: true; repeat: true; triggeredOnStart: true
         onTriggered: {
             gpuStatsProc.running = false;
             gpuStatsProc.running = true;

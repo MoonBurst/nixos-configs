@@ -3,61 +3,56 @@ import QtQuick.Controls 2
 import Quickshell
 import Quickshell.Io
 
-import Theme
-
 Rectangle {
-    id: musicCapsule
+    id: musicBox
 
-    // Sovereign styling constraints restore capsule visibility independent of shell.qml management
-    width: 180
-    height: 35
-    radius: 10
-    border.width: 3
-    clip: true
+    // FIXED: Added property target definition so shell.qml mapping context works flawlessly
+    property var barWindow: null
+    property string trackStr: "No Track"
 
-    // Direct lookups pointing straight to your immutable compiled Nix-Store colors
-    color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
-    border.color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
+    // Layout parameters and frames scale dynamically to match your global design rule profiles
+    width: 200
+    height: parent.height
+    radius: shell.theme.defaultCardRadius
+    border.width: shell.theme.globalBorderWidth
 
-    property string currentSongText: "No Song Playing"
-
-    Process { id: musicToggleCmd; command: ["/bin/sh", "-c", "audtool current-song >/dev/null 2>&1 && ( [ \"$(audtool playback-status)\" = \"playing\" ] && audtool playback-pause || audtool playback-play ) || ( audacious & sleep 2 && audtool mainwin-show on && audtool playback-play )"] }
+    color: shell.theme.base00
+    border.color: shell.theme.base05
 
     Process {
-        id: musicFetcher
+        id: musicProc
         running: true
-        command: [
-            "sh", "-c",
-            "if audtool current-song >/dev/null 2>&1; then " +
-            "  [ \"$(audtool playback-status)\" = \"playing\" ] && p=\"▶ \" || p=\"⏸ \"; echo \"$p$(audtool current-song)\"; " +
-            "else echo \"Music Offline\"; fi"
-        ]
+        command: ["sh", "-c", "playerctl metadata --format '{{ artist }} - {{ title }}' 2>/dev/null || echo '000 MP3s n...'"]
         stdout: SplitParser {
             onRead: data => {
-                if (data) {
-                    musicCapsule.currentSongText = data.trim()
+                if (data && data.trim() !== "") {
+                    musicBox.trackStr = data.trim().substring(0, 15);
                 }
             }
         }
     }
 
-    Timer {
-        interval: 2000; running: true; repeat: true; triggeredOnStart: true
-        onTriggered: musicFetcher.running = true
-    }
-
-    TapHandler { onTapped: { musicToggleCmd.running = false; musicToggleCmd.running = true; } }
-
     Text {
         id: musicText
-        anchors.centerIn: parent
-        text: musicCapsule.currentSongText
-        font.family: "monospace"
-        font.pixelSize: 20
+        anchors.fill: parent
+        anchors.margins: 5
+
+        color: shell.theme.base05
+        text: "🎵 " + musicBox.trackStr
+
+        font.family: shell.theme.fontFamily
+        font.pixelSize: shell.theme.globalFontSize - 2
         font.bold: true
+        horizontalAlignment: Text.AlignLeft
+        verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight
-        width: parent.width - 20
-        horizontalAlignment: Text.AlignHCenter
-        color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "white"
+    }
+
+    Timer {
+        interval: 2000; running: true; repeat: true
+        onTriggered: {
+            musicProc.running = false;
+            musicProc.running = true;
+        }
     }
 }

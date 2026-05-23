@@ -1,13 +1,1 @@
-import QtQuick
-
-pragma Singleton
-
-QtObject {
-    readonly property int capsuleHeight: 26
-    readonly property int capsuleRadius: 8
-    readonly property int capsuleBorderWidth: 2
-    readonly property string colorOutline: "#F7F700"
-    readonly property string colorNormalText: "#F7F700"
-    readonly property string colorLabelGreen: "#00FF00"
-    readonly property string colorBaseBg: "#0F0F0F"
-}
+/nix/store/78s6sqnpbxp4jb5ymfkv00x8arx1k0pz-home-manager-files/nix/hosts/common/programs/quickshell/Theme.qml

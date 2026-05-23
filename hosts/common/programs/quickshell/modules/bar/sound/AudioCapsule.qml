@@ -3,24 +3,21 @@ import QtQuick.Controls 2
 import Quickshell
 import Quickshell.Io
 
-import Theme
-
 Rectangle {
     id: audioBox
 
-    // Explicit sizing rules keep it completely separate from your mic container frame
-    width: 140
-    height: 35
-    radius: 10
-    border.width: 3
-
-    // Explicit anchoring stops it from overlapping or getting buried inside horizontal rows
-    anchors.verticalCenter: parent ? parent.verticalCenter : undefined
-
-    color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
-    border.color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
-
+    // FIXED: Registered the missing barWindow property definition to clear the shell boot crash
+    property var barWindow: null
     property string audioDisplayText: "Audio: --%"
+
+    // FIXED: Geometric constraints scale dynamically to match your global design specifications
+    width: 140
+    height: parent.height
+    radius: shell.theme.defaultCardRadius
+    border.width: shell.theme.globalBorderWidth
+
+    color: shell.theme.base00
+    border.color: shell.theme.base05
 
     Process {
         id: audioFetcher
@@ -40,14 +37,10 @@ Rectangle {
                     vNum = Math.round(val * 100) + "%";
                 }
 
-                var textColor = "white";
-                if (typeof Theme !== 'undefined' && Theme.base05 !== undefined && Theme.base08 !== undefined) {
-                    textColor = isMuted ? Theme.base08 : Theme.base05;
-                } else {
-                    textColor = isMuted ? "red" : "white";
-                }
+                // FIXED: Directing audio colors securely to your system-wide color scheme tokens
+                var textColor = isMuted ? shell.theme.base08.toString() : shell.theme.base05.toString();
+                var tagColor = shell.theme.base05.toString();
 
-                var tagColor = (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow";
                 audioBox.audioDisplayText = "<font color='" + tagColor + "'>Audio:</font> <font color='" + textColor + "'>" + vNum + "</font>";
             }
         }
@@ -78,8 +71,8 @@ Rectangle {
         id: audioText
         anchors.fill: parent
         text: audioBox.audioDisplayText
-        font.family: "monospace"
-        font.pixelSize: 20
+        font.family: shell.theme.fontFamily
+        font.pixelSize: shell.theme.globalFontSize
         font.bold: true
         textFormat: Text.RichText
         horizontalAlignment: Text.AlignHCenter

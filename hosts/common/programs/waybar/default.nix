@@ -18,6 +18,7 @@ let
     layer = "top";
     position = "top";
     spacing = 2;
+    height = 42;
 
     modules-left = [
       "clock#day"
@@ -158,20 +159,17 @@ let
 
     "tray" = { "icon-size" = 21; "spacing" = 1; };
 
-"custom/borg" = {
-  "format" = "{}";
-  "return-type" = "json";
-  "interval" = 5;
-  "exec" = "${borgScript}";
-  "on-click" = "${pkgs.kitty}/bin/kitty -e journalctl -u borgbackup-job-MoonBeauty-Offsite.service -f";
-  "tooltip" = true;
-  "escape" = true;
-};
-
-
+    "custom/borg" = {
+      "format" = "{}";
+      "return-type" = "json";
+      "interval" = 5;
+      "exec" = "${borgScript}";
+      "on-click" = "${pkgs.kitty}/bin/kitty -e journalctl -u borgbackup-job-MoonBeauty-Offsite.service -f";
+      "tooltip" = true;
+      "escape" = true;
+    };
   });
-
-  waybarStyle = let
+   waybarStyle = let
     cfgColors = config.lib.stylix.colors.withHashtag;
     base      = cfgColors.base00; # #1a1a1a
     bubble    = cfgColors.base01; # #0F0F0F
@@ -179,42 +177,29 @@ let
     text      = cfgColors.base05; # #F7F700
     red       = cfgColors.base08; # #FF0000
     gray0b    = cfgColors.base0B; # #545454
+    innerLine   = cfgColors.base03;
+    outerOutline   = cfgColors.base03;
+
+    fontSize     = "25px";
+
+    borderWidth  = "5px";
+
 
   in pkgs.writeText "waybar-style" ''
-    /* --- Dynamic Anti-Burn-In Keyframes --- */
-    @keyframes antiBurnOutline {
-      0%   { border-color: ${outline}; }
-      50%  { border-color: ${gray0b}; } /* Cycles subtly to base0B gray */
-      100% { border-color: ${outline}; }
-    }
-
-    @keyframes antiBurnBase {
-      0%   { background-color: ${base}; }
-      50%  { background-color: ${bubble}; }
-      100% { background-color: ${base}; }
-    }
-
-    @keyframes antiBurnBubble {
-      0%   { background-color: ${bubble}; border-color: ${outline}; }
-      50%  { background-color: ${base}; border-color: ${gray0b}; }
-      100% { background-color: ${bubble}; border-color: ${outline}; }
-    }
-
     /* --- Waybar Geometry Config --- */
     * {
       font-family: JetBrainsMono Nerd Font, FontAwesome, Roboto, sans-serif;
-      font-size: 15px;
+      font-size: ${fontSize};
       border-radius: 0.75em;
     }
 
     window#waybar {
-      border: 2px solid ${outline};
+      border: ${borderWidth} solid ${outerOutline};
       background: ${base};
       box-shadow: 1px 1px 10px 10px ${base};
       color: ${text};
       transition-property: background-color;
       transition-duration: 0.5s;
-      animation: antiBurnBase 60s ease-in-out infinite, antiBurnOutline 90s ease-in-out infinite;
     }
 
     window#waybar.hidden {
@@ -245,15 +230,14 @@ let
     }
 
     #workspaces label {
-      font-size: 15px;
+      font-size: ${fontSize};
     }
 
     #workspaces button {
       padding: 0 0.5em;
       background-color: ${bubble};
       color: ${text};
-      margin: 0.25em;
-      animation: antiBurnBubble 80s ease-in-out infinite;
+      margin: 6px 8px;
     }
 
     #workspaces button.active {
@@ -263,7 +247,6 @@ let
     #workspaces button.urgent {
       background-color: ${red};
       color: ${text};
-      animation: none;
     }
 
     /* --- Module Selectors Mapping --- */
@@ -276,14 +259,11 @@ let
     #idle_inhibitor, #keyboard-state, #memory, #mpd, #network, #notifications,
     #pulseaudio, #pulseaudio.muted, #taskbar, #temperature, #tray, #user,
     #window, #wireplumber, #workspaces {
-      padding: 0 0.5em;
-      margin: 0.005em;
-      padding-left: 10px;
-      padding-right: 10px;
+      padding: 0 12px;
+      margin: 6px 8px;
       font-weight: bold;
       background-color: ${bubble};
-      border: 2px solid ${outline};
-      animation: antiBurnBubble 75s ease-in-out infinite;
+      border: ${borderWidth} solid ${innerLine};
     }
 
     #custom-updates.updated {
@@ -301,12 +281,10 @@ let
 
     #network.disconnected {
       background-color: ${red};
-      animation: none;
     }
 
     #temperature.critical {
       background-color: ${red};
-      animation: none;
     }
 
     #keyboard-state > label {
@@ -323,17 +301,10 @@ let
       padding-left: 0.5em;
       color: ${gray0b};
     }
-
-    @keyframes blink {
-      to {
-        background-color: ${text};
-        color: ${base};
-      }
-    }
   '';
 
 in {
-  systemd.user.services.waybar = {
+  systemd.user.services.waybar = lib.mkForce {
     description = "Waybar status bar";
     wantedBy = [ "graphical-session.target" ];
     partOf = [ "graphical-session.target" ];
