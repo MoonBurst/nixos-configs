@@ -59,6 +59,7 @@ Rectangle {
 
         function close() {
             launcherWindow.visible = false
+            searchField.text = ""
             console.log("IPC CLOSE:", launcherWindow.visible)
         }
 
@@ -66,6 +67,8 @@ Rectangle {
             launcherWindow.visible = !launcherWindow.visible
             if (launcherWindow.visible) {
                 searchField.forceActiveFocus()
+            } else {
+                searchField.text = ""
             }
             console.log("IPC TOGGLE:", launcherWindow.visible)
         }
@@ -156,7 +159,7 @@ Rectangle {
                 width: parent.width
                 height: 50
 
-                color: shell.theme.base08
+                color: shell.theme.base05
 
                 font.pixelSize: 20
 
