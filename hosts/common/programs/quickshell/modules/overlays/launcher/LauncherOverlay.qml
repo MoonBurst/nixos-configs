@@ -10,6 +10,7 @@ Rectangle {
     anchors.fill: parent
     color: "#00000088"
     focus: visible
+    enabled: visible
     Keys.onEscapePressed: {
         close()
     }
@@ -46,34 +47,34 @@ Rectangle {
     }
 
 
-IpcHandler {
-    target: "launcher"
-    function open() {
-        launcherRoot.visible = true
-        if (launcherRoot.visible) {
-            searchField.forceActiveFocus()
+    IpcHandler {
+        target: "launcher"
+        function open() {
+            launcherWindow.visible = true
+            if (launcherWindow.visible) {
+                searchField.forceActiveFocus()
+            }
+            console.log("IPC OPEN:", launcherWindow.visible)
         }
-        console.log("IPC OPEN:", launcherRoot.visible)
-    }
 
-    function close() {
-        launcherRoot.visible = false
-        console.log("IPC CLOSE:", launcherRoot.visible)
-    }
-
-    function toggle() {
-        launcherRoot.visible = !launcherRoot.visible
-        if (launcherRoot.visible) {
-            searchField.forceActiveFocus()
+        function close() {
+            launcherWindow.visible = false
+            console.log("IPC CLOSE:", launcherWindow.visible)
         }
-        console.log("IPC TOGGLE:", launcherRoot.visible)
-    }
 
-    function clipboard() {
-        console.log("IPC CLIPBOARD")
-    }
+        function toggle() {
+            launcherWindow.visible = !launcherWindow.visible
+            if (launcherWindow.visible) {
+                searchField.forceActiveFocus()
+            }
+            console.log("IPC TOGGLE:", launcherWindow.visible)
+        }
 
-}
+        function clipboard() {
+            console.log("IPC CLIPBOARD")
+        }
+
+    }
     Process {
         id: appLoader
         command: [
@@ -177,7 +178,7 @@ IpcHandler {
                 }
 
                 Keys.onEscapePressed: {
-                    launcherRoot.close()
+                    close()
                 }
 
                 Keys.onReturnPressed: {

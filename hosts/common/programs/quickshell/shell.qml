@@ -321,7 +321,7 @@ ShellRoot {
     PanelWindow {
         id: launcherOverlayWindow
 
-        visible: true
+        visible: false
 
         screen: Quickshell.screens.find(s => s.name === "DP-1")
 
@@ -346,6 +346,7 @@ ShellRoot {
             anchors.fill: parent
             shell: shell
             launcherWindow: launcherOverlayWindow
+            visible: launcherOverlayWindow.visible
         }
     }
 
