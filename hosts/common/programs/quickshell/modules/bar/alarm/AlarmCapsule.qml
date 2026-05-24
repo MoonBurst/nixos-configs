@@ -8,14 +8,12 @@ import "." as AlarmInput
 Rectangle {
     id: alarmBox
 
-    // FIXED: Added the property target definition so shell.qml mapping context works flawlessly
     property var barWindow: null
     property string alarmDisplayText: "No Alarm"
     property string stateFile: "/tmp/waybar_alarm_state"
     property bool popupVisible: false
     property int globalX: 0
 
-    // Geometry parameters and frames scale dynamically to match your global design rule profiles
     width: 140
     height: parent.height
     radius: shell.theme.defaultCardRadius
@@ -40,7 +38,6 @@ Rectangle {
             "  printf \"%02dh %02dm %02ds\\n\" $h $m $s; " +
             "fi"
         ]
-        // FIXED: Hardcoded paths match standard Linux structures safely rather than falling back to broken root vars
         environment: [
             "PATH=/run/current-system/sw/bin:/usr/bin:/bin",
             "HOME=/home/moonburst",
@@ -55,27 +52,88 @@ Rectangle {
     Process { id: alarmCancelEngine; running: false; command: ["rm", "-f", "/tmp/waybar_alarm_state"] }
     Process { id: alarmWriteEngine; running: false }
 
-    function confirmAndSaveAlarm(rawTimerText) {
-        var rawTimer = rawTimerText.trim();
+    function confirmAndSaveAlarm(countdownRaw, timeOfDayRaw) {
         var msg = "Alarm Finished!";
         var totalSeconds = 0;
-        var match;
-        var regex = /(\d+)([hms])/g;
+        var currentEpoch = Math.floor(Date.now() / 1000);
+        var now = new Date();
 
-        while ((match = regex.exec(rawTimer)) !== null) {
-            var num = parseInt(match[1], 10);
-            var unit = match[2];
-            if (unit === 'h') totalSeconds += num * 3600;
-            if (unit === 'm') totalSeconds += num * 60;
-            if (unit === 's') totalSeconds += num;
+        // ============================================================================
+        // FIXED SMART TIME PARSER (HANDLES 12:00 ROLLOVER CAPTURE CORRECTLY)
+        // ============================================================================
+        if (timeOfDayRaw.trim() !== "") {
+            var timeStr = timeOfDayRaw.trim().toUpperCase().replace(/[:\s]/g, "");
+            var cleanMatch = /^(\d{3,4})(AM|PM)?$/.exec(timeStr);
+
+            if (cleanMatch) {
+                var digits = cleanMatch[1]; // FIXED: Extract from array index 1
+                var ampm = cleanMatch[2];   // FIXED: Extract from array index 2
+                var targetHours = 0;
+                var targetMinutes = 0;
+
+                if (digits.length === 4) {
+                    targetHours = parseInt(digits.substring(0, 2), 10);
+                    targetMinutes = parseInt(digits.substring(2, 4), 10);
+                } else if (digits.length === 3) {
+                    targetHours = parseInt(digits.substring(0, 1), 10);
+                    targetMinutes = parseInt(digits.substring(1, 3), 10);
+                }
+
+                if (targetHours <= 24 && targetMinutes < 60) {
+                    // Normalize standard 12-hour clock notations immediately
+                    if (targetHours === 12 && !ampm) {
+                        // If user inputs a plain "12", evaluate whether they mean midnight or noon
+                        targetHours = 12;
+                    } else if (ampm) {
+                        if (ampm === "PM" && targetHours < 12) targetHours += 12;
+                        if (ampm === "AM" && targetHours === 12) targetHours = 0;
+                    }
+
+                    var targetTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), targetHours, targetMinutes, 0, 0);
+
+                    // Auto PM Switch: If target has already passed, check if switching to PM fits today
+                    if (!ampm && targetHours <= 12 && targetTime.getTime() <= now.getTime()) {
+                        var pmHours = (targetHours === 12) ? 0 : targetHours + 12; // 12 rolls to midnight, others shift by 12
+                        var pmTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), pmHours, targetMinutes, 0, 0);
+
+                        // If rolling hours makes it later today, use it, otherwise prepare for tomorrow morning
+                        if (pmTime.getTime() > now.getTime()) {
+                            targetTime = pmTime;
+                        }
+                    }
+
+                    // Shift to tomorrow if the calculated time is still in the past
+                    if (targetTime.getTime() <= now.getTime()) {
+                        targetTime.setDate(targetTime.getDate() + 1);
+                    }
+
+                    totalSeconds = Math.floor(targetTime.getTime() / 1000) - currentEpoch;
+                }
+            }
         }
 
-        if (totalSeconds === 0 && /^\d+$/.test(rawTimer)) {
-            totalSeconds = parseInt(rawTimer, 10) * 60;
+        // ============================================================================
+        // COUNTDOWN FALLBACK
+        // ============================================================================
+        if (totalSeconds === 0 && countdownRaw.trim() !== "") {
+            var rawTimer = countdownRaw.trim();
+            var match;
+            var regex = /(\d+)([hms])/g;
+
+            while ((match = regex.exec(rawTimer)) !== null) {
+                var num = parseInt(match[1], 10);
+                var unit = match[2];
+                if (unit === 'h') totalSeconds += num * 3600;
+                if (unit === 'm') totalSeconds += num * 60;
+                if (unit === 's') totalSeconds += num;
+            }
+
+            if (totalSeconds === 0 && /^\d+$/.test(rawTimer)) {
+                totalSeconds = parseInt(rawTimer, 10) * 60;
+            }
         }
 
         if (totalSeconds > 0) {
-            var currentEpoch = Math.floor(Date.now() / 1000);
             var stateString = currentEpoch + " " + totalSeconds + " \"" + msg + "\"";
             alarmWriteEngine.command = ["sh", "-c", "echo '" + stateString + "' > /tmp/waybar_alarm_state"];
             alarmWriteEngine.running = false;
@@ -85,7 +143,8 @@ Rectangle {
     }
 
     function cancelAndClosePopup() {
-        timeInput.text = "";
+        timeInput.countdownText = "";
+        timeInput.targetTimeText = "";
         alarmBox.popupVisible = false;
     }
 
@@ -94,7 +153,6 @@ Rectangle {
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onClicked: (mouse) => {
             if (mouse.button === Qt.LeftButton) {
-                // FIXED: Dynamically tracks map positions against the injected barWindow reference safely
                 if (alarmBox.barWindow && alarmBox.barWindow.contentItem) {
                     var globalCoords = alarmBox.mapToItem(alarmBox.barWindow.contentItem, 0, 0);
                     alarmBox.globalX = globalCoords.x;
@@ -121,14 +179,9 @@ Rectangle {
         verticalAlignment: Text.AlignVCenter
     }
 
-    // ============================================================================
-    // ALARM CONFIGURATION PROMPT OVERLAY PANEL WINDOW
-    // ============================================================================
     PanelWindow {
         id: inputPopup
         visible: alarmBox.popupVisible
-
-        // FIXED: References your dynamic barWindow hook to isolate multi-head monitor spaces
         screen: alarmBox.barWindow ? alarmBox.barWindow.screen : null
 
         WlrLayershell.keyboardFocus: visible ? WlrLayershell.Exclusive : WlrLayershell.None
@@ -140,17 +193,16 @@ Rectangle {
         anchors.right: false
         anchors.bottom: false
 
-        // FIXED: Dropdown shifts pull accurately from global padding profiles
         WlrLayershell.margins.top: 55 + shell.theme.globalPadding
         WlrLayershell.margins.left: alarmBox.globalX
 
         implicitWidth: 300
-        implicitHeight: 110
+        implicitHeight: 250
         color: "transparent"
 
         onVisibleChanged: {
             if (visible) {
-                timeInput.forceActiveFocus();
+                timeInput.forceInitialFocus();
             }
         }
 
@@ -182,7 +234,7 @@ Rectangle {
                     id: timeInput
                     width: 220
                     anchors.horizontalCenter: parent.horizontalCenter
-                    onAccepted: alarmBox.confirmAndSaveAlarm(timeInput.text)
+                    onAccepted: alarmBox.confirmAndSaveAlarm(timeInput.countdownText, timeInput.targetTimeText)
                     onRejected: alarmBox.cancelAndClosePopup()
                 }
             }
