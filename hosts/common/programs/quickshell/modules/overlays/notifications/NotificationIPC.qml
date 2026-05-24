@@ -13,21 +13,15 @@ Item {
     // ============================================================================
     function getNewest() {
         if (rootItem.activeNotifications.length === 0) return null;
-        // Index 0 holds the most recently received entry
         let entry = rootItem.activeNotifications[0];
-        if (entry && entry.card && entry.notification) {
-            return entry;
-        }
+        if (entry && entry.card) return entry;
         return null;
     }
 
     function getOldest() {
         if (rootItem.activeNotifications.length === 0) return null;
-        // FIXED: The last index explicitly holds the oldest card (the forefront card)
         let entry = rootItem.activeNotifications[rootItem.activeNotifications.length - 1];
-        if (entry && entry.card && entry.notification) {
-            return entry;
-        }
+        if (entry && entry.card) return entry;
         return null;
     }
 
@@ -58,7 +52,6 @@ Item {
         card.isManualDismiss = true;
         rootItem.closeNotificationTrack(card);
 
-        // FIXED: Checks if card is wrapped inside a window container before animating out
         if (card.startExitAnimation) {
             card.startExitAnimation();
         } else if (card.innerCard) {
@@ -66,11 +59,6 @@ Item {
         }
     }
 
-
-    /*
-     * FIXED: Changed away from dismissing index 0.
-     * Always targets and dismisses the oldest card at the forefront of your stack.
-     */
     function dismissLatest() {
         let entry = getOldest();
         if (!entry)
@@ -82,6 +70,7 @@ Item {
     // DYNAMIC AUDIO ROUTER ENGINE
     // ============================================================================
     function playNotificationSound(notification) {
+        if (!notification) return;
         let summaryLower = (notification.summary || "").toLowerCase();
         let bodyLower = (notification.body || "").toLowerCase();
         let baseResource = shell.projectRootPath + "/resources/";
@@ -108,51 +97,69 @@ Item {
     // ============================================================================
     function activate(card, notification) {
         console.log("ACTIVATE ENTERED");
-        if (!card || !notification) {
-            console.log("Missing card or notification");
+        if (!card) {
+            console.log("Missing valid layout card references");
             return;
         }
-        console.log("Activating notification:", notification.summary);
-        console.log("Application:", notification.appName);
 
-        highlight(card);
+        let summaryStr = notification ? (notification.summary || "") : "";
+        let bodyStr = notification ? (notification.body || "") : "";
+        let appNameStr = notification ? (notification.appName || "") : "";
+        let desktopHint = (notification && notification.hints) ? (notification.hints["desktop-entry"] || "") : "";
 
-        if (notification.actions && notification.actions.length > 0) {
-            let action = notification.actions[0];
-            console.log("Attempting invoke:", action.text);
-            if (action && action.invoke) {
-                action.invoke();
-                return;
+        if (summaryStr === "" && rootItem && rootItem.activeNotifications) {
+            let cachedEntry = rootItem.activeNotifications.find(entry => entry.card === card);
+            if (cachedEntry) {
+                summaryStr = cachedEntry.summary || "";
+                bodyStr = cachedEntry.body || "";
+                appNameStr = cachedEntry.appName || "";
+                desktopHint = cachedEntry.desktopEntry || "";
             }
         }
 
-        let desktop = notification.hints ? notification.hints["desktop-entry"] : null;
-        console.log("Desktop entry:", desktop);
+        console.log("Activating notification summary string:", summaryStr);
+        console.log("Application owner identifier:", appNameStr);
 
-        if (desktop === "vesktop") {
-            console.log("Focusing Vesktop");
+        highlight(card);
+
+        /*
+         * FIXED: Restored index brackets array lookup validation rules.
+         * Extracts action parameters cleanly without breaking the structural C++ mapping layer bindings.
+         */
+        if (notification && notification.actions && notification.actions.length > 0) {
+            let action = notification.actions[0];
+            if (action && action.invoke) {
+                console.log("Invoking native action:", action.text);
+                action.invoke();
+            }
+        }
+
+        let desktop = notification && notification.hints ? notification.hints["desktop-entry"] : desktopHint;
+        let fullTextLower = (summaryStr + " " + bodyStr + " " + appNameStr + " " + (desktop || "")).toLowerCase();
+        console.log("Normalized full scanning token string text payload:", fullTextLower);
+
+        if (fullTextLower.includes("vesktop") || fullTextLower.includes("discord") || fullTextLower.includes("#")) {
+            console.log("Routing focus straight to Vesktop window canvas via swaymsg");
             Quickshell.execDetached(["swaymsg", "[app_id=\"vesktop\"] focus"]);
             return;
         }
 
-        if (desktop === "horizon-electron") {
-            console.log("Focusing Horizon");
+        if (fullTextLower.includes("horizon-electron") || fullTextLower.includes("horizon")) {
+            console.log("Routing focus straight to Horizon workspace container via swaymsg");
             Quickshell.execDetached(["swaymsg", "[app_id=\"horizon-electron\"] focus"]);
             return;
         }
-        console.log("No activation route available.");
+
+        console.log("No activation route available or action already handled focus.");
     }
 
-    /*
-     * FIXED: Rewired to activate the oldest forefront notification card
-     * immediately upon receiving the shortcut trigger command.
-     */
     function jumpToLatest() {
         console.log("jumpToLatest called");
         let entry = getOldest();
-        if (!entry)
-            return;
-        activate(entry.card, entry.notification);
+        if (!entry || !entry.card) return;
+
+        ipc.activate(entry.card, entry.card.notification);
+        ipc.dismiss(entry.card);
     }
 
     // ============================================================================

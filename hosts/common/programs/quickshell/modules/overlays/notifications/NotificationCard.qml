@@ -93,14 +93,25 @@ Item {
             anchors.margins: 10
             spacing: 12
 
+            /*
+             * INTEGRATED: Added the rulesLoader icon mapping mechanism directly inside
+             * your exact image frame layout parameters.
+             */
             Image {
                 id: notificationIcon
-                width: 100
+                width: visible ? 100 : 0
                 height: 100
                 anchors.verticalCenter: parent.verticalCenter
                 fillMode: Image.PreserveAspectFit
-                source: notificationItem.getIconSource(notification)
-                visible: notificationItem.hasIcon(notification)
+                smooth: true
+                source: rulesLoader ? rulesLoader.getCustomIcon(notification) : ""
+                visible: source !== undefined && source !== null && source !== "" && status !== Image.Error
+
+                onStatusChanged: {
+                    if (status === Image.Error) {
+                        visible = false;
+                    }
+                }
             }
 
             Column {

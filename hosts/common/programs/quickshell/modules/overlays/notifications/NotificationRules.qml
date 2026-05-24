@@ -52,9 +52,23 @@ Item {
         return profile ? profile.color : shell.theme.base0D;
     }
 
+    /*
+     * FIXED: Changed the data type handler to return variant properties.
+     * Extracts Quickshell's native 'image' or 'icon' ImageSource object values as-is.
+     * This passes the active layout memory blocks straight to QML without string decoration crashes.
+     */
     function getCustomIcon(notification) {
         if (!notification) return "";
 
+        // 1. Prioritize Quickshell's native ImageSource channels directly (Captures Discord/Vesktop user avatars)
+        if (notification.image) {
+            return notification.image;
+        }
+        if (notification.icon) {
+            return notification.icon;
+        }
+
+        // 2. Fall back to manual string filepath lookups if no object token exists
         if (notification.appIcon && notification.appIcon.length > 0) {
             let iconName = notification.appIcon;
             if (iconName.startsWith("/") || iconName.startsWith("file://")) {
@@ -62,13 +76,25 @@ Item {
             }
 
             let lowerApp = iconName.toLowerCase();
-            if (lowerApp === "vesktop" || lowerApp === "discord") iconName = "discord";
-            if (lowerApp === "google-chrome" || lowerApp === "chrome") iconName = "google-chrome";
-            if (lowerApp === "steam") return "image://icon/steam";
+            let appNameLower = notification.appName ? notification.appName.toLowerCase() : "";
 
-                return "image://icon/" + iconName;
+            if (lowerApp === "vesktop" || lowerApp === "discord" || appNameLower === "vesktop" || appNameLower === "discord") {
+                return "file:///home/moonburst/.local/share/icons/Numix/48x48/apps/discord.png";
+            }
+            if (lowerApp === "google-chrome" || lowerApp === "chrome" || appNameLower === "google-chrome") {
+                return "file:///home/moonburst/.local/share/icons/Numix/48x48/apps/google-chrome.png";
+            }
+            if (lowerApp === "steam" || appNameLower === "steam") {
+                return "file:///home/moonburst/.local/share/icons/Numix/48x48/apps/steam.png";
+            }
+            if (lowerApp === "system-file-manager" || lowerApp === "nautilus" || lowerApp === "thunar") {
+                return "file:///home/moonburst/.local/share/icons/Numix/48x48/apps/system-file-manager.png";
+            }
+
+            return "file:///home/moonburst/.local/share/icons/Numix/48x48/apps/" + iconName + ".png";
         }
 
+        // 3. Fall back to character profile keyword matching rules
         let profile = findActiveProfile(notification);
         if (profile) {
             return "file://" + resourcePath + "/" + profile.name + "/" + profile.name + ".png";
