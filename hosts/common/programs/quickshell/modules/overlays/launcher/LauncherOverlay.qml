@@ -1,160 +1,188 @@
-
 import QtQuick
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 
+import "." as LauncherModule
+
 Rectangle {
     id: launcherRoot
+
     property var shell
     property var launcherWindow
-    anchors.fill: parent
-    color: "#00000088"
-    focus: visible
-    enabled: visible
 
     property string currentDefinition: ""
 
-    function open() {
+    property bool appMode: true
+    property bool clipboardMode: false
+    property bool dictionaryMode: false
+
+    anchors.fill: parent
+
+    color: "#00000088"
+
+    visible: launcherWindow.visible
+    enabled: visible
+    focus: visible
+
+    /*
+     * WINDOW CONTROL
+     */
+
+    function openLauncher() {
         launcherWindow.visible = true
-        if (launcherWindow.visible) {
-            searchField.forceActiveFocus()
-        }
-        console.log("IPC OPEN:", launcherWindow.visible)
-    }
 
-    function close() {
-        launcherWindow.visible = false
+        appMode = true
+        clipboardMode = false
+        dictionaryMode = false
+
         searchField.text = ""
-        console.log("IPC CLOSE:", launcherWindow.visible)
+
+        LauncherModule
+        .LauncherController
+        .appLauncher
+        .refreshFilter("")
+
+        searchField.forceActiveFocus()
     }
 
-    function toggle() {
-        launcherWindow.visible = !launcherWindow.visible
-        if (launcherWindow.visible) {
-            searchField.forceActiveFocus()
+    function openClipboard() {
+        launcherWindow.visible = true
+
+        appMode = false
+        clipboardMode = true
+        dictionaryMode = false
+
+        searchField.text = ""
+
+        LauncherModule
+        .LauncherController
+        .clipboard
+        .refreshFilter("")
+
+        searchField.forceActiveFocus()
+    }
+
+    function openDictionary(word) {
+        launcherWindow.visible = true
+
+        appMode = false
+        clipboardMode = false
+        dictionaryMode = true
+
+        searchField.text = word || ""
+
+        LauncherModule
+        .LauncherController
+        .dictionary
+        .fetch(searchField.text)
+
+        searchField.forceActiveFocus()
+    }
+
+    function closeOverlay() {
+        launcherWindow.visible = false
+
+        searchField.text = ""
+
+        currentDefinition = ""
+
+        appMode = false
+        clipboardMode = false
+        dictionaryMode = false
+    }
+
+    function toggleLauncher() {
+        if (
+            launcherWindow.visible &&
+            appMode
+        ) {
+            closeOverlay()
         } else {
-            searchField.text = ""
-        }
-        console.log("IPC TOGGLE:", launcherWindow.visible)
-    }
-
-    MouseArea {
-        anchors.fill: parent
-        onClicked: {
-            close()
+            openLauncher()
         }
     }
 
-    Keys.onEscapePressed: {
-        close()
-    }
-
-    ListModel {
-        id: launcherModel
-    }
-
-    ListModel {
-        id: filteredModel
-    }
-
-    function refreshFilter() {
-        filteredModel.clear()
-        let query = searchField.text.toLowerCase()
-        for (let i = 0; i < launcherModel.count; ++i) {
-            let app = launcherModel.get(i)
-            if (
-                query === "" ||
-                app.name.toLowerCase().includes(query)
-            ) {
-                filteredModel.append(app)
-            }
+    function toggleClipboard() {
+        if (
+            launcherWindow.visible &&
+            clipboardMode
+        ) {
+            closeOverlay()
+        } else {
+            openClipboard()
         }
     }
 
-    function launch(command) {
-        console.log("Launching:", command)
-        Quickshell.execDetached([
-            "sh",
-            "-c",
-            command
-        ])
-        close()
-    }
-
+    /*
+     * IPC
+     */
 
     IpcHandler {
         target: "launcher"
+
         function open() {
-            launcherRoot.open()
+            launcherRoot.openLauncher()
         }
 
         function close() {
-            launcherRoot.close()
+            launcherRoot.closeOverlay()
         }
 
         function toggle() {
-            launcherRoot.toggle()
-        }
-
-        function clipboard() {
-            console.log("IPC CLIPBOARD")
-        }
-
-    }
-
-    Process {
-        id: dictionaryProcess
-        stdout: SplitParser {
-            onRead: data => {
-                launcherRoot.currentDefinition = data.trim() ? data : "No definition found."
-            }
+            launcherRoot.toggleLauncher()
         }
     }
 
-    Process {
-        id: appLoader
-        command: [
-            "sh",
-            "-c",
-            "\n            find \\\n            /run/current-system/sw/share/applications \\\n            $HOME/.local/share/applications \\\n            -name '*.desktop' 2>/dev/null |\n            while read -r file; do\n                name=$(grep -m1 '^Name=' \"$file\" | cut -d= -f2-)\n\n                exec_cmd=$(grep -m1 '^Exec=' \"$file\" | cut -d= -f2-)\n                icon=$(grep -m1 '^Icon=' \"$file\" | cut -d= -f2-)\n\n                exec_cmd=$(printf '%s\\n' \"$exec_cmd\" | \\\n                sed -E 's/[[:space:]]+%[fFuUdDnNickvm]//g')\n\n                exec_cmd=$(echo \"$exec_cmd\" | sed 's/^ *//;s/ *$//')\n\n                [ -z \"$name\" ] && continue\n                [ -z \"$exec_cmd\" ] && continue\n\n                [ -z \"$icon\" ] && icon='application-x-executable'\n\n                echo \"$name|$exec_cmd|$icon\"\n\n                done\n                "
-        ]
+    IpcHandler {
+        target: "clipboard"
 
-        stdout: SplitParser {
-            onRead: function(data) {
-                let lines = data.trim().split("\n")
-
-                for (let i = 0; i < lines.length; ++i) {
-                    let parts = lines[i].split("|")
-
-                    if (parts.length < 3)
-                        continue
-
-                        launcherModel.append({
-                            "name": parts[0],
-                            "exec": parts[1],
-                            "icon": parts[2]
-                        })
-                }
-
-                refreshFilter()
-            }
+        function open() {
+            launcherRoot.openClipboard()
         }
 
-        running: true
+        function close() {
+            launcherRoot.closeOverlay()
+        }
+
+        function toggle() {
+            launcherRoot.toggleClipboard()
+        }
     }
+
+    /*
+     * BACKDROP
+     */
+
+    MouseArea {
+        anchors.fill: parent
+
+        onClicked: launcherRoot.closeOverlay()
+    }
+
+    Keys.onEscapePressed: {
+        launcherRoot.closeOverlay()
+    }
+
+    /*
+     * MAIN PANEL
+     */
 
     Rectangle {
-        width: 800
-        height: 600
+        width:
+        clipboardMode
+        ? 1100
+        : 820
+
+        height: 700
 
         anchors.centerIn: parent
 
-        radius: 12
+        radius: 16
 
         color: shell.theme.base01
 
-        border.width: 3
+        border.width: 2
         border.color: shell.theme.base03
 
         MouseArea {
@@ -165,21 +193,31 @@ Rectangle {
             anchors.fill: parent
             anchors.margins: 20
 
-            spacing: 16
+            spacing: 14
+
+            /*
+             * SEARCH FIELD
+             */
 
             TextField {
                 id: searchField
 
                 width: parent.width
-                height: 50
+                height: 52
 
                 color: shell.theme.base05
-                activeFocusOnPress: false
 
                 font.pixelSize: 20
 
+                placeholderText:
+                clipboardMode
+                ? "Search clipboard history..."
+                : dictionaryMode
+                ? "Enter word..."
+                : "Search applications..."
+
                 background: Rectangle {
-                    radius: 8
+                    radius: 10
 
                     color: "transparent"
 
@@ -187,144 +225,418 @@ Rectangle {
                     border.color: shell.theme.base03
                 }
 
+                /*
+                 * SEARCH MODES
+                 */
+
                 onTextChanged: {
-                    if (searchField.text.startsWith("def ")) {
-                        listView.visible = false
-                        dictionaryView.visible = true
-                        let word = searchField.text.substring(4).trim()
-                        if (word.length > 0) {
-                            launcherRoot.currentDefinition = "Loading definition for '" + word + "'..."
-                            dictionaryProcess.command = ["sh", "-c", `dict "${word}" 2>/dev/null || echo "No definition found."`]
-                            dictionaryProcess.running = true
-                        } else {
-                            launcherRoot.currentDefinition = "Enter a word to define."
-                        }
-                    } else {
-                        launcherRoot.currentDefinition = ""
-                        listView.visible = true
-                        dictionaryView.visible = false
-                        refreshFilter()
-                        if (filteredModel.count > 0) {
-                            listView.currentIndex = 0
-                        }
+                    const trimmed =
+                    (text || "").trim()
+
+                    /*
+                     * CLIPBOARD
+                     */
+
+                    if (clipboardMode) {
+
+                        LauncherModule
+                        .LauncherController
+                        .clipboard
+                        .refreshFilter(trimmed)
+
+                        return
                     }
+
+                    /*
+                     * DICTIONARY
+                     */
+
+                    if (dictionaryMode) {
+
+                        LauncherModule
+                        .LauncherController
+                        .dictionary
+                        .fetch(trimmed)
+
+                        return
+                    }
+
+                    /*
+                     * APP LAUNCHER
+                     */
+
+                    LauncherModule
+                    .LauncherController
+                    .appLauncher
+                    .refreshFilter(trimmed)
                 }
 
-                Keys.onUpPressed: {
-                    if (listView.visible && listView.currentIndex > 0) {
-                        listView.currentIndex--
-                    }
-                }
+                /*
+                 * DOWN
+                 */
 
                 Keys.onDownPressed: {
-                    if (listView.visible && listView.currentIndex < listView.count - 1) {
+
+                    if (clipboardMode) {
+
+                        LauncherModule
+                        .LauncherController
+                        .clipboard
+                        .moveDown()
+
+                        return
+                    }
+
+                    if (
+                        listView.currentIndex <
+                        LauncherModule
+                        .LauncherController
+                        .appLauncher
+                        .filteredApps.count - 1
+                    ) {
                         listView.currentIndex++
                     }
                 }
 
-                Keys.onEscapePressed: {
-                    close()
+                /*
+                 * UP
+                 */
+
+                Keys.onUpPressed: {
+
+                    if (clipboardMode) {
+
+                        LauncherModule
+                        .LauncherController
+                        .clipboard
+                        .moveUp()
+
+                        return
+                    }
+
+                    if (
+                        listView.currentIndex > 0
+                    ) {
+                        listView.currentIndex--
+                    }
                 }
 
+                /*
+                 * DELETE
+                 */
+
+                Keys.onDeletePressed: {
+
+                    if (!clipboardMode) {
+                        return
+                    }
+
+                    LauncherModule
+                    .LauncherController
+                    .clipboard
+                    .deleteSelected()
+                    if (event.key === Qt.Key_Delete) {
+                        clipboardController.handleDeleteKeyPress(); // or whatever your Clipboard component ID is named
+                        event.accepted = true;
+                    }
+                }
+
+                /*
+                 * ENTER
+                 */
+
                 Keys.onReturnPressed: {
-                    if (listView.visible && listView.currentIndex >= 0) {
-                        launch(filteredModel.get(listView.currentIndex).exec)
+
+                    /*
+                     * CLIPBOARD
+                     */
+
+                    if (clipboardMode) {
+
+                        LauncherModule
+                        .LauncherController
+                        .clipboard
+                        .copySelected()
+
+                        launcherRoot.closeOverlay()
+
+                        return
+                    }
+
+                    /*
+                     * APPS
+                     */
+
+                    if (
+                        appMode &&
+                        listView.currentIndex >= 0
+                    ) {
+                        LauncherModule
+                        .LauncherController
+                        .appLauncher
+                        .launch(
+                            LauncherModule
+                            .LauncherController
+                            .appLauncher
+                            .filteredApps
+                            .get(
+                                listView.currentIndex
+                            ).exec
+                        )
+
+                        launcherRoot.closeOverlay()
                     }
                 }
             }
 
+            /*
+             * APP LIST
+             */
+
             ListView {
                 id: listView
+
+                visible: appMode
+
                 width: parent.width
-                height: parent.height - 70
+
+                height:
+                parent.height -
+                searchField.height -
+                20
 
                 clip: true
 
                 spacing: 4
 
-                model: filteredModel
-                focus: true
-
-                Keys.onReturnPressed: {
-                    if (currentIndex >= 0) {
-                        launch(filteredModel.get(currentIndex).exec)
-                    }
-                }
+                model:
+                LauncherModule
+                .LauncherController
+                .appLauncher
+                .filteredApps
 
                 delegate: Rectangle {
                     width: ListView.view.width
-                    height: 56
+                    height: 64
 
-                    radius: 8
+                    radius: 10
 
-                    color: ListView.isCurrentItem
+                    color:
+                    ListView.isCurrentItem
                     ? shell.theme.base02
-                    : (mouse.containsMouse ? shell.theme.base02 : "transparent")
+                    : mouseArea.containsMouse
+                    ? shell.theme.base01
+                    : "transparent"
 
                     Row {
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.left: parent.left
-                        anchors.leftMargin: 16
+                        anchors.fill: parent
+                        anchors.margins: 14
 
-                        spacing: 16
+                        spacing: 14
 
-                        Text {
-                            text: "◉"
+                        Image {
+                            width: 32
+                            height: 32
 
-                            color: shell.theme.base05
+                            anchors.verticalCenter:
+                            parent.verticalCenter
 
-                            font.pixelSize: 18
+                            source:
+                            "image://icon/" + icon
+
+                            fillMode:
+                            Image.PreserveAspectFit
+
+                            smooth: true
                         }
 
                         Column {
-                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.verticalCenter:
+                            parent.verticalCenter
 
                             spacing: 2
 
                             Text {
-                                text: model.name
+                                text: name
 
-                                color: shell.theme.base05
+                                color:
+                                shell.theme.base05
 
-                                font.pixelSize: 20
+                                font.pixelSize: 18
+                                font.bold: true
                             }
 
                             Text {
-                                text: model.exec
+                                text: exec
 
-                                color: shell.theme.base07
+                                color:
+                                shell.theme.base07
 
-                                font.pixelSize: 14
+                                font.pixelSize: 13
+
+                                elide:
+                                Text.ElideRight
+
+                                width: 620
                             }
                         }
                     }
 
                     MouseArea {
-                        id: mouse
+                        id: mouseArea
 
                         anchors.fill: parent
 
                         hoverEnabled: true
 
                         onClicked: {
-                            launch(model.exec)
+                            LauncherModule
+                            .LauncherController
+                            .appLauncher
+                            .launch(exec)
+
+                            launcherRoot.closeOverlay()
                         }
                     }
                 }
             }
-            ScrollView {
-                id: dictionaryView
+
+            /*
+             * CLIPBOARD VIEW
+             */
+
+            Row {
+                visible: clipboardMode
+
                 width: parent.width
-                height: parent.height - 70
-                visible: false
+
+                height:
+                parent.height -
+                searchField.height -
+                20
+
+                spacing: 20
+
+                ListView {
+                    width: 540
+                    height: parent.height
+
+                    clip: true
+
+                    spacing: 4
+
+                    model:
+                    LauncherModule
+                    .LauncherController
+                    .clipboard
+                    .filteredClipboardItems
+
+                    delegate: Rectangle {
+                        required property int index
+                        required property string text
+
+                        width: ListView.view.width
+                        height: 70
+
+                        radius: 10
+
+                        color:
+                        index ===
+                        LauncherModule
+                        .LauncherController
+                        .clipboard
+                        .selectedIndex
+                        ? shell.theme.base02
+                        : "transparent"
+
+                        Text {
+                            anchors.fill: parent
+                            anchors.margins: 14
+
+                            text: parent.text
+
+                            wrapMode: Text.Wrap
+
+                            maximumLineCount: 2
+
+                            elide: Text.ElideRight
+
+                            color: shell.theme.base05
+
+                            font.pixelSize: 18
+                        }
+                    }
+                }
+
+                Rectangle {
+                    width: 500
+                    height: 500
+
+                    radius: 12
+
+                    color: shell.theme.base00
+
+                    border.width: 2
+                    border.color: shell.theme.base03
+
+                    visible:
+                    LauncherModule
+                    .LauncherController
+                    .clipboard
+                    .previewImage.length > 0
+
+                    Image {
+                        anchors.fill: parent
+                        anchors.margins: 10
+
+                        source:
+                        LauncherModule
+                        .LauncherController
+                        .clipboard
+                        .previewImage
+
+                        fillMode:
+                        Image.PreserveAspectFit
+
+                        smooth: true
+                    }
+                }
+            }
+
+            /*
+             * DICTIONARY
+             */
+
+            ScrollView {
+                visible: dictionaryMode
+
+                width: parent.width
+
+                height:
+                parent.height -
+                searchField.height -
+                20
+
                 clip: true
 
                 Text {
-                    width: parent.width - 10
-                    text: launcherRoot.currentDefinition
-                    color: shell.theme.base05
-                    wrapMode: Text.WordWrap
-                    font.pixelSize: 16
+                    width:
+                    parent.width - 20
+
+                    text:
+                    LauncherModule
+                    .LauncherController
+                    .dictionary
+                    .currentDefinition
+
+                    wrapMode: Text.Wrap
+
+                    color:
+                    shell.theme.base05
+
+                    font.pixelSize: 20
+
+                    lineHeight: 1.3
                 }
             }
         }

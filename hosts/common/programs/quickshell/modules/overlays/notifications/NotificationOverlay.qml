@@ -5,95 +5,107 @@ import Quickshell.Wayland
 import Quickshell.Services.Notifications
 import Quickshell.Io
 
-
 import "." as Local
 
 Item {
     id: root
     anchors.fill: parent
 
-    // =========================
-    // CONFIG
-    // =========================
-    property int overlaysHeightBaseline: 150
-    property int cardWidth: 400
-    property int cardHeight: 200
-    property int cardBorderWidth: 3
-    property int textSummarySize: 20
-    property int textBodySize: 20
-    property int holdDurationMs: 2500
+    // ============================================================================
+    // CONFIGURATION CONSTANTS (STYLIX BRIDGED)
+    // ============================================================================
+    property int overlaysHeightBaseline: 350
+    property int cardWidth: shell.theme.defaultCardWidth || 400
+    property int cardHeight: shell.theme.defaultCardHeight || 140
+    property int cardBorderWidth: shell.theme.globalBorderWidth || 3
+    property int textSummarySize: shell.theme.globalFontSize || 20
+    property int textBodySize: shell.theme.globalFontSize || 20
+    property int holdDurationMs: 5000
 
-    // [0] = newest
-    // [last] = oldest
     property var activeNotifications: []
 
-    // =========================
-    // IPC / ROUTING
-    // =========================
+    // ============================================================================
+    // ROUTING & IPC
+    // ============================================================================
     Local.NotificationIPC {
         id: notificationIPC
         rootItem: root
     }
 
-    // =========================
-    // RULES
-    // =========================
     Local.NotificationRules {
         id: rulesLoader
     }
 
-    // =========================
-    // NOTIFICATION SERVER
-    // =========================
     NotificationServer {
         id: notificationServer
-
         bodySupported: true
         bodyMarkupSupported: true
         bodyHyperlinksSupported: true
         imageSupported: true
         actionsSupported: true
         keepOnReload: true
+
         onNotification: function(notification) {
-
-            console.log(
-                "Notification received:",
-                notification.summary,
-                "resident:",
-                notification.resident
-            );
-
             root.handleNotification(notification);
         }
     }
 
-    // =========================
-    // STATE
-    // =========================
+    /*
+     * SINGLE LAYER-SHELL WINDOW CANVAS CONTAINER
+     */
+    PanelWindow {
+        id: mainDisplayCanvas
+
+        anchors.top: true
+        anchors.right: true
+        anchors.bottom: true
+        anchors.left: false
+
+        screen: Quickshell.screens.find(s => s.name === "DP-2")
+        implicitWidth: root.cardWidth + 100
+        color: "transparent"
+
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+        WlrLayershell.exclusiveZone: 0
+        WlrLayershell.layer: WlrLayer.Overlay
+
+        WlrLayershell.margins.top: 0
+        WlrLayershell.margins.right: shell.theme.globalPadding || 20
+        WlrLayershell.margins.bottom: 0
+
+        Item {
+            id: canvasContent
+            anchors.fill: parent
+        }
+    }
+
+    // ============================================================================
+    // STATE SELECTION ENGINE
+    // ============================================================================
     function handleNotification(notification) {
         const isShowEvent = notification.summary && notification.summary.length > 0;
 
         if (!isShowEvent) {
-            // This is likely a close event. Let's see if we have a card to close.
             let existingEntry = activeNotifications.find(entry => entry.notification.id === notification.id);
             if (existingEntry) {
                 notificationIPC.dismiss(existingEntry.card);
             }
-            return; // Nothing more to do for a close event.
+            return;
         }
 
-        // If we reach here, it's a "show" or "update" event.
         let existingEntry = activeNotifications.find(entry => entry.notification.id === notification.id);
 
         if (existingEntry) {
-            // It's an update for an existing notification.
-            existingEntry.card.notification = notification;
+            if (existingEntry.card) {
+                existingEntry.card.notification = notification;
+            }
             existingEntry.notification = notification;
         } else {
-            // It's a new notification. Create a card.
-            let popupCard = cardComponentTemplate.createObject(root, {
+            let popupCard = cardComponentTemplate.createObject(canvasContent, {
                 notification: notification,
-                rulesLoader: rulesLoader
+                rulesLoader: rulesLoader,
+                rootItem: root,
+                controller: notificationIPC
             });
 
             let entry = {
@@ -102,30 +114,27 @@ Item {
             };
 
             activeNotifications.unshift(entry);
+            notificationIPC.playNotificationSound(notification);
             positionNotificationsDeck();
             rulesLoader.handleIncomingNotificationCues(notification);
         }
     }
 
-
-
     function positionNotificationsDeck() {
-        let totalCount = activeNotifications.length;
-        for (let i = 0; i < totalCount; i++) {
-            let entry = activeNotifications[i];
+        let currentY = root.overlaysHeightBaseline;
+        const totalCards = activeNotifications.length;
 
-            if (!entry || !entry.card)
-                continue;
+        for (let i = totalCards - 1; i >= 0; i--) {
+            let entry = activeNotifications[i];
+            if (!entry || !entry.card) continue;
+
             let item = entry.card;
-            item.targetY =
-            root.overlaysHeightBaseline
-            + (i * 12);
-            item.currentQueueIndex = i;
-            item.stackIndex = i;
-            item.animateToStackPosition();
+            item.targetY = currentY;
+            item.stackIndex = (totalCards - 1) - i;
+
+            currentY -= 35;
         }
     }
-
 
     function closeNotificationTrack(itemInstance) {
         if (!itemInstance)
@@ -141,20 +150,13 @@ Item {
 
         if (index === -1)
             return;
+
         activeNotifications.splice(index, 1);
         positionNotificationsDeck();
     }
 
-
-    // =========================
-    // CARD
-    // =========================
     Component {
         id: cardComponentTemplate
-        Local.NotificationCard {
-            rulesLoader: rulesLoader
-            rootItem: root
-            controller: notificationIPC
-        }
+        Local.NotificationCard {}
     }
 }

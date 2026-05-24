@@ -13,7 +13,7 @@ Item {
         { name: "luster_dawn",   summary: "Luster Dawn",   color: "#e041de", sound: true  }
     ]
 
-    property string resourcePath: "/home/moonburst/nix/hosts/common/programs/quickshell/resources"
+    property string resourcePath: (typeof shellWindow !== "undefined" ? shellWindow.projectRootPath : "/home/moonburst/nix/hosts/common/programs/quickshell") + "/resources"
 
     Process {
         id: soundPlaybackEngine
@@ -21,12 +21,16 @@ Item {
     }
 
     function findActiveProfile(notification) {
-        if (!notification || !notification.summary) return null;
-        let textToScan = notification.summary.toLowerCase();
+        if (!notification) return null;
+
+        let summaryText = (notification.summary || "").toLowerCase();
+        let bodyText = (notification.body || "").toLowerCase();
 
         for (let i = 0; i < characterProfiles.length; i++) {
             let prof = characterProfiles[i];
-            if (textToScan.indexOf(prof.summary.toLowerCase()) !== -1) {
+            let targetKeyword = prof.summary.toLowerCase();
+
+            if (summaryText.includes(targetKeyword) || bodyText.includes(targetKeyword)) {
                 return prof;
             }
         }
@@ -48,12 +52,29 @@ Item {
         return profile ? profile.color : shell.theme.base0D;
     }
 
-    function getCustomIcon(notification, standardFallback) {
+    function getCustomIcon(notification) {
+        if (!notification) return "";
+
+        if (notification.appIcon && notification.appIcon.length > 0) {
+            let iconName = notification.appIcon;
+            if (iconName.startsWith("/") || iconName.startsWith("file://")) {
+                return iconName.startsWith("file://") ? iconName : "file://" + iconName;
+            }
+
+            let lowerApp = iconName.toLowerCase();
+            if (lowerApp === "vesktop" || lowerApp === "discord") iconName = "discord";
+            if (lowerApp === "google-chrome" || lowerApp === "chrome") iconName = "google-chrome";
+            if (lowerApp === "steam") return "image://icon/steam";
+
+                return "image://icon/" + iconName;
+        }
+
         let profile = findActiveProfile(notification);
         if (profile) {
             return "file://" + resourcePath + "/" + profile.name + "/" + profile.name + ".png";
         }
-        return standardFallback;
+
+        return "";
     }
 
     function handleIncomingNotificationCues(notification) {
@@ -62,8 +83,9 @@ Item {
 
         if (profile && profile.sound) {
             let flacPath = resourcePath + "/" + profile.name + "/" + profile.name + ".flac";
-            soundPlaybackEngine.command = ["pw-play", flacPath];
+
             soundPlaybackEngine.running = false;
+            soundPlaybackEngine.command = ["pw-play", flacPath];
             soundPlaybackEngine.running = true;
         }
     }

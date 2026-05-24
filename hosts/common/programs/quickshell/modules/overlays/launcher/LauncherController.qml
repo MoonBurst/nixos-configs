@@ -1,89 +1,39 @@
+pragma Singleton
+
 import QtQuick
-import Quickshell
-import Quickshell.Io
 
 Item {
     id: root
 
-    // =========================
-    // UI BINDING
-    // =========================
-    property Item uiRoot: null
+    /*
+     * MODULE REFERENCES
+     */
 
-    function bindUI(ui) {
-        uiRoot = ui
+    property alias appLauncher: appLauncher
+    property alias dictionary: dictionary
+    property alias clipboard: clipboard
+
+    /*
+     * APP LAUNCHER
+     */
+
+    AppLauncher {
+        id: appLauncher
     }
 
-    function ensureUI() {
-        if (!uiRoot) return false
-            return true
+    /*
+     * DICTIONARY
+     */
+
+    Dictionary {
+        id: dictionary
     }
 
-    // =========================
-    // STATE
-    // =========================
-    property string mode: "apps"
-    property string query: ""
+    /*
+     * CLIPBOARD
+     */
 
-    property bool visible: false
-
-    // =========================
-    // CORE STATE API (SINGLE SOURCE OF TRUTH)
-    // =========================
-    function open(modeName) {
-        if (!ensureUI()) return
-
-            mode = modeName
-            visible = true
-
-            uiRoot.launcherVisible = true
-            uiRoot.isMenuOpen = true
-
-            switch (modeName) {
-                case "apps":
-                    uiRoot.isClipboardMode = false
-                    uiRoot.isMathMode = false
-                    break
-
-                case "clipboard":
-                    uiRoot.isClipboardMode = true
-                    uiRoot.isMathMode = false
-                    break
-
-                case "math":
-                    uiRoot.isMathMode = true
-                    uiRoot.isClipboardMode = false
-                    break
-
-                case "dict":
-                    uiRoot.isMathMode = false
-                    uiRoot.isClipboardMode = false
-                    break
-            }
+    Clipboard {
+        id: clipboard
     }
-
-    function close() {
-        if (!ensureUI()) return
-
-            visible = false
-            mode = ""
-
-            uiRoot.launcherVisible = false
-            uiRoot.isMenuOpen = false
-    }
-
-    function toggle() {
-        if (visible) close()
-            else open("apps")
-    }
-
-    function setMode(modeName) {
-        open(modeName)
-    }
-
-    function openWithQuery(modeName, q) {
-        query = q || ""
-        open(modeName)
-    }
-
 }

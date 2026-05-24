@@ -1,159 +1,172 @@
 import QtQuick
-import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 
 Item {
-    id: appLauncherRoot
+    id: root
 
-    property alias query: searchField.text
-    property var appModel: launcherModel
+    property string currentQuery: ""
 
-    signal requestDictionary(string word)
-    signal requestLaunch(string command)
+    property alias apps: appsModel
+    property alias filteredApps: filteredAppsModel
 
     ListModel {
-        id: launcherModel
+        id: appsModel
+    }
 
-        ListElement {
-            name: "Firefox"
-            exec: "firefox"
-            icon: ""
-        }
+    ListModel {
+        id: filteredAppsModel
+    }
 
-        ListElement {
-            name: "Alacritty"
-            exec: "alacritty"
-            icon: ""
-        }
+    function loadApps() {
+        appsModel.clear()
+        filteredAppsModel.clear()
 
-        ListElement {
-            name: "Files"
-            exec: "nautilus"
-            icon: ""
+        appLoader.running = true
+    }
+
+    function refreshFilter(query) {
+        currentQuery = query || ""
+
+        const q =
+        currentQuery
+        .toLowerCase()
+        .trim()
+
+        filteredAppsModel.clear()
+
+        for (let i = 0; i < appsModel.count; ++i) {
+            const app = appsModel.get(i)
+
+            const name =
+            (app.name || "")
+            .toLowerCase()
+
+            const exec =
+            (app.exec || "")
+            .toLowerCase()
+
+            if (
+                q.length === 0 ||
+                name.includes(q) ||
+                exec.includes(q)
+            ) {
+                filteredAppsModel.append({
+                    name: app.name,
+                    exec: app.exec,
+                    icon: app.icon
+                })
+            }
         }
     }
 
-    Rectangle {
-        anchors.fill: parent
-        color: "#000000AA"
+    function launch(command) {
+        if (!command || command.length === 0) {
+            return
+        }
+
+        let cleaned = command
+
+        cleaned = cleaned.replace(
+            /%[fFuUdDnNickvm]/g,
+            ""
+        )
+
+        cleaned = cleaned
+        .replace(/\s+/g, " ")
+        .trim()
+
+        launcher.command = [
+            "sh",
+            "-c",
+            cleaned
+        ]
+
+        launcher.running = true
     }
 
-    Rectangle {
-        id: launcherBox
+    Process {
+        id: launcher
+    }
 
-        width: 800
-        height: 600
-        anchors.centerIn: parent
+    Process {
+        id: appLoader
 
-        radius: 16
-        color: launcherRoot.theme.base00
+        command: [
+            "sh",
+            "-c",
+            `
+            find \
+            /run/current-system/sw/share/applications \
+            $HOME/.local/share/applications \
+            /usr/share/applications \
+            -name '*.desktop' 2>/dev/null |
 
-        border.width: 3
-        border.color: launcherRoot.theme.base03
+            while read -r file; do
 
-        Column {
-            anchors.fill: parent
-            anchors.margins: 20
-            spacing: 16
+                name=$(grep -m1 '^Name=' "$file" | cut -d= -f2-)
 
-            TextField {
-                id: searchField
+                exec_cmd=$(grep -m1 '^Exec=' "$file" | cut -d= -f2-)
 
-                width: parent.width
-                height: 52
+                icon=$(grep -m1 '^Icon=' "$file" | cut -d= -f2-)
 
-                color: launcherRoot.theme.base05
-                font.pixelSize: 20
+                exec_cmd=$(printf '%s\n' "$exec_cmd" \
+                | sed -E 's/[[:space:]]+%[fFuUdDnNickvm]//g')
 
-                placeholderText: "Search applications..."
+                exec_cmd=$(echo "$exec_cmd" \
+                | sed 's/^ *//;s/ *$//')
 
-                background: Rectangle {
-                    radius: 12
-                    color: launcherRoot.theme.base01
-                    border.width: 2
-                    border.color: launcherRoot.theme.base08
-                }
+                [ -z "$name" ] && continue
+                [ -z "$exec_cmd" ] && continue
 
-                onTextChanged: {
-                    if (text.indexOf("def ") === 0) {
-                        appLauncherRoot.requestDictionary(
-                            text.substring(4)
-                        )
-                    }
-                }
-            }
+                [ -z "$icon" ] && \
+                icon='application-x-executable'
 
-            ListView {
-                id: appsView
+                echo "$name|$exec_cmd|$icon"
 
-                width: parent.width
-                height: parent.height - 80
+                done | sort -u
+                `
+        ]
 
-                spacing: 8
-                clip: true
+        stdout: SplitParser {
+            onRead: data => {
+                const lines =
+                data.split("\n")
 
-                model: launcherModel
+                for (
+                    let i = 0;
+                i < lines.length;
+                ++i
+                ) {
+                    const line =
+                    lines[i].trim()
 
-                delegate: Rectangle {
-                    width: appsView.width
-                    height: 56
-                    radius: 10
-
-                    color: mouseArea.containsMouse
-                    ? launcherRoot.theme.base02
-                    : launcherRoot.theme.base01
-
-                    Row {
-                        anchors.fill: parent
-                        anchors.margins: 12
-                        spacing: 14
-
-                        Rectangle {
-                            width: 32
-                            height: 32
-                            radius: 6
-                            color: launcherRoot.theme.base03
-
-                            Text {
-                                anchors.centerIn: parent
-                                text: name.charAt(0)
-                                color: launcherRoot.theme.base05
-                                font.pixelSize: 16
-                            }
-                        }
-
-                        Column {
-                            anchors.verticalCenter: parent.verticalCenter
-                            spacing: 2
-
-                            Text {
-                                text: name
-                                color: launcherRoot.theme.base05
-                                font.pixelSize: 20
-                                font.bold: true
-                            }
-
-                            Text {
-                                text: exec
-                                color: launcherRoot.theme.base07
-                                font.pixelSize: 14
-                            }
-                        }
+                    if (!line.length) {
+                        continue
                     }
 
-                    MouseArea {
-                        id: mouseArea
+                    const parts =
+                    line.split("|")
 
-                        anchors.fill: parent
-                        hoverEnabled: true
-
-                        onClicked: {
-                            appLauncherRoot.requestLaunch(exec)
-                        }
+                    if (parts.length < 3) {
+                        continue
                     }
+
+                    appsModel.append({
+                        name: parts[0],
+                        exec: parts[1],
+                        icon: parts[2]
+                    })
                 }
             }
         }
+
+        onExited: {
+            refreshFilter("")
+        }
+    }
+
+    Component.onCompleted: {
+        loadApps()
     }
 }
