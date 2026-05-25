@@ -182,7 +182,7 @@
                 anchors.centerIn: parent
                 radius: 16
                 color: shell.theme.base01
-                border.width: 2
+                border.width: 5
                 border.color: shell.theme.base03
 
                 width: launcherRoot.mode === "clipboard" ? 1100 : 820
@@ -194,7 +194,7 @@
                 Column {
                     anchors.fill: parent
                     anchors.margins: 20
-                    spacing: 14
+                    spacing: 20
 
                     readonly property real contentHeight: height - searchField.height - spacing
 
@@ -204,11 +204,13 @@
                     TextField {
                         id: searchField
                         width: parent.width
+                        leftPadding: 20
                         height: 52
                         focus: true
                         color: shell.theme.base05
-                        font.pixelSize: 20
+                        font.pixelSize: 30
 
+                        placeholderTextColor: shell.theme.base05
                         placeholderText: {
                             const currentMode = launcherRoot.mode
                             if (currentMode === "clipboard") return "Search clipboard history..."
@@ -220,8 +222,8 @@
                         background: Rectangle {
                             radius: 10
                             color: "transparent"
-                            border.width: 2
-                            border.color: shell.theme.base03
+                            border.width: 5
+                            border.color: shell.theme.base05
                         }
 
                         onTextChanged: {
@@ -311,7 +313,7 @@
                                 id: unicodeListView
                                 clip: true
                                 cacheBuffer: 800
-                                spacing: 4
+                                spacing: 20
                                 boundsBehavior: Flickable.StopAtBounds
                                 model: launcherRoot.ctrl.unicodeSearch.filteredUnicodeItems
                                 currentIndex: launcherRoot.ctrl.unicodeSearch.selectedIndex
@@ -324,18 +326,18 @@
 
                                     Row {
                                         anchors.fill: parent
-                                        anchors.margins: 14
+                                        anchors.margins: 20
                                         spacing: 20
                                         Text {
                                             text: modelData.symbol
                                             color: shell.theme.base05
-                                            font.pixelSize: 28
+                                            font.pixelSize: 50
                                             width: 50
                                         }
                                         Text {
                                             text: modelData.name
                                             color: shell.theme.base05
-                                            font.pixelSize: 18
+                                            font.pixelSize: 20
                                             anchors.verticalCenter: parent.verticalCenter
                                         }
                                     }
@@ -368,19 +370,22 @@
                             ListView {
                                 clip: true
                                 cacheBuffer: 800
-                                spacing: 4
+                                spacing: 20
                                 model: launcherRoot.ctrl.appLauncher.filteredApps
 
                                 delegate: Rectangle {
                                     width: ListView.view.width
-                                    height: 64
+                                    height: 90
                                     radius: 10
                                     color: ListView.isCurrentItem ? shell.theme.base02 : mouseArea.containsMouse ? shell.theme.base01 : "transparent"
+                                    border.width: ListView.isCurrentItem ? 5 : 0
+                                    border.color: ListView.isCurrentItem ? shell.theme.base08 : "transparent"
 
                                     Row {
                                         anchors.fill: parent
-                                        anchors.margins: 14
-                                        spacing: 14
+                                        anchors.margins: 20
+                                        spacing: 20
+
                                         Image {
                                             width: 32
                                             height: 32
@@ -392,19 +397,19 @@
 
                                         Column {
                                             anchors.verticalCenter: parent.verticalCenter
-                                            spacing: 2
+                                            spacing: 20
 
                                             Text {
                                                 text: name || ""
                                                 color: shell.theme.base05
-                                                font.pixelSize: 18
+                                                font.pixelSize: 20
                                                 font.bold: true
                                             }
 
                                             Text {
                                                 text: exec || ""
                                                 color: shell.theme.base07
-                                                font.pixelSize: 13
+                                                font.pixelSize: 20
                                                 elide: Text.ElideRight
                                                 width: 620
                                             }
@@ -448,7 +453,7 @@
                                     height: parent.height
                                     clip: true
                                     cacheBuffer: 1200
-                                    spacing: 4
+                                    spacing: 20
                                     boundsBehavior: Flickable.StopAtBounds
                                     model: launcherRoot.ctrl.clipboard.filteredClipboardItems
                                     currentIndex: ctrl.clipboard.selectedIndex
@@ -463,31 +468,38 @@
                                         height: itemIsImage ? 120 : 70
                                         radius: 10
                                         color: itemIndex === launcherRoot.ctrl.clipboard.selectedIndex ? shell.theme.base02 : "transparent"
+                                        border.width: ListView.isCurrentItem ? 5 : 0
+                                        border.color: ListView.isCurrentItem ? shell.theme.base08 : "transparent"
 
                                         Row {
                                             anchors.fill: parent
                                             anchors.margins: 12
-                                            spacing: 12
+                                            spacing: 20
 
                                             Image {
                                                 visible: itemIsImage
-                                                width: 90
-                                                height: 90
+                                                width: 100
+                                                height: 100
                                                 source: itemIsImage && itemImagePath ? "file://" + itemImagePath : ""
                                                 fillMode: Image.PreserveAspectFit
                                                 smooth: false
                                             }
 
                                             Text {
-                                                width: parent.width - (itemIsImage ? 120 : 0)
+
+                                                anchors.left: itemIsImage ? parent.left : parent.left
+                                                anchors.leftMargin: itemIsImage ? 120 : 0 // 100px image width + 20px layout spacing
+                                                anchors.right: parent.right
                                                 anchors.verticalCenter: parent.verticalCenter
+
                                                 text: itemIsImage ? "[Image Clipboard Entry]" : itemText
                                                 wrapMode: Text.NoWrap
                                                 elide: Text.ElideRight
                                                 color: shell.theme.base05
-                                                font.pixelSize: 18
+                                                font.pixelSize: 20
                                                 textFormat: Text.PlainText
                                             }
+
                                         }
 
                                         MouseArea {
@@ -513,7 +525,7 @@
                                     radius: 12
                                     color: shell.theme.base00
 
-                                    border.width: 2
+                                    border.width: 5
                                     border.color: shell.theme.base03
 
                                     property
@@ -524,8 +536,7 @@
                                         ) ?
                                         launcherRoot.ctrl.clipboard.filteredClipboardItems.get(
                                             launcherRoot.ctrl.clipboard.selectedIndex
-                                        ) :
-                                        null
+                                        ) : null
 
                                     /*
                                      * IMAGE PREVIEW
@@ -533,7 +544,7 @@
 
                                     Image {
                                         anchors.fill: parent
-                                        anchors.margins: 10
+                                        anchors.margins: 20
 
                                         visible: (
                                             previewPanel.selectedItem &&
@@ -555,7 +566,7 @@
                                     ScrollView {
                                         id: textPreview
                                         anchors.fill: parent
-                                        anchors.margins: 12
+                                        anchors.margins: 20
 
                                         visible: (
                                             previewPanel.selectedItem &&
@@ -576,7 +587,7 @@
                                             readOnly: true
                                             selectByMouse: true
                                             color: shell.theme.base05
-                                            font.pixelSize: 18
+                                            font.pixelSize: 20
                                             background: null
                                         }
                                     }
@@ -614,14 +625,14 @@
                             Rectangle {
                                 radius: 12
                                 color: shell.theme.base00
-                                border.width: 2
+                                border.width: 5
                                 border.color: shell.theme.base03
 
                                 Text {
                                     anchors.centerIn: parent
                                     text: launcherRoot.ctrl.mathEngine.mathResultString
                                     color: shell.theme.base05
-                                    font.pixelSize: 42
+                                    font.pixelSize: 50
                                     font.bold: true
                                 }
                             }
