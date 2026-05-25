@@ -17,6 +17,7 @@ Rectangle {
     property bool clipboardMode: false
     property bool dictionaryMode: false
     property bool mathMode: false
+    property bool unicodeMode: false
 
     anchors.fill: parent
 
@@ -38,6 +39,7 @@ Rectangle {
         clipboardMode = false
         dictionaryMode = false
         mathMode = false
+        unicodeMode = false
 
         searchField.text = ""
 
@@ -57,6 +59,7 @@ Rectangle {
         clipboardMode = true
         dictionaryMode = false
         mathMode = false
+        unicodeMode = false
 
         searchField.text = ""
 
@@ -76,6 +79,7 @@ Rectangle {
         clipboardMode = false
         dictionaryMode = true
         mathMode = false
+        unicodeMode = false
 
         searchField.text = word || ""
 
@@ -99,6 +103,7 @@ Rectangle {
         clipboardMode = false
         dictionaryMode = false
         mathMode = false
+        unicodeMode = false
     }
 
     function toggleLauncher() {
@@ -218,6 +223,8 @@ Rectangle {
                 width: parent.width
                 height: 52
 
+                focus: true
+
                 color: shell.theme.base05
 
                 font.pixelSize: 20
@@ -225,6 +232,8 @@ Rectangle {
                 placeholderText:
                 clipboardMode
                 ? "Search clipboard history..."
+                : unicodeMode
+                ? "Search unicode symbols..."
                 : dictionaryMode
                 ? "Enter word..."
                 : "Search applications..."
@@ -259,6 +268,31 @@ Rectangle {
                     }
 
                     /*
+                     * UNICODE
+                     */
+
+                    if (
+                        trimmed.startsWith(".")
+                    ) {
+
+                        appMode = false
+                        clipboardMode = false
+                        dictionaryMode = false
+                        mathMode = false
+                        unicodeMode = true
+
+                        const query =
+                        trimmed.substring(1).trim()
+
+                        LauncherModule
+                        .LauncherController
+                        .unicodeSearch
+                        .refreshFilter(query)
+
+                        return
+                    }
+
+                    /*
                      * DICTIONARY
                      */
 
@@ -270,6 +304,7 @@ Rectangle {
                         clipboardMode = false
                         dictionaryMode = true
                         mathMode = false
+                        unicodeMode = false
 
                         const word =
                         trimmed.substring(4).trim()
@@ -298,6 +333,7 @@ Rectangle {
                         clipboardMode = false
                         dictionaryMode = false
                         mathMode = true
+                        unicodeMode = false
 
                         return
                     }
@@ -310,6 +346,7 @@ Rectangle {
                     clipboardMode = false
                     dictionaryMode = false
                     mathMode = false
+                    unicodeMode = false
 
                     LauncherModule
                     .LauncherController
@@ -318,6 +355,35 @@ Rectangle {
                 }
 
                 Keys.onDownPressed: {
+
+                    /*
+                     * UNICODE
+                     */
+
+                    if (unicodeMode) {
+
+                        LauncherModule
+                        .LauncherController
+                        .unicodeSearch
+                        .moveDown()
+
+                        unicodeListView.currentIndex =
+                        LauncherModule
+                        .LauncherController
+                        .unicodeSearch
+                        .selectedIndex
+
+                        unicodeListView.positionViewAtIndex(
+                            unicodeListView.currentIndex,
+                            ListView.Contain
+                        )
+
+                        return
+                    }
+
+                    /*
+                     * CLIPBOARD
+                     */
 
                     if (clipboardMode) {
 
@@ -337,6 +403,10 @@ Rectangle {
                         return
                     }
 
+                    /*
+                     * APPS
+                     */
+
                     if (
                         listView.currentIndex <
                         LauncherModule
@@ -349,6 +419,35 @@ Rectangle {
                 }
 
                 Keys.onUpPressed: {
+
+                    /*
+                     * UNICODE
+                     */
+
+                    if (unicodeMode) {
+
+                        LauncherModule
+                        .LauncherController
+                        .unicodeSearch
+                        .moveUp()
+
+                        unicodeListView.currentIndex =
+                        LauncherModule
+                        .LauncherController
+                        .unicodeSearch
+                        .selectedIndex
+
+                        unicodeListView.positionViewAtIndex(
+                            unicodeListView.currentIndex,
+                            ListView.Contain
+                        )
+
+                        return
+                    }
+
+                    /*
+                     * CLIPBOARD
+                     */
 
                     if (clipboardMode) {
 
@@ -367,6 +466,10 @@ Rectangle {
 
                         return
                     }
+
+                    /*
+                     * APPS
+                     */
 
                     if (
                         listView.currentIndex > 0
@@ -388,6 +491,22 @@ Rectangle {
                 }
 
                 Keys.onReturnPressed: {
+
+                    /*
+                     * UNICODE
+                     */
+
+                    if (unicodeMode) {
+
+                        LauncherModule
+                        .LauncherController
+                        .unicodeSearch
+                        .copySelected()
+
+                        launcherRoot.closeOverlay()
+
+                        return
+                    }
 
                     /*
                      * CLIPBOARD
@@ -429,6 +548,115 @@ Rectangle {
 
                         launcherRoot.closeOverlay()
                     }
+                }
+            }
+
+            /*
+             * UNICODE LIST
+             */
+
+            ListView {
+                id: unicodeListView
+
+                visible: unicodeMode
+
+                width: parent.width
+
+                height:
+                parent.height -
+                searchField.height -
+                20
+
+                clip: true
+
+                spacing: 4
+
+                boundsBehavior:
+                Flickable.StopAtBounds
+
+                model:
+                LauncherModule
+                .LauncherController
+                .unicodeSearch
+                .filteredUnicodeItems
+
+                currentIndex:
+                LauncherModule
+                .LauncherController
+                .unicodeSearch
+                .selectedIndex
+
+                delegate: Rectangle {
+
+                    width: unicodeListView.width
+                    height: 60
+
+                    radius: 10
+
+                    color:
+                    ListView.isCurrentItem
+                    ? shell.theme.base02
+                    : "transparent"
+
+                    Row {
+
+                        anchors.fill: parent
+                        anchors.margins: 14
+
+                        spacing: 20
+
+                        Text {
+
+                            text: modelData.symbol
+
+                            color:
+                            shell.theme.base05
+
+                            font.pixelSize: 28
+
+                            width: 50
+                        }
+
+                        Text {
+
+                            text: modelData.name
+
+                            color:
+                            shell.theme.base05
+
+                            font.pixelSize: 18
+
+                            anchors.verticalCenter:
+                            parent.verticalCenter
+                        }
+                    }
+
+                    MouseArea {
+
+                        anchors.fill: parent
+
+                        hoverEnabled: true
+
+                        onClicked: {
+
+                            LauncherModule
+                            .LauncherController
+                            .unicodeSearch
+                            .selectedIndex = index
+
+                            unicodeListView.currentIndex = index
+
+                            LauncherModule
+                            .LauncherController
+                            .unicodeSearch
+                            .copySelected()
+
+                            launcherRoot.closeOverlay()
+                        }
+                    }
+                }
+                ScrollBar.vertical: ScrollBar {
+                    policy: ScrollBar.AsNeeded
                 }
             }
 

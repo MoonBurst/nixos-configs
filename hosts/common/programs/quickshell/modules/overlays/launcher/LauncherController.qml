@@ -1,3 +1,5 @@
+// LauncherController.qml
+
 pragma Singleton
 
 import QtQuick
@@ -12,6 +14,7 @@ Item {
     property alias appLauncher: appLauncher
     property alias dictionary: dictionary
     property alias clipboard: clipboard
+    property alias unicodeSearch: unicodeSearch
 
     /*
      * MATH SINGLETON
@@ -41,5 +44,13 @@ Item {
 
     Clipboard {
         id: clipboard
+    }
+
+    /*
+     * UNICODE SEARCH
+     */
+
+    UnicodeSearch {
+        id: unicodeSearch
     }
 }

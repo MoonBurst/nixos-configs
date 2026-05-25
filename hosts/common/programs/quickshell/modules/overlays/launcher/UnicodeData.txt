@@ -1,0 +1,89 @@
+import QtQuick
+
+Item {
+    id: unicodeEngine
+
+    // The live output model array that updates as the user types
+    property var searchResults: []
+
+    // Internal cache storage of all standard mappings
+    property var _fullDatabase: []
+    property bool isLoading: false
+
+    // Core lookup method called by your search UI text inputs
+    function query(searchText) {
+        if (_fullDatabase.length === 0) {
+            _loadDatabase(searchText);
+            return;
+        }
+
+        if (!searchText || searchText.trim() === "") {
+            searchResults = [];
+            return;
+        }
+
+        var cleanQuery = searchText.toLowerCase().trim();
+
+        // High performance JavaScript filtering loop
+        var matches = _fullDatabase.filter(function(item) {
+            return item.name.includes(cleanQuery) || item.sym === cleanQuery;
+        });
+
+        // Limit maximum return rows to keep your desktop rendering smooth
+        searchResults = matches.slice(0, 100);
+    }
+
+    // Downloads the complete dictionary definitions map if missing
+    function _loadDatabase(pendingQuery) {
+        if (isLoading) return;
+        isLoading = true;
+
+        var xhr = new XMLHttpRequest();
+        // Uses the lightweight character definitions list database
+        xhr.open("GET", "https://unicode.org");
+
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    var lines = xhr.responseText.split("\n");
+                    var tempDb = [];
+
+                    for (var i = 0; i < lines.length; i++) {
+                        var line = lines[i];
+                        if (!line) continue;
+
+                        var parts = line.split(";");
+                        if (parts.length < 2) continue;
+
+                        var hex = parts[0];
+                        var name = parts[1];
+
+                        // Filter out empty lines or structural layout control sections
+                        if (name.indexOf("<") === 0) continue;
+
+                        // Native structural code point conversion to output actual character symbol
+                        var charCode = parseInt(hex, 16);
+                        var symbol = String.fromCodePoint(charCode);
+
+                        tempDb.push({
+                            "sym": symbol,
+                            "hex": hex,
+                            "name": name.toLowerCase() // Pre-lowercased to accelerate comparisons
+                        });
+                    }
+
+                    _fullDatabase = tempDb;
+                    isLoading = false;
+
+                    if (pendingQuery) {
+                        query(pendingQuery);
+                    }
+                } else {
+                    isLoading = false;
+                    console.log("Failed to download data sheet. Status code: " + xhr.status);
+                }
+            }
+        };
+        xhr.send();
+    }
+}
