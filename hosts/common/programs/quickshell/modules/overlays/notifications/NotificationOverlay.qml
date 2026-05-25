@@ -61,24 +61,39 @@ Item {
         anchors.bottom: true
         anchors.left: false
 
-        screen: Quickshell.screens.find(s => s.name === "DP-2")
+        screen: Quickshell.screens.find(
+            s => s.name === "DP-2"
+        )
+
         implicitWidth: root.cardWidth + 100
+
         color: "transparent"
 
-        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+        /*
+         * CLICK THROUGH
+         */
+
+        mask: Region {}
+
+        WlrLayershell.keyboardFocus:
+        WlrKeyboardFocus.None
+
         WlrLayershell.exclusiveZone: 0
-        WlrLayershell.layer: WlrLayer.Overlay
+
+        WlrLayershell.layer:
+        WlrLayer.Overlay
 
         WlrLayershell.margins.top: 0
-        WlrLayershell.margins.right: shell.theme.globalPadding || 20
+        WlrLayershell.margins.right:
+        shell.theme.globalPadding || 20
         WlrLayershell.margins.bottom: 0
 
         Item {
             id: canvasContent
+
             anchors.fill: parent
         }
     }
-
     // ============================================================================
     // STATE SELECTION ENGINE
     // ============================================================================

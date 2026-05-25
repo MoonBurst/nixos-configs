@@ -16,6 +16,7 @@ Rectangle {
     property bool appMode: true
     property bool clipboardMode: false
     property bool dictionaryMode: false
+    property bool mathMode: false
 
     anchors.fill: parent
 
@@ -30,11 +31,13 @@ Rectangle {
      */
 
     function openLauncher() {
+
         launcherWindow.visible = true
 
         appMode = true
         clipboardMode = false
         dictionaryMode = false
+        mathMode = false
 
         searchField.text = ""
 
@@ -47,11 +50,13 @@ Rectangle {
     }
 
     function openClipboard() {
+
         launcherWindow.visible = true
 
         appMode = false
         clipboardMode = true
         dictionaryMode = false
+        mathMode = false
 
         searchField.text = ""
 
@@ -64,11 +69,13 @@ Rectangle {
     }
 
     function openDictionary(word) {
+
         launcherWindow.visible = true
 
         appMode = false
         clipboardMode = false
         dictionaryMode = true
+        mathMode = false
 
         searchField.text = word || ""
 
@@ -81,6 +88,7 @@ Rectangle {
     }
 
     function closeOverlay() {
+
         launcherWindow.visible = false
 
         searchField.text = ""
@@ -90,9 +98,11 @@ Rectangle {
         appMode = false
         clipboardMode = false
         dictionaryMode = false
+        mathMode = false
     }
 
     function toggleLauncher() {
+
         if (
             launcherWindow.visible &&
             appMode
@@ -104,6 +114,7 @@ Rectangle {
     }
 
     function toggleClipboard() {
+
         if (
             launcherWindow.visible &&
             clipboardMode
@@ -169,6 +180,7 @@ Rectangle {
      */
 
     Rectangle {
+
         width:
         clipboardMode
         ? 1100
@@ -190,6 +202,7 @@ Rectangle {
         }
 
         Column {
+
             anchors.fill: parent
             anchors.margins: 20
 
@@ -217,6 +230,7 @@ Rectangle {
                 : "Search applications..."
 
                 background: Rectangle {
+
                     radius: 10
 
                     color: "transparent"
@@ -225,11 +239,8 @@ Rectangle {
                     border.color: shell.theme.base03
                 }
 
-                /*
-                 * SEARCH MODES
-                 */
-
                 onTextChanged: {
+
                     const trimmed =
                     (text || "").trim()
 
@@ -251,29 +262,60 @@ Rectangle {
                      * DICTIONARY
                      */
 
-                    if (dictionaryMode) {
+                    if (
+                        trimmed.startsWith("def ")
+                    ) {
+
+                        appMode = false
+                        clipboardMode = false
+                        dictionaryMode = true
+                        mathMode = false
+
+                        const word =
+                        trimmed.substring(4).trim()
 
                         LauncherModule
                         .LauncherController
                         .dictionary
-                        .fetch(trimmed)
+                        .fetch(word)
 
                         return
                     }
 
                     /*
-                     * APP LAUNCHER
+                     * MATH
                      */
+
+                    const mathWorked =
+                    LauncherModule
+                    .LauncherController
+                    .mathEngine
+                    .runCalculator(trimmed)
+
+                    if (mathWorked) {
+
+                        appMode = false
+                        clipboardMode = false
+                        dictionaryMode = false
+                        mathMode = true
+
+                        return
+                    }
+
+                    /*
+                     * APPS
+                     */
+
+                    appMode = true
+                    clipboardMode = false
+                    dictionaryMode = false
+                    mathMode = false
 
                     LauncherModule
                     .LauncherController
                     .appLauncher
                     .refreshFilter(trimmed)
                 }
-
-                /*
-                 * DOWN
-                 */
 
                 Keys.onDownPressed: {
 
@@ -283,6 +325,14 @@ Rectangle {
                         .LauncherController
                         .clipboard
                         .moveDown()
+
+                        clipboardListView.positionViewAtIndex(
+                            LauncherModule
+                            .LauncherController
+                            .clipboard
+                            .selectedIndex,
+                            ListView.Contain
+                        )
 
                         return
                     }
@@ -298,10 +348,6 @@ Rectangle {
                     }
                 }
 
-                /*
-                 * UP
-                 */
-
                 Keys.onUpPressed: {
 
                     if (clipboardMode) {
@@ -310,6 +356,14 @@ Rectangle {
                         .LauncherController
                         .clipboard
                         .moveUp()
+
+                        clipboardListView.positionViewAtIndex(
+                            LauncherModule
+                            .LauncherController
+                            .clipboard
+                            .selectedIndex,
+                            ListView.Contain
+                        )
 
                         return
                     }
@@ -321,10 +375,6 @@ Rectangle {
                     }
                 }
 
-                /*
-                 * DELETE
-                 */
-
                 Keys.onDeletePressed: {
 
                     if (!clipboardMode) {
@@ -335,15 +385,7 @@ Rectangle {
                     .LauncherController
                     .clipboard
                     .deleteSelected()
-                    if (event.key === Qt.Key_Delete) {
-                        clipboardController.handleDeleteKeyPress(); // or whatever your Clipboard component ID is named
-                        event.accepted = true;
-                    }
                 }
-
-                /*
-                 * ENTER
-                 */
 
                 Keys.onReturnPressed: {
 
@@ -371,6 +413,7 @@ Rectangle {
                         appMode &&
                         listView.currentIndex >= 0
                     ) {
+
                         LauncherModule
                         .LauncherController
                         .appLauncher
@@ -416,6 +459,7 @@ Rectangle {
                 .filteredApps
 
                 delegate: Rectangle {
+
                     width: ListView.view.width
                     height: 64
 
@@ -429,12 +473,14 @@ Rectangle {
                     : "transparent"
 
                     Row {
+
                         anchors.fill: parent
                         anchors.margins: 14
 
                         spacing: 14
 
                         Image {
+
                             width: 32
                             height: 32
 
@@ -451,12 +497,14 @@ Rectangle {
                         }
 
                         Column {
+
                             anchors.verticalCenter:
                             parent.verticalCenter
 
                             spacing: 2
 
                             Text {
+
                                 text: name
 
                                 color:
@@ -467,6 +515,7 @@ Rectangle {
                             }
 
                             Text {
+
                                 text: exec
 
                                 color:
@@ -490,6 +539,7 @@ Rectangle {
                         hoverEnabled: true
 
                         onClicked: {
+
                             LauncherModule
                             .LauncherController
                             .appLauncher
@@ -506,6 +556,7 @@ Rectangle {
              */
 
             Row {
+
                 visible: clipboardMode
 
                 width: parent.width
@@ -518,6 +569,8 @@ Rectangle {
                 spacing: 20
 
                 ListView {
+                    id: clipboardListView
+
                     width: 540
                     height: parent.height
 
@@ -525,23 +578,45 @@ Rectangle {
 
                     spacing: 4
 
+                    boundsBehavior:
+                    Flickable.StopAtBounds
+
                     model:
                     LauncherModule
                     .LauncherController
                     .clipboard
                     .filteredClipboardItems
 
-                    delegate: Rectangle {
-                        required property int index
-                        required property string text
+                    currentIndex:
+                    LauncherModule
+                    .LauncherController
+                    .clipboard
+                    .selectedIndex
 
-                        width: ListView.view.width
-                        height: 70
+                    delegate: Rectangle {
+
+                        property int itemIndex: index
+
+                        property string itemText:
+                        model.text || ""
+
+                        property bool itemIsImage:
+                        model.isImage || false
+
+                        property string itemImagePath:
+                        model.imagePath || ""
+
+                        width: clipboardListView.width
+
+                        height:
+                        itemIsImage
+                        ? 120
+                        : 70
 
                         radius: 10
 
                         color:
-                        index ===
+                        itemIndex ===
                         LauncherModule
                         .LauncherController
                         .clipboard
@@ -549,26 +624,88 @@ Rectangle {
                         ? shell.theme.base02
                         : "transparent"
 
-                        Text {
+                        Row {
+
                             anchors.fill: parent
-                            anchors.margins: 14
+                            anchors.margins: 12
 
-                            text: parent.text
+                            spacing: 12
 
-                            wrapMode: Text.Wrap
+                            Image {
 
-                            maximumLineCount: 2
+                                visible: itemIsImage
 
-                            elide: Text.ElideRight
+                                width: 90
+                                height: 90
 
-                            color: shell.theme.base05
+                                source:
+                                itemIsImage
+                                ? "file://" + itemImagePath
+                                : ""
 
-                            font.pixelSize: 18
+                                fillMode:
+                                Image.PreserveAspectFit
+
+                                smooth: true
+                            }
+
+                            Text {
+
+                                width:
+                                parent.width -
+                                (itemIsImage ? 120 : 0)
+
+                                anchors.verticalCenter:
+                                parent.verticalCenter
+
+                                text:
+                                itemIsImage
+                                ? "[Image Clipboard Entry]"
+                                : itemText
+
+                                wrapMode: Text.Wrap
+
+                                maximumLineCount: 3
+
+                                elide: Text.ElideRight
+
+                                color: shell.theme.base05
+
+                                font.pixelSize: 18
+
+                                textFormat:
+                                Text.PlainText
+                            }
                         }
+
+                        MouseArea {
+
+                            anchors.fill: parent
+
+                            hoverEnabled: true
+
+                            onClicked: {
+
+                                LauncherModule
+                                .LauncherController
+                                .clipboard
+                                .selectedIndex = itemIndex
+
+                                LauncherModule
+                                .LauncherController
+                                .clipboard
+                                .updatePreview()
+                            }
+                        }
+                    }
+
+                    ScrollBar.vertical: ScrollBar {
+                        policy: ScrollBar.AsNeeded
                     }
                 }
 
                 Rectangle {
+
                     width: 500
                     height: 500
 
@@ -586,6 +723,7 @@ Rectangle {
                     .previewImage.length > 0
 
                     Image {
+
                         anchors.fill: parent
                         anchors.margins: 10
 
@@ -608,6 +746,7 @@ Rectangle {
              */
 
             ScrollView {
+
                 visible: dictionaryMode
 
                 width: parent.width
@@ -620,6 +759,7 @@ Rectangle {
                 clip: true
 
                 Text {
+
                     width:
                     parent.width - 20
 
@@ -637,6 +777,47 @@ Rectangle {
                     font.pixelSize: 20
 
                     lineHeight: 1.3
+                }
+            }
+
+            /*
+             * MATH
+             */
+
+            Rectangle {
+
+                visible: mathMode
+
+                width: parent.width
+
+                height:
+                parent.height -
+                searchField.height -
+                20
+
+                radius: 12
+
+                color: shell.theme.base00
+
+                border.width: 2
+                border.color: shell.theme.base03
+
+                Text {
+
+                    anchors.centerIn: parent
+
+                    text:
+                    LauncherModule
+                    .LauncherController
+                    .mathEngine
+                    .mathResultString
+
+                    color:
+                    shell.theme.base05
+
+                    font.pixelSize: 42
+
+                    font.bold: true
                 }
             }
         }

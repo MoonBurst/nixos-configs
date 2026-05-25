@@ -376,46 +376,90 @@ ShellRoot {
         actionsSupported: true
         keepOnReload: true
 
-        onNotification: function(notification) {
-            console.log(
-                "Notification received:",
-                notification.summary
-            )
+        onNotification: (notification) => {
+            console.log("==================================================");
+            console.log("🚀 EXHAUSTIVE IPC METADATA COMPONENT ANALYSIS");
+            console.log("==================================================");
 
-            notificationOverlay.handleNotification(notification)
-        }
-    }
-    function handleNotification(notification) {
-        console.log("======== NEW NOTIFICATION ========");
-        console.log("Summary:", notification.summary);
-        console.log("Body:", notification.body);
-        console.log("App:", notification.appName);
+            // 1. Core String Extraction Pointers
+            console.log("[APP NAME] (Tells you the target binary to invoke):");
+            console.log("  -> Value: '" + notification.appName + "'");
+            console.log("\n[SUMMARY STRING] (Contains Usernames, Servers, and Channels):");
+            console.log("  -> Value: '" + notification.summary + "'");
+            console.log("\n[BODY PAYLOAD] (Contains the raw message text tokens):");
+            console.log("  -> Value: '" + notification.body + "'");
+            console.log("\n[METADATA COUNTS] (ID and Urgency metrics):");
+            console.log("  -> Notif ID: " + notification.id + " | Urgency: " + notification.urgency + " | Timeout: " + notification.timeout);
 
-        console.log(
-            "Actions:",
-            JSON.stringify(notification.actions)
-        );
+            // 2. Automated Dynamic Text Token Parsing Analysis
+            console.log("\n--- AUTOMATED REGEX TOKEN ANALYSIS ---");
+            if (notification.summary) {
+                var channelMatch = notification.summary.match(/#([a-zA-Z0-9_-]+)/);
+                if (channelMatch && channelMatch[1]) {
+                    console.log("  [FOUND CHANNEL]: '" + channelMatch[1] + "' (Can be mapped to an IPC target ID)");
+                }
+                var bracketsMatch = notification.summary.match(/\(([^)]+)\)/);
+                if (bracketsMatch && bracketsMatch[1]) {
+                    console.log("  [FOUND CONTEXT]: '" + bracketsMatch[1] + "' (Contains Server or Room meta groupings)");
+                }
+            }
 
-        if (notification.actions) {
-            for (let i = 0; i < notification.actions.length; ++i) {
-                let action = notification.actions[i];
+            // 3. Unpack Lazy Actions Array
+            console.log("\n--- EXHAUSTIVE D-BUS ACTIONS LOOP ---");
+            if (notification.actions && notification.actions.values) {
+                console.log("  Actions Count: " + notification.actions.values.length);
+                for (let i = 0; i < notification.actions.values.length; ++i) {
+                    let act = notification.actions.values[i];
+                    if (act) {
+                        console.log("  -> Action #" + i + ":");
+                        console.log("     | identifier: '" + (act.identifier || "") + "' (Crucial for remote callbacks)");
+                        console.log("     | label:      '" + (act.label || act.text || "") + "'");
+                    }
+                }
+            } else {
+                console.log("  Actions Count: 0 (This app did not attach quick click actions to this payload)");
+            }
 
-                console.log(
-                    "Action #" + i
-                    + " identifier=" + action.identifier
-                    + " text=" + action.text
-                );
+            // 4. Scrape D-Bus Environmental Hints
+            console.log("\n--- EXHAUSTIVE ENVIRONMENTAL HINTS DUMP ---");
+            if (notification.hints) {
+                for (var hintKey in notification.hints) {
+                    if (notification.hints.hasOwnProperty(hintKey)) {
+                        try {
+                            let hintVal = notification.hints[hintKey];
+                            console.log("  -> Hint: [" + hintKey + "] => " + JSON.stringify(hintVal));
+                        } catch (e) {
+                            console.log("  -> Hint: [" + hintKey + "] => [Binary payload / Image layout byte tracking node]");
+                        }
+                    }
+                }
+            } else {
+                console.log("  Hints metadata map: Not provided");
+            }
+
+            // 5. Deep Memory Extraction Layer
+            console.log("\n--- SCANNING UNREGULATED INNER ENGINE ATTRIBUTES ---");
+            for (var prop in notification) {
+                try {
+                    if (prop !== "id" && prop !== "summary" && prop !== "body" && prop !== "appName" && prop !== "urgency" && prop !== "timeout" && prop !== "hints" && prop !== "actions") {
+                        console.log("  -> Property: [" + prop + "] => " + notification[prop]);
+                    }
+                } catch(e) {
+                    // Suppress protected pointers
+                }
+            }
+            console.log("==================================================");
+
+            // Re-push data securely back to your visual layout queue deck
+            let topScope = notificationServer.parent;
+            if (topScope && topScope.cardComponentTemplate) {
+                let popupCard = topScope.cardComponentTemplate.createObject(topScope, {
+                    notification: notification
+                });
+                if (topScope.activeNotifications) topScope.activeNotifications.push(popupCard);
+                if (topScope.positionNotificationsDeck) topScope.positionNotificationsDeck();
+                if (topScope.rulesLoader) topScope.rulesLoader.handleIncomingNotificationCues(notification);
             }
         }
-
-        let popupCard = cardComponentTemplate.createObject(root, {
-            notification: notification
-        });
-
-        activeNotifications.push(popupCard);
-
-        positionNotificationsDeck();
-
-        rulesLoader.handleIncomingNotificationCues(notification);
     }
 }

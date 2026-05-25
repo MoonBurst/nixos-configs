@@ -14,6 +14,12 @@ Item {
     property alias clipboard: clipboard
 
     /*
+     * MATH SINGLETON
+     */
+
+    property var mathEngine: MathEngine
+
+    /*
      * APP LAUNCHER
      */
 
