@@ -6,21 +6,24 @@ import Quickshell.Wayland
 Rectangle {
     id: calendarBox
 
+    // Styling & Layout
     anchors.fill: parent
     radius: shell.theme.defaultCardRadius
     border.width: shell.theme.globalBorderWidth
     color: shell.theme.base00
     border.color: shell.theme.base05
 
+    // Global Widget Properties
     property var barWindow: null
     property string dateStr: "01/01/2026"
 
-    // Custom Properties for our Pure JavaScript Calendar Logic
+    // Calendar State Tracking
     property var currentDate: new Date()
     property int currentMonth: currentDate.getMonth()
     property int currentYear: currentDate.getFullYear()
     property var daysOfWeek: [ "Su", "Mo", "Tu", "We", "Th", "Fr", "Sa" ]
 
+    // Main Bar Date Update Loop
     Timer {
         interval: 60000
         running: true
@@ -32,6 +35,7 @@ Rectangle {
         }
     }
 
+    // Main Bar Display Text
     Text {
         id: calendarText
         anchors.fill: parent
@@ -50,49 +54,44 @@ Rectangle {
     }
 
     // ============================================================================
-    // THE CALENDAR POPOVER PANEL WINDOW 
+    // THE CALENDAR POPOVER PANEL WINDOW
     // ============================================================================
     PanelWindow {
         id: calendarTooltipWindow
 
+        // Wayland Display Settings
         screen: calendarBox.barWindow ? calendarBox.barWindow.screen : null
         visible: calendarHoverTracker.hovered
-
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "quickshell-calendar-tooltip"
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
+        // Sizing & Positioning Constraints
         anchors.top: true
         anchors.left: true
         anchors.right: false
         anchors.bottom: false
-
         implicitWidth: 300
         implicitHeight: 320
         color: "transparent"
 
-        // ============================================================================
-        // POSITIONING CALCULATED FROM THE EXPLICIT CONTAINER
-        // ============================================================================
+        // Dynamic Relative Alignment Logic
         WlrLayershell.margins.left: {
             if (!calendarBox.barWindow) return 0;
 
             var containerX = calendarContainer.x;
             var calendarCenterAbsolute = containerX + (calendarContainer.width / 2);
             var targetLeftMargin = Math.round(calendarCenterAbsolute - (implicitWidth / 2));
-            if (targetLeftMargin < shell.theme.globalPadding) {
-                return shell.theme.globalPadding;
-            }
 
-            return targetLeftMargin;
+            return Math.max(targetLeftMargin, shell.theme.globalPadding);
         }
-
 
         WlrLayershell.margins.top: {
             if (!calendarBox.barWindow) return 0;
             return shell.theme.globalPadding + mainBarContainer.capsuleHeight + 8;
         }
 
+        // Tooltip Window Content Wrapper
         Rectangle {
             anchors.fill: parent
             radius: shell.theme.defaultCardRadius
@@ -105,7 +104,7 @@ Rectangle {
                 anchors.margins: shell.theme.globalPadding
                 spacing: 12
 
-                // Header Showing Month and Year
+                // Header Component (Month & Year Title)
                 Text {
                     width: parent.width
                     text: calendarBox.currentDate.toLocaleDateString(Qt.locale(), "MMMM yyyy")
@@ -116,7 +115,7 @@ Rectangle {
                     horizontalAlignment: Text.AlignHCenter
                 }
 
-                // Days of the Week Row (Su, Mo, Tu, We...)
+                // Days of the Week Row (Header Labels)
                 Grid {
                     width: parent.width
                     columns: 7
@@ -124,6 +123,7 @@ Rectangle {
 
                     Repeater {
                         model: calendarBox.daysOfWeek
+
                         Text {
                             width: (parent.width - 24) / 7
                             text: modelData
@@ -136,54 +136,59 @@ Rectangle {
                     }
                 }
 
-                // Pure QML Dynamic Days Grid Matrix Loader
+                // Interactive Days Grid Matrix Area
                 Grid {
                     id: daysGrid
                     width: parent.width
                     columns: 7
                     spacing: 4
 
-                    // JavaScript Helper Calculations
-                    function getDaysInMonth(month, year) {
-                        return new Date(year, month + 1, 0).getDate();
-                    }
-
-                    function getFirstDayOffset(month, year) {
-                        return new Date(year, month, 1).getDay();
-                    }
+                    // Optimized Calendar Structural State Metrics
+                    readonly property int firstDayOffset: new Date(calendarBox.currentYear, calendarBox.currentMonth, 1).getDay()
+                    readonly property int daysInMonth: new Date(calendarBox.currentYear, calendarBox.currentMonth + 1, 0).getDate()
+                    readonly property int todayDate: new Date().getDate()
+                    readonly property int todayMonth: new Date().getMonth()
+                    readonly property int todayYear: new Date().getFullYear()
 
                     Repeater {
-                        // Max total possible spaces across a monthly grid block row layout
-                        model: 42 
+                        model: 42 // Max standard layout slots for a month matrix
 
-                        delegate: Rectangle {
-                            // Layout arithmetic properties
-                            property int firstDayOffset: daysGrid.getFirstDayOffset(calendarBox.currentMonth, calendarBox.currentYear)
-                            property int daysInMonth: daysGrid.getDaysInMonth(calendarBox.currentMonth, calendarBox.currentYear)
-                            property int dayNumber: index - firstDayOffset + 1
-                            property bool isValidDay: dayNumber > 0 && dayNumber <= daysInMonth
-                            property bool isToday: isValidDay && 
-                                                   dayNumber === new Date().getDate() && 
-                                                   calendarBox.currentMonth === new Date().getMonth() && 
-                                                   calendarBox.currentYear === new Date().getFullYear()
-
+                        delegate: Item {
+                            // Layout Sizing Metrics
                             width: (parent.width - 24) / 7
                             height: width
-                            radius: shell.theme.defaultCardRadius / 2
-                            
-                            // Highlights today using your text base color profile
-                            color: isToday ? shell.theme.base05 : "transparent"
 
+                            // Positional Grid Flags
+                            readonly property int dayNumber: index - daysGrid.firstDayOffset + 1
+                            readonly property bool isValidDay: dayNumber > 0 && dayNumber <= daysGrid.daysInMonth
+                            readonly property bool isToday: isValidDay &&
+                            dayNumber === daysGrid.todayDate &&
+                            calendarBox.currentMonth === daysGrid.todayMonth &&
+                            calendarBox.currentYear === daysGrid.todayYear
+
+                            // Highlight System Bubble Container
+                            Rectangle {
+                                width: parent.width * 0.95
+                                height: parent.height * 0.95
+                                anchors.centerIn: parent
+                                visible: parent.isValidDay
+
+                                // Inherited System Styles
+                                radius: shell.theme.defaultCardRadius
+                                border.width: shell.theme.globalBorderWidth
+                                color: shell.theme.base00
+                                border.color: parent.isToday ? shell.theme.base05 : "transparent"
+                            }
+
+                            // Day Number Typography Display
                             Text {
                                 anchors.centerIn: parent
                                 text: parent.isValidDay ? parent.dayNumber : ""
+                                color: shell.theme.base05
+                                opacity: parent.isValidDay ? 1.0 : 0.0
                                 font.family: shell.theme.fontFamily
                                 font.pixelSize: shell.theme.globalFontSize
                                 font.bold: parent.isToday
-                                
-                                // Inverts text coloration mapping if the background block is active
-                                color: parent.isToday ? shell.theme.base00 : shell.theme.base05
-                                opacity: parent.isValidDay ? 1.0 : 0.0
                             }
                         }
                     }
