@@ -11,9 +11,10 @@ Rectangle {
     property string trackStr: "No Track"
     property string tooltipTitle: "No Title Playing"
     property string tooltipArtist: "No Artist Data"
+    property string trackCountStr: "Track 0 of 0"
 
-    // Toggle flag to keep tracking state persistent on click
     property bool popupActive: false
+    property bool confirmDeleteMode: false
 
     width: 200
     height: parent.height
@@ -22,27 +23,28 @@ Rectangle {
     color: shell.theme.base00
     border.color: shell.theme.base05
 
-    // Core Playerctl Metadata Query Loop
     Process {
         id: musicProc
         running: true
-        command: ["sh", "-c", "playerctl metadata --format '{{ title }}|{{ artist }}' 2>/dev/null || echo 'No Track|Unknown Artist'"]
+        command: ["sh", "-c", "TITLE=$(audtool current-song 2>/dev/null); ARTIST=$(audtool current-song-tuple-data artist 2>/dev/null); POS=$(audtool playlist-position 2>/dev/null); LEN=$(audtool playlist-length 2>/dev/null); echo \"$TITLE|$ARTIST|$POS|$LEN\""]
         stdout: SplitParser {
             onRead: data => {
                 if (data && data.trim() !== "") {
                     var parts = data.trim().split("|");
                     var rawTitle = parts[0] ? parts[0] : "No Track";
                     var rawArtist = parts[1] ? parts[1] : "Unknown Artist";
+                    var currentPos = parts[2] ? parts[2] : "0";
+                    var totalLen = parts[3] ? parts[3] : "0";
 
                     musicBox.tooltipTitle = rawTitle;
                     musicBox.tooltipArtist = rawArtist;
                     musicBox.trackStr = (rawArtist + " - " + rawTitle).substring(0, 15);
+                    musicBox.trackCountStr = "Track " + currentPos + " of " + totalLen;
                 }
             }
         }
     }
 
-    // Top Bar Capsule Display Typography
     Text {
         id: musicText
         anchors.fill: parent
@@ -58,118 +60,25 @@ Rectangle {
     }
 
     Timer {
+        id: updateTimer
         interval: 2000; running: true; repeat: true
         onTriggered: {
-            musicProc.running = false;
-            musicProc.running = true;
-        }
-    }
-
-    // Click interactive handler
-    TapHandler {
-        onTapped: musicBox.popupActive = !musicBox.popupActive
-    }
-
-    // ============================================================================
-    // INLINE COMPONENT BLOCK
-    // ============================================================================
-    Component {
-        id: musicTooltipViewComponent
-
-        Rectangle {
-            id: tooltipCardRoot
-            radius: shell.theme.defaultCardRadius ?? 8
-            border.width: shell.theme.globalBorderWidth ?? 3
-            color: shell.theme.base00 ?? "black"
-            border.color: shell.theme.base05 ?? "yellow"
-
-            // Media Control Sub-processes
-            Process { id: playPauseProc; command: ["playerctl", "play-pause"] }
-            Process { id: prevProc; command: ["playerctl", "previous"] }
-            Process { id: nextProc; command: ["playerctl", "next"] }
-
-            Column {
-                anchors.fill: parent
-                anchors.margins: 20
-                spacing: 16
-
-                // Dynamic Header Track Title & Artist Metadata Bubble
-                Rectangle {
-                    width: parent.width
-                    height: 70
-                    radius: shell.theme.defaultCardRadius ?? 8
-                    border.width: shell.theme.globalBorderWidth ?? 3
-                    color: "transparent"
-                    border.color: tooltipCardRoot.border.color
-
-                    Column {
-                        anchors.centerIn: parent
-                        width: parent.width - 24
-                        spacing: 4
-
-                        Text {
-                            width: parent.width
-                            text: musicBox.tooltipTitle
-                            font.family: shell.theme.fontFamily ?? "monospace"
-                            font.pixelSize: 18
-                            font.bold: true
-                            color: tooltipCardRoot.border.color
-                            horizontalAlignment: Text.AlignHCenter
-                            elide: Text.ElideRight
-                        }
-
-                        Text {
-                            width: parent.width
-                            text: musicBox.tooltipArtist
-                            font.family: shell.theme.fontFamily ?? "monospace"
-                            font.pixelSize: 14
-                            color: tooltipCardRoot.border.color
-                            horizontalAlignment: Text.AlignHCenter
-                            elide: Text.ElideRight
-                        }
-                    }
-                }
-
-                // Interactive Media Player Layout Controls Row
-                Row {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: 20
-
-                    Repeater {
-                        model: [
-                            { icon: "⏮", proc: prevProc },
-                            { icon: "⏯", proc: playPauseProc },
-                            { icon: "⏭", proc: nextProc }
-                        ]
-
-                        delegate: Rectangle {
-                            width: 60
-                            height: 40
-                            radius: shell.theme.defaultCardRadius ?? 4
-                            border.width: shell.theme.globalBorderWidth ?? 2
-                            color: "transparent"
-                            border.color: tooltipCardRoot.border.color
-
-                            Text {
-                                anchors.centerIn: parent
-                                text: modelData.icon
-                                font.pixelSize: 20
-                                color: parent.border.color
-                            }
-
-                            TapHandler {
-                                onTapped: modelData.proc.running = true
-                            }
-                        }
-                    }
-                }
+            if (!musicBox.confirmDeleteMode) {
+                musicProc.running = false;
+                musicProc.running = true;
             }
         }
     }
 
-    // ============================================================================
-    // THE MUSIC HUB PANEL WINDOW OVERLAY LAYER
-    // ============================================================================
+    TapHandler {
+        onTapped: {
+            musicBox.popupActive = !musicBox.popupActive
+            if (!musicBox.popupActive) {
+                musicBox.confirmDeleteMode = false
+            }
+        }
+    }
+
     PanelWindow {
         id: musicTooltipWindow
 
@@ -179,6 +88,7 @@ Rectangle {
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "quickshell-music-tooltip"
 
+        // Exclusive focus forces non-Hyprland Wayland compositors to route keys to this layer
         WlrLayershell.keyboardFocus: musicBox.popupActive ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
         anchors.top: true
@@ -187,14 +97,8 @@ Rectangle {
         anchors.bottom: false
 
         implicitWidth: 400
-        implicitHeight: 180
+        implicitHeight: 210
         color: "transparent"
-
-        Shortcut {
-            sequence: "Escape"
-            enabled: musicBox.popupActive
-            onActivated: musicBox.popupActive = false
-        }
 
         WlrLayershell.margins.top: {
             if (!musicBox.barWindow || typeof mainBarContainer === "undefined" || !mainBarContainer) return 100;
@@ -203,22 +107,17 @@ Rectangle {
 
         WlrLayershell.margins.left: {
             if (!musicBox.barWindow) return 100;
-
             var containerX = musicBox.x;
             var musicCenterAbsolute = containerX + (musicBox.width / 2);
             var targetLeftMargin = Math.round(musicCenterAbsolute - (implicitWidth / 2));
-
-            if (targetLeftMargin < shell.theme.globalPadding) {
-                return shell.theme.globalPadding;
-            }
-
+            if (targetLeftMargin < shell.theme.globalPadding) return shell.theme.globalPadding;
             return targetLeftMargin;
         }
 
         Loader {
             id: contentLoader
             anchors.fill: parent
-            sourceComponent: musicTooltipViewComponent
+            source: "MusicTooltip.qml"
         }
     }
 }
