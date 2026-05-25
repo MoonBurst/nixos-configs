@@ -76,10 +76,17 @@ Rectangle {
         // ============================================================================
         WlrLayershell.margins.left: {
             if (!calendarBox.barWindow) return 0;
+
             var containerX = calendarContainer.x;
             var calendarCenterAbsolute = containerX + (calendarContainer.width / 2);
-            return Math.round(calendarCenterAbsolute - (implicitWidth / 2));
+            var targetLeftMargin = Math.round(calendarCenterAbsolute - (implicitWidth / 2));
+            if (targetLeftMargin < shell.theme.globalPadding) {
+                return shell.theme.globalPadding;
+            }
+
+            return targetLeftMargin;
         }
+
 
         WlrLayershell.margins.top: {
             if (!calendarBox.barWindow) return 0;
