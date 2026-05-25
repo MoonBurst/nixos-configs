@@ -56,8 +56,8 @@ Rectangle {
         // Wayland Surface Connection Mechanics
         screen: clockBox.barWindow ? clockBox.barWindow.screen : null
 
-        // TESTING FLAG: Set to true for layout verification. Change to clockHoverTracker.hovered later.
-        visible: true
+        // HOVER ACTIVATION: Tied to the bar clock capsule hover tracker state
+        visible: clockHoverTracker.hovered
 
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "quickshell-timezone-matrix"
@@ -68,9 +68,9 @@ Rectangle {
         anchors.right: false
         anchors.bottom: false
 
-        // Updated geometry dimensions mapping the 1480px structural layout wide requirement
+        // Rigid panel specifications to prevent size 25 text layout truncations
         implicitWidth: 1480
-        implicitHeight: 480
+        implicitHeight: 520
         color: "transparent"
 
         // DYNAMIC TOP ALIGNMENT (Drops popover right below top bar surface line)
