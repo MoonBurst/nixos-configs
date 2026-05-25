@@ -471,24 +471,26 @@
                                         border.width: ListView.isCurrentItem ? 5 : 0
                                         border.color: ListView.isCurrentItem ? shell.theme.base08 : "transparent"
 
-                                        Row {
+                                                                                // CHANGED FROM Row TO Item TO SUPPORT ABSOLUTE ANCHORS
+                                        Item {
                                             anchors.fill: parent
                                             anchors.margins: 12
-                                            spacing: 20
 
                                             Image {
+                                                id: listEntryImageComponent
                                                 visible: itemIsImage
                                                 width: 100
                                                 height: 100
+                                                anchors.left: parent.left
+                                                anchors.verticalCenter: parent.verticalCenter
                                                 source: itemIsImage && itemImagePath ? "file://" + itemImagePath : ""
                                                 fillMode: Image.PreserveAspectFit
                                                 smooth: false
                                             }
 
                                             Text {
-
-                                                anchors.left: itemIsImage ? parent.left : parent.left
-                                                anchors.leftMargin: itemIsImage ? 120 : 0 // 100px image width + 20px layout spacing
+                                                anchors.left: itemIsImage ? listEntryImageComponent.right : parent.left
+                                                anchors.leftMargin: itemIsImage ? 20 : 0
                                                 anchors.right: parent.right
                                                 anchors.verticalCenter: parent.verticalCenter
 
@@ -499,7 +501,6 @@
                                                 font.pixelSize: 20
                                                 textFormat: Text.PlainText
                                             }
-
                                         }
 
                                         MouseArea {
