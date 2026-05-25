@@ -6,16 +6,18 @@ import Quickshell.Wayland
 Rectangle {
     id: clockBox
 
-    width: 150
-    height: parent.height
+    // Sizing & Theme Styling Core Profiles
+    anchors.fill: parent
     radius: shell.theme.defaultCardRadius
     border.width: shell.theme.globalBorderWidth
     color: shell.theme.base00
     border.color: shell.theme.base05
 
+    // Global Widget Window Tracking Properties
     property var barWindow: null
-    property string timeStr: "00:00:00 AM"
+    property string dateStr: "12:00:00 PM"
 
+    // Primary Bar Clock Update Loop (12-Hour Format with AM/PM)
     Timer {
         interval: 1000
         running: true
@@ -23,10 +25,11 @@ Rectangle {
         triggeredOnStart: true
         onTriggered: {
             var date = new Date()
-            clockBox.timeStr = date.toLocaleTimeString(Qt.locale(), "hh:mm:ss AP")
+            clockBox.dateStr = date.toLocaleTimeString(Qt.locale(), Locale.ShortFormat)
         }
     }
 
+    // Main Bar Text Display Item
     Text {
         id: clockText
         anchors.fill: parent
@@ -37,7 +40,7 @@ Rectangle {
         font.bold: true
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
-        text: clockBox.timeStr
+        text: clockBox.dateStr
     }
 
     HoverHandler {
@@ -45,16 +48,19 @@ Rectangle {
     }
 
     // ============================================================================
-    // THE MATRIX POPOVER PANEL WINDOW (PROPERTIES BOUND TO WORKSPACE CONTAINER)
+    // THE TIMEZONE MATRIX POPOVER PANEL WINDOW
     // ============================================================================
     PanelWindow {
-        id: matrixTooltipWindow
+        id: timezoneClockWindow
 
+        // Wayland Surface Connection Mechanics
         screen: clockBox.barWindow ? clockBox.barWindow.screen : null
-        visible: clockHoverTracker.hovered
+
+        // TESTING FLAG: Set to true for layout verification. Change to clockHoverTracker.hovered later.
+        visible: true
 
         WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.namespace: "quickshell-calendar-tooltip"
+        WlrLayershell.namespace: "quickshell-timezone-matrix"
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
         anchors.top: true
@@ -62,45 +68,36 @@ Rectangle {
         anchors.right: false
         anchors.bottom: false
 
-        implicitWidth: 800
-        implicitHeight: 400
+        // Updated geometry dimensions mapping the 1480px structural layout wide requirement
+        implicitWidth: 1480
+        implicitHeight: 480
         color: "transparent"
 
-        // ============================================================================
-        // PURE PROPERTY BINDINGS (RECALCULATES ON EVERY SINGLE TRAY/LAYOUT RESIZE)
-        // ============================================================================
-        WlrLayershell.margins.left: {
-            if (!clockBox.barWindow) return 0;
-
-            // Get the starting point of the inner bar (accounting for your screen padding)
-            var barStart = shell.theme.globalPadding;
-
-            // Because the clock uses anchors.centerIn: parent, its center point is
-            // always exactly half the total width of the main bar container!
-            var clockCenterAbsolute = barStart + (mainBarContainer.width / 2);
-
-            // Center the tooltip directly underneath that active absolute center coordinate
-            return Math.round(clockCenterAbsolute - (implicitWidth / 2));
-        }
-
+        // DYNAMIC TOP ALIGNMENT (Drops popover right below top bar surface line)
         WlrLayershell.margins.top: {
-            if (!clockBox.barWindow) return 0;
-
-            // Combines top screen padding, bar panel height, and a 8px layout gap
-            return shell.theme.globalPadding + 50 + 8;
+            if (!clockBox.barWindow || typeof mainBarContainer === "undefined" || !mainBarContainer) return 100;
+            return shell.theme.globalPadding + mainBarContainer.capsuleHeight + 8;
         }
 
-        Rectangle {
-            anchors.fill: parent
-            radius: shell.theme.defaultCardRadius
-            border.width: shell.theme.globalBorderWidth
-            color: shell.theme.base00
-            border.color: shell.theme.base05
+        // DYNAMIC LEFT ALIGNMENT (Centers matrix popover perfectly beneath active bar clock element)
+        WlrLayershell.margins.left: {
+            if (!clockBox.barWindow || typeof clockContainer === "undefined" || !clockContainer) return 100;
 
-            ClockMatrixPopupView {
-                anchors.fill: parent
-                anchors.margins: shell.theme.globalPadding
+            var containerX = clockContainer.x;
+            var clockCenterAbsolute = containerX + (clockContainer.width / 2);
+            var targetLeftMargin = Math.round(clockCenterAbsolute - (implicitWidth / 2));
+
+            // Off-screen safety constraint boundary layout block
+            if (targetLeftMargin < shell.theme.globalPadding) {
+                return shell.theme.globalPadding;
             }
+
+            return targetLeftMargin;
+        }
+
+        // Inside content card structural component instantiation
+        ClockMatrixPopupView {
+            anchors.fill: parent
         }
     }
 }

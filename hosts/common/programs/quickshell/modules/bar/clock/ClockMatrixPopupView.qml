@@ -3,111 +3,192 @@ import QtQuick.Controls 2
 import Quickshell
 
 Rectangle {
-    width: 760
-    height: 420
-    border.width: 3
-    radius: 8
+    id: root
 
-    color: (typeof Theme !== 'undefined' && Theme.base00 !== undefined) ? Theme.base00 : "black"
-    border.color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
+    implicitWidth: 1480
+    implicitHeight: 520
+    color: "transparent"
 
     SystemClock { id: popupTime; precision: SystemClock.Seconds }
 
-    function getOffsetTime(offsetHours) {
-        if (!popupTime || !popupTime.date) return "--:--";
-        let d = new Date(popupTime.date.getTime());
-        let utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+    // Helper property to dynamically read your system's current hourly offset
+    readonly property int systemOffset: popupTime.date ? -Math.round(popupTime.date.getTimezoneOffset() / 60) : -5
+
+    function getTimezoneTime(offsetHours) {
+        if (!popupTime || !popupTime.date) return "--:-- --";
+
+        let localDate = new Date(popupTime.date.getTime());
+        let utc = localDate.getTime() + (localDate.getTimezoneOffset() * 60000);
         let nd = new Date(utc + (3600000 * offsetHours));
+
         let hours = nd.getHours();
         let minutes = nd.getMinutes();
+        let ampm = hours >= 12 ? "PM" : "AM";
+
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+
         let hh = hours < 10 ? "0" + hours : hours;
         let mm = minutes < 10 ? "0" + minutes : minutes;
-        return hh + ":" + mm;
+
+        return hh + ":" + mm + " " + ampm;
     }
 
-    Column {
+    // Outer Main Widget Card Profile Container
+    Rectangle {
+        id: mainCard
         anchors.fill: parent
-        anchors.margins: 16
-        spacing: 12
+        radius: shell.theme.defaultCardRadius ?? 8
+        border.width: shell.theme.globalBorderWidth ?? 3
+        color: shell.theme.base00 ?? "black"
+        border.color: shell.theme.base05 ?? "yellow"
 
-        Text {
-            text: "🌐 GLOBAL TIMEZONE METRIC MATRIX"
-            font.family: "monospace"
-            font.pixelSize: 20
-            font.bold: true
-            color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"
-        }
+        readonly property color themeColor: mainCard.border.color
 
-        Rectangle {
-            width: parent.width;
-            height: 2;
-            color: (typeof Theme !== 'undefined' && Theme.base03 !== undefined) ? Theme.base03 : "#333333"
-        }
+        Column {
+            anchors.fill: parent
+            anchors.margins: 24
+            spacing: 24
 
-        Flickable {
-            width: parent.width
-            height: 340
-            contentWidth: timezoneGridMatrix.width
-            contentHeight: timezoneGridMatrix.height
-            clip: true
-
-            Grid {
-                id: timezoneGridMatrix
-                columns: 4
-                columnSpacing: 25
-                rowSpacing: 14
+            // Centered Header Title enclosed inside its own standalone system bubble
+            Rectangle {
                 width: parent.width
+                height: 54
+                radius: shell.theme.defaultCardRadius ?? 8
+                border.width: shell.theme.globalBorderWidth ?? 3
+                color: "transparent"
+                border.color: mainCard.themeColor
 
-                // COLUMN 1: UTC-11 TO UTC-6
-                Column {
-                    spacing: 6
-                    // FIXED: Overrode custom colors to force the header labels straight to theme yellow
-                    Text { text: "📂 WEST FLANK"; font.bold: true; font.pixelSize: 20; font.family: "monospace"; color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow" }
-                    Text { text: "UTC-11: " + getOffsetTime(-11); color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"; font.pixelSize: 20; font.family: "monospace" }
-                    Text { text: "UTC-10: " + getOffsetTime(-10); color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"; font.pixelSize: 20; font.family: "monospace" }
-                    Text { text: "UTC-9:  " + getOffsetTime(-9);  color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"; font.pixelSize: 20; font.family: "monospace" }
-                    Text { text: "UTC-8:  " + getOffsetTime(-8);  color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"; font.pixelSize: 20; font.family: "monospace" }
-                    Text { text: "UTC-7:  " + getOffsetTime(-7);  color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"; font.pixelSize: 20; font.family: "monospace" }
-                    Text { text: "UTC-6:  " + getOffsetTime(-6);  color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"; font.pixelSize: 20; font.family: "monospace" }
+                Text {
+                    anchors.centerIn: parent
+                    text: "🌐 GLOBAL TIMEZONE METRIC MATRIX"
+                    font.family: shell.theme.fontFamily ?? "monospace"
+                    font.pixelSize: 22
+                    font.bold: true
+                    color: mainCard.themeColor
                 }
+            }
 
-                // COLUMN 2: UTC-5 TO UTC+0
-                Column {
-                    spacing: 6
-                    // FIXED: Header overrode straight to theme yellow
-                    Text { text: "📂 ATLANTIC HUB"; font.bold: true; font.pixelSize: 20; font.family: "monospace"; color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow" }
-                    Text { text: "UTC-5:  " + getOffsetTime(-5);  color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"; font.pixelSize: 20; font.family: "monospace" }
-                    Text { text: "UTC-4:  " + getOffsetTime(-4);  color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"; font.pixelSize: 20; font.family: "monospace" }
-                    Text { text: "UTC-3:  " + getOffsetTime(-3);  color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"; font.pixelSize: 20; font.family: "monospace" }
-                    Text { text: "UTC-2:  " + getOffsetTime(-2);  color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"; font.pixelSize: 20; font.family: "monospace" }
-                    Text { text: "UTC-1:  " + getOffsetTime(-1);  color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"; font.pixelSize: 20; font.family: "monospace" }
-                    Text { text: "UTC+0:  " + getOffsetTime(0);   color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"; font.pixelSize: 20; font.family: "monospace" }
-                }
+            Row {
+                id: timezoneGridMatrix
+                width: parent.width
+                spacing: 16
 
-                // COLUMN 3: UTC+1 TO UTC+6
-                Column {
-                    spacing: 6
-                    // FIXED: Header overrode straight to theme yellow
-                    Text { text: "📂 EURASIA"; font.bold: true; font.pixelSize: 20; font.family: "monospace"; color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow" }
-                    Text { text: "UTC+1:  " + getOffsetTime(1);   color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"; font.pixelSize: 20; font.family: "monospace" }
-                    Text { text: "UTC+2:  " + getOffsetTime(2);   color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"; font.pixelSize: 20; font.family: "monospace" }
-                    Text { text: "UTC+3:  " + getOffsetTime(3);   color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"; font.pixelSize: 20; font.family: "monospace" }
-                    Text { text: "UTC+4:  " + getOffsetTime(4);   color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"; font.pixelSize: 20; font.family: "monospace" }
-                    Text { text: "UTC+5:  " + getOffsetTime(5);   color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"; font.pixelSize: 20; font.family: "monospace" }
-                    Text { text: "UTC+6:  " + getOffsetTime(6);   color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"; font.pixelSize: 20; font.family: "monospace" }
-                }
+                Repeater {
+                    model: [
+                        {
+                            title: "📂 AMERICAS",
+                            zones: [
+                                { name: "Midway", code: "SST", offset: -11 },
+                                { name: "Hawaii", code: "HST", offset: -10 },
+                                { name: "Alaska", code: "AKDT", offset: -8 },
+                                { name: "Pacific", code: "PDT", offset: -7 },
+                                { name: "Mountain", code: "MDT", offset: -6 },
+                                { name: "Central", code: "CDT", offset: -5 }
+                            ]
+                        },
+                        {
+                            title: "📂 ATLANTIC & WEST",
+                            zones: [
+                                { name: "Eastern", code: "EDT", offset: -4 },
+                                { name: "Atlantic", code: "AST", offset: -3 },
+                                { name: "Greenland", code: "WGST", offset: -2 },
+                                { name: "Mid-Atlantic", code: "EGT", offset: -1 },
+                                { name: "Azores", code: "AZOST", offset: 0 },
+                                { name: "UTC / GMT", code: "UTC", offset: 0 }
+                            ]
+                        },
+                        {
+                            title: "📂 EMEA & CENTRAL",
+                            zones: [
+                                { name: "London", code: "BST", offset: 1 },
+                                { name: "Central EU", code: "CEST", offset: 2 },
+                                { name: "Eastern EU", code: "EEST", offset: 3 },
+                                { name: "Moscow", code: "MSK", offset: 3 },
+                                { name: "Dubai", code: "GST", offset: 4 },
+                                { name: "Karachi", code: "PKT", offset: 5 }
+                            ]
+                        },
+                        {
+                            title: "📂 ASIA PACIFIC",
+                            zones: [
+                                { name: "Dhaka", code: "BST", offset: 6 },
+                                { name: "Bangkok", code: "ICT", offset: 7 },
+                                { name: "Beijing / HK", code: "CST", offset: 8 },
+                                { name: "Tokyo", code: "JST", offset: 9 },
+                                { name: "Sydney", code: "AEST", offset: 10 },
+                                { name: "Auckland", code: "NZST", offset: 12 }
+                            ]
+                        }
+                    ]
 
-                // COLUMN 4: UTC+7 TO UTC+12
-                Column {
-                    spacing: 6
-                    // FIXED: Header overrode straight to theme yellow
-                    Text { text: "📂 PACIFIC"; font.bold: true; font.pixelSize: 20; font.family: "monospace"; color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow" }
-                    Text { text: "UTC+7:  " + getOffsetTime(7);   color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"; font.pixelSize: 20; font.family: "monospace" }
-                    Text { text: "UTC+8:  " + getOffsetTime(8);   color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"; font.pixelSize: 20; font.family: "monospace" }
-                    Text { text: "UTC+9:  " + getOffsetTime(9);   color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"; font.pixelSize: 20; font.family: "monospace" }
-                    Text { text: "UTC+10: " + getOffsetTime(10);  color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"; font.pixelSize: 20; font.family: "monospace" }
-                    Text { text: "UTC+11: " + getOffsetTime(11);  color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"; font.pixelSize: 20; font.family: "monospace" }
-                    Text { text: "UTC+12: " + getOffsetTime(12);  color: (typeof Theme !== 'undefined' && Theme.base05 !== undefined) ? Theme.base05 : "yellow"; font.pixelSize: 20; font.family: "monospace" }
+                    delegate: Rectangle {
+                        width: (timezoneGridMatrix.width - (3 * timezoneGridMatrix.spacing)) / 4
+                        height: innerColumnLayout.height + 24
+
+                        radius: shell.theme.defaultCardRadius ?? 8
+                        border.width: shell.theme.globalBorderWidth ?? 3
+                        color: "transparent"
+                        border.color: mainCard.themeColor
+
+                        Column {
+                            id: innerColumnLayout
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.margins: 12
+                            spacing: 14
+
+                            Text {
+                                width: parent.width
+                                text: modelData.title
+                                font.bold: true
+                                font.pixelSize: 18
+                                font.family: shell.theme.fontFamily ?? "monospace"
+                                color: mainCard.themeColor
+                                horizontalAlignment: Text.AlignHCenter
+                                elide: Text.ElideRight
+                            }
+
+                            Repeater {
+                                model: modelData.zones
+
+                                delegate: Item {
+                                    width: parent.width
+                                    height: 34
+
+                                    // Dynamic flag checking if this exact row offset matches your system's offset
+                                    readonly property bool isLocalZone: modelData.offset === root.systemOffset
+
+                                    Text {
+                                        text: modelData.name + " (" + modelData.code + ")"
+                                        anchors.left: parent.left
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        anchors.right: timeDisplay.left
+                                        anchors.rightMargin: 8
+                                        elide: Text.ElideRight
+
+                                        font.pixelSize: 25
+                                        font.bold: parent.isLocalZone // DYNAMIC BOLDING
+                                        font.family: shell.theme.fontFamily ?? "monospace"
+                                        color: mainCard.themeColor
+                                    }
+
+                                    Text {
+                                        id: timeDisplay
+                                        text: root.getTimezoneTime(modelData.offset)
+                                        anchors.right: parent.right
+                                        anchors.verticalCenter: parent.verticalCenter
+
+                                        font.pixelSize: 25
+                                        font.bold: parent.isLocalZone // DYNAMIC BOLDING
+                                        font.family: shell.theme.fontFamily ?? "monospace"
+                                        color: mainCard.themeColor
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
