@@ -18,6 +18,8 @@ import "./modules/bar/music" as MusicCapsule
 import "./modules/bar/alarm" as AlarmCapsule
 import "./modules/bar/borg" as BorgCapsule
 import "./modules/bar/weather" as WeatherCapsule
+import "./modules/bar/calendar" as CalendarCapsule
+
 
 ShellRoot {
     id: shell
@@ -97,9 +99,25 @@ ShellRoot {
              */
 
             Item {
-                id: musicContainer
+                id: calendarContainer
 
                 anchors.left: parent.left
+                anchors.leftMargin: shell.theme.globalPadding
+                anchors.verticalCenter: parent.verticalCenter
+
+                width: 150
+                height: mainBarContainer.capsuleHeight
+
+                CalendarCapsule.Calendar {
+                    anchors.fill: parent
+                    barWindow: topBarWindow
+                }
+            }
+
+            Item {
+                id: musicContainer
+
+                anchors.left: calendarContainer.right
                 anchors.leftMargin: shell.theme.globalPadding
                 anchors.verticalCenter: parent.verticalCenter
 
@@ -111,6 +129,7 @@ ShellRoot {
                     barWindow: topBarWindow
                 }
             }
+
 
             Item {
                 id: alarmContainer
@@ -159,6 +178,7 @@ ShellRoot {
                     barWindow: topBarWindow
                 }
             }
+
 
             /*
              * ================================================================
