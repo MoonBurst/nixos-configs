@@ -1,1053 +1,632 @@
-import QtQuick
-import QtQuick.Controls
-import Quickshell
-import Quickshell.Io
+        import QtQuick
+        import QtQuick.Controls
+        import Quickshell
+        import Quickshell.Io
+        import "."
+        as LauncherModule
 
-import "." as LauncherModule
+        Rectangle {
+            id: launcherRoot
 
-Rectangle {
-    id: launcherRoot
+            // Core Window and Theme Context References
+            property
+            var shell
+            property
+            var launcherWindow
+            property string currentDefinition: ""
+            property string mode: "apps"
 
-    property var shell
-    property var launcherWindow
+            // Performance Cache: Read-Only Evaluators
+            readonly property bool isAppsOpen: mode === "apps"
+            readonly property bool isClipboardOpen: mode === "clipboard"
 
-    property string currentDefinition: ""
+            // Global Controller Alias to eliminate deep JavaScript scope resolution costs
+            readonly property
+            var ctrl: LauncherModule.LauncherController
 
-    property bool appMode: true
-    property bool clipboardMode: false
-    property bool dictionaryMode: false
-    property bool mathMode: false
-    property bool unicodeMode: false
+            // Centralized active controller tracking
+            property
+            var activeController: null
 
-    anchors.fill: parent
-
-    color: "#00000088"
-
-    visible: launcherWindow.visible
-    enabled: visible
-    focus: visible
-
-    /*
-     * WINDOW CONTROL
-     */
-
-    function openLauncher() {
-
-        launcherWindow.visible = true
-
-        appMode = true
-        clipboardMode = false
-        dictionaryMode = false
-        mathMode = false
-        unicodeMode = false
-
-        searchField.text = ""
-
-        LauncherModule
-        .LauncherController
-        .appLauncher
-        .refreshFilter("")
-
-        searchField.forceActiveFocus()
-    }
-
-    function openClipboard() {
-
-        launcherWindow.visible = true
-
-        appMode = false
-        clipboardMode = true
-        dictionaryMode = false
-        mathMode = false
-        unicodeMode = false
-
-        searchField.text = ""
-
-        LauncherModule
-        .LauncherController
-        .clipboard
-        .refreshFilter("")
-
-        searchField.forceActiveFocus()
-    }
-
-    function openDictionary(word) {
-
-        launcherWindow.visible = true
-
-        appMode = false
-        clipboardMode = false
-        dictionaryMode = true
-        mathMode = false
-        unicodeMode = false
-
-        searchField.text = word || ""
-
-        LauncherModule
-        .LauncherController
-        .dictionary
-        .fetch(searchField.text)
-
-        searchField.forceActiveFocus()
-    }
-
-    function closeOverlay() {
-
-        launcherWindow.visible = false
-
-        searchField.text = ""
-
-        currentDefinition = ""
-
-        appMode = false
-        clipboardMode = false
-        dictionaryMode = false
-        mathMode = false
-        unicodeMode = false
-    }
-
-    function toggleLauncher() {
-
-        if (
-            launcherWindow.visible &&
-            appMode
-        ) {
-            closeOverlay()
-        } else {
-            openLauncher()
-        }
-    }
-
-    function toggleClipboard() {
-
-        if (
-            launcherWindow.visible &&
-            clipboardMode
-        ) {
-            closeOverlay()
-        } else {
-            openClipboard()
-        }
-    }
-
-    /*
-     * IPC
-     */
-
-    IpcHandler {
-        target: "launcher"
-
-        function open() {
-            launcherRoot.openLauncher()
-        }
-
-        function close() {
-            launcherRoot.closeOverlay()
-        }
-
-        function toggle() {
-            launcherRoot.toggleLauncher()
-        }
-    }
-
-    IpcHandler {
-        target: "clipboard"
-
-        function open() {
-            launcherRoot.openClipboard()
-        }
-
-        function close() {
-            launcherRoot.closeOverlay()
-        }
-
-        function toggle() {
-            launcherRoot.toggleClipboard()
-        }
-    }
-
-    /*
-     * BACKDROP
-     */
-
-    MouseArea {
-        anchors.fill: parent
-
-        onClicked: launcherRoot.closeOverlay()
-    }
-
-    Keys.onEscapePressed: {
-        launcherRoot.closeOverlay()
-    }
-
-    /*
-     * MAIN PANEL
-     */
-
-    Rectangle {
-
-        width:
-        clipboardMode
-        ? 1100
-        : 820
-
-        height: 700
-
-        anchors.centerIn: parent
-
-        radius: 16
-
-        color: shell.theme.base01
-
-        border.width: 2
-        border.color: shell.theme.base03
-
-        MouseArea {
-            anchors.fill: parent
-        }
-
-        Column {
+            // Native C++ level compilation binding pathways
+            Binding {
+                target: launcherRoot
+                property: "activeController"
+                value: {
+                    if (launcherRoot.mode === "apps") return launcherRoot.ctrl.appLauncher
+                    if (launcherRoot.mode === "clipboard") return launcherRoot.ctrl.clipboard
+                    if (launcherRoot.mode === "dictionary") return launcherRoot.ctrl.dictionary
+                    if (launcherRoot.mode === "math") return launcherRoot.ctrl.math
+                    if (launcherRoot.mode === "unicode") return launcherRoot.ctrl.unicodeSearch
+                    return null
+                }
+            }
 
             anchors.fill: parent
-            anchors.margins: 20
-
-            spacing: 14
+            color: mode !== "" ? "#00000088" : "transparent"
+            visible: true
+            focus: true
 
             /*
-             * SEARCH FIELD
+             * PEAK-PERFORMANCE KEYSTROKE DEBOUNCER
              */
+            Timer {
+                id: searchDebounceTimer
+                interval: 100
+                repeat: false
+                property string pendingText: ""
+                onTriggered: {
+                    const trimmed = pendingText
+                    const currentMode = launcherRoot.mode
 
-            TextField {
-                id: searchField
+                    if (currentMode === "clipboard") {
+                        launcherRoot.ctrl.clipboard.refreshFilter(trimmed)
+                        return
+                    }
 
-                width: parent.width
-                height: 52
+                    if (trimmed === ".") {
+                        launcherRoot.mode = "unicode"
+                        launcherRoot.ctrl.unicodeSearch.refreshFilter(trimmed.substring(1).trim())
+                        return
+                    }
 
-                focus: true
+                    if (trimmed.length > 4 && trimmed.indexOf("def ") === 0) {
+                        launcherRoot.mode = "dictionary"
+                        launcherRoot.ctrl.dictionary.fetch(trimmed.substring(4).trim())
+                        return
+                    }
 
-                color: shell.theme.base05
+                    if (launcherRoot.ctrl.mathEngine.runCalculator(trimmed)) {
+                        launcherRoot.mode = "math"
+                        return
+                    }
 
-                font.pixelSize: 20
-
-                placeholderText:
-                clipboardMode
-                ? "Search clipboard history..."
-                : unicodeMode
-                ? "Search unicode symbols..."
-                : dictionaryMode
-                ? "Enter word..."
-                : "Search applications..."
-
-                background: Rectangle {
-
-                    radius: 10
-
-                    color: "transparent"
-
-                    border.width: 2
-                    border.color: shell.theme.base03
+                    launcherRoot.mode = "apps"
+                    launcherRoot.ctrl.appLauncher.refreshFilter(trimmed)
                 }
-
-                onTextChanged: {
-
-                    const trimmed =
-                    (text || "").trim()
-
-                    /*
-                     * CLIPBOARD
-                     */
-
-                    if (clipboardMode) {
-
-                        LauncherModule
-                        .LauncherController
-                        .clipboard
-                        .refreshFilter(trimmed)
-
-                        return
-                    }
-
-                    /*
-                     * UNICODE
-                     */
-
-                    if (
-                        trimmed.startsWith(".")
-                    ) {
-
-                        appMode = false
-                        clipboardMode = false
-                        dictionaryMode = false
-                        mathMode = false
-                        unicodeMode = true
-
-                        const query =
-                        trimmed.substring(1).trim()
-
-                        LauncherModule
-                        .LauncherController
-                        .unicodeSearch
-                        .refreshFilter(query)
-
-                        return
-                    }
-
-                    /*
-                     * DICTIONARY
-                     */
-
-                    if (
-                        trimmed.startsWith("def ")
-                    ) {
-
-                        appMode = false
-                        clipboardMode = false
-                        dictionaryMode = true
-                        mathMode = false
-                        unicodeMode = false
-
-                        const word =
-                        trimmed.substring(4).trim()
-
-                        LauncherModule
-                        .LauncherController
-                        .dictionary
-                        .fetch(word)
-
-                        return
-                    }
-
-                    /*
-                     * MATH
-                     */
-
-                    const mathWorked =
-                    LauncherModule
-                    .LauncherController
-                    .mathEngine
-                    .runCalculator(trimmed)
-
-                    if (mathWorked) {
-
-                        appMode = false
-                        clipboardMode = false
-                        dictionaryMode = false
-                        mathMode = true
-                        unicodeMode = false
-
-                        return
-                    }
-
-                    /*
-                     * APPS
-                     */
-
-                    appMode = true
-                    clipboardMode = false
-                    dictionaryMode = false
-                    mathMode = false
-                    unicodeMode = false
-
-                    LauncherModule
-                    .LauncherController
-                    .appLauncher
-                    .refreshFilter(trimmed)
-                }
-
-                Keys.onDownPressed: {
-
-                    /*
-                     * UNICODE
-                     */
-
-                    if (unicodeMode) {
-
-                        LauncherModule
-                        .LauncherController
-                        .unicodeSearch
-                        .moveDown()
-
-                        unicodeListView.currentIndex =
-                        LauncherModule
-                        .LauncherController
-                        .unicodeSearch
-                        .selectedIndex
-
-                        unicodeListView.positionViewAtIndex(
-                            unicodeListView.currentIndex,
-                            ListView.Contain
-                        )
-
-                        return
-                    }
-
-                    /*
-                     * CLIPBOARD
-                     */
-
-                    if (clipboardMode) {
-
-                        LauncherModule
-                        .LauncherController
-                        .clipboard
-                        .moveDown()
-
-                        clipboardListView.positionViewAtIndex(
-                            LauncherModule
-                            .LauncherController
-                            .clipboard
-                            .selectedIndex,
-                            ListView.Contain
-                        )
-
-                        return
-                    }
-
-                    /*
-                     * APPS
-                     */
-
-                    if (
-                        listView.currentIndex <
-                        LauncherModule
-                        .LauncherController
-                        .appLauncher
-                        .filteredApps.count - 1
-                    ) {
-                        listView.currentIndex++
-                    }
-                }
-
-                Keys.onUpPressed: {
-
-                    /*
-                     * UNICODE
-                     */
-
-                    if (unicodeMode) {
-
-                        LauncherModule
-                        .LauncherController
-                        .unicodeSearch
-                        .moveUp()
-
-                        unicodeListView.currentIndex =
-                        LauncherModule
-                        .LauncherController
-                        .unicodeSearch
-                        .selectedIndex
-
-                        unicodeListView.positionViewAtIndex(
-                            unicodeListView.currentIndex,
-                            ListView.Contain
-                        )
-
-                        return
-                    }
-
-                    /*
-                     * CLIPBOARD
-                     */
-
-                    if (clipboardMode) {
-
-                        LauncherModule
-                        .LauncherController
-                        .clipboard
-                        .moveUp()
-
-                        clipboardListView.positionViewAtIndex(
-                            LauncherModule
-                            .LauncherController
-                            .clipboard
-                            .selectedIndex,
-                            ListView.Contain
-                        )
-
-                        return
-                    }
-
-                    /*
-                     * APPS
-                     */
-
-                    if (
-                        listView.currentIndex > 0
-                    ) {
-                        listView.currentIndex--
-                    }
-                }
-
-                Keys.onDeletePressed: {
-
-                    if (!clipboardMode) {
-                        return
-                    }
-
-                    LauncherModule
-                    .LauncherController
-                    .clipboard
-                    .deleteSelected()
-                }
-
-                Keys.onReturnPressed: {
-
-                    /*
-                     * UNICODE
-                     */
-
-                    if (unicodeMode) {
-
-                        LauncherModule
-                        .LauncherController
-                        .unicodeSearch
-                        .copySelected()
-
-                        launcherRoot.closeOverlay()
-
-                        return
-                    }
-
-                    /*
-                     * CLIPBOARD
-                     */
-
-                    if (clipboardMode) {
-
-                        LauncherModule
-                        .LauncherController
-                        .clipboard
-                        .copySelected()
-
-                        launcherRoot.closeOverlay()
-
-                        return
-                    }
-
-                    /*
-                     * APPS
-                     */
-
-                    if (
-                        appMode &&
-                        listView.currentIndex >= 0
-                    ) {
-
-                        LauncherModule
-                        .LauncherController
-                        .appLauncher
-                        .launch(
-                            LauncherModule
-                            .LauncherController
-                            .appLauncher
-                            .filteredApps
-                            .get(
-                                listView.currentIndex
-                            ).exec
-                        )
-
-                        launcherRoot.closeOverlay()
-                    }
-                }
+            }
+            /*
+             * WINDOW STATE CONTROL ACTIONS (MODULATED FOR COMPOSITOR DRIVEN FOCUS GRABS)
+             */
+            function openLauncher() {
+                launcherRoot.mode = "apps"
+                searchField.clear()
+                ctrl.appLauncher.refreshFilter("")
+                launcherWindow.visible = true
+                searchField.forceActiveFocus()
+            }
+
+            Component.onCompleted: {
+                appsLoader.active = true
+            }
+
+            function openClipboard() {
+                launcherRoot.mode = "clipboard"
+                searchField.clear()
+                ctrl.clipboard.refreshFilter("")
+                launcherWindow.visible = true
+                searchField.forceActiveFocus()
+            }
+
+            function openDictionary(word) {
+                launcherRoot.mode = "dictionary"
+                searchField.text = word || ""
+                ctrl.dictionary.fetch(searchField.text)
+                launcherWindow.visible = true
+                searchField.forceActiveFocus()
+            }
+
+            function closeOverlay() {
+                launcherRoot.mode = ""
+                launcherWindow.visible = false
+            }
+
+            function toggleLauncher() {
+                if (launcherRoot.mode === "apps" && launcherWindow.visible) launcherRoot.closeOverlay()
+                else launcherRoot.openLauncher()
+            }
+
+            function toggleClipboard() {
+                if (launcherRoot.mode === "clipboard" && launcherWindow.visible) launcherRoot.closeOverlay()
+                else launcherRoot.openClipboard()
             }
 
             /*
-             * UNICODE LIST
+             * IPC CHANNELS
              */
-
-            ListView {
-                id: unicodeListView
-
-                visible: unicodeMode
-
-                width: parent.width
-
-                height:
-                parent.height -
-                searchField.height -
-                20
-
-                clip: true
-
-                spacing: 4
-
-                boundsBehavior:
-                Flickable.StopAtBounds
-
-                model:
-                LauncherModule
-                .LauncherController
-                .unicodeSearch
-                .filteredUnicodeItems
-
-                currentIndex:
-                LauncherModule
-                .LauncherController
-                .unicodeSearch
-                .selectedIndex
-
-                delegate: Rectangle {
-
-                    width: unicodeListView.width
-                    height: 60
-
-                    radius: 10
-
-                    color:
-                    ListView.isCurrentItem
-                    ? shell.theme.base02
-                    : "transparent"
-
-                    Row {
-
-                        anchors.fill: parent
-                        anchors.margins: 14
-
-                        spacing: 20
-
-                        Text {
-
-                            text: modelData.symbol
-
-                            color:
-                            shell.theme.base05
-
-                            font.pixelSize: 28
-
-                            width: 50
-                        }
-
-                        Text {
-
-                            text: modelData.name
-
-                            color:
-                            shell.theme.base05
-
-                            font.pixelSize: 18
-
-                            anchors.verticalCenter:
-                            parent.verticalCenter
-                        }
-                    }
-
-                    MouseArea {
-
-                        anchors.fill: parent
-
-                        hoverEnabled: true
-
-                        onClicked: {
-
-                            LauncherModule
-                            .LauncherController
-                            .unicodeSearch
-                            .selectedIndex = index
-
-                            unicodeListView.currentIndex = index
-
-                            LauncherModule
-                            .LauncherController
-                            .unicodeSearch
-                            .copySelected()
-
-                            launcherRoot.closeOverlay()
-                        }
-                    }
+            IpcHandler {
+                target: "launcher"
+                function open() {
+                    launcherRoot.openLauncher()
                 }
-                ScrollBar.vertical: ScrollBar {
-                    policy: ScrollBar.AsNeeded
+
+                function close() {
+                    launcherRoot.closeOverlay()
+                }
+
+                function toggle() {
+                    launcherRoot.toggleLauncher()
                 }
             }
 
-            /*
-             * APP LIST
-             */
+            IpcHandler {
+                target: "clipboard"
+                function open() {
+                    launcherRoot.openClipboard()
+                }
 
-            ListView {
-                id: listView
+                function close() {
+                    launcherRoot.closeOverlay()
+                }
 
-                visible: appMode
-
-                width: parent.width
-
-                height:
-                parent.height -
-                searchField.height -
-                20
-
-                clip: true
-
-                spacing: 4
-
-                model:
-                LauncherModule
-                .LauncherController
-                .appLauncher
-                .filteredApps
-
-                delegate: Rectangle {
-
-                    width: ListView.view.width
-                    height: 64
-
-                    radius: 10
-
-                    color:
-                    ListView.isCurrentItem
-                    ? shell.theme.base02
-                    : mouseArea.containsMouse
-                    ? shell.theme.base01
-                    : "transparent"
-
-                    Row {
-
-                        anchors.fill: parent
-                        anchors.margins: 14
-
-                        spacing: 14
-
-                        Image {
-
-                            width: 32
-                            height: 32
-
-                            anchors.verticalCenter:
-                            parent.verticalCenter
-
-                            source:
-                            "image://icon/" + icon
-
-                            fillMode:
-                            Image.PreserveAspectFit
-
-                            smooth: true
-                        }
-
-                        Column {
-
-                            anchors.verticalCenter:
-                            parent.verticalCenter
-
-                            spacing: 2
-
-                            Text {
-
-                                text: name
-
-                                color:
-                                shell.theme.base05
-
-                                font.pixelSize: 18
-                                font.bold: true
-                            }
-
-                            Text {
-
-                                text: exec
-
-                                color:
-                                shell.theme.base07
-
-                                font.pixelSize: 13
-
-                                elide:
-                                Text.ElideRight
-
-                                width: 620
-                            }
-                        }
-                    }
-
-                    MouseArea {
-                        id: mouseArea
-
-                        anchors.fill: parent
-
-                        hoverEnabled: true
-
-                        onClicked: {
-
-                            LauncherModule
-                            .LauncherController
-                            .appLauncher
-                            .launch(exec)
-
-                            launcherRoot.closeOverlay()
-                        }
-                    }
+                function toggle() {
+                    launcherRoot.toggleClipboard()
                 }
             }
 
-            /*
-             * CLIPBOARD VIEW
-             */
+            MouseArea {
+                anchors.fill: parent
+                onClicked: launcherRoot.closeOverlay()
+            }
 
-            Row {
-
-                visible: clipboardMode
-
-                width: parent.width
-
-                height:
-                parent.height -
-                searchField.height -
-                20
-
-                spacing: 20
-
-                ListView {
-                    id: clipboardListView
-
-                    width: 540
-                    height: parent.height
-
-                    clip: true
-
-                    spacing: 4
-
-                    boundsBehavior:
-                    Flickable.StopAtBounds
-
-                    model:
-                    LauncherModule
-                    .LauncherController
-                    .clipboard
-                    .filteredClipboardItems
-
-                    currentIndex:
-                    LauncherModule
-                    .LauncherController
-                    .clipboard
-                    .selectedIndex
-
-                    delegate: Rectangle {
-
-                        property int itemIndex: index
-
-                        property string itemText:
-                        model.text || ""
-
-                        property bool itemIsImage:
-                        model.isImage || false
-
-                        property string itemImagePath:
-                        model.imagePath || ""
-
-                        width: clipboardListView.width
-
-                        height:
-                        itemIsImage
-                        ? 120
-                        : 70
-
-                        radius: 10
-
-                        color:
-                        itemIndex ===
-                        LauncherModule
-                        .LauncherController
-                        .clipboard
-                        .selectedIndex
-                        ? shell.theme.base02
-                        : "transparent"
-
-                        Row {
-
-                            anchors.fill: parent
-                            anchors.margins: 12
-
-                            spacing: 12
-
-                            Image {
-
-                                visible: itemIsImage
-
-                                width: 90
-                                height: 90
-
-                                source:
-                                itemIsImage
-                                ? "file://" + itemImagePath
-                                : ""
-
-                                fillMode:
-                                Image.PreserveAspectFit
-
-                                smooth: true
-                            }
-
-                            Text {
-
-                                width:
-                                parent.width -
-                                (itemIsImage ? 120 : 0)
-
-                                anchors.verticalCenter:
-                                parent.verticalCenter
-
-                                text:
-                                itemIsImage
-                                ? "[Image Clipboard Entry]"
-                                : itemText
-
-                                wrapMode: Text.Wrap
-
-                                maximumLineCount: 3
-
-                                elide: Text.ElideRight
-
-                                color: shell.theme.base05
-
-                                font.pixelSize: 18
-
-                                textFormat:
-                                Text.PlainText
-                            }
-                        }
-
-                        MouseArea {
-
-                            anchors.fill: parent
-
-                            hoverEnabled: true
-
-                            onClicked: {
-
-                                LauncherModule
-                                .LauncherController
-                                .clipboard
-                                .selectedIndex = itemIndex
-
-                                LauncherModule
-                                .LauncherController
-                                .clipboard
-                                .updatePreview()
-                            }
-                        }
-                    }
-
-                    ScrollBar.vertical: ScrollBar {
-                        policy: ScrollBar.AsNeeded
-                    }
-                }
-
-                Rectangle {
-
-                    width: 500
-                    height: 500
-
-                    radius: 12
-
-                    color: shell.theme.base00
-
-                    border.width: 2
-                    border.color: shell.theme.base03
-
-                    visible:
-                    LauncherModule
-                    .LauncherController
-                    .clipboard
-                    .previewImage.length > 0
-
-                    Image {
-
-                        anchors.fill: parent
-                        anchors.margins: 10
-
-                        source:
-                        LauncherModule
-                        .LauncherController
-                        .clipboard
-                        .previewImage
-
-                        fillMode:
-                        Image.PreserveAspectFit
-
-                        smooth: true
-                    }
-                }
+            Keys.onEscapePressed: {
+                launcherRoot.closeOverlay()
             }
 
             /*
-             * DICTIONARY
+             * MAIN CONTAINER PANEL
              */
-
-            ScrollView {
-
-                visible: dictionaryMode
-
-                width: parent.width
-
-                height:
-                parent.height -
-                searchField.height -
-                20
-
-                clip: true
-
-                Text {
-
-                    width:
-                    parent.width - 20
-
-                    text:
-                    LauncherModule
-                    .LauncherController
-                    .dictionary
-                    .currentDefinition
-
-                    wrapMode: Text.Wrap
-
-                    color:
-                    shell.theme.base05
-
-                    font.pixelSize: 20
-
-                    lineHeight: 1.3
-                }
-            }
-
-            /*
-             * MATH
-             */
-
             Rectangle {
-
-                visible: mathMode
-
-                width: parent.width
-
-                height:
-                parent.height -
-                searchField.height -
-                20
-
-                radius: 12
-
-                color: shell.theme.base00
-
+                id: mainPanel
+                height: 700
+                anchors.centerIn: parent
+                radius: 16
+                color: shell.theme.base01
                 border.width: 2
                 border.color: shell.theme.base03
 
-                Text {
+                width: launcherRoot.mode === "clipboard" ? 1100 : 820
 
-                    anchors.centerIn: parent
+                MouseArea {
+                    anchors.fill: parent
+                }
 
-                    text:
-                    LauncherModule
-                    .LauncherController
-                    .mathEngine
-                    .mathResultString
+                Column {
+                    anchors.fill: parent
+                    anchors.margins: 20
+                    spacing: 14
 
-                    color:
-                    shell.theme.base05
+                    readonly property real contentHeight: height - searchField.height - spacing
 
-                    font.pixelSize: 42
+                    /*
+                     * CENTRALIZED SEARCH FIELD ENGINE (ZERO-LAG DEBOUNCED)
+                     */
+                    TextField {
+                        id: searchField
+                        width: parent.width
+                        height: 52
+                        focus: true
+                        color: shell.theme.base05
+                        font.pixelSize: 20
 
-                    font.bold: true
+                        placeholderText: {
+                            const currentMode = launcherRoot.mode
+                            if (currentMode === "clipboard") return "Search clipboard history..."
+                            if (currentMode === "unicode") return "Search unicode symbols..."
+                            if (currentMode === "dictionary") return "Enter word..."
+                            return "Search applications..."
+                        }
+
+                        background: Rectangle {
+                            radius: 10
+                            color: "transparent"
+                            border.width: 2
+                            border.color: shell.theme.base03
+                        }
+
+                        onTextChanged: {
+                            if (launcherRoot.mode === "") return
+
+                            searchDebounceTimer.pendingText = text
+                            searchDebounceTimer.restart()
+                        }
+
+                        Keys.onDownPressed: {
+                            const currentMode = launcherRoot.mode
+                            if (currentMode === "unicode" && unicodeLoader.item) {
+                                launcherRoot.ctrl.unicodeSearch.moveDown()
+                                unicodeLoader.item.currentIndex = launcherRoot.ctrl.unicodeSearch.selectedIndex
+                                unicodeLoader.item.positionViewAtIndex(unicodeLoader.item.currentIndex, ListView.Contain)
+                                return
+                            }
+
+                            if (currentMode === "clipboard" && clipboardLoader.item && clipboardLoader.listViewInstance) {
+                                launcherRoot.ctrl.clipboard.moveDown()
+                                clipboardLoader.listViewInstance.positionViewAtIndex(launcherRoot.ctrl.clipboard.selectedIndex, ListView.Contain)
+                                return
+                            }
+
+                            if (currentMode === "apps" && appsLoader.item && appsLoader.item.currentIndex < launcherRoot.ctrl.appLauncher.filteredApps.count - 1) {
+                                appsLoader.item.currentIndex++
+                            }
+                        }
+
+                        Keys.onUpPressed: {
+                            const currentMode = launcherRoot.mode
+                            if (currentMode === "unicode" && unicodeLoader.item) {
+                                launcherRoot.ctrl.unicodeSearch.moveUp()
+                                unicodeLoader.item.currentIndex = launcherRoot.ctrl.unicodeSearch.selectedIndex
+                                unicodeLoader.item.positionViewAtIndex(unicodeLoader.item.currentIndex, ListView.Contain)
+                                return
+                            }
+
+                            if (currentMode === "clipboard" && clipboardLoader.item && clipboardLoader.listViewInstance) {
+                                launcherRoot.ctrl.clipboard.moveUp()
+                                clipboardLoader.listViewInstance.positionViewAtIndex(launcherRoot.ctrl.clipboard.selectedIndex, ListView.Contain)
+                                return
+                            }
+
+                            if (currentMode === "apps" && appsLoader.item && appsLoader.item.currentIndex > 0) {
+                                appsLoader.item.currentIndex--
+                            }
+                        }
+
+                        Keys.onDeletePressed: {
+                            if (launcherRoot.mode !== "clipboard") return
+                            launcherRoot.ctrl.clipboard.deleteSelected()
+                        }
+
+                        Keys.onReturnPressed: {
+                            const currentMode = launcherRoot.mode
+                            if (currentMode === "unicode") {
+                                launcherRoot.ctrl.unicodeSearch.copySelected()
+                                launcherRoot.closeOverlay()
+                                return
+                            }
+
+                            if (currentMode === "clipboard") {
+                                launcherRoot.ctrl.clipboard.copySelected()
+                                launcherRoot.closeOverlay()
+                                return
+                            }
+
+                            if (currentMode === "apps" && appsLoader.item && appsLoader.item.currentIndex >= 0) {
+                                launcherRoot.ctrl.appLauncher.launch(launcherRoot.ctrl.appLauncher.filteredApps.get(appsLoader.item.currentIndex).exec)
+                                launcherRoot.closeOverlay()
+                            }
+                        }
+                    }
+
+                    /*
+                     * HIGH-PERFORMANCE PRE-CACHED LAZYLOADERS
+                     */
+                    Loader {
+                        id: unicodeLoader
+                        active: launcherRoot.mode === "unicode"
+                        visible: active
+                        width: parent.width
+                        height: parent.contentHeight
+                        sourceComponent: Component {
+                            ListView {
+                                id: unicodeListView
+                                clip: true
+                                cacheBuffer: 800
+                                spacing: 4
+                                boundsBehavior: Flickable.StopAtBounds
+                                model: launcherRoot.ctrl.unicodeSearch.filteredUnicodeItems
+                                currentIndex: launcherRoot.ctrl.unicodeSearch.selectedIndex
+
+                                delegate: Rectangle {
+                                    width: unicodeListView.width
+                                    height: 60
+                                    radius: 10
+                                    color: ListView.isCurrentItem ? shell.theme.base02 : "transparent"
+
+                                    Row {
+                                        anchors.fill: parent
+                                        anchors.margins: 14
+                                        spacing: 20
+                                        Text {
+                                            text: modelData.symbol
+                                            color: shell.theme.base05
+                                            font.pixelSize: 28
+                                            width: 50
+                                        }
+                                        Text {
+                                            text: modelData.name
+                                            color: shell.theme.base05
+                                            font.pixelSize: 18
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        onClicked: {
+                                            launcherRoot.ctrl.unicodeSearch.selectedIndex = index
+                                            unicodeListView.currentIndex = index
+                                            launcherRoot.ctrl.unicodeSearch.copySelected()
+                                            launcherRoot.closeOverlay()
+                                        }
+                                    }
+                                }
+                                ScrollBar.vertical: ScrollBar {
+                                    policy: ScrollBar.AsNeeded
+                                }
+                            }
+                        }
+                    }
+
+                    Loader {
+                        id: appsLoader
+                        active: true
+                        visible: launcherRoot.mode === "apps" || launcherRoot.mode === ""
+                        width: parent.width
+                        height: parent.contentHeight
+                        sourceComponent: Component {
+                            ListView {
+                                clip: true
+                                cacheBuffer: 800
+                                spacing: 4
+                                model: launcherRoot.ctrl.appLauncher.filteredApps
+
+                                delegate: Rectangle {
+                                    width: ListView.view.width
+                                    height: 64
+                                    radius: 10
+                                    color: ListView.isCurrentItem ? shell.theme.base02 : mouseArea.containsMouse ? shell.theme.base01 : "transparent"
+
+                                    Row {
+                                        anchors.fill: parent
+                                        anchors.margins: 14
+                                        spacing: 14
+                                        Image {
+                                            width: 32
+                                            height: 32
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            source: icon ? "image://icon/" + icon : ""
+                                            fillMode: Image.PreserveAspectFit
+                                            smooth: false
+                                        }
+
+                                        Column {
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            spacing: 2
+
+                                            Text {
+                                                text: name || ""
+                                                color: shell.theme.base05
+                                                font.pixelSize: 18
+                                                font.bold: true
+                                            }
+
+                                            Text {
+                                                text: exec || ""
+                                                color: shell.theme.base07
+                                                font.pixelSize: 13
+                                                elide: Text.ElideRight
+                                                width: 620
+                                            }
+                                        }
+                                    }
+
+                                    MouseArea {
+                                        id: mouseArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        onClicked: {
+                                            launcherRoot.ctrl.appLauncher.launch(exec)
+                                            launcherRoot.closeOverlay()
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Loader {
+                        id: clipboardLoader
+                        active: launcherRoot.mode === "clipboard"
+                        visible: active
+                        width: parent.width
+                        height: parent.contentHeight
+
+                        readonly property
+                        var listViewInstance: item ? item.targetListView : null
+
+                        sourceComponent: Component {
+                            Row {
+                                width: parent.width
+                                height: parent.height
+                                spacing: 20
+
+                                property Item targetListView: clipboardListView
+
+                                ListView {
+                                    id: clipboardListView
+                                    width: 540
+                                    height: parent.height
+                                    clip: true
+                                    cacheBuffer: 1200
+                                    spacing: 4
+                                    boundsBehavior: Flickable.StopAtBounds
+                                    model: launcherRoot.ctrl.clipboard.filteredClipboardItems
+                                    currentIndex: ctrl.clipboard.selectedIndex
+
+                                    delegate: Rectangle {
+                                        readonly property int itemIndex: index
+                                        readonly property string itemText: model.text || ""
+                                        readonly property bool itemIsImage: model.isImage || false
+                                        readonly property string itemImagePath: model.imagePath || ""
+
+                                        width: clipboardListView.width
+                                        height: itemIsImage ? 120 : 70
+                                        radius: 10
+                                        color: itemIndex === launcherRoot.ctrl.clipboard.selectedIndex ? shell.theme.base02 : "transparent"
+
+                                        Row {
+                                            anchors.fill: parent
+                                            anchors.margins: 12
+                                            spacing: 12
+
+                                            Image {
+                                                visible: itemIsImage
+                                                width: 90
+                                                height: 90
+                                                source: itemIsImage && itemImagePath ? "file://" + itemImagePath : ""
+                                                fillMode: Image.PreserveAspectFit
+                                                smooth: false
+                                            }
+
+                                            Text {
+                                                width: parent.width - (itemIsImage ? 120 : 0)
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                text: itemIsImage ? "[Image Clipboard Entry]" : itemText
+                                                wrapMode: Text.NoWrap
+                                                elide: Text.ElideRight
+                                                color: shell.theme.base05
+                                                font.pixelSize: 18
+                                                textFormat: Text.PlainText
+                                            }
+                                        }
+
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            onClicked: {
+                                                ctrl.clipboard.selectedIndex = itemIndex
+                                                ctrl.clipboard.updatePreview()
+                                            }
+                                        }
+                                    }
+                                    ScrollBar.vertical: ScrollBar {
+                                        policy: ScrollBar.AsNeeded
+                                    }
+                                }
+
+                                Rectangle {
+                                    id: previewPanel
+
+                                    width: 500
+                                    height: parent.height
+
+                                    radius: 12
+                                    color: shell.theme.base00
+
+                                    border.width: 2
+                                    border.color: shell.theme.base03
+
+                                    property
+                                    var selectedItem: (
+                                            launcherRoot.ctrl.clipboard.selectedIndex >= 0 &&
+                                            launcherRoot.ctrl.clipboard.selectedIndex <
+                                            launcherRoot.ctrl.clipboard.filteredClipboardItems.count
+                                        ) ?
+                                        launcherRoot.ctrl.clipboard.filteredClipboardItems.get(
+                                            launcherRoot.ctrl.clipboard.selectedIndex
+                                        ) :
+                                        null
+
+                                    /*
+                                     * IMAGE PREVIEW
+                                     */
+
+                                    Image {
+                                        anchors.fill: parent
+                                        anchors.margins: 10
+
+                                        visible: (
+                                            previewPanel.selectedItem &&
+                                            previewPanel.selectedItem.isImage
+                                        )
+
+                                        source: visible ?
+                                            "file://" + previewPanel.selectedItem.imagePath :
+                                            ""
+
+                                        fillMode: Image.PreserveAspectFit
+                                        smooth: false
+                                    }
+
+                                    /*
+                                     * TEXT PREVIEW
+                                     */
+
+                                    ScrollView {
+                                        id: textPreview
+                                        anchors.fill: parent
+                                        anchors.margins: 12
+
+                                        visible: (
+                                            previewPanel.selectedItem &&
+                                            !previewPanel.selectedItem.isImage
+                                        )
+
+                                        clip: true
+
+                                        TextArea {
+                                            text: (
+                                                previewPanel.selectedItem ?
+                                                previewPanel.selectedItem.text :
+                                                ""
+                                            )
+
+                                            width: textPreview.availableWidth
+                                            wrapMode: TextArea.WrapAnywhere
+                                            readOnly: true
+                                            selectByMouse: true
+                                            color: shell.theme.base05
+                                            font.pixelSize: 18
+                                            background: null
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Loader {
+                        active: launcherRoot.mode === "dictionary"
+                        visible: active
+                        width: parent.width
+                        height: parent.contentHeight
+                        sourceComponent: Component {
+                            ScrollView {
+                                clip: true
+                                Text {
+                                    width: parent.width - 20
+                                    text: launcherRoot.ctrl.dictionary.currentDefinition
+                                    wrapMode: Text.Wrap
+                                    color: shell.theme.base05
+                                    font.pixelSize: 20
+                                    lineHeight: 1.3
+                                }
+                            }
+                        }
+                    }
+
+                    Loader {
+                        active: launcherRoot.mode === "math"
+                        visible: active
+                        width: parent.width
+                        height: parent.contentHeight
+                        sourceComponent: Component {
+                            Rectangle {
+                                radius: 12
+                                color: shell.theme.base00
+                                border.width: 2
+                                border.color: shell.theme.base03
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: launcherRoot.ctrl.mathEngine.mathResultString
+                                    color: shell.theme.base05
+                                    font.pixelSize: 42
+                                    font.bold: true
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
-    }
-}

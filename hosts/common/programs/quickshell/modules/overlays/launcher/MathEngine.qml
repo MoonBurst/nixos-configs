@@ -11,31 +11,117 @@ QtObject {
 
     property string mathResultString: ""
 
+    readonly property
+    var unitAliases: ({
+
+        /*
+         * DISTANCE
+         */
+        mile: "mi",
+        miles: "mi",
+        meter: "m",
+        meters: "m",
+        kilometre: "km",
+        kilometres: "km",
+        kilometer: "km",
+        kilometers: "km",
+        foot: "ft",
+        feet: "ft",
+        inch: "in",
+        inches: "in",
+        yard: "yd",
+        yards: "yd",
+
+        /*
+         * WEIGHT
+         */
+        gram: "g",
+        grams: "g",
+        kilogram: "kg",
+        kilograms: "kg",
+        pound: "lb",
+        pounds: "lb",
+        ounce: "oz",
+        ounces: "oz",
+
+        /*
+         * LIQUID
+         */
+        liter: "l",
+        liters: "l",
+        litre: "l",
+        litres: "l",
+        gallon: "gal",
+        gallons: "gal",
+        cup: "cup",
+        cups: "cup"
+    })
+
+    readonly property
+    var unitCategories: ({
+
+        distance: {
+            mm: 0.001,
+            cm: 0.01,
+            m: 1,
+            km: 1000,
+            in: 0.0254,
+            ft: 0.3048,
+            yd: 0.9144,
+            mi: 1609.34
+        },
+
+        weight: {
+            mg: 0.001,
+            g: 1,
+            kg: 1000,
+            oz: 28.3495,
+            lb: 453.592
+        },
+
+        liquid: {
+            ml: 1,
+            l: 1000,
+            cup: 236.588,
+            pint: 473.176,
+            gal: 3785.41
+        }
+    })
+
+    readonly property
+    var mathFunctionMap: ({
+        sin: "Math.sin",
+        cos: "Math.cos",
+        tan: "Math.tan",
+        sqrt: "Math.sqrt",
+        log: "Math.log10",
+        ln: "Math.log",
+        pow: "Math.pow",
+        abs: "Math.abs",
+        round: "Math.round",
+        floor: "Math.floor",
+        ceil: "Math.ceil",
+        pi: "Math.PI",
+        e: "Math.E"
+    })
+
     /*
      * SET RESULT
      */
 
     function setResult(result) {
-        mathResultString = String(result)
+        mathResultString =
+        String(result)
     }
 
     /*
-     * MEASUREMENT CONVERSION
+     * UNIT CONVERSION
      */
 
     function runMeasurementConversion(query) {
 
-        /*
-         * EXAMPLES:
-         *
-         * 5km
-         * 5 km
-         * 5 km to mi
-         * 10ft to m
-         * 12 miles to km
-         */
-
-        const match = query.match(
+        const match =
+        query.match(
             /^([0-9.]+)\s*([a-zA-Z]+)(?:\s+(?:to|in)\s+([a-zA-Z]+))?$/
         )
 
@@ -46,125 +132,25 @@ QtObject {
         const value =
         parseFloat(match[1])
 
+        if (isNaN(value)) {
+            return false
+        }
+
         let from =
         match[2].toLowerCase()
 
         let target =
-        match[3]
-        ? match[3].toLowerCase()
-        : ""
+        match[3] ?
+        match[3].toLowerCase() :
+        ""
 
-        /*
-         * ALIASES
-         */
+        from =
+        unitAliases[from] ||
+        from
 
-        const aliases = {
-
-            /*
-             * DISTANCE
-             */
-
-            mile: "mi",
-            miles: "mi",
-
-            meter: "m",
-            meters: "m",
-
-            kilometre: "km",
-            kilometres: "km",
-
-            kilometer: "km",
-            kilometers: "km",
-
-            foot: "ft",
-            feet: "ft",
-
-            inch: "in",
-            inches: "in",
-
-            yard: "yd",
-            yards: "yd",
-
-            /*
-             * WEIGHT
-             */
-
-            gram: "g",
-            grams: "g",
-
-            kilogram: "kg",
-            kilograms: "kg",
-
-            pound: "lb",
-            pounds: "lb",
-
-            ounce: "oz",
-            ounces: "oz",
-
-            /*
-             * LIQUID
-             */
-
-            liter: "l",
-            liters: "l",
-
-            litre: "l",
-            litres: "l",
-
-            gallon: "gal",
-            gallons: "gal",
-
-            cup: "cup",
-            cups: "cup"
-        }
-
-        if (aliases[from]) {
-            from = aliases[from]
-        }
-
-        if (aliases[target]) {
-            target = aliases[target]
-        }
-
-        /*
-         * CATEGORIES
-         */
-
-        const categories = {
-
-            distance: {
-
-                mm: 0.001,
-                cm: 0.01,
-                m: 1,
-                km: 1000,
-
-                in: 0.0254,
-                ft: 0.3048,
-                yd: 0.9144,
-                mi: 1609.34
-            },
-
-            weight: {
-
-                mg: 0.001,
-                g: 1,
-                kg: 1000,
-
-                oz: 28.3495,
-                lb: 453.592
-            },
-
-            liquid: {
-
-                ml: 1,
-                l: 1000,
-
-                cup: 236.588,
-                pint: 473.176,
-                gal: 3785.41
-            }
-        }
+        target =
+        unitAliases[target] ||
+        target
 
         /*
          * FIND UNIT GROUP
@@ -172,17 +158,28 @@ QtObject {
 
         let units = null
 
+        const categories =
+        unitCategories
+
         for (let key in categories) {
+            const category =
+            categories[key]
 
             if (
-                categories[key][from] !== undefined
+                category[from] !== undefined
             ) {
-                units = categories[key]
+                units = category
                 break
             }
         }
 
-        if (!units) {
+        if (
+            !units ||
+            (
+                target &&
+                units[target] === undefined
+            )
+        ) {
             return false
         }
 
@@ -193,33 +190,34 @@ QtObject {
         const baseValue =
         value * units[from]
 
-        let results = []
+        const results = []
 
         for (let unit in units) {
 
-            const converted =
-            baseValue / units[unit]
-
-            const line =
-            `${converted.toFixed(4)} ${unit}`
-
             if (
-                !target ||
-                unit === target
+                target &&
+                unit !== target
             ) {
-                results.push(line)
+                continue
             }
+
+            results.push(
+                (
+                    baseValue /
+                    units[unit]
+                ).toFixed(4) +
+                " " +
+                unit
+            )
         }
 
-        /*
-         * NO MATCH
-         */
-
-        if (results.length === 0) {
+        if (!results.length) {
             return false
         }
 
-        setResult(results.join("\n"))
+        setResult(
+            results.join("\n")
+        )
 
         return true
     }
@@ -237,7 +235,7 @@ QtObject {
          * EMPTY
          */
 
-        if (cleanQuery.length === 0) {
+        if (!cleanQuery) {
             return false
         }
 
@@ -254,31 +252,24 @@ QtObject {
         }
 
         /*
-         * MATH DETECTION
+         * QUICK MATH DETECTION
          */
 
-        const looksLikeMath =
-        /[0-9+\-*/().^]/.test(
-            cleanQuery
-        )
-
-        if (!looksLikeMath) {
+        if (
+            !/[0-9+\-*/().^]/.test(
+                cleanQuery
+            )
+        ) {
             return false
         }
 
         try {
-
-            /*
-             * START
-             */
 
             let expression =
             cleanQuery
 
             /*
              * EXPONENTS
-             *
-             * 2^8
              */
 
             expression =
@@ -288,26 +279,18 @@ QtObject {
             )
 
             /*
-             * IMPLICIT PI
-             *
-             * 2PI
+             * IMPLICIT CONSTANTS
              */
 
             expression =
             expression.replace(
-                /([0-9])PI/g,
+                /([0-9])PI/gi,
                                "$1*Math.PI"
             )
 
-            /*
-             * IMPLICIT E
-             *
-             * 2E
-             */
-
             expression =
             expression.replace(
-                /([0-9])E/g,
+                /([0-9])E\b/g,
                                "$1*Math.E"
             )
 
@@ -320,27 +303,10 @@ QtObject {
                 /\b(sin|cos|tan|sqrt|log|ln|pow|abs|round|floor|ceil|PI|E)\b/gi,
                                function(match) {
 
-                                   if (
-                                       match.toLowerCase() === "ln"
-                                   ) {
-                                       return "Math.log"
-                                   }
-
-                                   if (
-                                       match.toUpperCase() === "PI"
-                                   ) {
-                                       return "Math.PI"
-                                   }
-
-                                   if (
-                                       match.toUpperCase() === "E"
-                                   ) {
-                                       return "Math.E"
-                                   }
-
                                    return (
-                                       "Math." +
-                                       match.toLowerCase()
+                                       mathFunctionMap[
+                                           match.toLowerCase()
+                                       ] || match
                                    )
                                }
             )
@@ -349,17 +315,18 @@ QtObject {
              * EXECUTE
              */
 
-            let result = Function(
+            let result =
+            Function(
                 `"use strict"; return (${expression})`
             )()
 
             /*
-             * INVALID
+             * VALIDATE
              */
 
             if (
                 typeof result !== "number" ||
-                isNaN(result)
+                !isFinite(result)
             ) {
                 return false
             }
@@ -377,15 +344,11 @@ QtObject {
                 )
             }
 
-            /*
-             * STORE RESULT
-             */
-
             setResult(result)
 
             return true
 
-        } catch(error) {
+        } catch (error) {
 
             return false
         }

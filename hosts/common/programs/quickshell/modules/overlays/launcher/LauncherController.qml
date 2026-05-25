@@ -1,5 +1,3 @@
-// LauncherController.qml
-
 pragma Singleton
 
 import QtQuick
@@ -11,44 +9,36 @@ Item {
      * MODULE REFERENCES
      */
 
-    property alias appLauncher: appLauncher
-    property alias dictionary: dictionary
-    property alias clipboard: clipboard
-    property alias unicodeSearch: unicodeSearch
+    readonly property alias appLauncher: appLauncher
+
+    readonly property alias dictionary: dictionary
+
+    readonly property alias clipboard: clipboard
+
+    readonly property alias unicodeSearch: unicodeSearch
 
     /*
-     * MATH SINGLETON
+     * MATH ENGINE
      */
 
-    property var mathEngine: MathEngine
+    readonly property
+    var mathEngine: MathEngine
 
     /*
-     * APP LAUNCHER
+     * MODULE INSTANCES
      */
 
     AppLauncher {
         id: appLauncher
     }
 
-    /*
-     * DICTIONARY
-     */
-
     Dictionary {
         id: dictionary
     }
 
-    /*
-     * CLIPBOARD
-     */
-
     Clipboard {
         id: clipboard
     }
-
-    /*
-     * UNICODE SEARCH
-     */
 
     UnicodeSearch {
         id: unicodeSearch

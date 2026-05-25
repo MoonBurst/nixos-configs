@@ -1,16 +1,24 @@
 import QtQuick
 
-Item {
+QtObject {
     id: root
 
-    property string currentDefinition: ""
+    property string currentDefinition: "Enter a word to define."
+
+    readonly property int maxDefinitions: 8
+    readonly property int maxSynonyms: 30
+
+    property
+    var activeRequest: null
 
     function fetch(word) {
-        const cleanWord = (word || "").trim()
+        const cleanWord =
+        (word || "").trim()
 
-        if (cleanWord.length === 0) {
+        if (!cleanWord) {
             currentDefinition =
             "Enter a word to define."
+
             return
         }
 
@@ -19,195 +27,49 @@ Item {
         cleanWord +
         "'..."
 
-        const xhr = new XMLHttpRequest()
+        /*
+         * Abort previous request
+         */
 
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState !== XMLHttpRequest.DONE) {
+        if (activeRequest) {
+            activeRequest.abort()
+            activeRequest = null
+        }
+
+        const xhr =
+        new XMLHttpRequest()
+
+        activeRequest = xhr
+
+        xhr.onreadystatechange =
+        function() {
+            if (
+                xhr.readyState !==
+                XMLHttpRequest.DONE
+            ) {
                 return
             }
+
+            if (xhr !== activeRequest) {
+                return
+            }
+
+            activeRequest = null
 
             if (xhr.status !== 200) {
                 root.currentDefinition =
                 "No definition found."
+
                 return
             }
 
             try {
-                const response =
-                JSON.parse(xhr.responseText)
-
-                if (
-                    !response ||
-                    response.length === 0
-                ) {
-                    root.currentDefinition =
-                    "No definition found."
-                    return
-                }
-
-                /*
-                 * SPELLCHECK
-                 */
-
-                let suggestionText = ""
-
-                if (
-                    response.title &&
-                    response.message
-                ) {
-                    if (response.resolution) {
-                        const match =
-                        response.resolution.match(
-                            /`([^`]+)`/
-                        )
-
-                        if (match && match[1]) {
-                            suggestionText =
-                            "🔎 Did you mean: " +
-                            match[1] +
-                            "\n\n"
-                        }
-                    }
-
-                    root.currentDefinition =
-                    suggestionText +
-                    "No definition found."
-
-                    return
-                }
-
-                /*
-                 * DEFINITIONS
-                 */
-
-                let definitions = []
-                let synonyms = []
-
-                for (
-                    let i = 0;
-                i < response[0].meanings.length;
-                ++i
-                ) {
-                    const meaning =
-                    response[0].meanings[i]
-
-                    /*
-                     * synonyms from meanings
-                     */
-
-                    if (meaning.synonyms) {
-                        for (
-                            let s = 0;
-                        s < meaning.synonyms.length;
-                        ++s
-                        ) {
-                            const synonym =
-                            meaning.synonyms[s]
-
-                            if (
-                                synonym &&
-                                synonyms.indexOf(
-                                    synonym
-                                ) === -1
-                            ) {
-                                synonyms.push(synonym)
-                            }
-                        }
-                    }
-
-                    /*
-                     * definitions
-                     */
-
-                    if (!meaning.definitions) {
-                        continue
-                    }
-
-                    for (
-                        let j = 0;
-                    j < meaning.definitions.length;
-                    ++j
-                    ) {
-                        const def =
-                        meaning.definitions[j]
-
-                        if (
-                            def.definition &&
-                            definitions.length < 8
-                        ) {
-                            definitions.push(
-                                "• " +
-                                def.definition
-                            )
-                        }
-
-                        /*
-                         * synonyms from defs
-                         */
-
-                        if (def.synonyms) {
-                            for (
-                                let k = 0;
-                            k < def.synonyms.length;
-                            ++k
-                            ) {
-                                const synonym =
-                                def.synonyms[k]
-
-                                if (
-                                    synonym &&
-                                    synonyms.indexOf(
-                                        synonym
-                                    ) === -1
-                                ) {
-                                    synonyms.push(
-                                        synonym
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                /*
-                 * FORMAT OUTPUT
-                 */
-
-                let output = ""
-
-                if (definitions.length > 0) {
-                    output +=
-                    "DEFINITIONS\n" +
-                    "────────────\n\n"
-
-                    output +=
-                    definitions.join(
-                        "\n\n"
+                parseResponse(
+                    JSON.parse(
+                        xhr.responseText
                     )
-                }
-
-                if (synonyms.length > 0) {
-                    output +=
-                    "\n\n\nTHESAURUS\n" +
-                    "──────────\n\n"
-
-                    output +=
-                    synonyms
-                    .slice(0, 30)
-                    .join(", ")
-                }
-
-                if (
-                    output.trim().length === 0
-                ) {
-                    output =
-                    "No definition found."
-                }
-
-                root.currentDefinition =
-                output
-
-            } catch(error) {
+                )
+            } catch (error) {
                 root.currentDefinition =
                 "Definition parsing failed."
             }
@@ -220,5 +82,190 @@ Item {
         )
 
         xhr.send()
+    }
+
+    function appendUnique(
+        array,
+        value,
+        seen
+    ) {
+        if (
+            !value ||
+            seen[value]
+        ) {
+            return
+        }
+
+        seen[value] = true
+        array.push(value)
+    }
+
+    function parseResponse(response) {
+        if (
+            !response ||
+            response.length === 0
+        ) {
+            currentDefinition =
+            "No definition found."
+
+            return
+        }
+
+        /*
+         * SPELLCHECK RESPONSE
+         */
+
+        if (
+            response.title &&
+            response.message
+        ) {
+            let suggestion = ""
+
+            if (response.resolution) {
+                const match =
+                response.resolution.match(
+                    /`([^`]+)`/
+                )
+
+                if (
+                    match &&
+                    match[1]
+                ) {
+                    suggestion =
+                    "🔎 Did you mean: " +
+                    match[1] +
+                    "\n\n"
+                }
+            }
+
+            currentDefinition =
+            suggestion +
+            "No definition found."
+
+            return
+        }
+
+        /*
+         * DEFINITIONS + SYNONYMS
+         */
+
+        const definitions = []
+        const synonyms = []
+
+        // O(1) synonym deduplication
+        const synonymSet = ({})
+
+        const meanings =
+        response[0].meanings || []
+
+        for (
+            let i = 0,
+             len = meanings.length; i < len;
+             ++i
+        ) {
+            const meaning =
+            meanings[i]
+
+            /*
+             * Meaning synonyms
+             */
+
+            const meaningSynonyms =
+            meaning.synonyms || []
+
+            for (
+                let s = 0,
+                 slen =
+                 meaningSynonyms.length; s < slen;
+                 ++s
+            ) {
+                appendUnique(
+                    synonyms,
+                    meaningSynonyms[s],
+                    synonymSet
+                )
+            }
+
+            /*
+             * Definitions
+             */
+
+            const defs =
+            meaning.definitions || []
+
+            for (
+                let j = 0,
+                 dlen = defs.length; j < dlen;
+                 ++j
+            ) {
+                const def =
+                defs[j]
+
+                if (
+                    def.definition &&
+                    definitions.length <
+                    maxDefinitions
+                ) {
+                    definitions.push(
+                        "• " +
+                        def.definition
+                    )
+                }
+
+                /*
+                 * Definition synonyms
+                 */
+
+                const defSynonyms =
+                def.synonyms || []
+
+                for (
+                    let k = 0,
+                     klen =
+                     defSynonyms.length; k < klen;
+                     ++k
+                ) {
+                    appendUnique(
+                        synonyms,
+                        defSynonyms[k],
+                        synonymSet
+                    )
+                }
+            }
+        }
+
+        /*
+         * FORMAT OUTPUT
+         */
+
+        const sections = []
+
+        if (definitions.length) {
+            sections.push(
+                "DEFINITIONS\n" +
+                "────────────\n\n" +
+                definitions.join(
+                    "\n\n"
+                )
+            )
+        }
+
+        if (synonyms.length) {
+            sections.push(
+                "THESAURUS\n" +
+                "──────────\n\n" +
+                synonyms
+                .slice(
+                    0,
+                    maxSynonyms
+                )
+                .join(", ")
+            )
+        }
+
+        currentDefinition =
+        sections.length ?
+        sections.join("\n\n\n") :
+        "No definition found."
     }
 }

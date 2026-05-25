@@ -6,23 +6,45 @@ Item {
     id: root
 
     property string currentQuery: ""
+    property string pendingQuery: ""
 
-    property alias apps: appsModel
+    property
+    var allApps: []
+    property
+    var knownExecs: ({})
+    property
+    var pendingApps: []
+
     property alias filteredApps: filteredAppsModel
-
-    ListModel {
-        id: appsModel
-    }
 
     ListModel {
         id: filteredAppsModel
     }
 
+    Timer {
+        id: filterTimer
+
+        interval: 40
+        repeat: false
+
+        onTriggered: {
+            refreshFilter(pendingQuery)
+        }
+    }
+
     function loadApps() {
-        appsModel.clear()
+        allApps = []
+        pendingApps = []
+        knownExecs = ({})
+
         filteredAppsModel.clear()
 
         appLoader.running = true
+    }
+
+    function queueFilter(query) {
+        pendingQuery = query || ""
+        filterTimer.restart()
     }
 
     function refreshFilter(query) {
@@ -33,56 +55,65 @@ Item {
         .toLowerCase()
         .trim()
 
+        const showAll = q.length === 0
+
         filteredAppsModel.clear()
 
-        for (let i = 0; i < appsModel.count; ++i) {
-            const app = appsModel.get(i)
-
-            const name =
-            (app.name || "")
-            .toLowerCase()
-
-            const exec =
-            (app.exec || "")
-            .toLowerCase()
+        for (let i = 0, c = allApps.length; i < c; ++i) {
+            const app = allApps[i]
 
             if (
-                q.length === 0 ||
-                name.includes(q) ||
-                exec.includes(q)
+                showAll ||
+                app.searchName.includes(q) ||
+                app.searchExec.includes(q)
             ) {
-                filteredAppsModel.append({
-                    name: app.name,
-                    exec: app.exec,
-                    icon: app.icon
-                })
+                filteredAppsModel.append(app)
             }
         }
     }
 
     function launch(command) {
-        if (!command || command.length === 0) {
+        if (!command) {
             return
         }
-
-        let cleaned = command
-
-        cleaned = cleaned.replace(
-            /%[fFuUdDnNickvm]/g,
-            ""
-        )
-
-        cleaned = cleaned
-        .replace(/\s+/g, " ")
-        .trim()
 
         launcher.command = [
             "sh",
             "-c",
-            cleaned
+            command
         ]
 
         launcher.running = true
+    }
+
+    function addApp(name, exec, icon) {
+        if (!name || !exec) {
+            return
+        }
+
+        const key =
+        exec.toLowerCase()
+
+        if (knownExecs[key]) {
+            return
+        }
+
+        knownExecs[key] = true
+
+        pendingApps.push({
+            name,
+            exec,
+            icon,
+
+            searchName: name.toLowerCase(),
+
+                         searchExec: exec.toLowerCase()
+        })
+    }
+
+    function flushApps() {
+        allApps = pendingApps
+        refreshFilter("")
     }
 
     Process {
@@ -96,36 +127,72 @@ Item {
             "sh",
             "-c",
             `
-            find \
-            /run/current-system/sw/share/applications \
-            $HOME/.local/share/applications \
-            /usr/share/applications \
-            -name '*.desktop' 2>/dev/null |
+            (
+                find \
+                /run/current-system/sw/share/applications \
+                "$HOME/.local/share/applications" \
+                /usr/share/applications \
+                -type f \
+                -name '*.desktop' 2>/dev/null |
 
-            while read -r file; do
+                sort -u |
 
-                name=$(grep -m1 '^Name=' "$file" | cut -d= -f2-)
+                while read -r file; do
+                    awk -F= '
+                    /^Name=/ && !name {
+                        name = substr($0, 6)
+                    }
 
-                exec_cmd=$(grep -m1 '^Exec=' "$file" | cut -d= -f2-)
+                    /^Exec=/ && !exec {
+                        exec = substr($0, 6)
 
-                icon=$(grep -m1 '^Icon=' "$file" | cut -d= -f2-)
+                        gsub(/[[:space:]]*%[fFuUdDnNickvm]/, "", exec)
+                        gsub(/^[[:space:]]+|[[:space:]]+$/, "", exec)
+                    }
 
-                exec_cmd=$(printf '%s\n' "$exec_cmd" \
-                | sed -E 's/[[:space:]]+%[fFuUdDnNickvm]//g')
+                    /^Icon=/ && !icon {
+                        icon = substr($0, 6)
+                    }
 
-                exec_cmd=$(echo "$exec_cmd" \
-                | sed 's/^ *//;s/ *$//')
+                    END {
+                        if (name && exec) {
+                            if (!icon)
+                                icon = "application-x-executable"
 
-                [ -z "$name" ] && continue
-                [ -z "$exec_cmd" ] && continue
+                                printf "%s|%s|%s\\n",
+                                name,
+                                exec,
+                                icon
+                        }
+                    }
+                    ' "$file"
+                    done
 
-                [ -z "$icon" ] && \
-                icon='application-x-executable'
+                    echo "__BINARIES__"
 
-                echo "$name|$exec_cmd|$icon"
+                    tr ':' '\\n' <<< "$PATH" |
 
-                done | sort -u
-                `
+                    while read -r dir; do
+                        [ -d "$dir" ] || continue
+
+                        find -L "$dir" \
+                        -maxdepth 1 \
+                        -executable 2>/dev/null
+                        done |
+
+                        sort -u |
+
+                        while read -r file; do
+                            [ -d "$file" ] && continue
+
+                            bin=$(basename "$file")
+
+                            printf "%s|%s|application-x-executable\\n" \
+                            "$bin" \
+                            "$bin"
+                            done
+            )
+            `
         ]
 
         stdout: SplitParser {
@@ -134,35 +201,50 @@ Item {
                 data.split("\n")
 
                 for (
-                    let i = 0;
-                i < lines.length;
-                ++i
+                    let i = 0,
+                     c = lines.length; i < c;
+                     ++i
                 ) {
                     const line =
                     lines[i].trim()
 
-                    if (!line.length) {
+                    if (
+                        !line ||
+                        line === "__BINARIES__"
+                    ) {
                         continue
                     }
 
-                    const parts =
-                    line.split("|")
+                    const first =
+                    line.indexOf("|")
 
-                    if (parts.length < 3) {
+                    const second =
+                    line.indexOf(
+                        "|",
+                        first + 1
+                    )
+
+                    if (
+                        first === -1 ||
+                        second === -1
+                    ) {
                         continue
                     }
 
-                    appsModel.append({
-                        name: parts[0],
-                        exec: parts[1],
-                        icon: parts[2]
-                    })
+                    addApp(
+                        line.slice(0, first),
+                           line.slice(
+                               first + 1,
+                               second
+                           ),
+                           line.slice(second + 1)
+                    )
                 }
             }
         }
 
         onExited: {
-            refreshFilter("")
+            flushApps()
         }
     }
 

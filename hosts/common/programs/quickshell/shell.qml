@@ -5,7 +5,6 @@ import Quickshell.Wayland
 import Quickshell.Services.Notifications
 import Quickshell.Io
 
-
 import "./modules/overlays/notifications" as Notifications
 import "./modules/overlays/launcher" as LauncherModule
 import "./modules/bar/tray" as SystemTray
@@ -23,38 +22,45 @@ import "./modules/bar/weather" as WeatherCapsule
 ShellRoot {
     id: shell
 
+    /*
+     * =========================================================================
+     * GLOBALS
+     * =========================================================================
+     */
 
-    // ============================================================================
-    // GLOBAL THEME PROVIDER OBJECT
-    // ============================================================================
     Theme {
         id: globalTheme
     }
 
     property alias theme: globalTheme
 
-    // ============================================================================
-    // REUSABLE DASHBOARD INTERFACE CAPABILITIES (STATE CONTROLLERS)
-    // ============================================================================
-    function toggleApplicationLauncherDashboard() {
-        if (launcherOverlayWindow) {
-            launcherOverlayWindow.visible = !launcherOverlayWindow.visible;
+    readonly property
+    var primaryScreen: Quickshell.screens.find(s => s.name === "DP-1")
+
+    property bool debugNotifications: false
+
+    /*
+     * =========================================================================
+     * HELPERS
+     * =========================================================================
+     */
+
+    function toggleWindow(windowObj) {
+        if (windowObj) {
+            windowObj.visible = !windowObj.visible
         }
     }
 
-    function toggleClipboardHistoryDashboard() {
-        if (clipboardOverlayWindow) {
-            clipboardOverlayWindow.visible = !clipboardOverlayWindow.visible;
-        }
-    }
+    /*
+     * =========================================================================
+     * TOP BAR
+     * =========================================================================
+     */
 
-    // ============================================================================
-    // TOP STATUS BAR (MONITOR: DP-1 ONLY)
-    // ============================================================================
     PanelWindow {
         id: topBarWindow
 
-        screen: Quickshell.screens.find(s => s.name === "DP-1")
+        screen: primaryScreen
 
         anchors.top: true
         anchors.left: true
@@ -63,10 +69,10 @@ ShellRoot {
         implicitHeight: 50 + shell.theme.globalPadding
 
         color: "transparent"
+
         WlrLayershell.layer: WlrLayer.Bottom
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
-        // Main Bar Layout Wrapper
         Rectangle {
             id: mainBarContainer
 
@@ -76,238 +82,224 @@ ShellRoot {
             anchors.rightMargin: shell.theme.globalPadding
 
             color: shell.theme.base00
+
             radius: shell.theme.defaultCardRadius
+
             border.width: shell.theme.globalBorderWidth
             border.color: shell.theme.base03
 
-            // ============================================================================
-            // MUSIC MODULE CONTAINER (FAR LEFT SIDE)
-            // ============================================================================
+            readonly property int capsuleHeight: height - (shell.theme.globalBorderWidth * 2) - 8
+
+            /*
+             * ================================================================
+             * LEFT SIDE
+             * ================================================================
+             */
+
             Item {
                 id: musicContainer
 
-                anchors.verticalCenter: parent.verticalCenter
                 anchors.left: parent.left
                 anchors.leftMargin: shell.theme.globalPadding
+                anchors.verticalCenter: parent.verticalCenter
 
-                height: parent.height - (shell.theme.globalBorderWidth * 2) - 8
                 width: 200
+                height: mainBarContainer.capsuleHeight
 
                 MusicCapsule.Music {
-                    id: musicContent
                     anchors.fill: parent
                     barWindow: topBarWindow
                 }
             }
 
-            // ============================================================================
-            // ALARM MODULE CONTAINER (RIGHT OF MUSIC)
-            // ============================================================================
             Item {
                 id: alarmContainer
 
-                anchors.verticalCenter: parent.verticalCenter
                 anchors.left: musicContainer.right
                 anchors.leftMargin: 10
+                anchors.verticalCenter: parent.verticalCenter
 
-                height: parent.height - (shell.theme.globalBorderWidth * 2) - 8
                 width: 140
+                height: mainBarContainer.capsuleHeight
 
                 AlarmCapsule.AlarmCapsule {
-                    id: alarmContent
                     anchors.fill: parent
                     barWindow: topBarWindow
                 }
             }
 
-            // ============================================================================
-            // WEATHER MODULE CONTAINER
-            // ============================================================================
             Item {
                 id: weatherContainer
 
-                anchors.verticalCenter: parent.verticalCenter
                 anchors.left: alarmContainer.right
                 anchors.leftMargin: 10
+                anchors.verticalCenter: parent.verticalCenter
 
-                height: parent.height - (shell.theme.globalBorderWidth * 2) - 8
                 width: 140
+                height: mainBarContainer.capsuleHeight
 
                 WeatherCapsule.Weather {
-                    id: weatherContent
                     anchors.fill: parent
                     barWindow: topBarWindow
                 }
             }
 
-            // ============================================================================
-            // BORG MODULE CONTAINER
-            // ============================================================================
             Item {
                 id: borgContainer
-                anchors.verticalCenter: parent.verticalCenter
+
                 anchors.left: weatherContainer.right
                 anchors.leftMargin: 10
+                anchors.verticalCenter: parent.verticalCenter
 
-                height: parent.height - (shell.theme.globalBorderWidth * 2) - 8
                 width: 140
+                height: mainBarContainer.capsuleHeight
 
                 BorgCapsule.BorgCapsule {
-                    id: borgContent
                     anchors.fill: parent
                     barWindow: topBarWindow
                 }
             }
 
-            // ============================================================================
-            // MAIN TIME CLOCK CONTAINER (PERFECTLY IN THE MIDDLE)
-            // ============================================================================
+            /*
+             * ================================================================
+             * CENTER
+             * ================================================================
+             */
+
             Item {
                 id: clockContainer
 
                 anchors.centerIn: parent
 
-                height: parent.height - (shell.theme.globalBorderWidth * 2) - 8
                 width: 150
+                height: mainBarContainer.capsuleHeight
 
                 ClockCapsule.ClockCapsule {
-                    id: clockContent
                     anchors.fill: parent
                     barWindow: topBarWindow
                 }
             }
 
-            // ============================================================================
-            // AUDIO VOLUME MODULE CONTAINER (IMMEDIATELY LEFT OF CLOCK)
-            // ============================================================================
             Item {
                 id: audioContainer
 
-                anchors.verticalCenter: parent.verticalCenter
                 anchors.right: clockContainer.left
                 anchors.rightMargin: 10
+                anchors.verticalCenter: parent.verticalCenter
 
-                height: parent.height - (shell.theme.globalBorderWidth * 2) - 8
                 width: 140
+                height: mainBarContainer.capsuleHeight
 
                 SoundModule.AudioCapsule {
-                    id: audioContent
                     anchors.fill: parent
                     barWindow: topBarWindow
                 }
             }
-            // ============================================================================
-            // MICROPHONE MODULE CONTAINER (IMMEDIATELY RIGHT OF CLOCK)
-            // ============================================================================
+
             Item {
                 id: micContainer
 
-                anchors.verticalCenter: parent.verticalCenter
                 anchors.left: clockContainer.right
                 anchors.leftMargin: 10
+                anchors.verticalCenter: parent.verticalCenter
 
-                height: parent.height - (shell.theme.globalBorderWidth * 2) - 8
                 width: 140
+                height: mainBarContainer.capsuleHeight
 
                 SoundModule.MicCapsule {
-                    id: micContent
                     anchors.fill: parent
                     barWindow: topBarWindow
                 }
             }
 
-            // ============================================================================
-            // SYSTEM TRAY CONTAINER (FAR RIGHT)
-            // ============================================================================
-            // ============================================================================
-            // SYSTEM TRAY CONTAINER (FAR RIGHT)
-            // ============================================================================
+            /*
+             * ================================================================
+             * RIGHT SIDE
+             * ================================================================
+             */
+
             Item {
                 id: trayContainer
 
-                anchors.verticalCenter: parent.verticalCenter
                 anchors.right: parent.right
-
                 anchors.rightMargin: shell.theme.globalPadding + 20
 
-                height: parent.height - (shell.theme.globalBorderWidth * 2) - 8
-                width: trayContent.childrenRect.width + 24 + (shell.theme.globalBorderWidth * 2)
+                anchors.verticalCenter: parent.verticalCenter
+
+                implicitWidth: trayContent.childrenRect.width + 24
+
+                width: implicitWidth
+
+                height: mainBarContainer.capsuleHeight
 
                 SystemTray.Tray {
                     id: trayContent
+
                     anchors.centerIn: parent
 
-                    // THIS CRITICAL LINE FIXES THE PLATFORMMENUENTRY ERROR:
                     barWindow: topBarWindow
                 }
             }
 
-            // ============================================================================
-            // RAM MODULE CONTAINER (LEFT OF TRAY)
-            // ============================================================================
             Item {
                 id: ramContainer
 
-                anchors.verticalCenter: parent.verticalCenter
                 anchors.right: trayContainer.left
                 anchors.rightMargin: 10
+                anchors.verticalCenter: parent.verticalCenter
 
-                height: parent.height - (shell.theme.globalBorderWidth * 2) - 8
                 width: 175
+                height: mainBarContainer.capsuleHeight
 
                 RamCapsule.RamCapsule {
-                    id: ramContent
                     anchors.fill: parent
                     barWindow: topBarWindow
                 }
             }
 
-            // ============================================================================
-            // GPU MODULE CONTAINER (LEFT OF RAM)
-            // ============================================================================
             Item {
                 id: gpuContainer
-                anchors.verticalCenter: parent.verticalCenter
+
                 anchors.right: ramContainer.left
                 anchors.rightMargin: 10
-                height: parent.height - (shell.theme.globalBorderWidth * 2) - 8
+                anchors.verticalCenter: parent.verticalCenter
+
                 width: 210
+                height: mainBarContainer.capsuleHeight
+
                 GpuCapsule.GpuCapsule {
-                    id: gpuContent
                     anchors.fill: parent
                     barWindow: topBarWindow
                 }
             }
 
-            // ============================================================================
-            // CPU MODULE CONTAINER (LEFT OF GPU)
-            // ============================================================================
             Item {
                 id: cpuContainer
-                anchors.verticalCenter: parent.verticalCenter
+
                 anchors.right: gpuContainer.left
                 anchors.rightMargin: 10
-                height: parent.height - (shell.theme.globalBorderWidth * 2) - 8
+                anchors.verticalCenter: parent.verticalCenter
+
                 width: 175
+                height: mainBarContainer.capsuleHeight
+
                 CpuCapsule.CpuCapsule {
-                    id: cpuContent
                     anchors.fill: parent
                     barWindow: topBarWindow
                 }
             }
 
-            // ============================================================================
-            // NETWORK MODULE CONTAINER (LEFT OF CPU)
-            // ============================================================================
             Item {
                 id: netContainer
-                anchors.verticalCenter: parent.verticalCenter
+
                 anchors.right: cpuContainer.left
                 anchors.rightMargin: 10
-                height: parent.height - (shell.theme.globalBorderWidth * 2) - 8
+                anchors.verticalCenter: parent.verticalCenter
+
                 width: 200
+                height: mainBarContainer.capsuleHeight
+
                 NetCapsule.NetCapsule {
-                    id: netContent
                     anchors.fill: parent
                     barWindow: topBarWindow
                 }
@@ -315,15 +307,18 @@ ShellRoot {
         }
     }
 
-    // ============================================================================
-    // STANDALONE INDEPENDENT OVERLAY COMPONENT INSTANCES
-    // ============================================================================
+    /*
+     * =========================================================================
+     * LAUNCHER OVERLAY
+     * =========================================================================
+     */
+
     PanelWindow {
         id: launcherOverlayWindow
 
         visible: false
 
-        screen: Quickshell.screens.find(s => s.name === "DP-1")
+        screen: primaryScreen
 
         anchors.top: true
         anchors.left: true
@@ -332,40 +327,48 @@ ShellRoot {
 
         color: "transparent"
 
-
-
         WlrLayershell.layer: WlrLayer.Overlay
 
-        WlrLayershell.keyboardFocus:
-        visible
-        ? WlrKeyboardFocus.Exclusive
-        : WlrKeyboardFocus.None
+        WlrLayershell.keyboardFocus: visible ?
+        WlrKeyboardFocus.Exclusive :
+        WlrKeyboardFocus.None
 
         LauncherModule.LauncherOverlay {
             id: launcherOverlay
+
             anchors.fill: parent
+
             shell: shell
             launcherWindow: launcherOverlayWindow
-            visible: launcherOverlayWindow.visible
         }
     }
+
+    /*
+     * =========================================================================
+     * CLIPBOARD OVERLAY
+     * =========================================================================
+     */
 
     LauncherModule.Clipboard {
         id: clipboardOverlayWindow
     }
 
-    // ============================================================================
-    // ROOT LEVEL INDEPENDENT NOTIFICATION LIFECYCLE CONTROLLER
-    // ============================================================================
-    // This allows the inner NotificationCardWindow elements to draw their own individual
-    // click-through shapes cleanly without creating an un-clickable wall on your desktop screen!
+    /*
+     * =========================================================================
+     * NOTIFICATION OVERLAY
+     * =========================================================================
+     */
+
     Notifications.NotificationOverlay {
         id: notificationOverlay
     }
 
-    // ============================================================================
-    // NOTIFICATION SERVER CORE SERVICE
-    // ============================================================================
+    /*
+     * =========================================================================
+     * NOTIFICATION SERVER
+     * =========================================================================
+     */
+
     NotificationServer {
         id: notificationServer
 
@@ -376,89 +379,109 @@ ShellRoot {
         actionsSupported: true
         keepOnReload: true
 
-        onNotification: (notification) => {
-            console.log("==================================================");
-            console.log("🚀 EXHAUSTIVE IPC METADATA COMPONENT ANALYSIS");
-            console.log("==================================================");
+        onNotification: notification => {
 
-            // 1. Core String Extraction Pointers
-            console.log("[APP NAME] (Tells you the target binary to invoke):");
-            console.log("  -> Value: '" + notification.appName + "'");
-            console.log("\n[SUMMARY STRING] (Contains Usernames, Servers, and Channels):");
-            console.log("  -> Value: '" + notification.summary + "'");
-            console.log("\n[BODY PAYLOAD] (Contains the raw message text tokens):");
-            console.log("  -> Value: '" + notification.body + "'");
-            console.log("\n[METADATA COUNTS] (ID and Urgency metrics):");
-            console.log("  -> Notif ID: " + notification.id + " | Urgency: " + notification.urgency + " | Timeout: " + notification.timeout);
+            /*
+             * ================================================================
+             * DEBUG LOGGING
+             * ================================================================
+             */
 
-            // 2. Automated Dynamic Text Token Parsing Analysis
-            console.log("\n--- AUTOMATED REGEX TOKEN ANALYSIS ---");
-            if (notification.summary) {
-                var channelMatch = notification.summary.match(/#([a-zA-Z0-9_-]+)/);
-                if (channelMatch && channelMatch[1]) {
-                    console.log("  [FOUND CHANNEL]: '" + channelMatch[1] + "' (Can be mapped to an IPC target ID)");
-                }
-                var bracketsMatch = notification.summary.match(/\(([^)]+)\)/);
-                if (bracketsMatch && bracketsMatch[1]) {
-                    console.log("  [FOUND CONTEXT]: '" + bracketsMatch[1] + "' (Contains Server or Room meta groupings)");
-                }
-            }
+            if (shell.debugNotifications) {
 
-            // 3. Unpack Lazy Actions Array
-            console.log("\n--- EXHAUSTIVE D-BUS ACTIONS LOOP ---");
-            if (notification.actions && notification.actions.values) {
-                console.log("  Actions Count: " + notification.actions.values.length);
-                for (let i = 0; i < notification.actions.values.length; ++i) {
-                    let act = notification.actions.values[i];
-                    if (act) {
-                        console.log("  -> Action #" + i + ":");
-                        console.log("     | identifier: '" + (act.identifier || "") + "' (Crucial for remote callbacks)");
-                        console.log("     | label:      '" + (act.label || act.text || "") + "'");
+                console.log("==================================================")
+                console.log("NOTIFICATION DEBUG")
+                console.log("==================================================")
+
+                console.log("APP:", notification.appName)
+                console.log("SUMMARY:", notification.summary)
+                console.log("BODY:", notification.body)
+
+                if (notification.actions?.values) {
+
+                    for (
+                        let i = 0; i < notification.actions.values.length;
+                    ++i
+                    ) {
+                        const act =
+                        notification.actions.values[i]
+
+                        if (!act) {
+                            continue
+                        }
+
+                        console.log(
+                            "ACTION:",
+                            act.identifier,
+                            act.label || act.text || ""
+                        )
                     }
                 }
-            } else {
-                console.log("  Actions Count: 0 (This app did not attach quick click actions to this payload)");
-            }
 
-            // 4. Scrape D-Bus Environmental Hints
-            console.log("\n--- EXHAUSTIVE ENVIRONMENTAL HINTS DUMP ---");
-            if (notification.hints) {
-                for (var hintKey in notification.hints) {
-                    if (notification.hints.hasOwnProperty(hintKey)) {
+                if (notification.hints) {
+
+                    for (let hintKey in notification.hints) {
+
                         try {
-                            let hintVal = notification.hints[hintKey];
-                            console.log("  -> Hint: [" + hintKey + "] => " + JSON.stringify(hintVal));
+
+                            console.log(
+                                "HINT:",
+                                hintKey,
+                                JSON.stringify(
+                                    notification.hints[hintKey]
+                                )
+                            )
+
                         } catch (e) {
-                            console.log("  -> Hint: [" + hintKey + "] => [Binary payload / Image layout byte tracking node]");
+
+                            console.log(
+                                "HINT:",
+                                hintKey,
+                                "[binary]"
+                            )
                         }
                     }
                 }
-            } else {
-                console.log("  Hints metadata map: Not provided");
+
+                console.log("==================================================")
             }
 
-            // 5. Deep Memory Extraction Layer
-            console.log("\n--- SCANNING UNREGULATED INNER ENGINE ATTRIBUTES ---");
-            for (var prop in notification) {
-                try {
-                    if (prop !== "id" && prop !== "summary" && prop !== "body" && prop !== "appName" && prop !== "urgency" && prop !== "timeout" && prop !== "hints" && prop !== "actions") {
-                        console.log("  -> Property: [" + prop + "] => " + notification[prop]);
+            /*
+             * ================================================================
+             * NOTIFICATION CARD CREATION
+             * ================================================================
+             */
+
+            let topScope =
+            notificationServer.parent
+
+            if (
+                topScope &&
+                topScope.cardComponentTemplate
+            ) {
+
+                let popupCard =
+                topScope.cardComponentTemplate.createObject(
+                    topScope, {
+                        notification: notification
                     }
-                } catch(e) {
-                    // Suppress protected pointers
-                }
-            }
-            console.log("==================================================");
+                )
 
-            // Re-push data securely back to your visual layout queue deck
-            let topScope = notificationServer.parent;
-            if (topScope && topScope.cardComponentTemplate) {
-                let popupCard = topScope.cardComponentTemplate.createObject(topScope, {
-                    notification: notification
-                });
-                if (topScope.activeNotifications) topScope.activeNotifications.push(popupCard);
-                if (topScope.positionNotificationsDeck) topScope.positionNotificationsDeck();
-                if (topScope.rulesLoader) topScope.rulesLoader.handleIncomingNotificationCues(notification);
+                if (topScope.activeNotifications) {
+                    topScope.activeNotifications.push(
+                        popupCard
+                    )
+                }
+
+                if (topScope.positionNotificationsDeck) {
+                    topScope.positionNotificationsDeck()
+                }
+
+                if (topScope.rulesLoader) {
+                    topScope.rulesLoader.handleIncomingNotificationCues(
+                        notification
+                    )
+                }
             }
         }
     }

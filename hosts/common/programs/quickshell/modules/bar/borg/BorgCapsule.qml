@@ -6,7 +6,8 @@ import Quickshell.Io
 Rectangle {
     id: borgBox
 
-    property var barWindow: null
+    property
+    var barWindow: null
     property string borgProgress: "Idle"
 
     width: 140
@@ -28,12 +29,6 @@ Rectangle {
             borgPoller.running = true
         }
     }
-
-
-
-
-
-
 
     Process {
         id: borgPoller
@@ -76,10 +71,6 @@ Rectangle {
         }
     }
 
-
-
-
-
     Text {
         id: borgText
 
@@ -102,11 +93,8 @@ Rectangle {
         font.family: shell.theme.fontFamily
         font.pixelSize: shell.theme.globalFontSize
         font.bold: true
-
         textFormat: Text.RichText
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
     }
-
-
 }
