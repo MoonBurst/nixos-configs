@@ -9,11 +9,12 @@ Item {
     property string pendingQuery: ""
 
     property int selectedIndex: 0
+
     property string previewImage: ""
+    property string previewText: ""
 
     property string lastSeenTopId: ""
 
-    // Single source of truth
     property
     var allClipboardItems: []
 
@@ -134,6 +135,32 @@ Item {
         updatePreview()
     }
 
+    function loadPreviewText() {
+        if (
+            selectedIndex < 0 ||
+            selectedIndex >= filteredClipboardModel.count
+        ) {
+            previewText = ""
+            return
+        }
+
+        const item =
+        filteredClipboardModel.get(selectedIndex)
+
+        if (item.isImage) {
+            previewText = ""
+            return
+        }
+
+        previewLoader.command = [
+            "sh",
+            "-c",
+            "cliphist decode " + item.id
+        ]
+
+        previewLoader.running = true
+    }
+
     function updatePreview() {
         if (
             selectedIndex < 0 ||
@@ -141,6 +168,7 @@ Item {
             filteredClipboardModel.count
         ) {
             previewImage = ""
+            previewText = ""
             return
         }
 
@@ -155,8 +183,11 @@ Item {
         ) {
             previewImage =
             "file://" + item.imagePath
+
+            previewText = ""
         } else {
             previewImage = ""
+            loadPreviewText()
         }
     }
 
@@ -269,7 +300,7 @@ Item {
             thumbnailQueue.push(
                 "cliphist decode " +
                 clipId +
-                " | magick - thumbnail 100x100 png:" +
+                " | magick -thumbnail 100x100 png:" +
                 thumbPath +
                 " 2>/dev/null || " +
                 "cliphist decode " +
@@ -283,11 +314,7 @@ Item {
         allClipboardItems.push({
             id: clipId,
 
-            text: isImage ?
-            "<img src='file://" +
-            thumbPath +
-            "' width='100' height='100'/>" :
-            clipText,
+            text: clipText,
 
             searchText: lower,
 
@@ -391,6 +418,20 @@ Item {
         onExited: {
             flushThumbnailQueue()
             refreshFilter(currentQuery)
+        }
+    }
+
+    Process {
+        id: previewLoader
+
+        stdout: SplitParser {
+            onRead: data => {
+                root.previewText += data
+            }
+        }
+
+        onStarted: {
+            root.previewText = ""
         }
     }
 

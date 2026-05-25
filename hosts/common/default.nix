@@ -11,11 +11,11 @@
     ./theme.nix
     ./users.nix
     ./zsh.nix
-    ./programs/dunst/dunst.nix
-    ./programs/waybar/default.nix
+  #  ./programs/dunst/dunst.nix
+  #  ./programs/waybar/default.nix
     ./programs/brave.nix
     ./programs/audacious.nix
-    ./programs/walker.nix
+  #  ./programs/walker.nix
   ];
 
   home-manager.users.moonburst = {

@@ -48,7 +48,7 @@
             focus: true
 
             /*
-             * PEAK-PERFORMANCE KEYSTROKE DEBOUNCER
+             * KEYSTROKE DEBOUNCER
              */
             Timer {
                 id: searchDebounceTimer
@@ -199,7 +199,7 @@
                     readonly property real contentHeight: height - searchField.height - spacing
 
                     /*
-                     * CENTRALIZED SEARCH FIELD ENGINE (ZERO-LAG DEBOUNCED)
+                     * CENTRALIZED SEARCH FIELD ENGINE
                      */
                     TextField {
                         id: searchField
@@ -300,7 +300,7 @@
                     }
 
                     /*
-                     * HIGH-PERFORMANCE PRE-CACHED LAZYLOADERS
+                     * PRE-CACHED LOADERS
                      */
                     Loader {
                         id: unicodeLoader
@@ -471,7 +471,6 @@
                                         border.width: ListView.isCurrentItem ? 5 : 0
                                         border.color: ListView.isCurrentItem ? shell.theme.base08 : "transparent"
 
-                                                                                // CHANGED FROM Row TO Item TO SUPPORT ABSOLUTE ANCHORS
                                         Item {
                                             anchors.fill: parent
                                             anchors.margins: 12
@@ -566,6 +565,7 @@
 
                                     ScrollView {
                                         id: textPreview
+
                                         anchors.fill: parent
                                         anchors.margins: 20
 
@@ -577,19 +577,26 @@
                                         clip: true
 
                                         TextArea {
-                                            text: (
-                                                previewPanel.selectedItem ?
-                                                previewPanel.selectedItem.text :
-                                                ""
-                                            )
+                                            id: previewTextArea
+
+                                            text: launcherRoot.ctrl.clipboard.previewText
 
                                             width: textPreview.availableWidth
-                                            wrapMode: TextArea.WrapAnywhere
+
+                                            wrapMode: Text.WrapAnywhere
+
                                             readOnly: true
                                             selectByMouse: true
+
                                             color: shell.theme.base05
                                             font.pixelSize: 20
+
                                             background: null
+
+                                            textFormat: TextEdit.PlainText
+                                            persistentSelection: true
+
+                                            implicitHeight: contentHeight
                                         }
                                     }
                                 }
