@@ -885,12 +885,62 @@
                                 border.width: 5
                                 border.color: shell.theme.base03
 
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: launcherRoot.ctrl.mathEngine.mathResultString
-                                    color: shell.theme.base05
-                                    font.pixelSize: 50
-                                    font.bold: true
+                                implicitHeight: mathFlow.implicitHeight + 40
+
+                                Flow {
+                                    id: mathFlow
+
+                                    anchors.fill: parent
+                                    anchors.margins: 20
+
+                                    spacing: 10
+
+                                    Repeater {
+                                        model: launcherRoot.ctrl.mathEngine.mathResultString.split("\n")
+
+                                        delegate: Rectangle {
+
+                                            radius: 10
+
+                                            width: (mathFlow.width / 3) - 14
+                                            height: 54
+
+                                            color: mouseArea.containsMouse
+                                            ? shell.theme.base01
+                                            : shell.theme.base02
+
+                                            border.width: 2
+                                            border.color: shell.theme.base05
+
+                                            Text {
+                                                id: bubbleText
+
+                                                anchors.centerIn: parent
+
+                                                width: parent.width - 20
+
+                                                text: modelData
+
+                                                color: shell.theme.base05
+
+                                                font.pixelSize: 22
+                                                font.bold: true
+                                                font.family: "JetBrains Mono"
+
+                                                horizontalAlignment: Text.AlignHCenter
+                                                verticalAlignment: Text.AlignVCenter
+
+                                                wrapMode: Text.NoWrap
+                                                elide: Text.ElideRight
+                                            }
+
+                                            MouseArea {
+                                                id: mouseArea
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
