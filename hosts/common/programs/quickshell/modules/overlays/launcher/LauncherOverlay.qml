@@ -14,7 +14,10 @@
             property
             var launcherWindow
             property string currentDefinition: ""
-            property string mode: "apps"
+     property string mode: "apps"
+
+// Search mode detection
+readonly property bool isStartPageOpen: mode === "startPage"
 
             // Performance Cache: Read-Only Evaluators
             readonly property bool isAppsOpen: mode === "apps"
@@ -198,109 +201,175 @@
 
                     readonly property real contentHeight: height - searchField.height - spacing
 
+/*
+ * CENTRALIZED SEARCH FIELD ENGINE
+ */
+
+TextField {
+    id: searchField
+
+    width: parent.width
+    leftPadding: 20
+    height: 52
+
+    focus: true
+
+    color: shell.theme.base05
+    font.pixelSize: 30
+
+    placeholderTextColor: shell.theme.base05
+
+placeholderText: {
+    const currentMode =
+        launcherRoot.mode
+
+    if (currentMode === "clipboard")
+        return "Search clipboard history..."
+
+    if (currentMode === "unicode")
+        return "Search unicode symbols..."
+
+    if (currentMode === "dictionary")
+        return "Enter word..."
+
+    if (currentMode === "startPage")
+        return "Type your web search..."
+
+    return "Apps... or type 'search cats'"
+}
+
+    background: Rectangle {
+        radius: 10
+        color: "transparent"
+
+        border.width: 5
+        border.color: shell.theme.base05
+    }
+
+    /*
+     * SEARCH PIPELINE
+     */
+
+onTextChanged: {
+    if (launcherRoot.mode === "")
+        return
+
+    const trimmed =
+        text.trim()
+
+    /*
+     * STARTPAGE SEARCH MODE
+     */
+
+    if (
+        trimmed.toLowerCase().startsWith("search ")
+    ) {
+        launcherRoot.mode = "startPage"
+
+        const query =
+            trimmed.substring(7)
+
+        if (
+            startPageLoader.item
+        ) {
+            startPageLoader.item.updateSearch(query)
+        }
+
+        return
+    }
+
+    /*
+     * NORMAL SEARCH PIPELINE
+     */
+
+    searchDebounceTimer.pendingText = text
+    searchDebounceTimer.restart()
+}
+
+    /*
+     * RETURN / ENTER HANDLING
+     */
+
+ Keys.onReturnPressed: {
+    const currentMode =
+        launcherRoot.mode
+
+    /*
+     * STARTPAGE SEARCH
+     */
+
+    if (currentMode === "startPage") {
+        let query =
+            searchField.text.trim()
+
+        /*
+         * Remove "search " prefix
+         */
+
+        if (
+            query.toLowerCase()
+            .startsWith("search ")
+        ) {
+            query =
+                query.substring(7).trim()
+        }
+
+        if (query.length > 0) {
+            Qt.openUrlExternally(
+                "https://www.startpage.com/search?q=" +
+                encodeURIComponent(query)
+            )
+        }
+
+        launcherRoot.closeOverlay()
+        return
+    }
+
+    /*
+     * UNICODE
+     */
+
+    if (currentMode === "unicode") {
+        launcherRoot.ctrl.unicodeSearch.copySelected()
+        launcherRoot.closeOverlay()
+        return
+    }
+
+    /*
+     * CLIPBOARD
+     */
+
+    if (currentMode === "clipboard") {
+        launcherRoot.ctrl.clipboard.copySelected()
+        launcherRoot.closeOverlay()
+        return
+    }
+
+    /*
+     * APPS
+     */
+
+    if (
+        currentMode === "apps" &&
+        appsLoader.item &&
+        appsLoader.item.currentIndex >= 0
+    ) {
+        launcherRoot.ctrl.appLauncher.launch(
+            launcherRoot.ctrl.appLauncher
+            .filteredApps.get(
+                appsLoader.item.currentIndex
+            ).exec
+        )
+
+        launcherRoot.closeOverlay()
+    }
+}
+}
+
+
+
                     /*
-                     * CENTRALIZED SEARCH FIELD ENGINE
-                     */
-                    TextField {
-                        id: searchField
-                        width: parent.width
-                        leftPadding: 20
-                        height: 52
-                        focus: true
-                        color: shell.theme.base05
-                        font.pixelSize: 30
-
-                        placeholderTextColor: shell.theme.base05
-                        placeholderText: {
-                            const currentMode = launcherRoot.mode
-                            if (currentMode === "clipboard") return "Search clipboard history..."
-                            if (currentMode === "unicode") return "Search unicode symbols..."
-                            if (currentMode === "dictionary") return "Enter word..."
-                            return "Search applications..."
-                        }
-
-                        background: Rectangle {
-                            radius: 10
-                            color: "transparent"
-                            border.width: 5
-                            border.color: shell.theme.base05
-                        }
-
-                        onTextChanged: {
-                            if (launcherRoot.mode === "") return
-
-                            searchDebounceTimer.pendingText = text
-                            searchDebounceTimer.restart()
-                        }
-
-                        Keys.onDownPressed: {
-                            const currentMode = launcherRoot.mode
-                            if (currentMode === "unicode" && unicodeLoader.item) {
-                                launcherRoot.ctrl.unicodeSearch.moveDown()
-                                unicodeLoader.item.currentIndex = launcherRoot.ctrl.unicodeSearch.selectedIndex
-                                unicodeLoader.item.positionViewAtIndex(unicodeLoader.item.currentIndex, ListView.Contain)
-                                return
-                            }
-
-                            if (currentMode === "clipboard" && clipboardLoader.item && clipboardLoader.listViewInstance) {
-                                launcherRoot.ctrl.clipboard.moveDown()
-                                clipboardLoader.listViewInstance.positionViewAtIndex(launcherRoot.ctrl.clipboard.selectedIndex, ListView.Contain)
-                                return
-                            }
-
-                            if (currentMode === "apps" && appsLoader.item && appsLoader.item.currentIndex < launcherRoot.ctrl.appLauncher.filteredApps.count - 1) {
-                                appsLoader.item.currentIndex++
-                            }
-                        }
-
-                        Keys.onUpPressed: {
-                            const currentMode = launcherRoot.mode
-                            if (currentMode === "unicode" && unicodeLoader.item) {
-                                launcherRoot.ctrl.unicodeSearch.moveUp()
-                                unicodeLoader.item.currentIndex = launcherRoot.ctrl.unicodeSearch.selectedIndex
-                                unicodeLoader.item.positionViewAtIndex(unicodeLoader.item.currentIndex, ListView.Contain)
-                                return
-                            }
-
-                            if (currentMode === "clipboard" && clipboardLoader.item && clipboardLoader.listViewInstance) {
-                                launcherRoot.ctrl.clipboard.moveUp()
-                                clipboardLoader.listViewInstance.positionViewAtIndex(launcherRoot.ctrl.clipboard.selectedIndex, ListView.Contain)
-                                return
-                            }
-
-                            if (currentMode === "apps" && appsLoader.item && appsLoader.item.currentIndex > 0) {
-                                appsLoader.item.currentIndex--
-                            }
-                        }
-
-                        Keys.onDeletePressed: {
-                            if (launcherRoot.mode !== "clipboard") return
-                            launcherRoot.ctrl.clipboard.deleteSelected()
-                        }
-
-                        Keys.onReturnPressed: {
-                            const currentMode = launcherRoot.mode
-                            if (currentMode === "unicode") {
-                                launcherRoot.ctrl.unicodeSearch.copySelected()
-                                launcherRoot.closeOverlay()
-                                return
-                            }
-
-                            if (currentMode === "clipboard") {
-                                launcherRoot.ctrl.clipboard.copySelected()
-                                launcherRoot.closeOverlay()
-                                return
-                            }
-
-                            if (currentMode === "apps" && appsLoader.item && appsLoader.item.currentIndex >= 0) {
-                                launcherRoot.ctrl.appLauncher.launch(launcherRoot.ctrl.appLauncher.filteredApps.get(appsLoader.item.currentIndex).exec)
-                                launcherRoot.closeOverlay()
-                            }
-                        }
-                    }
-
-                    /*
-                     * PRE-CACHED LOADERS
+                     * UNICODE LOADER
                      */
                     Loader {
                         id: unicodeLoader
@@ -359,7 +428,9 @@
                             }
                         }
                     }
-
+                    /*
+                     * PROGRAM LAUNCHER LOADER
+                     */
                     Loader {
                         id: appsLoader
                         active: true
@@ -429,6 +500,20 @@
                             }
                         }
                     }
+                    /*
+                     * STARTPAGE LOADER
+                     */
+Loader {
+    id: startPageLoader
+    active: launcherRoot.mode === "startPage"
+    visible: active
+    width: parent.width
+    height: parent.contentHeight
+    source: "StartPage.qml"
+}
+                    /*
+                     * CLIPBOARD LOADER
+                     */
                     Loader {
                         id: clipboardLoader
                         active: launcherRoot.mode === "clipboard"
@@ -603,7 +688,9 @@
                             }
                         }
                     }
-
+                    /*
+                     * DICATIONARY LOADER
+                     */
                     Loader {
                         active: launcherRoot.mode === "dictionary"
                         visible: active
@@ -623,7 +710,9 @@
                             }
                         }
                     }
-
+                    /*
+                     * MATH LOADER
+                     */
                     Loader {
                         active: launcherRoot.mode === "math"
                         visible: active

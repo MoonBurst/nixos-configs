@@ -17,6 +17,8 @@ Item {
 
     readonly property alias unicodeSearch: unicodeSearch
 
+    readonly property alias startPage: startPage
+
     /*
      * MATH ENGINE
      */
@@ -42,5 +44,9 @@ Item {
 
     UnicodeSearch {
         id: unicodeSearch
+    }
+
+    StartPage {
+        id: startPage
     }
 }

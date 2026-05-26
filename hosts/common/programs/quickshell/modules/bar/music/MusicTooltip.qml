@@ -66,7 +66,6 @@ Item {
                 radius: shell.theme.defaultCardRadius ?? 8
                 border.width: shell.theme.globalBorderWidth ?? 3
                 color: "transparent"
-                border.color: parent.border.color
 
                 Column {
                     anchors.centerIn: parent
