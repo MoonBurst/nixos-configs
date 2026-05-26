@@ -68,11 +68,8 @@
                         return
                     }
 
-                    // FIXED: Instantly triggers if the input merely starts with "?" without requiring a space
                     if (trimmed.length > 1 && trimmed.indexOf("?") === 0) {
                         launcherRoot.mode = "startpage"
-
-                        // FIXED: Drops the chunk down by 1 character index position to capture everything right after the "?"
                         const cleanQuery = trimmed.substring(1).trim()
 
                         if (launcherRoot.ctrl.startPage) {
@@ -85,9 +82,10 @@
                         return
                     }
 
-                    if (trimmed === ".") {
+                    if (trimmed.startsWith(".")) {
                         launcherRoot.mode = "unicode"
-                        launcherRoot.ctrl.unicodeSearch.refreshFilter(trimmed.substring(1).trim())
+                        const unicodeQuery = trimmed.substring(1).trim()
+                        launcherRoot.ctrl.unicodeSearch.refreshFilter(unicodeQuery)
                         return
                     }
 
@@ -473,59 +471,74 @@
                         active: launcherRoot.mode === "unicode"
                         visible: active
                         width: parent.width
-                        height: parent.contentHeight
-                        sourceComponent: Component {
-                            ListView {
-                                id: unicodeListView
-                                clip: true
-                                cacheBuffer: 800
-                                spacing: 20
-                                model: launcherRoot.ctrl.unicodeSearch.filteredUnicodeItems
-                                currentIndex: launcherRoot.ctrl.unicodeSearch.selectedIndex
+                        height: parent.height // FIX: Changed from contentHeight to prevent layout loops
 
-                                delegate: Rectangle {
-                                    width: unicodeListView.width
-                                    height: 90
-                                    radius: 10
-                                    color: ListView.isCurrentItem ? shell.theme.base02 : "transparent"
-                                    border.width: ListView.isCurrentItem ? 5 : 0
-                                    border.color: ListView.isCurrentItem ? shell.theme.base08 : "transparent"
+                        // FIX: Removed the invalid "Component { ... }" wrapper.
+                        // Loader accepts the topmost visual Item directly when using sourceComponent inline.
+                        sourceComponent: ListView {
+                            id: unicodeListView
+                            clip: true
+                            cacheBuffer: 800
+                            spacing: 20
 
-                                    Row {
-                                        anchors.fill: parent
-                                        anchors.margins: 20
-                                        spacing: 20
-                                        Text {
-                                            text: modelData.symbol
-                                            color: shell.theme.base05
-                                            font.pixelSize: 50
-                                            width: 50
-                                        }
-                                        Text {
-                                            text: modelData.name
-                                            color: shell.theme.base05
-                                            font.pixelSize: 20
-                                            anchors.verticalCenter: parent.verticalCenter
-                                        }
+                            // FIX: Force focus so arrow keys work immediately when the mode switches
+                            focus: true
+
+                            model: launcherRoot.ctrl.unicodeSearch.filteredUnicodeItems
+                            currentIndex: launcherRoot.ctrl.unicodeSearch.selectedIndex
+
+                            // FIX: Update the backend index if the user scrolls/navigates via ListView
+                            onCurrentIndexChanged: {
+                                launcherRoot.ctrl.unicodeSearch.selectedIndex = currentIndex
+                            }
+
+                            delegate: Rectangle {
+                                width: unicodeListView.width
+                                height: 90
+                                radius: 10
+                                color: ListView.isCurrentItem ? shell.theme.base02 : "transparent"
+                                border.width: ListView.isCurrentItem ? 5 : 0
+                                border.color: ListView.isCurrentItem ? shell.theme.base08 : "transparent"
+
+                                Row {
+                                    anchors.fill: parent
+                                    anchors.margins: 20
+                                    spacing: 20
+
+                                    Text {
+                                        text: modelData.symbol
+                                        color: shell.theme.base05
+                                        font.pixelSize: 50
+                                        width: 50
+                                        // Visual alignment fix for larger emojis/symbols
+                                        verticalAlignment: Text.AlignVCenter
                                     }
-
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        onClicked: {
-                                            launcherRoot.ctrl.unicodeSearch.selectedIndex = index
-                                            unicodeListView.currentIndex = index
-                                            launcherRoot.ctrl.unicodeSearch.copySelected()
-                                            launcherRoot.closeOverlay()
-                                        }
+                                    Text {
+                                        text: modelData.name
+                                        color: shell.theme.base05
+                                        font.pixelSize: 20
+                                        anchors.verticalCenter: parent.verticalCenter
                                     }
                                 }
-                                ScrollBar.vertical: ScrollBar {
-                                    policy: ScrollBar.AsNeeded
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    onClicked: {
+                                        launcherRoot.ctrl.unicodeSearch.selectedIndex = index
+                                        unicodeListView.currentIndex = index
+                                        launcherRoot.ctrl.unicodeSearch.copySelected()
+                                        launcherRoot.closeOverlay()
+                                    }
                                 }
+                            }
+
+                            ScrollBar.vertical: ScrollBar {
+                                policy: ScrollBar.AsNeeded
                             }
                         }
                     }
+
                     /*
                      * PROGRAM LAUNCHER LOADER
                      */

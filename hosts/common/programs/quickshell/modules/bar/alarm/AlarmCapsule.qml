@@ -38,12 +38,6 @@ Rectangle {
             "  printf \"%02dh %02dm %02ds\\n\" $h $m $s; " +
             "fi"
         ]
-        environment: [
-            "PATH=/run/current-system/sw/bin:/usr/bin:/bin",
-            "HOME=/home/moonburst",
-            "XDG_RUNTIME_DIR=/run/user/1000",
-            "PULSE_SERVER=unix:/run/user/1000/pulse/native"
-        ]
         stdout: SplitParser {
             onRead: data => { alarmBox.alarmDisplayText = data ? data.trim() : "No Alarm" }
         }
