@@ -68,7 +68,7 @@ ShellRoot {
         anchors.left: true
         anchors.right: true
 
-        implicitHeight: 50 + shell.theme.globalPadding
+        implicitHeight: 50+ shell.theme.globalPadding
 
         color: "transparent"
 
@@ -243,34 +243,25 @@ ShellRoot {
 
                 anchors.right: parent.right
                 anchors.rightMargin: shell.theme.globalPadding
-
                 anchors.verticalCenter: parent.verticalCenter
 
-                implicitWidth: trayContent.childrenRect.width + 24
-
-                width: implicitWidth
-
+                width: trayContent.implicitWidth
                 height: mainBarContainer.capsuleHeight
 
                 SystemTray.Tray {
                     id: trayContent
-
                     anchors.centerIn: parent
-
                     barWindow: topBarWindow
                 }
             }
 
             Item {
                 id: ramContainer
-
                 anchors.right: trayContainer.left
                 anchors.rightMargin: 10
                 anchors.verticalCenter: parent.verticalCenter
-
                 width: 175
                 height: mainBarContainer.capsuleHeight
-
                 RamCapsule.RamCapsule {
                     anchors.fill: parent
                     barWindow: topBarWindow

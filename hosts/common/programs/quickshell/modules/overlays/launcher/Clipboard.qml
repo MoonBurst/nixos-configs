@@ -289,15 +289,19 @@ Item {
         lower.includes(".webp") ||
         lower.includes("binary data")
 
+        // 1. Establish the dedicated storage subfolder path
+        const thumbDir = "/tmp/clipboard_thumbnails"
+
+        // 2. Build the new clean path using the subfolder folder structure
         const thumbPath =
         isImage ?
-        "/tmp/quickshell_clip_thumb_" +
-        clipId +
-        ".png" :
+        thumbDir + "/quickshell_clip_thumb_" + clipId + ".png" :
         ""
 
         if (isImage) {
+            // 3. Inject a safe directory generation check directly into your execution chain
             thumbnailQueue.push(
+                "mkdir -p " + thumbDir + " && " +
                 "cliphist decode " +
                 clipId +
                 " | magick -thumbnail 100x100 png:" +
@@ -310,6 +314,9 @@ Item {
                 " 2>/dev/null"
             )
         }
+
+
+
 
         allClipboardItems.push({
             id: clipId,

@@ -10,20 +10,17 @@ import Quickshell.Services.SystemTray
 Rectangle {
     id: trayBox
 
-    color: "black"
-    radius: 10
-
-    border.width: 3
-    border.color: "yellow"
-
-    width: Math.max(
-        45,
-        trayLayoutRow.implicitWidth + 20
-    )
-
-    height: 35
-
+    color: shell.theme.base00
+    height: parent.height
+    width: trayLayoutRow.implicitWidth + 20
+    radius: shell.theme.defaultCardRadius
+    border.width: shell.theme.globalBorderWidth
+    border.color: shell.theme.base05
+    implicitWidth: trayLayoutRow.implicitWidth + 24
     property var barWindow: null
+
+
+
 
     Row {
         id: trayLayoutRow

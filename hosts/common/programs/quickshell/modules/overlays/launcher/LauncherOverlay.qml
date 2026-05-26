@@ -14,10 +14,10 @@
             property
             var launcherWindow
             property string currentDefinition: ""
-     property string mode: "apps"
+            property string mode: "apps"
 
-// Search mode detection
-readonly property bool isStartPageOpen: mode === "startPage"
+            // Search mode detection
+            readonly property bool isStartPageOpen: mode === "startPage"
 
             // Performance Cache: Read-Only Evaluators
             readonly property bool isAppsOpen: mode === "apps"
@@ -37,11 +37,12 @@ readonly property bool isStartPageOpen: mode === "startPage"
                 property: "activeController"
                 value: {
                     if (launcherRoot.mode === "apps") return launcherRoot.ctrl.appLauncher
-                    if (launcherRoot.mode === "clipboard") return launcherRoot.ctrl.clipboard
-                    if (launcherRoot.mode === "dictionary") return launcherRoot.ctrl.dictionary
-                    if (launcherRoot.mode === "math") return launcherRoot.ctrl.math
-                    if (launcherRoot.mode === "unicode") return launcherRoot.ctrl.unicodeSearch
-                    return null
+                        if (launcherRoot.mode === "clipboard") return launcherRoot.ctrl.clipboard
+                            if (launcherRoot.mode === "dictionary") return launcherRoot.ctrl.dictionary
+                                if (launcherRoot.mode === "math") return launcherRoot.ctrl.math
+                                    if (launcherRoot.mode === "unicode") return launcherRoot.ctrl.unicodeSearch
+                                        if (launcherRoot.mode === "search") return launcherRoot.ctrl.startPage
+                                            return null
                 }
             }
 
@@ -67,6 +68,23 @@ readonly property bool isStartPageOpen: mode === "startPage"
                         return
                     }
 
+                    // FIXED: Instantly triggers if the input merely starts with "?" without requiring a space
+                    if (trimmed.length > 1 && trimmed.indexOf("?") === 0) {
+                        launcherRoot.mode = "startpage"
+
+                        // FIXED: Drops the chunk down by 1 character index position to capture everything right after the "?"
+                        const cleanQuery = trimmed.substring(1).trim()
+
+                        if (launcherRoot.ctrl.startPage) {
+                            launcherRoot.ctrl.startPage.updateSearch(cleanQuery)
+                        }
+
+                        if (searchLoader.item) {
+                            searchLoader.item.updateSearch(cleanQuery)
+                        }
+                        return
+                    }
+
                     if (trimmed === ".") {
                         launcherRoot.mode = "unicode"
                         launcherRoot.ctrl.unicodeSearch.refreshFilter(trimmed.substring(1).trim())
@@ -88,6 +106,9 @@ readonly property bool isStartPageOpen: mode === "startPage"
                     launcherRoot.ctrl.appLauncher.refreshFilter(trimmed)
                 }
             }
+
+
+
             /*
              * WINDOW STATE CONTROL ACTIONS (MODULATED FOR COMPOSITOR DRIVEN FOCUS GRABS)
              */
@@ -126,12 +147,12 @@ readonly property bool isStartPageOpen: mode === "startPage"
 
             function toggleLauncher() {
                 if (launcherRoot.mode === "apps" && launcherWindow.visible) launcherRoot.closeOverlay()
-                else launcherRoot.openLauncher()
+                    else launcherRoot.openLauncher()
             }
 
             function toggleClipboard() {
                 if (launcherRoot.mode === "clipboard" && launcherWindow.visible) launcherRoot.closeOverlay()
-                else launcherRoot.openClipboard()
+                    else launcherRoot.openClipboard()
             }
 
             /*
@@ -197,221 +218,250 @@ readonly property bool isStartPageOpen: mode === "startPage"
 
                     readonly property real contentHeight: height - searchField.height - spacing
 
-/*
- * CENTRALIZED SEARCH FIELD ENGINE
- */
+                    /*
+                     * CENTRALIZED SEARCH FIELD ENGINE
+                     */
 
-TextField {
-    id: searchField
+                    TextField {
+                        id: searchField
 
-    width: parent.width
-    leftPadding: 20
-    height: 52
+                        width: parent.width
+                        leftPadding: 20
+                        height: 52
 
-    focus: true
+                        focus: true
 
-    color: shell.theme.base05
-    font.pixelSize: 30
+                        color: shell.theme.base05
+                        font.pixelSize: 30
 
-    placeholderTextColor: shell.theme.base05
+                        placeholderTextColor: shell.theme.base05
 
-    placeholderText: {
-        const currentMode = launcherRoot.mode
+                        placeholderText: {
+                            const currentMode = launcherRoot.mode
 
-        if (currentMode === "clipboard")
-            return "Search clipboard history..."
+                            if (currentMode === "clipboard")
+                                return "Search clipboard history..."
 
-        if (currentMode === "unicode")
-            return "Search unicode symbols..."
+                                if (currentMode === "unicode")
+                                    return "Search unicode symbols..."
 
-        if (currentMode === "dictionary")
-            return "Enter word..."
+                                    if (currentMode === "dictionary")
+                                        return "Enter word..."
 
-        return "Search applications..."
-    }
+                                        return "Search applications..."
+                        }
 
-    background: Rectangle {
-        radius: 10
-        color: "transparent"
+                        background: Rectangle {
+                            radius: 10
+                            color: "transparent"
 
-        border.width: 5
-        border.color: shell.theme.base05
-    }
+                            border.width: 5
+                            border.color: shell.theme.base05
+                        }
 
-    onTextChanged: {
-        if (launcherRoot.mode === "")
-            return
+                        onTextChanged: {
+                            if (launcherRoot.mode === "")
+                                return
 
-        searchDebounceTimer.pendingText = text
-        searchDebounceTimer.restart()
-    }
+                                searchDebounceTimer.pendingText = text
+                                searchDebounceTimer.restart()
+                        }
 
-    Keys.onDownPressed: {
-        const currentMode = launcherRoot.mode
-        if (currentMode === "dictionary" && dictionaryLoader.item) {
+                        Keys.onDownPressed: {
+                            const currentMode = launcherRoot.mode
+                            if (currentMode === "dictionary" && dictionaryLoader.item) {
 
-            launcherRoot.ctrl.dictionary.selectNext()
+                                launcherRoot.ctrl.dictionary.selectNext()
 
-            dictionaryLoader.item.currentIndex =
-            launcherRoot.ctrl.dictionary.selectedIndex
+                                dictionaryLoader.item.currentIndex =
+                                launcherRoot.ctrl.dictionary.selectedIndex
 
-            dictionaryLoader.item.positionViewAtIndex(
-                dictionaryLoader.item.currentIndex,
-                ListView.Contain
-            )
-            return
-        }
-        if (currentMode === "unicode" && unicodeLoader.item) {
-            launcherRoot.ctrl.unicodeSearch.moveDown()
+                                dictionaryLoader.item.positionViewAtIndex(
+                                    dictionaryLoader.item.currentIndex,
+                                    ListView.Contain
+                                )
+                                return
+                            }
+                            if (currentMode === "unicode" && unicodeLoader.item) {
+                                launcherRoot.ctrl.unicodeSearch.moveDown()
 
-            unicodeLoader.item.currentIndex =
-                launcherRoot.ctrl.unicodeSearch.selectedIndex
+                                unicodeLoader.item.currentIndex =
+                                launcherRoot.ctrl.unicodeSearch.selectedIndex
 
-            unicodeLoader.item.positionViewAtIndex(
-                unicodeLoader.item.currentIndex,
-                ListView.Contain
-            )
+                                unicodeLoader.item.positionViewAtIndex(
+                                    unicodeLoader.item.currentIndex,
+                                    ListView.Contain
+                                )
 
-            return
-        }
+                                return
+                            }
 
-        if (
-            currentMode === "clipboard" &&
-            clipboardLoader.item &&
-            clipboardLoader.listViewInstance
-        ) {
-            launcherRoot.ctrl.clipboard.moveDown()
+                            if (
+                                currentMode === "clipboard" &&
+                                clipboardLoader.item &&
+                                clipboardLoader.listViewInstance
+                            ) {
+                                launcherRoot.ctrl.clipboard.moveDown()
 
-            clipboardLoader.listViewInstance.positionViewAtIndex(
-                launcherRoot.ctrl.clipboard.selectedIndex,
-                ListView.Contain
-            )
+                                clipboardLoader.listViewInstance.positionViewAtIndex(
+                                    launcherRoot.ctrl.clipboard.selectedIndex,
+                                    ListView.Contain
+                                )
 
-            return
-        }
+                                return
+                            }
 
-        if (
-            currentMode === "apps" &&
-            appsLoader.item &&
-            appsLoader.item.currentIndex <
-            launcherRoot.ctrl.appLauncher.filteredApps.count - 1
-        ) {
-            appsLoader.item.currentIndex++
-        }
-    }
+                            if (
+                                currentMode === "apps" &&
+                                appsLoader.item &&
+                                appsLoader.item.currentIndex <
+                                launcherRoot.ctrl.appLauncher.filteredApps.count - 1
+                            ) {
+                                appsLoader.item.currentIndex++
+                            }
+                        }
 
-    Keys.onUpPressed: {
-        const currentMode = launcherRoot.mode
+                        Keys.onUpPressed: {
+                            const currentMode = launcherRoot.mode
 
-        // 1. DICTIONARY MODE HANDLER (UP)
-        if (currentMode === "dictionary" && dictionaryLoader.item) {
-            launcherRoot.ctrl.dictionary.selectPrev()
+                            // 1. DICTIONARY MODE HANDLER (UP)
+                            if (currentMode === "dictionary" && dictionaryLoader.item) {
+                                launcherRoot.ctrl.dictionary.selectPrev()
 
-            // Sync the UI view item's index with the engine's tracking pointer
-            dictionaryLoader.item.currentIndex =
-            launcherRoot.ctrl.dictionary.selectedIndex
+                                // Sync the UI view item's index with the engine's tracking pointer
+                                dictionaryLoader.item.currentIndex =
+                                launcherRoot.ctrl.dictionary.selectedIndex
 
-            // Snap the layout container viewport to stay centered on the item
-            dictionaryLoader.item.positionViewAtIndex(
-                dictionaryLoader.item.currentIndex,
-                ListView.Contain
-            )
-            return
-        }
+                                // Snap the layout container viewport to stay centered on the item
+                                dictionaryLoader.item.positionViewAtIndex(
+                                    dictionaryLoader.item.currentIndex,
+                                    ListView.Contain
+                                )
+                                return
+                            }
 
-        // 2. UNICODE MODE HANDLER
-        if (currentMode === "unicode" && unicodeLoader.item) {
-            launcherRoot.ctrl.unicodeSearch.moveUp()
+                            // 2. UNICODE MODE HANDLER
+                            if (currentMode === "unicode" && unicodeLoader.item) {
+                                launcherRoot.ctrl.unicodeSearch.moveUp()
 
-            unicodeLoader.item.currentIndex =
-            launcherRoot.ctrl.unicodeSearch.selectedIndex
+                                unicodeLoader.item.currentIndex =
+                                launcherRoot.ctrl.unicodeSearch.selectedIndex
 
-            unicodeLoader.item.positionViewAtIndex(
-                unicodeLoader.item.currentIndex,
-                ListView.Contain
-            )
+                                unicodeLoader.item.positionViewAtIndex(
+                                    unicodeLoader.item.currentIndex,
+                                    ListView.Contain
+                                )
 
-            return
-        }
+                                return
+                            }
 
-        // 3. CLIPBOARD MODE HANDLER
-        if (
-            currentMode === "clipboard" &&
-            clipboardLoader.item &&
-            clipboardLoader.listViewInstance
-        ) {
-            launcherRoot.ctrl.clipboard.moveUp()
+                            // 3. CLIPBOARD MODE HANDLER
+                            if (
+                                currentMode === "clipboard" &&
+                                clipboardLoader.item &&
+                                clipboardLoader.listViewInstance
+                            ) {
+                                launcherRoot.ctrl.clipboard.moveUp()
 
-            clipboardLoader.listViewInstance.positionViewAtIndex(
-                launcherRoot.ctrl.clipboard.selectedIndex,
-                ListView.Contain
-            )
+                                clipboardLoader.listViewInstance.positionViewAtIndex(
+                                    launcherRoot.ctrl.clipboard.selectedIndex,
+                                    ListView.Contain
+                                )
 
-            return
-        }
+                                return
+                            }
 
-        // 4. APPS MODE HANDLER
-        if (
-            currentMode === "apps" &&
-            appsLoader.item &&
-            appsLoader.item.currentIndex > 0
-        ) {
-            appsLoader.item.currentIndex--
-        }
-    }
-
-
+                            // 4. APPS MODE HANDLER
+                            if (
+                                currentMode === "apps" &&
+                                appsLoader.item &&
+                                appsLoader.item.currentIndex > 0
+                            ) {
+                                appsLoader.item.currentIndex--
+                            }
+                        }
 
 
 
-    Keys.onDeletePressed: {
-        if (launcherRoot.mode !== "clipboard")
-            return
 
-        launcherRoot.ctrl.clipboard.deleteSelected()
-    }
+                        Keys.onDeletePressed: {
+                            if (launcherRoot.mode !== "clipboard")
+                                return
 
-    Keys.onReturnPressed: {
-        const currentMode = launcherRoot.mode
+                                launcherRoot.ctrl.clipboard.deleteSelected()
+                        }
 
-        // 1. DICTIONARY MODE HANDLER (RETURN)
-        if (currentMode === "dictionary") {
-            launcherRoot.ctrl.dictionary.copySelected()
-            launcherRoot.closeOverlay()
-            return
-        }
+                        Keys.onReturnPressed: {
+                            const currentMode = launcherRoot.mode
 
-        // 2. UNICODE MODE HANDLER
-        if (currentMode === "unicode") {
-            launcherRoot.ctrl.unicodeSearch.copySelected()
-            launcherRoot.closeOverlay()
-            return
-        }
+                            // 1. DICTIONARY MODE HANDLER (RETURN)
+                            if (currentMode === "dictionary") {
+                                launcherRoot.ctrl.dictionary.copySelected()
+                                launcherRoot.closeOverlay()
+                                return
+                            }
 
-        // 3. CLIPBOARD MODE HANDLER
-        if (currentMode === "clipboard") {
-            launcherRoot.ctrl.clipboard.copySelected()
-            launcherRoot.closeOverlay()
-            return
-        }
+                            // 2. UNICODE MODE HANDLER
+                            if (currentMode === "unicode") {
+                                launcherRoot.ctrl.unicodeSearch.copySelected()
+                                launcherRoot.closeOverlay()
+                                return
+                            }
 
-        // 4. APPS MODE HANDLER
-        if (
-            currentMode === "apps" &&
-            appsLoader.item &&
-            appsLoader.item.currentIndex >= 0
-        ) {
-            launcherRoot.ctrl.appLauncher.launch(
-                launcherRoot.ctrl.appLauncher
-                .filteredApps
-                .get(appsLoader.item.currentIndex).exec
-            )
+                            // 3. CLIPBOARD MODE HANDLER
+                            if (currentMode === "clipboard") {
+                                launcherRoot.ctrl.clipboard.copySelected()
+                                launcherRoot.closeOverlay()
+                                return
+                            }
 
-            launcherRoot.closeOverlay()
-        }
-    }
+                            // 4. APPS MODE HANDLER
+                            if (
+                                currentMode === "apps" &&
+                                appsLoader.item &&
+                                appsLoader.item.currentIndex >= 0
+                            ) {
+                                launcherRoot.ctrl.appLauncher.launch(
+                                    launcherRoot.ctrl.appLauncher
+                                    .filteredApps
+                                    .get(appsLoader.item.currentIndex).exec
+                                )
 
-}
+                                launcherRoot.closeOverlay()
+                                return
+                            }
+
+                            // 5. STARTPAGE MODE HANDLER
+                            if (currentMode === "startpage" && searchLoader.item) {
+                                searchLoader.item.openSearch()
+                                launcherRoot.closeOverlay()
+                                return
+                            }
+                        }
+
+
+                    }
+                    /*
+                     * STARTPAGE LOADER
+                     */
+
+                    Loader {
+                        id: searchLoader
+
+                        active: launcherRoot.mode === "startpage"
+                        visible: active
+
+                        width: parent.width
+                        height: parent.contentHeight
+                        source: "StartPage.qml"
+
+                        onLoaded: {
+                            if (item && launcherRoot.ctrl.startPage) {
+                                // FIXED: Synchronized index extraction offset to pass down data seamlessly
+                                item.updateSearch(searchDebounceTimer.pendingText.substring(1).trim())
+                            }
+                        }
+                    }
 
 
 
@@ -427,14 +477,9 @@ TextField {
                         sourceComponent: Component {
                             ListView {
                                 id: unicodeListView
-
-                                interactive: true
-                                flickDeceleration: 2500
-                                maximumFlickVelocity: 8000
                                 clip: true
                                 cacheBuffer: 800
                                 spacing: 20
-                                boundsBehavior: Flickable.StopAtBounds
                                 model: launcherRoot.ctrl.unicodeSearch.filteredUnicodeItems
                                 currentIndex: launcherRoot.ctrl.unicodeSearch.selectedIndex
 
@@ -467,7 +512,6 @@ TextField {
                                     MouseArea {
                                         anchors.fill: parent
                                         hoverEnabled: true
-                                        preventStealing: false
                                         onClicked: {
                                             launcherRoot.ctrl.unicodeSearch.selectedIndex = index
                                             unicodeListView.currentIndex = index
@@ -493,10 +537,6 @@ TextField {
                         height: parent.contentHeight
                         sourceComponent: Component {
                             ListView {
-                                interactive: true
-                                flickDeceleration: 2500
-                                maximumFlickVelocity: 8000
-
                                 clip: true
                                 cacheBuffer: 800
                                 spacing: 20
@@ -549,7 +589,6 @@ TextField {
                                         id: mouseArea
                                         anchors.fill: parent
                                         hoverEnabled: true
-                                        preventStealing: false
                                         onClicked: {
                                             launcherRoot.ctrl.appLauncher.launch(exec)
                                             launcherRoot.closeOverlay()
@@ -562,14 +601,14 @@ TextField {
                     /*
                      * STARTPAGE LOADER
                      */
-Loader {
-    id: startPageLoader
-    active: launcherRoot.mode === "startPage"
-    visible: active
-    width: parent.width
-    height: parent.contentHeight
-    source: "StartPage.qml"
-}
+                    Loader {
+                        id: startPageLoader
+                        active: launcherRoot.mode === "startPage"
+                        visible: active
+                        width: parent.width
+                        height: parent.contentHeight
+                        source: "StartPage.qml"
+                    }
                     /*
                      * CLIPBOARD LOADER
                      */
@@ -593,16 +632,11 @@ Loader {
 
                                 ListView {
                                     id: clipboardListView
-
-                                    interactive: true
-                                    flickDeceleration: 2500
-                                    maximumFlickVelocity: 8000
                                     width: 540
                                     height: parent.height
                                     clip: true
                                     cacheBuffer: 1200
                                     spacing: 20
-                                    boundsBehavior: Flickable.StopAtBounds
                                     model: launcherRoot.ctrl.clipboard.filteredClipboardItems
                                     currentIndex: ctrl.clipboard.selectedIndex
 
@@ -653,7 +687,6 @@ Loader {
                                         MouseArea {
                                             anchors.fill: parent
                                             hoverEnabled: true
-                                            preventStealing: false
                                             onClicked: {
                                                 ctrl.clipboard.selectedIndex = itemIndex
                                                 ctrl.clipboard.updatePreview()
@@ -679,13 +712,13 @@ Loader {
 
                                     property
                                     var selectedItem: (
-                                            launcherRoot.ctrl.clipboard.selectedIndex >= 0 &&
-                                            launcherRoot.ctrl.clipboard.selectedIndex <
-                                            launcherRoot.ctrl.clipboard.filteredClipboardItems.count
-                                        ) ?
-                                        launcherRoot.ctrl.clipboard.filteredClipboardItems.get(
-                                            launcherRoot.ctrl.clipboard.selectedIndex
-                                        ) : null
+                                        launcherRoot.ctrl.clipboard.selectedIndex >= 0 &&
+                                        launcherRoot.ctrl.clipboard.selectedIndex <
+                                        launcherRoot.ctrl.clipboard.filteredClipboardItems.count
+                                    ) ?
+                                    launcherRoot.ctrl.clipboard.filteredClipboardItems.get(
+                                        launcherRoot.ctrl.clipboard.selectedIndex
+                                    ) : null
 
                                     /*
                                      * IMAGE PREVIEW
@@ -701,8 +734,8 @@ Loader {
                                         )
 
                                         source: visible ?
-                                            "file://" + previewPanel.selectedItem.imagePath :
-                                            ""
+                                        "file://" + previewPanel.selectedItem.imagePath :
+                                        ""
 
                                         fillMode: Image.PreserveAspectFit
                                         smooth: false
@@ -778,8 +811,7 @@ Loader {
 
                                 model: launcherRoot.ctrl.dictionary.definitionEntries
 
-                                currentIndex:
-                                launcherRoot.ctrl.dictionary.selectedIndex
+                                currentIndex: launcherRoot.ctrl.dictionary.selectedIndex
 
                                 delegate: Rectangle {
                                     width: dictionaryListView.width
@@ -787,18 +819,13 @@ Loader {
 
                                     radius: 10
 
-                                    color:
-                                    ListView.isCurrentItem
-                                    ? shell.theme.base02
-                                    : "transparent"
+                                    color: ListView.isCurrentItem ?
+                                    shell.theme.base02 : "transparent"
 
-                                    border.width:
-                                    ListView.isCurrentItem ? 5 : 0
+                                    border.width: ListView.isCurrentItem ? 5 : 0
 
-                                    border.color:
-                                    ListView.isCurrentItem
-                                    ? shell.theme.base08
-                                    : "transparent"
+                                    border.color: ListView.isCurrentItem ?
+                                    shell.theme.base08 : "transparent"
 
                                     Text {
                                         id: definitionText
@@ -817,10 +844,7 @@ Loader {
 
                                     MouseArea {
                                         anchors.fill: parent
-
                                         hoverEnabled: true
-                                        preventStealing: false
-
                                         onClicked: {
                                             launcherRoot.ctrl.dictionary.selectedIndex = index
                                         }
