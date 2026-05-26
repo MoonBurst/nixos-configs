@@ -242,7 +242,7 @@ ShellRoot {
                 id: trayContainer
 
                 anchors.right: parent.right
-                anchors.rightMargin: shell.theme.globalPadding + 20
+                anchors.rightMargin: shell.theme.globalPadding
 
                 anchors.verticalCenter: parent.verticalCenter
 
