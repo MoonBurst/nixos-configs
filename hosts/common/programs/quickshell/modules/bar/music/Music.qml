@@ -26,19 +26,23 @@ Rectangle {
     Process {
         id: musicProc
         running: true
-        command: ["sh", "-c", "TITLE=$(audtool current-song 2>/dev/null); ARTIST=$(audtool current-song-tuple-data artist 2>/dev/null); POS=$(audtool playlist-position 2>/dev/null); LEN=$(audtool playlist-length 2>/dev/null); echo \"$TITLE|$ARTIST|$POS|$LEN\""]
+        command: ["sh", "-c", "TITLE=$(audtool current-song-tuple-data title 2>/dev/null); ARTIST=$(audtool current-song-tuple-data artist 2>/dev/null); POS=$(audtool playlist-position 2>/dev/null); LEN=$(audtool playlist-length 2>/dev/null); echo \"$TITLE|$ARTIST|$POS|$LEN\""]
         stdout: SplitParser {
             onRead: data => {
                 if (data && data.trim() !== "") {
                     var parts = data.trim().split("|");
-                    var rawTitle = parts[0] ? parts[0] : "No Track";
-                    var rawArtist = parts[1] ? parts[1] : "Unknown Artist";
-                    var currentPos = parts[2] ? parts[2] : "0";
-                    var totalLen = parts[3] ? parts[3] : "0";
+                    var rawTitle = parts[0] ? parts[0].trim() : "No Track";
+                    var rawArtist = parts[1] ? parts[1].trim() : "Unknown Artist";
+                    var currentPos = parts[2] ? parts[2].trim() : "0";
+                    var totalLen = parts[3] ? parts[3].trim() : "0";
+
+                    if (rawTitle === "") {
+                        rawTitle = "No Track";
+                    }
 
                     musicBox.tooltipTitle = rawTitle;
                     musicBox.tooltipArtist = rawArtist;
-                    musicBox.trackStr = (rawArtist + " - " + rawTitle).substring(0, 15);
+                    musicBox.trackStr = rawTitle;
                     musicBox.trackCountStr = "Track " + currentPos + " of " + totalLen;
                 }
             }
@@ -87,37 +91,60 @@ Rectangle {
 
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "quickshell-music-tooltip"
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
-        // Exclusive focus forces non-Hyprland Wayland compositors to route keys to this layer
-        WlrLayershell.keyboardFocus: musicBox.popupActive ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
-
+        // FIXED: Expanded window boundaries to fill the entire screen to register clicks anywhere
         anchors.top: true
         anchors.left: true
-        anchors.right: false
-        anchors.bottom: false
-
-        implicitWidth: 400
-        implicitHeight: 210
+        anchors.right: true
+        anchors.bottom: true
         color: "transparent"
 
-        WlrLayershell.margins.top: {
-            if (!musicBox.barWindow || typeof mainBarContainer === "undefined" || !mainBarContainer) return 100;
-            return shell.theme.globalPadding + mainBarContainer.capsuleHeight + 8;
-        }
-
-        WlrLayershell.margins.left: {
-            if (!musicBox.barWindow) return 100;
-            var containerX = musicBox.x;
-            var musicCenterAbsolute = containerX + (musicBox.width / 2);
-            var targetLeftMargin = Math.round(musicCenterAbsolute - (implicitWidth / 2));
-            if (targetLeftMargin < shell.theme.globalPadding) return shell.theme.globalPadding;
-            return targetLeftMargin;
-        }
-
-        Loader {
-            id: contentLoader
+        // FIXED: Click-outside background interceptor layout wrapper
+        Item {
             anchors.fill: parent
-            source: "MusicTooltip.qml"
+
+            TapHandler {
+                // If a click hits the background wrapper instead of the card container, dismiss
+                onTapped: {
+                    musicBox.popupActive = false;
+                    musicBox.confirmDeleteMode = false;
+                }
+            }
+        }
+
+        // The layout container that contains your visible card
+        Item {
+            id: cardContainer
+
+            // Re-map your precise absolute margin layouts directly onto this sub-container
+            width: 400
+            height: 210
+
+            y: {
+                if (!musicBox.barWindow || typeof mainBarContainer === "undefined" || !mainBarContainer) return 100;
+                return shell.theme.globalPadding + mainBarContainer.capsuleHeight + 8;
+            }
+
+            x: {
+                if (!musicBox.barWindow) return 100;
+                var containerX = musicBox.x;
+                var musicCenterAbsolute = containerX + (musicBox.width / 2);
+                var targetLeftMargin = Math.round(musicCenterAbsolute - (width / 2));
+                if (targetLeftMargin < shell.theme.globalPadding) return shell.theme.globalPadding;
+                return targetLeftMargin;
+            }
+
+            // Stop click-outside propagation when clicking inside the visible tooltip window card itself
+            TapHandler {
+                onTapped: {}
+            }
+
+            Loader {
+                id: contentLoader
+                anchors.fill: parent
+                source: "MusicTooltip.qml"
+            }
         }
     }
 }
