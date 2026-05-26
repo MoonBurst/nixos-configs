@@ -1,78 +1,118 @@
 import QtQuick
+import Quickshell
 
 QtObject {
     id: root
 
-    property string currentDefinition: "Enter a word to define."
+    /*
+     * STATE
+     */
+
+    property int selectedIndex: 0
+
+    property var definitionEntries: []
+
+    property var activeRequest: null
 
     readonly property int maxDefinitions: 8
     readonly property int maxSynonyms: 30
 
-    property
-    var activeRequest: null
+    /*
+     * NAVIGATION
+     */
+
+    function selectNext() {
+        if (definitionEntries.length === 0)
+            return
+
+            selectedIndex =
+            (selectedIndex + 1) %
+            definitionEntries.length
+    }
+
+    function selectPrev() {
+        if (definitionEntries.length === 0)
+            return
+
+            selectedIndex =
+            (selectedIndex - 1 + definitionEntries.length) %
+            definitionEntries.length
+    }
+
+    /*
+     * COPY
+     */
+
+    function copySelected() {
+        if (
+            selectedIndex < 0 ||
+            selectedIndex >= definitionEntries.length
+        ) {
+            return
+        }
+
+        try {
+            Quickshell.clipboardText =
+            definitionEntries[selectedIndex].text
+        } catch (e) {
+            console.log("Clipboard copy failed:", e)
+        }
+    }
+
+    /*
+     * FETCH
+     */
 
     function fetch(word) {
         const cleanWord =
         (word || "").trim()
 
         if (!cleanWord) {
-            currentDefinition =
-            "Enter a word to define."
-
+            clearData("Enter a word to define.")
             return
         }
 
-        currentDefinition =
-        "Loading definition for '" +
-        cleanWord +
-        "'..."
-
-        /*
-         * Abort previous request
-         */
+        clearData(
+            "Loading definition for '" +
+            cleanWord +
+            "'..."
+        )
 
         if (activeRequest) {
             activeRequest.abort()
             activeRequest = null
         }
 
-        const xhr =
-        new XMLHttpRequest()
+        const xhr = new XMLHttpRequest()
 
         activeRequest = xhr
 
-        xhr.onreadystatechange =
-        function() {
+        xhr.onreadystatechange = function() {
             if (
-                xhr.readyState !==
-                XMLHttpRequest.DONE
+                xhr.readyState !== XMLHttpRequest.DONE
             ) {
                 return
             }
 
-            if (xhr !== activeRequest) {
+            if (xhr !== activeRequest)
                 return
-            }
 
-            activeRequest = null
+                activeRequest = null
 
-            if (xhr.status !== 200) {
-                root.currentDefinition =
-                "No definition found."
+                if (xhr.status !== 200) {
+                    clearData("No definition found.")
+                    return
+                }
 
-                return
-            }
-
-            try {
-                parseResponse(
-                    JSON.parse(
-                        xhr.responseText
+                try {
+                    parseResponse(
+                        JSON.parse(xhr.responseText)
                     )
-                )
-            } catch (error) {
-                root.currentDefinition =
-                "Definition parsing failed."
-            }
+                } catch(error) {
+                    clearData(
+                        "Definition parsing failed."
+                    )
+                }
         }
 
         xhr.open(
@@ -84,35 +124,48 @@ QtObject {
         xhr.send()
     }
 
+    /*
+     * CLEAR
+     */
+
+    function clearData(message) {
+        selectedIndex = 0
+
+        definitionEntries = [{
+            type: "status",
+            text: message
+        }]
+    }
+
+    /*
+     * DUPLICATE FILTER
+     */
+
     function appendUnique(
         array,
         value,
         seen
     ) {
-        if (
-            !value ||
-            seen[value]
-        ) {
+        if (!value || seen[value])
             return
-        }
 
-        seen[value] = true
-        array.push(value)
+            seen[value] = true
+
+            array.push(value)
     }
 
-    function parseResponse(response) {
-        if (
-            !response ||
-            response.length === 0
-        ) {
-            currentDefinition =
-            "No definition found."
+    /*
+     * PARSER
+     */
 
+    function parseResponse(response) {
+        if (!response || response.length === 0) {
+            clearData("No definition found.")
             return
         }
 
         /*
-         * SPELLCHECK RESPONSE
+         * SPELLCHECK
          */
 
         if (
@@ -127,106 +180,71 @@ QtObject {
                     /`([^`]+)`/
                 )
 
-                if (
-                    match &&
-                    match[1]
-                ) {
+                if (match && match[1]) {
                     suggestion =
-                    "🔎 Did you mean: " +
-                    match[1] +
-                    "\n\n"
+                    "Did you mean: " +
+                    match[1]
                 }
             }
 
-            currentDefinition =
-            suggestion +
-            "No definition found."
+            clearData(
+                suggestion || "No definition found."
+            )
 
             return
         }
 
-        /*
-         * DEFINITIONS + SYNONYMS
-         */
+        const entries = []
 
-        const definitions = []
-        const synonyms = []
-
-        // O(1) synonym deduplication
         const synonymSet = ({})
+
+        const collectedSynonyms = []
 
         const meanings =
         response[0].meanings || []
 
+        /*
+         * DEFINITIONS
+         */
+
         for (
-            let i = 0,
-             len = meanings.length; i < len;
-             ++i
+            let i = 0;
+        i < meanings.length;
+        ++i
         ) {
-            const meaning =
-            meanings[i]
-
-            /*
-             * Meaning synonyms
-             */
-
-            const meaningSynonyms =
-            meaning.synonyms || []
-
-            for (
-                let s = 0,
-                 slen =
-                 meaningSynonyms.length; s < slen;
-                 ++s
-            ) {
-                appendUnique(
-                    synonyms,
-                    meaningSynonyms[s],
-                    synonymSet
-                )
-            }
-
-            /*
-             * Definitions
-             */
+            const meaning = meanings[i]
 
             const defs =
             meaning.definitions || []
 
             for (
-                let j = 0,
-                 dlen = defs.length; j < dlen;
-                 ++j
+                let j = 0;
+            j < defs.length;
+            ++j
             ) {
-                const def =
-                defs[j]
+                const def = defs[j]
 
                 if (
                     def.definition &&
-                    definitions.length <
+                    entries.length <
                     maxDefinitions
                 ) {
-                    definitions.push(
-                        "• " +
-                        def.definition
-                    )
+                    entries.push({
+                        type: "definition",
+                        text: def.definition
+                    })
                 }
-
-                /*
-                 * Definition synonyms
-                 */
 
                 const defSynonyms =
                 def.synonyms || []
 
                 for (
-                    let k = 0,
-                     klen =
-                     defSynonyms.length; k < klen;
-                     ++k
+                    let k = 0;
+                k < defSynonyms.length;
+                ++k
                 ) {
                     appendUnique(
-                        synonyms,
+                        collectedSynonyms,
                         defSynonyms[k],
                         synonymSet
                     )
@@ -235,37 +253,33 @@ QtObject {
         }
 
         /*
-         * FORMAT OUTPUT
+         * SYNONYMS
          */
 
-        const sections = []
-
-        if (definitions.length) {
-            sections.push(
-                "DEFINITIONS\n" +
-                "────────────\n\n" +
-                definitions.join(
-                    "\n\n"
-                )
-            )
-        }
-
-        if (synonyms.length) {
-            sections.push(
-                "THESAURUS\n" +
-                "──────────\n\n" +
-                synonyms
-                .slice(
-                    0,
-                    maxSynonyms
-                )
+        if (collectedSynonyms.length > 0) {
+            entries.push({
+                type: "synonyms",
+                text:
+                "Synonyms:\n\n" +
+                collectedSynonyms
+                .slice(0, maxSynonyms)
                 .join(", ")
-            )
+            })
         }
 
-        currentDefinition =
-        sections.length ?
-        sections.join("\n\n\n") :
-        "No definition found."
+        /*
+         * FALLBACK
+         */
+
+        if (entries.length === 0) {
+            entries.push({
+                type: "status",
+                text: "No definition found."
+            })
+        }
+
+        definitionEntries = entries
+
+        selectedIndex = 0
     }
 }

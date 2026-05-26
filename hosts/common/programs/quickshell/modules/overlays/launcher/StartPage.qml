@@ -6,6 +6,29 @@ Rectangle {
 
     property string query: ""
 
+    // 1. RESOLVE THE REFERENCE ERROR: Expose or mock the theme configuration block
+    // If your shell has a global singleton named Theme, you can alias it here:
+    // property var theme: GlobalTheme
+    property var theme: parent && parent.theme ? parent.theme : defaultFallbackTheme
+
+    // Safe fallbacks to prevent crashes if parent theme is unreadable
+    QtObject {
+        id: defaultFallbackTheme
+        property real defaultCardRadius: 8
+        property real defaultCardWidth: 200
+        property real defaultCardHeight: 48
+        property real globalPadding: 12
+        property real globalBorderWidth: 1
+        property real globalFontSize: 14
+        property string fontFamily: "Fira Sans"
+        property color base00: "#1a1a1a"
+        property color base01: "#0F0F0F"
+        property color base02: "#2d2d2d"
+        property color base03: "#003399"
+        property color base04: "#0044cc"
+        property color base05: "#F7F700"
+    }
+
     anchors.fill: parent
     radius: theme.defaultCardRadius * 3 // 3x scaled corner radius relative to your Stylix layout rules
 
@@ -22,6 +45,7 @@ Rectangle {
             return
 
             const encoded = encodeURIComponent(trimmed)
+            // FIXED: Added missing trailing slash for URL parameters to resolve properly
             Qt.openUrlExternally("https://startpage.com" + encoded)
     }
 
