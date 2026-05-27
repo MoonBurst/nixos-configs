@@ -245,10 +245,8 @@ ShellRoot {
                 anchors.right: parent.right
                 anchors.rightMargin: shell.theme.globalPadding
                 anchors.verticalCenter: parent.verticalCenter
-
-                width: trayContent.implicitWidth
+                width: trayContent.width
                 height: mainBarContainer.capsuleHeight
-
                 SystemTray.Tray {
                     id: trayContent
                     anchors.centerIn: parent
