@@ -43,7 +43,6 @@ Rectangle {
             onRead: data => {
                 var parts = data.trim().split(":");
                 if (parts.length === 4) {
-                    // FIXED: Re-mapped the array index properties to grab individual data fragments instead of copying parts[0]
                     gpuBox.gpuUsageRaw = (parseInt(parts[0]) || 0).toString();
                     gpuBox.gpuTempRaw = (parseInt(parts[1]) || 0).toString();
                     gpuBox.gpuPowerRaw = (parseInt(parts[2]) || 0).toString();

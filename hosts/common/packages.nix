@@ -65,7 +65,7 @@
     qt6Packages.qt6ct           # QT theming logic
     pass                        # Password manager
 
-    swaylock-effects                    # Screen locker with blur and aesthetic effects
+ #   swaylock-effects                    # Screen locker with blur and aesthetic effects
     satty                               # Modern screenshot annotation tool
     qview                               # Minimalist, fast image viewer
     pavucontrol                         # PulseAudio/PipeWire volume mixer (essential for debugging mic/speakers)
@@ -85,7 +85,7 @@
     symbola
     unifont        # Ultimate BMP coverage
     unifont_upper  # Ultimate SMP coverage
-waybar
+#waybar
 vesktop
   ];
 }

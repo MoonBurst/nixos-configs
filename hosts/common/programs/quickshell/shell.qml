@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Services.Notifications
 import Quickshell.Io
+import Quickshell.Services.Pam
 
 import "./modules/overlays/notifications" as Notifications
 import "./modules/overlays/launcher" as LauncherModule
@@ -19,7 +20,7 @@ import "./modules/bar/alarm" as AlarmCapsule
 import "./modules/bar/borg" as BorgCapsule
 import "./modules/bar/weather" as WeatherCapsule
 import "./modules/bar/calendar" as CalendarCapsule
-
+import "modules/lockscreen"
 
 ShellRoot {
     id: shell
@@ -275,7 +276,7 @@ ShellRoot {
                 anchors.rightMargin: 10
                 anchors.verticalCenter: parent.verticalCenter
 
-                width: 210
+                width: 275
                 height: mainBarContainer.capsuleHeight
 
                 GpuCapsule.GpuCapsule {
@@ -363,6 +364,64 @@ ShellRoot {
     LauncherModule.Clipboard {
         id: clipboardOverlayWindow
     }
+
+
+    /*
+     * =========================================================================
+     * LOCKSCREEN DATA STORAGE & CENTRAL PAM ENGINE
+     * =========================================================================
+     */
+
+    property string globalPasswordBuffer: ""
+    property int passwordLength: 0
+    property var shellRootRef: this
+
+    PamContext {
+        id: lockPam
+        config: "login"
+
+        onResponseRequiredChanged: {
+            if (responseRequired) {
+                lockPam.respond(shellRootRef.globalPasswordBuffer);
+            }
+        }
+
+        onActiveChanged: {
+            if (!active && !messageIsError && shellRootRef.globalPasswordBuffer !== "") {
+                sessionLock.locked = false;
+                shellRootRef.globalPasswordBuffer = "";
+                shellRootRef.passwordLength = 0;
+            } else if (!active && messageIsError) {
+                shellRootRef.globalPasswordBuffer = "";
+                shellRootRef.passwordLength = -1;
+            }
+        }
+    }
+
+    WlSessionLock {
+        id: sessionLock
+        locked: false
+
+        onLockedChanged: {
+            shellRootRef.globalPasswordBuffer = "";
+            shellRootRef.passwordLength = 0;
+        }
+
+        surface: Component {
+            LockScreen {
+                lockSession: sessionLock
+                rootRef: shellRootRef
+            }
+        }
+    }
+
+    IpcHandler {
+        target: "lockscreen"
+        function lock(): void {
+            sessionLock.locked = true;
+        }
+    }
+
 
     /*
      * =========================================================================
