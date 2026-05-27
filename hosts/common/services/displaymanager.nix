@@ -1,21 +1,27 @@
 { pkgs, ... }:
 
 {
- services.greetd = {
+  services.greetd = {
     enable = true;
     settings = {
-      # 1. Add this block for automatic login on boot
-      initial_session = {
-        command = "${pkgs.sway}/bin/sway";
-        user = "moonburst"; # Your username from the terminal prompt
-      };
-      
-      # 2. This is your existing fallback session when you manually log out
       default_session = {
         command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --remember-session --cmd sway";
         user = "greeter";
       };
     };
   };
-  
+
+  systemd.services.greetd.serviceConfig = {
+    Type = "idle";
+    StandardInput = "tty";
+    StandardOutput = "tty";
+    StandardError = "journal";
+    TTYReset = true;
+    TTYVHangup = true;
+    TTYVTDisallocate = true;
+  };
+
+  systemd.tmpfiles.rules = [
+    "d /var/cache/tuigreet 0755 greeter greeter - -"
+  ];
 }
