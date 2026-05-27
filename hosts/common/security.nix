@@ -59,6 +59,7 @@
 
   security.pam.services.greetd.enableGnomeKeyring = true;
   security.pam.services.swaylock = {};
+  security.pam.services.quickshell = {};
   services.gnome.gcr-ssh-agent.enable = false;
   programs.gnupg.agent = {
     enable = true;

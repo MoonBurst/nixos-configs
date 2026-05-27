@@ -27,32 +27,31 @@
       };
 
       focus.followMouse = false;
+startup = [
+  # 1. Your existing wrapper (Kept completely clean, no extra styling variables needed)
+  {
+    command = (
+      let
+        colors = config.lib.stylix.colors.withHashtag;
+      in ''
+        exec ${pkgs.bash}/bin/bash -c " \
+          ${pkgs.toybox}/bin/killall -q quickshell || true; \
+          NIXOS_SWAYMSG_PATH='${pkgs.sway}/bin/swaymsg' \
+          NIXOS_DBUSSEND_PATH='${pkgs.dbus}/bin/dbus-send' \
+          quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml \
+        "
+      ''
+    );
+    always = true;
+  }
 
-      # FIXED AUTOSTART LAUNCHER: Wrapped the variables in an explicit bash wrapper execution string
-      # to prevent Sway's internal parser engine from throwing syntax line crashes.
-      startup = [
-        {
-          command = (
-            let
-              colors = config.lib.stylix.colors.withHashtag;
-            in ''
-              exec ${pkgs.bash}/bin/bash -c " \
-                ${pkgs.toybox}/bin/killall -q quickshell || true; \
-                STYLIX_BASE00='${colors.base00}' \
-                STYLIX_BASE01='${colors.base01}' \
-                STYLIX_BASE03='${colors.base03}' \
-                STYLIX_BASE05='${colors.base05}' \
-                STYLIX_BASE08='${colors.base08}' \
-                NIXOS_SWAYMSG_PATH='${pkgs.sway}/bin/swaymsg' \
-                NIXOS_DBUSSEND_PATH='${pkgs.dbus}/bin/dbus-send' \
-                quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml \
-              "
-            ''
-          );
-          always = true;
-        }
-      ];
-    };
+  # 2. Add just the single lock instruction right here
+  {
+    command = "quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call lockscreen lock";
+    always = false; # Crucial: only triggers on fresh boots, not config reloads!
+  }
+];
+
 
     # Extract system colors from your theme with native hashtags built-in
     extraConfig = let
