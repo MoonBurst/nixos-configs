@@ -45,8 +45,7 @@ Rectangle {
             return
 
             const encoded = encodeURIComponent(trimmed)
-            // FIXED: Added missing trailing slash for URL parameters to resolve properly
-            Qt.openUrlExternally("https://startpage.com" + encoded)
+            Qt.openUrlExternally("https://www.startpage.com/sp/search?query=" + encoded)
     }
 
     /*
