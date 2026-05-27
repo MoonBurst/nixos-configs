@@ -6,20 +6,17 @@
     ./window-rules.nix
   ];
 
-  # Instruct Stylix to handle Sway styling templates natively
   stylix.targets.sway.enable = true;
 
   wayland.windowManager.sway = {
     enable = true;
     systemd.enable = true;
 
-    # Fix sandbox build failure by bypassing syntax check
     checkConfig = false;
 
     config = rec {
       modifier = "Mod4";
 
-      # Explicitly empty to prevent default bar generation alongside Waybar
       bars = [ ];
 
       input."type:pointer" = {
@@ -27,33 +24,25 @@
       };
 
       focus.followMouse = false;
-startup = [
-  # 1. Your existing wrapper (Kept completely clean, no extra styling variables needed)
-  {
-    command = (
-      let
-        colors = config.lib.stylix.colors.withHashtag;
-      in ''
-        exec ${pkgs.bash}/bin/bash -c " \
-          ${pkgs.toybox}/bin/killall -q quickshell || true; \
-          NIXOS_SWAYMSG_PATH='${pkgs.sway}/bin/swaymsg' \
-          NIXOS_DBUSSEND_PATH='${pkgs.dbus}/bin/dbus-send' \
-          quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml \
-        "
-      ''
-    );
-    always = true;
-  }
 
-  # 2. Add just the single lock instruction right here
-  {
-    command = "quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call lockscreen lock";
-    always = false; # Crucial: only triggers on fresh boots, not config reloads!
-  }
-];
+      startup = [
+        {
+          command = ''
+            ${pkgs.toybox}/bin/killall -q quickshell || true; \
+            NIXOS_SWAYMSG_PATH='${pkgs.sway}/bin/swaymsg' \
+            NIXOS_DBUSSEND_PATH='${pkgs.dbus}/bin/dbus-send' \
+            quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml
+          '';
+          always = true;
+        }
 
+        {
+          command = "quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call lockscreen lock";
+          always = false;
+        }
+      ];
+    };
 
-    # Extract system colors from your theme with native hashtags built-in
     extraConfig = let
       colors  = config.lib.stylix.colors.withHashtag;
       base00  = colors.base00;
