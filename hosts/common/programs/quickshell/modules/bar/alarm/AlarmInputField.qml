@@ -17,6 +17,9 @@ ColumnLayout {
     signal rejected()
 
     function forceInitialFocus() {
+        // Clear countdown field on open
+        countdownField.text = "";
+
         var now = new Date();
         var currentHours = now.getHours();
         var currentMinutes = String(now.getMinutes()).padStart(2, '0');
@@ -24,6 +27,7 @@ ColumnLayout {
         var displayHours = currentHours % 12;
         if (displayHours === 0) displayHours = 12;
 
+        // Populate target time field
         targetTimeField.text = displayHours + ":" + currentMinutes;
 
         alarmInputGroupRoot.editingHours = true;
@@ -56,6 +60,9 @@ ColumnLayout {
         var hStr = String(h);
         var mStr = String(m).padStart(2, '0');
         targetTimeField.text = hStr + ":" + mStr;
+
+        // Clear countdown field because user is now adjusting target time
+        countdownField.text = "";
 
         updateTimeSelection();
     }
@@ -100,6 +107,13 @@ ColumnLayout {
             selectionColor: "yellow"
             selectedTextColor: "black"
             horizontalAlignment: Text.AlignHCenter
+
+            // CRITICAL FIX: If the user types a countdown, clear the target clock field
+            onTextChanged: {
+                if (activeFocus && text.trim() !== "") {
+                    targetTimeField.text = "";
+                }
+            }
 
             onAccepted: alarmInputGroupRoot.accepted()
 
@@ -158,6 +172,13 @@ ColumnLayout {
             selectionColor: "yellow"
             selectedTextColor: "black"
             horizontalAlignment: Text.AlignHCenter
+
+            // CRITICAL FIX: If the user explicitly clicks/tabs here and types, wipe the countdown field
+            onTextChanged: {
+                if (activeFocus && text.trim() !== "") {
+                    countdownField.text = "";
+                }
+            }
 
             onAccepted: alarmInputGroupRoot.accepted()
 

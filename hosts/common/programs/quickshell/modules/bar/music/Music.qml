@@ -17,7 +17,7 @@ Rectangle {
     property bool confirmDeleteMode: false
 
     width: 200
-    height: parent.height
+    height: parent ? parent.height : 40
     radius: shell.theme.defaultCardRadius
     border.width: shell.theme.globalBorderWidth
     color: shell.theme.base00
@@ -82,42 +82,32 @@ Rectangle {
             }
         }
     }
-
     PanelWindow {
         id: musicTooltipWindow
 
-        screen: musicBox.barWindow ? musicBox.barWindow.screen : null
+        screen: musicBox.barWindow ? musicBox.barWindow.screen : Quickshell.screens
         visible: musicBox.popupActive
 
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "quickshell-music-tooltip"
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
-        // FIXED: Expanded window boundaries to fill the entire screen to register clicks anywhere
         anchors.top: true
         anchors.left: true
         anchors.right: true
         anchors.bottom: true
         color: "transparent"
 
-        // FIXED: Click-outside background interceptor layout wrapper
-        Item {
+        MouseArea {
             anchors.fill: parent
-
-            TapHandler {
-                // If a click hits the background wrapper instead of the card container, dismiss
-                onTapped: {
-                    musicBox.popupActive = false;
-                    musicBox.confirmDeleteMode = false;
-                }
+            onPressed: {
+                musicBox.popupActive = false;
+                musicBox.confirmDeleteMode = false;
             }
         }
 
-        // The layout container that contains your visible card
         Item {
             id: cardContainer
-
-            // Re-map your precise absolute margin layouts directly onto this sub-container
             width: 400
             height: 210
 
@@ -128,16 +118,21 @@ Rectangle {
 
             x: {
                 if (!musicBox.barWindow) return 100;
-                var containerX = musicBox.x;
-                var musicCenterAbsolute = containerX + (musicBox.width / 2);
+                var globalCoords = musicBox.mapToItem(null, 0, 0);
+                var musicCenterAbsolute = globalCoords.x + (musicBox.width / 2);
                 var targetLeftMargin = Math.round(musicCenterAbsolute - (width / 2));
+
                 if (targetLeftMargin < shell.theme.globalPadding) return shell.theme.globalPadding;
                 return targetLeftMargin;
             }
 
-            // Stop click-outside propagation when clicking inside the visible tooltip window card itself
-            TapHandler {
-                onTapped: {}
+            // FIXED: Block event bubble-up to prevent click-outside dismissal
+            MouseArea {
+                anchors.fill: parent
+                propagateComposedEvents: false
+                onPressed: (mouse) => mouse.accepted = true
+                onReleased: (mouse) => mouse.accepted = true
+                onClicked: (mouse) => mouse.accepted = true
             }
 
             Loader {

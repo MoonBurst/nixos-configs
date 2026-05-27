@@ -7,7 +7,6 @@ Item {
     id: tooltipContainer
     anchors.fill: parent
 
-    // Scoped shortcut catches Escape cleanly across all tab button views
     Shortcut {
         sequence: "Escape"
         enabled: true
@@ -20,23 +19,6 @@ Item {
     Process { id: playPauseProc; command: ["audtool", "playback-playpause"] }
     Process { id: prevProc; command: ["audtool", "playlist-reverse"] }
     Process { id: nextProc; command: ["audtool", "playlist-advance"] }
-
-    // FIXED: Correctly handles paths without file:// and explicitly launches Nemo
-    Process {
-        id: openFolderProc
-        command: [
-            "python3", "-c",
-            "import subprocess, os, urllib.parse;\n" +
-            "try:\n" +
-            "    path = subprocess.check_output(['audtool', 'current-song-filename']).decode('utf-8').strip()\n" +
-            "    if path.startswith('file://'): path = path[7:]\n" +
-            "    clean_path = urllib.parse.unquote(path)\n" +
-            "    if os.path.exists(clean_path):\n" +
-            "        folder = os.path.dirname(os.path.abspath(clean_path))\n" +
-            "        subprocess.Popen(['nemo', folder], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n" +
-            "except Exception as e: pass"
-        ]
-    }
 
     Process {
         id: deleteSongProc
@@ -74,9 +56,6 @@ Item {
             anchors.margins: 20
             spacing: 14
 
-            // ============================================================================
-            // TRACK DETAILS SECTION
-            // ============================================================================
             Rectangle {
                 width: parent.width
                 height: 90
@@ -121,14 +100,11 @@ Item {
                     }
                 }
             }
-            // ============================================================================
-            // INTERACTIVE CONTROL BUTTON ROW
-            // ============================================================================
+
             Row {
                 anchors.horizontalCenter: parent.horizontalCenter
                 spacing: 24
 
-                // Normal Media Control Action Setup Layout Array
                 Row {
                     spacing: 12
                     visible: !musicBox.confirmDeleteMode
@@ -161,7 +137,6 @@ Item {
                         }
                     }
 
-                    // Open File Location Button
                     Rectangle {
                         width: 55
                         height: 40
@@ -178,16 +153,20 @@ Item {
                         }
 
                         TapHandler {
-                            onTapped: openFolderProc.running = true
+                            onTapped: {
+                                Quickshell.execDetached([
+                                    "sh", "-c",
+                                    "path=$(audtool current-song-filename | sed 's|^file://||'); " +
+                                    "clean_path=$(python3 -c \"import urllib.parse, sys; print(urllib.parse.unquote(sys.argv[1]))\" \"$path\"); " +
+                                    "[ -d \"$clean_path\" ] || clean_path=$(dirname \"$clean_path\"); " +
+                                    "if [ -e \"$clean_path\" ]; then nohup nemo \"$clean_path\" >/dev/null 2>&1 & fi"
+                                ])
+                                musicBox.popupActive = false
+                            }
                         }
                     }
                 }
 
-                // ============================================================================
-                // DYNAMIC CONFIRMATION PIECE
-                // ============================================================================
-
-                // 1. THE TRASHCAN / "SURE?" BUTTON
                 Rectangle {
                     id: sureButton
                     width: musicBox.confirmDeleteMode ? 140 : 55
@@ -219,14 +198,12 @@ Item {
                     }
                 }
 
-                // 2. THE EXTRA 25PX LAYOUT SPACER
                 Item {
                     width: 25
                     height: 40
                     visible: musicBox.confirmDeleteMode
                 }
 
-                // 3. THE CANCEL "NO" BUTTON
                 Rectangle {
                     width: 55
                     height: 40
@@ -244,7 +221,10 @@ Item {
                     }
 
                     TapHandler {
-                        onTapped: musicBox.confirmDeleteMode = false
+                        onTapped: {
+                            musicBox.popupActive = false
+                            musicBox.confirmDeleteMode = false
+                        }
                     }
                 }
             }

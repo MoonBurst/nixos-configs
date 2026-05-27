@@ -53,15 +53,38 @@ Rectangle {
         var now = new Date();
 
         // ============================================================================
-        // FIXED SMART TIME PARSER (HANDLES 12:00 ROLLOVER CAPTURE CORRECTLY)
+        // 1. COUNTDOWN PRIORITY OVERRIDE (FIXED REGEX CAPTURE EXTRACTION)
         // ============================================================================
-        if (timeOfDayRaw.trim() !== "") {
+        if (countdownRaw && countdownRaw.trim() !== "") {
+            var rawTimer = countdownRaw.trim().toLowerCase();
+            var match;
+            var regex = /(\d+)([hms])/g;
+
+            while ((match = regex.exec(rawTimer)) !== null) {
+                var num = parseInt(match[1], 10); // Extract group 1 (digits)
+                var unit = match[2];              // FIXED: Extract group 2 (h/m/s character)
+
+                if (unit === 'h') totalSeconds += num * 3600;
+                if (unit === 'm') totalSeconds += num * 60;
+                if (unit === 's') totalSeconds += num;
+            }
+
+            // Fallback for plain integers (e.g. entering "5" defaults to 5 minutes)
+            if (totalSeconds === 0 && /^\d+$/.test(rawTimer)) {
+                totalSeconds = parseInt(rawTimer, 10) * 60;
+            }
+        }
+
+        // ============================================================================
+        // 2. SMART TIME PARSER (ONLY RUNS IF NO COUNTDOWN IS ACTIVE)
+        // ============================================================================
+        if (totalSeconds === 0 && timeOfDayRaw && timeOfDayRaw.trim() !== "") {
             var timeStr = timeOfDayRaw.trim().toUpperCase().replace(/[:\s]/g, "");
             var cleanMatch = /^(\d{3,4})(AM|PM)?$/.exec(timeStr);
 
-            if (cleanMatch) {
-                var digits = cleanMatch[1]; // FIXED: Extract from array index 1
-                var ampm = cleanMatch[2];   // FIXED: Extract from array index 2
+            if (cleanMatch !== null) {
+                var digits = cleanMatch[1]; // FIXED: Correctly extract regex groups
+                var ampm = cleanMatch[2];   // FIXED: Correctly extract regex groups
                 var targetHours = 0;
                 var targetMinutes = 0;
 
@@ -74,9 +97,7 @@ Rectangle {
                 }
 
                 if (targetHours <= 24 && targetMinutes < 60) {
-                    // Normalize standard 12-hour clock notations immediately
                     if (targetHours === 12 && !ampm) {
-                        // If user inputs a plain "12", evaluate whether they mean midnight or noon
                         targetHours = 12;
                     } else if (ampm) {
                         if (ampm === "PM" && targetHours < 12) targetHours += 12;
@@ -85,18 +106,15 @@ Rectangle {
 
                     var targetTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), targetHours, targetMinutes, 0, 0);
 
-                    // Auto PM Switch: If target has already passed, check if switching to PM fits today
                     if (!ampm && targetHours <= 12 && targetTime.getTime() <= now.getTime()) {
-                        var pmHours = (targetHours === 12) ? 0 : targetHours + 12; // 12 rolls to midnight, others shift by 12
+                        var pmHours = (targetHours === 12) ? 0 : targetHours + 12;
                         var pmTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), pmHours, targetMinutes, 0, 0);
 
-                        // If rolling hours makes it later today, use it, otherwise prepare for tomorrow morning
                         if (pmTime.getTime() > now.getTime()) {
                             targetTime = pmTime;
                         }
                     }
 
-                    // Shift to tomorrow if the calculated time is still in the past
                     if (targetTime.getTime() <= now.getTime()) {
                         targetTime.setDate(targetTime.getDate() + 1);
                     }
@@ -107,26 +125,8 @@ Rectangle {
         }
 
         // ============================================================================
-        // COUNTDOWN FALLBACK
+        // 3. STATE WRITE ENGINE EXECUTION
         // ============================================================================
-        if (totalSeconds === 0 && countdownRaw.trim() !== "") {
-            var rawTimer = countdownRaw.trim();
-            var match;
-            var regex = /(\d+)([hms])/g;
-
-            while ((match = regex.exec(rawTimer)) !== null) {
-                var num = parseInt(match[1], 10);
-                var unit = match[2];
-                if (unit === 'h') totalSeconds += num * 3600;
-                if (unit === 'm') totalSeconds += num * 60;
-                if (unit === 's') totalSeconds += num;
-            }
-
-            if (totalSeconds === 0 && /^\d+$/.test(rawTimer)) {
-                totalSeconds = parseInt(rawTimer, 10) * 60;
-            }
-        }
-
         if (totalSeconds > 0) {
             var stateString = currentEpoch + " " + totalSeconds + " \"" + msg + "\"";
             alarmWriteEngine.command = ["sh", "-c", "echo '" + stateString + "' > /tmp/waybar_alarm_state"];
@@ -137,8 +137,9 @@ Rectangle {
     }
 
     function cancelAndClosePopup() {
-        timeInput.countdownText = "";
-        timeInput.targetTimeText = "";
+        if (typeof timeInput !== "undefined" && timeInput !== null) {
+            timeInput.countdownText = "";
+        }
         alarmBox.popupVisible = false;
     }
 
@@ -147,7 +148,7 @@ Rectangle {
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onClicked: (mouse) => {
             if (mouse.button === Qt.LeftButton) {
-                if (alarmBox.barWindow && alarmBox.barWindow.contentItem) {
+                if (alarmBox.barWindow !== null && alarmBox.barWindow.contentItem !== undefined) {
                     var globalCoords = alarmBox.mapToItem(alarmBox.barWindow.contentItem, 0, 0);
                     alarmBox.globalX = globalCoords.x;
                 }
@@ -179,7 +180,7 @@ Rectangle {
         screen: alarmBox.barWindow ? alarmBox.barWindow.screen : null
 
         WlrLayershell.keyboardFocus: visible ? WlrLayershell.Exclusive : WlrLayershell.None
-        WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.layer: WlrLayershell.Overlay
         WlrLayershell.namespace: "quickshell-alarm-prompt"
 
         anchors.top: true
@@ -195,7 +196,7 @@ Rectangle {
         color: "transparent"
 
         onVisibleChanged: {
-            if (visible) {
+            if (visible && typeof timeInput !== "undefined" && timeInput !== null) {
                 timeInput.forceInitialFocus();
             }
         }
