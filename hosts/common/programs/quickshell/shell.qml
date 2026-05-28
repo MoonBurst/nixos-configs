@@ -69,7 +69,7 @@ ShellRoot {
         anchors.left: true
         anchors.right: true
 
-        implicitHeight: 50+ shell.theme.globalPadding
+        implicitHeight: shell.theme.globalPadding + 50
 
         color: "transparent"
 

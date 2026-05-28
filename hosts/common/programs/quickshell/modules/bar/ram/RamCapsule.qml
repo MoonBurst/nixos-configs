@@ -55,7 +55,7 @@ Rectangle {
     Text {
         id: ramText
         anchors.fill: parent
-        anchors.margins: globalPadding
+        anchors.margins: shell.theme.globalPadding
         textFormat: Text.RichText
         font.family: shell.theme.fontFamily
         font.pixelSize: shell.theme.globalFontSize

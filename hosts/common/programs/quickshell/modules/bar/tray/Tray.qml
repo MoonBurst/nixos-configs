@@ -147,7 +147,7 @@ Item {
                                         Text {
                                             anchors.verticalCenter: parent.verticalCenter
                                             anchors.left: parent.left
-                                            anchors.leftMargin: globalPadding
+                                            anchors.leftMargin: shell.theme.globalPadding
                                             text: modelData.text || ""
                                             color:  shell.theme.base05
 
