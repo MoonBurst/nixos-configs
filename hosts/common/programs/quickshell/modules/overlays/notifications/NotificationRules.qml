@@ -4,6 +4,9 @@ import Quickshell.Io
 Item {
     id: rulesEngine
 
+    // Registry map to track and instantly destroy active notifications by app identifier
+    property var activeAppCardRegistry: ({})
+
     property var characterProfiles: [
         { name: "apogee",        summary: "Apogee",        color: "#0CD0CD", sound: false },
         { name: "solar_sonata",  summary: "Solar Sonata",  color: "#f7f716", sound: true  },
@@ -60,6 +63,26 @@ Item {
     function getCustomIcon(notification) {
         if (!notification) return "";
 
+        // FIXED LIFECYCLE MANAGEMENT: Check both fields independently to ensure accurate targets
+        let nameString = notification.appName ? notification.appName.toLowerCase() : "";
+        let iconString = notification.appIcon ? notification.appIcon.toLowerCase() : "";
+
+        if (nameString.includes("satty") || iconString.includes("satty")) {
+            let oldSatty = activeAppCardRegistry["satty"];
+            if (oldSatty !== undefined && oldSatty !== null && typeof oldSatty.destroy === "function") {
+                oldSatty.destroy();
+            }
+            activeAppCardRegistry["satty"] = null;
+        }
+
+        if (nameString.includes("microphone") || iconString.includes("microphone")) {
+            let oldMic = activeAppCardRegistry["microphone"];
+            if (oldMic !== undefined && oldMic !== null && typeof oldMic.destroy === "function") {
+                oldMic.destroy();
+            }
+            activeAppCardRegistry["microphone"] = null;
+        }
+
         // 1. Prioritize Quickshell's native ImageSource channels directly (Captures Discord/Vesktop user avatars)
         if (notification.image) {
             return notification.image;
@@ -79,19 +102,23 @@ Item {
             let appNameLower = notification.appName ? notification.appName.toLowerCase() : "";
 
             if (lowerApp === "vesktop" || lowerApp === "discord" || appNameLower === "vesktop" || appNameLower === "discord") {
-                return "file:///home/moonburst/.local/share/icons/Numix/48x48/apps/discord.png";
+                return "file:///home/moonburst/.local/share/icons/Numix/48/apps/discord.png";
             }
             if (lowerApp === "google-chrome" || lowerApp === "chrome" || appNameLower === "google-chrome") {
-                return "file:///home/moonburst/.local/share/icons/Numix/48x48/apps/google-chrome.png";
+                return "file:///home/moonburst/.local/share/icons/Numix/48/apps/google-chrome.png";
             }
             if (lowerApp === "steam" || appNameLower === "steam") {
-                return "file:///home/moonburst/.local/share/icons/Numix/48x48/apps/steam.png";
+                return "file:///home/moonburst/.local/share/icons/Numix/48/apps/steam.png";
             }
             if (lowerApp === "system-file-manager" || lowerApp === "nautilus" || lowerApp === "thunar") {
-                return "file:///home/moonburst/.local/share/icons/Numix/48x48/apps/system-file-manager.png";
+                return "file:///home/moonburst/.local/share/icons/Numix/48/apps/system-file-manager.png";
+            }
+            if (iconName.includes("microphone")) {
+                let formattedName = iconName.startsWith("notification-") ? iconName : "notification-" + iconName;
+                return "file:///home/moonburst/.local/share/icons/Numix/48/notifications/" + formattedName + ".svg";
             }
 
-            return "file:///home/moonburst/.local/share/icons/Numix/48x48/apps/" + iconName + ".png";
+            return "file:///home/moonburst/.local/share/icons/Numix/48/apps/" + iconName + ".png";
         }
 
         // 3. Fall back to character profile keyword matching rules

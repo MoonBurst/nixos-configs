@@ -32,11 +32,7 @@ Item {
     property int hiddenX: width + 50
     property int shownX: 0
 
-    /*
-     * FIXED: Layer order safety binding.
-     * When a card enters the "DISMISSED" state, its z-index instantly locks to 1000.
-     * This keeps it cleanly on top of all other cards while it slides away to the right.
-     */
+
     z: cardWindow.state === "DISMISSED"
     ? 1000
     : (cardWindow.stackIndex === 0 ? 999 : (100 - cardWindow.stackIndex))
@@ -56,7 +52,7 @@ Item {
 
     Timer {
         id: holdCountdownTimer
-        interval: rootItem ? rootItem.holdDurationMs : 5000
+        interval: rootItem ? rootItem.holdDurationMs : 500
         repeat: false
         running: cardWindow.entryPhaseCompleted
         && cardWindow.stackIndex === 0

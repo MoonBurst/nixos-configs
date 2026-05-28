@@ -22,21 +22,28 @@ Item {
 
     Process {
         id: deleteSongProc
+        // Using "sh -c" allows Quickshell to correctly pipe commands and execute multi-statement Python code
         command: [
-            "python3", "-c",
-            "import subprocess, os, urllib.parse; " +
-            "try: " +
-            "    path = subprocess.check_output(['audtool', 'current-song-filename']).decode('utf-8').strip(); " +
-            "    if path.startswith('file://'): path = urllib.parse.unquote(path[7:]); " +
-            "    if os.path.exists(path): " +
-            "        pos = subprocess.check_output(['audtool', 'playlist-position']).decode('utf-8').strip(); " +
-            "        os.remove(path); " +
-            "        subprocess.run(['audtool', 'playlist-advance']); " +
-            "        subprocess.run(['audtool', 'playlist-delete', pos]); " +
-            "except Exception as e: pass"
+            "sh", "-c",
+            "python3 -c \"\n" +
+            "import subprocess, os, urllib.parse\n" +
+            "try:\n" +
+            "    raw_path = subprocess.check_output(['audtool', 'current-song-filename']).decode('utf-8').strip()\n" +
+            "    if raw_path.startswith('file://'):\n" +
+            "        path = urllib.parse.unquote(raw_path[7:])\n" +
+            "    else:\n" +
+            "        path = raw_path\n" +
+            "    if os.path.exists(path):\n" +
+            "        pos = subprocess.check_output(['audtool', 'playlist-position']).decode('utf-8').strip()\n" +
+            "        os.remove(path)\n" +
+            "        subprocess.run(['audtool', 'playlist-advance'])\n" +
+            "        subprocess.run(['audtool', 'playlist-delete', pos])\n" +
+            "except Exception as e:\n" +
+            "    pass\n" +
+            "\""
         ]
         onRunningChanged: {
-            if (!running) {
+            if (!running && musicBox.confirmDeleteMode) {
                 musicBox.confirmDeleteMode = false
                 musicProc.running = false
                 musicProc.running = true

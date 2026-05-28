@@ -22,6 +22,9 @@
             // Performance Cache: Read-Only Evaluators
             readonly property bool isAppsOpen: mode === "apps"
             readonly property bool isClipboardOpen: mode === "clipboard"
+            readonly property bool isPlaceholder1Open: mode === "placeholder1"
+            readonly property bool isPlaceholder2Open: mode === "placeholder2"
+            readonly property bool isPlaceholder3Open: mode === "placeholder3"
 
             // Global Controller Alias to eliminate deep JavaScript scope resolution costs
             readonly property
@@ -42,6 +45,9 @@
                                 if (launcherRoot.mode === "math") return launcherRoot.ctrl.math
                                     if (launcherRoot.mode === "unicode") return launcherRoot.ctrl.unicodeSearch
                                         if (launcherRoot.mode === "search") return launcherRoot.ctrl.startPage
+                                            if (launcherRoot.mode === "placeholder1") return launcherRoot.ctrl.placeholder1
+                                                if (launcherRoot.mode === "placeholder2") return launcherRoot.ctrl.placeholder2
+                                                    if (launcherRoot.mode === "placeholder3") return launcherRoot.ctrl.placeholder3
                                             return null
                 }
             }
@@ -95,6 +101,34 @@
                         return
                     }
 
+                    if (trimmed.startsWith("placeholder1activatetext")) {
+                        launcherRoot.mode = "placeholder1"
+                        const p1Query = trimmed.substring(2).trim()
+                        if (launcherRoot.ctrl.placeholder1 && typeof launcherRoot.ctrl.placeholder1.refreshFilter === "function") {
+                            launcherRoot.ctrl.placeholder1.refreshFilter(p1Query)
+                        }
+                        return
+                    }
+
+                    if (trimmed.startsWith("placeholder2activatetext")) {
+                        launcherRoot.mode = "placeholder2"
+                        const p2Query = trimmed.substring(2).trim()
+                        if (launcherRoot.ctrl.placeholder2 && typeof launcherRoot.ctrl.placeholder2.refreshFilter === "function") {
+                            launcherRoot.ctrl.placeholder2.refreshFilter(p2Query)
+                        }
+                        return
+                    }
+
+                    if (trimmed.startsWith("placeholder3activatetext")) {
+                        launcherRoot.mode = "placeholder3"
+                        const p3Query = trimmed.substring(2).trim()
+                        if (launcherRoot.ctrl.placeholder3 && typeof launcherRoot.ctrl.placeholder3.refreshFilter === "function") {
+                            launcherRoot.ctrl.placeholder3.refreshFilter(p3Query)
+                        }
+                        return
+                    }
+
+
                     if (launcherRoot.ctrl.mathEngine.runCalculator(trimmed)) {
                         launcherRoot.mode = "math"
                         return
@@ -110,6 +144,17 @@
             /*
              * WINDOW STATE CONTROL ACTIONS (MODULATED FOR COMPOSITOR DRIVEN FOCUS GRABS)
              */
+
+            Component.onCompleted: {
+                appsLoader.active = true
+            }
+
+            function closeOverlay() {
+                launcherRoot.mode = ""
+                launcherWindow.visible = false
+            }
+
+//LAUNCHER
             function openLauncher() {
                 launcherRoot.mode = "apps"
                 searchField.clear()
@@ -118,10 +163,11 @@
                 searchField.forceActiveFocus()
             }
 
-            Component.onCompleted: {
-                appsLoader.active = true
+            function toggleLauncher() {
+                if (launcherRoot.mode === "apps" && launcherWindow.visible) launcherRoot.closeOverlay()
+                    else launcherRoot.openLauncher()
             }
-
+//Clipboard
             function openClipboard() {
                 launcherRoot.mode = "clipboard"
                 searchField.clear()
@@ -130,6 +176,12 @@
                 searchField.forceActiveFocus()
             }
 
+            function toggleClipboard() {
+                if (launcherRoot.mode === "clipboard" && launcherWindow.visible) launcherRoot.closeOverlay()
+                    else launcherRoot.openClipboard()
+            }
+
+//Dictionary
             function openDictionary(word) {
                 launcherRoot.mode = "dictionary"
                 searchField.text = word || ""
@@ -138,24 +190,36 @@
                 searchField.forceActiveFocus()
             }
 
-            function closeOverlay() {
-                launcherRoot.mode = ""
-                launcherWindow.visible = false
+//Placeholders
+            function togglePlaceholder1() {
+                if (launcherRoot.mode === "placeholder1" && launcherWindow.visible) {
+                    launcherRoot.closeOverlay()
+                } else {
+                    launcherRoot.openPlaceholder1()
+                }
             }
 
-            function toggleLauncher() {
-                if (launcherRoot.mode === "apps" && launcherWindow.visible) launcherRoot.closeOverlay()
-                    else launcherRoot.openLauncher()
+            function togglePlaceholder2() {
+                if (launcherRoot.mode === "placeholder2" && launcherWindow.visible) {
+                    launcherRoot.closeOverlay()
+                } else {
+                    launcherRoot.openPlaceholder2()
+                }
             }
 
-            function toggleClipboard() {
-                if (launcherRoot.mode === "clipboard" && launcherWindow.visible) launcherRoot.closeOverlay()
-                    else launcherRoot.openClipboard()
+            function togglePlaceholder3() {
+                if (launcherRoot.mode === "placeholder3" && launcherWindow.visible) {
+                    launcherRoot.closeOverlay()
+                } else {
+                    launcherRoot.openPlaceholder3()
+                }
             }
+
 
             /*
              * IPC CHANNELS
              */
+
             IpcHandler {
                 target: "launcher"
                 function open() {
@@ -455,7 +519,6 @@
 
                         onLoaded: {
                             if (item && launcherRoot.ctrl.startPage) {
-                                // FIXED: Synchronized index extraction offset to pass down data seamlessly
                                 item.updateSearch(searchDebounceTimer.pendingText.substring(1).trim())
                             }
                         }
@@ -471,23 +534,19 @@
                         active: launcherRoot.mode === "unicode"
                         visible: active
                         width: parent.width
-                        height: parent.height // FIX: Changed from contentHeight to prevent layout loops
+                        height: parent.height
 
-                        // FIX: Removed the invalid "Component { ... }" wrapper.
-                        // Loader accepts the topmost visual Item directly when using sourceComponent inline.
                         sourceComponent: ListView {
                             id: unicodeListView
                             clip: true
                             cacheBuffer: 800
                             spacing: 20
 
-                            // FIX: Force focus so arrow keys work immediately when the mode switches
                             focus: true
 
                             model: launcherRoot.ctrl.unicodeSearch.filteredUnicodeItems
                             currentIndex: launcherRoot.ctrl.unicodeSearch.selectedIndex
 
-                            // FIX: Update the backend index if the user scrolls/navigates via ListView
                             onCurrentIndexChanged: {
                                 launcherRoot.ctrl.unicodeSearch.selectedIndex = currentIndex
                             }
@@ -798,6 +857,8 @@
                             }
                         }
                     }
+
+
                     /*
                      * DICATIONARY LOADER
                      */
@@ -870,6 +931,8 @@
                             }
                         }
                     }
+
+
                     /*
                      * MATH LOADER
                      */
@@ -945,6 +1008,45 @@
                             }
                         }
                     }
+
+
+
+                    /*
+                     * PLACEHOLDER 1 LOADER
+                     */
+                    Loader {
+                        id: placeholder1Loader
+                        active: launcherRoot.mode === "placeholder1"
+                        visible: active
+                        width: parent.width
+                        height: parent.contentHeight
+                        source: "Placeholder1.qml"
+                    }
+
+                    /*
+                     * PLACEHOLDER 2 LOADER
+                     */
+                    Loader {
+                        id: placeholder2Loader
+                        active: launcherRoot.mode === "placeholder2"
+                        visible: active
+                        width: parent.width
+                        height: parent.contentHeight
+                        source: "Placeholder2.qml"
+                    }
+
+                    /*
+                     * PLACEHOLDER 3 LOADER
+                     */
+                    Loader {
+                        id: placeholder3Loader
+                        active: launcherRoot.mode === "placeholder3"
+                        visible: active
+                        width: parent.width
+                        height: parent.contentHeight
+                        source: "Placeholder3.qml"
+                    }
+
                 }
             }
         }

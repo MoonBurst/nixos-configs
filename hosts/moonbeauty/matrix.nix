@@ -165,7 +165,7 @@ in
         { addr = "[::]"; port = 80; }
       ];
       extraConfig = ''
-        client_max_body_size 10M;
+        client_max_body_size 30M;
         access_log off;
       '';
       locations = {
@@ -179,16 +179,21 @@ in
           add_header Access-Control-Allow-Origin *;
           return 200 "{\"m.homeserver\":{\"base_url\":\"https://moonburst.net\"},\"org.matrix.msc4143.rtc_foci\":[{\"type\":\"livekit\",\"livekit_service_url\":\"https://matrix.org\"}]}";
         '';
-        "/_matrix/media" = {
-          proxyPass = "http://127.0.0.1:6167";
-          proxyWebsockets = true;
-          extraConfig = ''
-            proxy_set_header Host $host;
-            proxy_buffering off;
-            proxy_pass_header Authorization;
-            proxy_pass_header Content-Type;
-          '';
-        };
+     "/_matrix/media" = {
+        proxyPass = "http://127.0.0.1:6167";
+        proxyWebsockets = true;
+        extraConfig = ''
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto https;
+          proxy_pass_header Authorization;
+          proxy_pass_header Content-Type;
+          proxy_buffering off;
+          proxy_read_timeout 600s;
+          proxy_send_timeout 600s;
+        '';
+      };
         "/_matrix" = {
           proxyPass = "http://127.0.0.1:6167";
           proxyWebsockets = true;
