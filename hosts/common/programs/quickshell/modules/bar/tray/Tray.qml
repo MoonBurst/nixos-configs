@@ -26,7 +26,7 @@ Item {
         border.width: shell.theme.globalBorderWidth
 
         width: trayLayoutRow.width + 16
-        height: 32
+       height: parent.height
         anchors.verticalCenter: parent.verticalCenter
         anchors.left: parent.left
 
