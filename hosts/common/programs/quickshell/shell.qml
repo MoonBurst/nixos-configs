@@ -69,7 +69,7 @@ ShellRoot {
         anchors.left: true
         anchors.right: true
 
-        implicitHeight: shell.theme.globalPadding + 50
+        implicitHeight: shell.theme.globalPadding + 25
 
         color: "transparent"
 
@@ -80,7 +80,7 @@ ShellRoot {
             id: mainBarContainer
 
             anchors.fill: parent
-            anchors.topMargin: shell.theme.globalPadding
+         //   anchors.topMargin: shell.theme.globalPadding
             anchors.leftMargin: shell.theme.globalPadding / 2
             anchors.rightMargin: shell.theme.globalPadding / 2
 
