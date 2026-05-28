@@ -33,7 +33,7 @@ Rectangle {
     Text {
         id: clockText
         anchors.fill: parent
-        anchors.margins: 4
+        anchors.margins: shell.theme.globalPadding
         color: shell.theme.base05
         font.family: shell.theme.fontFamily
         font.pixelSize: shell.theme.globalFontSize

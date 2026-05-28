@@ -81,8 +81,8 @@ ShellRoot {
 
             anchors.fill: parent
             anchors.topMargin: shell.theme.globalPadding
-            anchors.leftMargin: shell.theme.globalPadding
-            anchors.rightMargin: shell.theme.globalPadding
+            anchors.leftMargin: shell.theme.globalPadding / 2
+            anchors.rightMargin: shell.theme.globalPadding / 2
 
             color: shell.theme.base00
 
@@ -119,7 +119,7 @@ ShellRoot {
                 id: musicContainer
 
                 anchors.left: calendarContainer.right
-                anchors.leftMargin: shell.theme.globalPadding
+                anchors.leftMargin: shell.theme.globalPadding / 2
                 anchors.verticalCenter: parent.verticalCenter
 
                 width: 200
@@ -136,7 +136,7 @@ ShellRoot {
                 id: alarmContainer
 
                 anchors.left: musicContainer.right
-                anchors.leftMargin: 10
+                anchors.leftMargin: shell.theme.globalPadding / 2
                 anchors.verticalCenter: parent.verticalCenter
 
                 width: 140
@@ -152,10 +152,10 @@ ShellRoot {
                 id: weatherContainer
 
                 anchors.left: alarmContainer.right
-                anchors.leftMargin: 10
+                anchors.leftMargin: shell.theme.globalPadding / 2
                 anchors.verticalCenter: parent.verticalCenter
 
-                width: 140
+                width: 100
                 height: mainBarContainer.capsuleHeight
 
                 WeatherCapsule.Weather {
@@ -168,7 +168,7 @@ ShellRoot {
                 id: borgContainer
 
                 anchors.left: weatherContainer.right
-                anchors.leftMargin: 10
+                anchors.leftMargin: shell.theme.globalPadding / 2
                 anchors.verticalCenter: parent.verticalCenter
 
                 width: 140
@@ -205,7 +205,7 @@ ShellRoot {
                 id: audioContainer
 
                 anchors.right: clockContainer.left
-                anchors.rightMargin: 10
+                anchors.rightMargin: shell.theme.globalPadding / 2
                 anchors.verticalCenter: parent.verticalCenter
 
                 width: 140
@@ -221,7 +221,7 @@ ShellRoot {
                 id: micContainer
 
                 anchors.left: clockContainer.right
-                anchors.leftMargin: 10
+                anchors.leftMargin: shell.theme.globalPadding / 2
                 anchors.verticalCenter: parent.verticalCenter
 
                 width: 140
@@ -257,7 +257,7 @@ ShellRoot {
             Item {
                 id: ramContainer
                 anchors.right: trayContainer.left
-                anchors.rightMargin: 10
+                anchors.rightMargin: shell.theme.globalPadding / 2
                 anchors.verticalCenter: parent.verticalCenter
                 width: 175
                 height: mainBarContainer.capsuleHeight
@@ -271,7 +271,7 @@ ShellRoot {
                 id: gpuContainer
 
                 anchors.right: ramContainer.left
-                anchors.rightMargin: 10
+                anchors.rightMargin: shell.theme.globalPadding / 2
                 anchors.verticalCenter: parent.verticalCenter
 
                 width: 275
@@ -287,7 +287,7 @@ ShellRoot {
                 id: cpuContainer
 
                 anchors.right: gpuContainer.left
-                anchors.rightMargin: 10
+                anchors.rightMargin: shell.theme.globalPadding / 2
                 anchors.verticalCenter: parent.verticalCenter
 
                 width: 175
@@ -303,7 +303,7 @@ ShellRoot {
                 id: netContainer
 
                 anchors.right: cpuContainer.left
-                anchors.rightMargin: 10
+                anchors.rightMargin: shell.theme.globalPadding / 2
                 anchors.verticalCenter: parent.verticalCenter
 
                 width: 200

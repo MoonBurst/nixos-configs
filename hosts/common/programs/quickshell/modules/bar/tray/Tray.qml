@@ -72,7 +72,7 @@ Item {
                         WlrLayershell.layer: WlrLayer.Overlay
                         WlrLayershell.keyboardFocus: menuPopup.visible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
-                        margins.top: 55 + shell.theme.globalPadding
+                        margins.top: shell.theme.globalPadding + 55
                         margins.right: {
                             if (!barWindow || !barWindow.contentItem) return shell.theme.globalPadding;
                             var globalIconPos = trayItem.mapToItem(barWindow.contentItem, 0, 0);
@@ -147,7 +147,7 @@ Item {
                                         Text {
                                             anchors.verticalCenter: parent.verticalCenter
                                             anchors.left: parent.left
-                                            anchors.leftMargin: 10
+                                            anchors.leftMargin: globalPadding
                                             text: modelData.text || ""
                                             color:  shell.theme.base05
 

@@ -52,7 +52,7 @@ Rectangle {
     Text {
         id: musicText
         anchors.fill: parent
-        anchors.margins: 5
+        anchors.margins: shell.theme.globalPadding /4
         color: shell.theme.base05
         text: "🎵 " + musicBox.trackStr
         font.family: shell.theme.fontFamily
@@ -126,7 +126,6 @@ Rectangle {
                 return targetLeftMargin;
             }
 
-            // FIXED: Block event bubble-up to prevent click-outside dismissal
             MouseArea {
                 anchors.fill: parent
                 propagateComposedEvents: false

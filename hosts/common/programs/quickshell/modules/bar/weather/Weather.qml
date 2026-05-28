@@ -131,20 +131,20 @@ Rectangle {
         implicitHeight: 520
         color: "transparent"
 
-        WlrLayershell.margins.top: 55 + shell.theme.globalPadding
+        WlrLayershell.margins.top:shell.theme.globalPadding + 55
 
         // FIXED: Uses pure property expressions tracking layout positions to eliminate drift for good
         WlrLayershell.margins.left: {
             if (!weatherCapsule.barWindow) return 0;
 
-            // 1. Start with outer margin and the screen gap margin offset inside mainBarContainer
-            var leftOffsetAbsolute = shell.theme.globalPadding + shell.theme.globalPadding;
+
+            var leftOffsetAbsolute = shell.theme.globalPadding * 2;
 
             // 2. Add the physical width metrics of preceding elements built out to the left side
             var musicWidth = 200; // width of musicContainer
-            var musicPadding = 10; // anchors.leftMargin of alarmContainer
+            var musicPadding = shell.theme.globalPadding; // anchors.leftMargin of alarmContainer
             var alarmWidth = 140; // width of alarmContainer
-            var weatherPadding = 10; // anchors.leftMargin of weatherContainer
+            var weatherPadding = shell.theme.globalPadding * 10; // anchors.leftMargin of weatherContainer
 
             // 3. Accumulate up to the starting boundary point of the weather capsule card surface
             var weatherStartAbsolute = leftOffsetAbsolute + musicWidth + musicPadding + alarmWidth + weatherPadding;

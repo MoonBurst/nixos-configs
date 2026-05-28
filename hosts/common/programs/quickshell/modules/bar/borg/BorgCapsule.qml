@@ -75,7 +75,7 @@ Rectangle {
         id: borgText
 
         anchors.fill: parent
-        anchors.margins: 5
+        anchors.margins: shell.theme.globalPadding
 
         // Clear, adaptive text formatting to fit your 140px panel width
         text: {

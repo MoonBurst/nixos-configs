@@ -188,7 +188,7 @@ Rectangle {
         anchors.right: false
         anchors.bottom: false
 
-        WlrLayershell.margins.top: 55 + shell.theme.globalPadding
+        WlrLayershell.margins.top: shell.theme.globalPadding + 55
         WlrLayershell.margins.left: alarmBox.globalX
 
         implicitWidth: 300
@@ -218,7 +218,7 @@ Rectangle {
                     id: alarmTitle
                     text: "Set Native System Alarm"
                     font.family: shell.theme.fontFamily
-                    font.pixelSize: shell.theme.globalFontSize - 2
+                    font.pixelSize: shell.theme.globalFontSize
                     font.bold: true
                     color: shell.theme.base05
                     horizontalAlignment: Text.AlignHCenter

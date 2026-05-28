@@ -211,7 +211,7 @@
 
                 Column {
                     anchors.fill: parent
-                    anchors.margins: 20
+                    anchors.margins: shell.theme.globalPadding
                     spacing: 20
 
                     readonly property real contentHeight: height - searchField.height - spacing
@@ -502,7 +502,7 @@
 
                                 Row {
                                     anchors.fill: parent
-                                    anchors.margins: 20
+                                    anchors.margins: shell.theme.globalPadding
                                     spacing: 20
 
                                     Text {
@@ -565,7 +565,7 @@
 
                                     Row {
                                         anchors.fill: parent
-                                        anchors.margins: 20
+                                        anchors.margins: shell.theme.globalPadding
                                         spacing: 20
 
                                         Image {
@@ -668,7 +668,7 @@
 
                                         Item {
                                             anchors.fill: parent
-                                            anchors.margins: 12
+                                            anchors.margins: shell.theme.globalPadding
 
                                             Image {
                                                 id: listEntryImageComponent
@@ -739,7 +739,7 @@
 
                                     Image {
                                         anchors.fill: parent
-                                        anchors.margins: 20
+                                        anchors.margins: shell.theme.globalPadding
 
                                         visible: (
                                             previewPanel.selectedItem &&
@@ -762,7 +762,7 @@
                                         id: textPreview
 
                                         anchors.fill: parent
-                                        anchors.margins: 20
+                                        anchors.margins: shell.theme.globalPadding
 
                                         visible: (
                                             previewPanel.selectedItem &&
@@ -844,7 +844,7 @@
                                         id: definitionText
 
                                         anchors.fill: parent
-                                        anchors.margins: 20
+                                        anchors.margins: shell.theme.globalPadding
 
                                         text: modelData.text
 
@@ -891,7 +891,7 @@
                                     id: mathFlow
 
                                     anchors.fill: parent
-                                    anchors.margins: 20
+                                    anchors.margins: shell.theme.globalPadding
 
                                     spacing: 10
 

@@ -64,7 +64,7 @@ Rectangle {
     Text {
         id: netText
         anchors.fill: parent
-        anchors.margins: 5
+        anchors.margins: shell.theme.globalPadding
         textFormat: Text.RichText
         font.family: shell.theme.fontFamily
         font.pixelSize: shell.theme.globalFontSize
@@ -73,7 +73,6 @@ Rectangle {
         verticalAlignment: Text.AlignVCenter
 
         text: {
-            // FIXED: Pointed style colors to your global shell theme contexts
             const greenColor = shell.theme.base0C.toString();
             const yellowColor = shell.theme.base05.toString();
 

@@ -53,7 +53,7 @@ Item {
 
         Column {
             anchors.fill: parent
-            anchors.margins: 20
+            anchors.margins: shell.theme.globalPadding
             spacing: 14
 
             Rectangle {

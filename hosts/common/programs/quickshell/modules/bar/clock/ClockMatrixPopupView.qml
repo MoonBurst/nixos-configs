@@ -47,7 +47,7 @@ Rectangle {
 
         Column {
             anchors.fill: parent
-            anchors.margins: 24
+            anchors.margins: shell.theme.globalPadding
             spacing: 24
 
             // Centered Header Title enclosed inside its own standalone system bubble
@@ -136,7 +136,7 @@ Rectangle {
                             anchors.top: parent.top
                             anchors.left: parent.left
                             anchors.right: parent.right
-                            anchors.margins: 12
+                            anchors.margins: shell.theme.globalPadding
                             spacing: 14
 
                             Text {
@@ -165,7 +165,7 @@ Rectangle {
                                         anchors.left: parent.left
                                         anchors.verticalCenter: parent.verticalCenter
                                         anchors.right: timeDisplay.left
-                                        anchors.rightMargin: 8
+                                        anchors.rightMargin: shell.theme.globalPadding
                                         elide: Text.ElideRight
 
                                         font.pixelSize: 25

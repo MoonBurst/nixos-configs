@@ -54,7 +54,7 @@ Rectangle {
     Text {
         id: cpuText
         anchors.fill: parent
-        anchors.margins: 5
+        anchors.margins: shell.theme.globalPadding
         textFormat: Text.RichText
         font.family: shell.theme.fontFamily
         font.pixelSize: shell.theme.globalFontSize
@@ -87,10 +87,8 @@ Rectangle {
         anchors.top: true
         anchors.right: true
 
-        // FIXED: Dropdown shifts pull accurately from global padding profiles
-        WlrLayershell.margins.top: 55 + shell.theme.globalPadding
+        WlrLayershell.margins.top: shell.theme.globalPadding + 55
 
-        // FIXED: Correctly uses cpuBox.barWindow to calculate precise horizontal layout offsets
         WlrLayershell.margins.right: cpuBox.barWindow ? Math.max(10 + shell.theme.globalPadding, cpuBox.barWindow.width - cpuBox.mapToItem(null, 0, 0).x - (cpuBox.width / 2) - (cpuBox.tooltipWidth / 2)) : 10
 
         implicitWidth: cpuBox.tooltipWidth

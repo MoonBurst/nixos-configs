@@ -55,7 +55,7 @@ Rectangle {
     Text {
         id: ramText
         anchors.fill: parent
-        anchors.margins: 5
+        anchors.margins: globalPadding
         textFormat: Text.RichText
         font.family: shell.theme.fontFamily
         font.pixelSize: shell.theme.globalFontSize
@@ -101,8 +101,8 @@ Rectangle {
         anchors.right: true
 
         // FIXED: Dropdown alignment offsets pull natively from global layout padding profiles
-        WlrLayershell.margins.top: 55 + shell.theme.globalPadding
-        WlrLayershell.margins.right: 15 + shell.theme.globalPadding
+        WlrLayershell.margins.top: shell.theme.globalPadding + 55
+        WlrLayershell.margins.right: shell.theme.globalPadding + 15
 
         implicitWidth: 460
         implicitHeight: 380
