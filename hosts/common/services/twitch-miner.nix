@@ -25,7 +25,7 @@
           "/var/lib/twitch-drops-miner/main:/TwitchDropsMiner/config"
         ];
         environment = {
-          TZ = "America/New_York"; # Change this string value to match your local timezone
+       TZ = "America/Chicago"; # Change this string value to match your local timezone
         };
       };
 
@@ -41,7 +41,7 @@
           "/var/lib/twitch-drops-miner/berrydrop:/TwitchDropsMiner/config"
         ];
         environment = {
-          TZ = "America/New_York"; # Change this string value to match your local timezone
+          TZ = "America/Chicago"; # Change this string value to match your local timezone
         };
       };
 

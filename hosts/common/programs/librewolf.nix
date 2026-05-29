@@ -19,7 +19,6 @@ in
     programs.librewolf = {
       enable = true;
 
-
       profiles.default = {
         id = 0;
         name = "default";
@@ -54,11 +53,13 @@ in
           "privacy.resistFingerprinting" = false;
           "extensions.autoDisableScopes" = 0;
           "privacy.fingerprintingProtection" = true;
-          "privacy.fingerprintingProtection.overrides" = "+AllTargets,-CSSPrefersColorScheme";
+
+          # This line tells Firefox to protect everything EXCEPT your local timezone clock
+          "privacy.fingerprintingProtection.overrides" = "+AllTargets,-CSSPrefersColorScheme,-JSDateTimeUTC";
+
           "layout.css.prefers-color-scheme.content-override" = 0;
           "ui.systemUsesDarkTheme" = 1;
           "extensions.quarantinedDomains.enabled" = false;
-
         };
       };
     };
@@ -115,12 +116,15 @@ in
               --content-text-on-ui: #ffffff !important;
           }
 
+          /* FIXED: Removed the border-color assignments and injected complete outline/shadow squashing blocks */
           .CX_9D, .qWqk3,
           div[style*="0, 184, 255"], div[style*="00b8ff"],
           [class*="chat_"], [class*="bubble_"], [class*="message_"] {
               background-color: #'' + stylixColors.base0B + '' !important;
-              border-color: #'' + stylixColors.base0B + '' !important;
               color: #ffffff !important;
+              border: none !important;
+              outline: none !important;
+              box-shadow: none !important;
           }
 
           /* HIGH-PRIORITY FONTS: CRITICAL RESIZING SCALE MODIFIED TO 25PX FOR SANDBOX TESTING */
@@ -158,7 +162,7 @@ in
           }
 
           .j17Mp, .be6E9 {
-              width: 1500px !important;
+              width: 1800px !important;
               max-width: 95vw !important;
               min-height: calc(50vh) !important;
               max-height: none !important;
