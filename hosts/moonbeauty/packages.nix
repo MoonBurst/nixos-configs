@@ -3,7 +3,7 @@
 
 let
   unstable = import nixpkgs-unstable {
-    system = pkgs.system;
+   system = pkgs.stdenv.hostPlatform.system;
     config.allowUnfree = true;
   };
 

@@ -2,7 +2,7 @@
 
 let
   unstablePkgs = if args ? inputs.nixpkgs-unstable
-    then args.inputs.nixpkgs-unstable.legacyPackages.${pkgs.system}
+  then args.inputs.nixpkgs-unstable.legacyPackages.${pkgs.stdenv.hostPlatform.system}
     else pkgs;
 
   registrationPath = "/run/discord-registration.yaml";

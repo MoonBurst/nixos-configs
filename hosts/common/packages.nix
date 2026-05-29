@@ -76,7 +76,7 @@
     mkpasswd
     ssh-to-age
 
-    inputs.moon-numix.packages.${pkgs.system}.default
+    inputs.moon-numix.packages.${pkgs.stdenv.hostPlatform.system}.default
     pkgs.kitty.terminfo
     # --- Fonts ---
     noto-fonts

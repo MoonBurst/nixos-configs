@@ -59,8 +59,8 @@ in
   };
 
   home-manager.users.moonburst = {
-    home.file.".local/share/icons/Numix".source = "${inputs.moon-numix.packages.${pkgs.system}.default}/share/icons/Numix";
-    home.file.".local/share/icons/Numix-Light".source = "${inputs.moon-numix.packages.${pkgs.system}.default}/share/icons/Numix-Light";
+    home.file.".local/share/icons/Numix".source = "${inputs.moon-numix.packages.${pkgs.stdenv.hostPlatform.system}.default}/share/icons/Numix";
+    home.file.".local/share/icons/Numix-Light".source = "${inputs.moon-numix.packages.${pkgs.stdenv.hostPlatform.system}.default}/share/icons/Numix-Light";
 
     home.file."nix/hosts/common/programs/quickshell/Theme.qml".text = ''
       import QtQuick 2.0

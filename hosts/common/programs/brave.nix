@@ -16,7 +16,6 @@ let
   extensionIds = [
     browserpassID
     "gighmmpiobklfepjocnamgkkbiglidom"
-    "bchhlccjhoedhhegglilngpbnldfcidc"
     "eimadpbcbfnmbkopoojfekhnkhdbieeh"
     "mnjggcdmjocbbbhaepdhchncahnbgone"
     "clngdbkpkpeebahjckkjfobafhncgmne"

@@ -14,6 +14,7 @@
   #  ./programs/dunst/dunst.nix
   #  ./programs/waybar/default.nix
     ./programs/brave.nix
+    ./programs/librewolf.nix
     ./programs/audacious.nix
   #  ./programs/walker.nix
   ];
