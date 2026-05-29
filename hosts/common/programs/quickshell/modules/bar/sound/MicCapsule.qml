@@ -43,7 +43,6 @@ Rectangle {
                     mNum = "MUTED";
                 }
 
-                // FIXED: Restored the variable name 'parts' from the auto-corrected 'import' token
                 var micLabelColor = shell.theme.base0C;
                 var micStatusColor = isMuted ? shell.theme.base08 : shell.theme.base05;
 

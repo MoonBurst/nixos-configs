@@ -73,13 +73,13 @@ Rectangle {
         implicitHeight: 520
         color: "transparent"
 
-        // DYNAMIC TOP ALIGNMENT (Drops popover right below top bar surface line)
+        // Drops popover right below top bar surface line
         WlrLayershell.margins.top: {
             if (!clockBox.barWindow || typeof mainBarContainer === "undefined" || !mainBarContainer) return 100;
             return shell.theme.globalPadding + mainBarContainer.capsuleHeight + 8;
         }
 
-        // DYNAMIC LEFT ALIGNMENT (Centers matrix popover perfectly beneath active bar clock element)
+        // Centers matrix popover perfectly beneath active bar clock element
         WlrLayershell.margins.left: {
             if (!clockBox.barWindow || typeof clockContainer === "undefined" || !clockContainer) return 100;
 

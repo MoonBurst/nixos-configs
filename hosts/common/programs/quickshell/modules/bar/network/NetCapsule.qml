@@ -6,7 +6,7 @@ import Quickshell.Io
 Rectangle {
     id: netBox
 
-    // FIXED: Layout frames and outlines natively scale to match your global design rule profiles
+    // Layout frames and outlines natively scale to match your global design rule profiles
     width: 200
     height: parent.height
     radius: shell.theme.defaultCardRadius

@@ -10,7 +10,6 @@ Rectangle {
     property int tooltipWidth: 320
     property int tooltipHeight: 400
 
-    // FIXED: Bounds, outlines, and metrics scale cleanly to match your global design specifications
     width: 175
     height: parent.height
     radius: shell.theme.defaultCardRadius
@@ -43,12 +42,16 @@ Rectangle {
     Process {
         id: topProcFetcher
         running: false
-        command: ["sh", "-c", "ps -eo comm,%cpu --sort=-%cpu | head -n 11 | awk 'NR>1 {printf \"%-13s %6s%%\\n\", substr($1,1,13), $2}'"]
+        command: ["sh", "-c", "ps -eo comm,%cpu --sort=-%cpu | head -n 11 | awk 'NR>1 {printf \"%-15s %6s%%\\n\", substr($1,1,15), $2}'"]
         stdout: SplitParser {
             splitMarker: "\n"
             onRead: data => { if (data && data.trim() !== "") cpuBox.textAccumulatorBuffer += data + "\n"; }
         }
-        onExited: { if (cpuBox.textAccumulatorBuffer.trim() !== "") cpuBox.topProcessesText = cpuBox.textAccumulatorBuffer.trim(); }
+        onExited: {
+            if (cpuBox.textAccumulatorBuffer.trim() !== "") {
+                cpuBox.topProcessesText = cpuBox.textAccumulatorBuffer.trim();
+            }
+        }
     }
 
     Text {
@@ -72,7 +75,13 @@ Rectangle {
 
     HoverHandler {
         id: cpuHoverTracker
-        onHoveredChanged: { if (hovered) { cpuBox.textAccumulatorBuffer = ""; topProcFetcher.running = false; topProcFetcher.running = true; } }
+        onHoveredChanged: {
+            if (hovered) {
+                cpuBox.textAccumulatorBuffer = "";
+                topProcFetcher.running = false;
+                topProcFetcher.running = true;
+            }
+        }
     }
 
     PanelWindow {
@@ -88,7 +97,6 @@ Rectangle {
         anchors.right: true
 
         WlrLayershell.margins.top: shell.theme.globalPadding + 55
-
         WlrLayershell.margins.right: cpuBox.barWindow ? Math.max(10 + shell.theme.globalPadding, cpuBox.barWindow.width - cpuBox.mapToItem(null, 0, 0).x - (cpuBox.width / 2) - (cpuBox.tooltipWidth / 2)) : 10
 
         implicitWidth: cpuBox.tooltipWidth
@@ -108,7 +116,7 @@ Rectangle {
                 spacing: 10
 
                 Text {
-                    text: "📊 TOP PROCESSORS LOAD:"
+                    text: "ACTIVE CPU CLIENTS"
                     font.family: shell.theme.fontFamily
                     font.pixelSize: shell.theme.globalFontSize
                     font.bold: true
@@ -125,8 +133,8 @@ Rectangle {
 
                     Text {
                         id: processDisplayLines
-                        text: cpuBox.topProcessesText
-                        font.family: shell.theme.fontFamily
+                        textFormat: Text.RichText
+                        text: "<pre style='margin: 0; font-family: monospace;'>" + cpuBox.topProcessesText + "</pre>"
                         font.pixelSize: shell.theme.globalFontSize
                         color: shell.theme.base05
                         lineHeight: 1.15
@@ -142,7 +150,11 @@ Rectangle {
         onTriggered: {
             cpuStatsProc.running = false;
             cpuStatsProc.running = true;
-            if (cpuHoverTracker.hovered) { cpuBox.textAccumulatorBuffer = ""; topProcFetcher.running = false; topProcFetcher.running = true; }
+            if (cpuHoverTracker.hovered) {
+                cpuBox.textAccumulatorBuffer = "";
+                topProcFetcher.running = false;
+                topProcFetcher.running = true;
+            }
         }
     }
 }

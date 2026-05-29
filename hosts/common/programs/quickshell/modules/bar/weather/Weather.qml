@@ -133,23 +133,22 @@ Rectangle {
 
         WlrLayershell.margins.top:shell.theme.globalPadding + 55
 
-        // FIXED: Uses pure property expressions tracking layout positions to eliminate drift for good
         WlrLayershell.margins.left: {
             if (!weatherCapsule.barWindow) return 0;
 
 
             var leftOffsetAbsolute = shell.theme.globalPadding * 2;
 
-            // 2. Add the physical width metrics of preceding elements built out to the left side
+            // Add the physical width metrics of preceding elements built out to the left side
             var musicWidth = 200; // width of musicContainer
             var musicPadding = shell.theme.globalPadding; // anchors.leftMargin of alarmContainer
             var alarmWidth = 140; // width of alarmContainer
             var weatherPadding = shell.theme.globalPadding * 10; // anchors.leftMargin of weatherContainer
 
-            // 3. Accumulate up to the starting boundary point of the weather capsule card surface
+            //  Accumulate up to the starting boundary point of the weather capsule card surface
             var weatherStartAbsolute = leftOffsetAbsolute + musicWidth + musicPadding + alarmWidth + weatherPadding;
 
-            // 4. Center the tooltip dropdown panel precisely under the weather box width
+            // Center the tooltip dropdown panel precisely under the weather box width
             var centerPoint = weatherStartAbsolute + (weatherCapsule.width / 2);
             return Math.round(centerPoint - (implicitWidth / 2));
         }

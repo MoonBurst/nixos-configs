@@ -62,7 +62,7 @@ Rectangle {
 
             while ((match = regex.exec(rawTimer)) !== null) {
                 var num = parseInt(match[1], 10); // Extract group 1 (digits)
-                var unit = match[2];              // FIXED: Extract group 2 (h/m/s character)
+                var unit = match[2];              // Extract group 2 (h/m/s character)
 
                 if (unit === 'h') totalSeconds += num * 3600;
                 if (unit === 'm') totalSeconds += num * 60;
@@ -83,8 +83,8 @@ Rectangle {
             var cleanMatch = /^(\d{3,4})(AM|PM)?$/.exec(timeStr);
 
             if (cleanMatch !== null) {
-                var digits = cleanMatch[1]; // FIXED: Correctly extract regex groups
-                var ampm = cleanMatch[2];   // FIXED: Correctly extract regex groups
+                var digits = cleanMatch[1];
+                var ampm = cleanMatch[2];
                 var targetHours = 0;
                 var targetMinutes = 0;
 

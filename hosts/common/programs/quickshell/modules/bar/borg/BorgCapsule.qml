@@ -77,7 +77,7 @@ Rectangle {
         anchors.fill: parent
         anchors.margins: shell.theme.globalPadding
 
-        // Clear, adaptive text formatting to fit your 140px panel width
+        // Clear, adaptive text formatting to fit  panel width
         text: {
             if (borgBox.borgProgress === "Idx...") {
                 return "<font color='" + shell.theme.base05.toString() + "'>Indexing</font>";

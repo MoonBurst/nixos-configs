@@ -108,7 +108,7 @@ ColumnLayout {
             selectedTextColor: "black"
             horizontalAlignment: Text.AlignHCenter
 
-            // CRITICAL FIX: If the user types a countdown, clear the target clock field
+            //  If the user types a countdown, clear the target clock field
             onTextChanged: {
                 if (activeFocus && text.trim() !== "") {
                     targetTimeField.text = "";
@@ -173,7 +173,7 @@ ColumnLayout {
             selectedTextColor: "black"
             horizontalAlignment: Text.AlignHCenter
 
-            // CRITICAL FIX: If the user explicitly clicks/tabs here and types, wipe the countdown field
+            // If the user explicitly clicks/tabs here and types, wipe the countdown field
             onTextChanged: {
                 if (activeFocus && text.trim() !== "") {
                     countdownField.text = "";

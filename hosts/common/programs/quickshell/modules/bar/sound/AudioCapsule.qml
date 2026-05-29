@@ -6,11 +6,9 @@ import Quickshell.Io
 Rectangle {
     id: audioBox
 
-    // FIXED: Registered the missing barWindow property definition to clear the shell boot crash
     property var barWindow: null
     property string audioDisplayText: "Audio: --%"
 
-    // FIXED: Geometric constraints scale dynamically to match your global design specifications
     width: 140
     height: parent.height
     radius: shell.theme.defaultCardRadius
@@ -37,7 +35,6 @@ Rectangle {
                     vNum = Math.round(val * 100) + "%";
                 }
 
-                // FIXED: Directing audio colors securely to your system-wide color scheme tokens
                 var textColor = isMuted ? shell.theme.base08.toString() : shell.theme.base05.toString();
                 var tagColor = shell.theme.base05.toString();
 
