@@ -16,13 +16,16 @@
     ./programs/brave.nix
     ./programs/librewolf.nix
     ./programs/audacious.nix
+
   #  ./programs/walker.nix
   ];
 
   home-manager.users.moonburst = {
     imports = [
       ./programs/sway/sway.nix
-    ];
+      ./programs/ghostty.nix
+      ./programs/himalaya.nix
+      ];
 
    # xdg.configFile."qt5ct/qt5ct.conf".force = true;
     xdg.configFile."qt6ct/qt6ct.conf".force = true;

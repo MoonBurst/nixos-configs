@@ -71,5 +71,5 @@ systemd.user.slices."app-steam" = {
 
 
 
-system.stateVersion = "25.11";
+system.stateVersion = "26.05";
 }

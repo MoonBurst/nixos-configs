@@ -100,7 +100,7 @@
     XDG_SESSION_DESKTOP = "sway";
     XDG_SESSION_TYPE = "wayland";
     EDITOR = "micro";
-    TERMINAL = "kitty";
+    TERMINAL = "ghostty";
     CARGO_HOME = "$HOME/.local/share/cargo";
     DOTNET_CLI_HOME = "$HOME/.local/share/dotnet";
     GNUPGHOME = "$HOME/.local/share/gnupg";

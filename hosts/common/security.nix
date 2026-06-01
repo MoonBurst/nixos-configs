@@ -22,7 +22,9 @@
       nextcloud_pass = { };
       weather_api_key.owner = "moonburst";
       weather_city.owner = "moonburst";
-    };
+      gmail_app_password.owner = "moonburst";
+      gmail_address.owner = "moonburst";
+      };
   };
 
   systemd.tmpfiles.rules = [

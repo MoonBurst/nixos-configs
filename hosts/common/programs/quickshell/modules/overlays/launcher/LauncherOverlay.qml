@@ -22,7 +22,7 @@
             // Performance Cache: Read-Only Evaluators
             readonly property bool isAppsOpen: mode === "apps"
             readonly property bool isClipboardOpen: mode === "clipboard"
-            readonly property bool isPlaceholder1Open: mode === "placeholder1"
+            readonly property bool isEmailOpen: mode === "Email"
             readonly property bool isPlaceholder2Open: mode === "placeholder2"
             readonly property bool isPlaceholder3Open: mode === "placeholder3"
 
@@ -45,7 +45,7 @@
                                 if (launcherRoot.mode === "math") return launcherRoot.ctrl.math
                                     if (launcherRoot.mode === "unicode") return launcherRoot.ctrl.unicodeSearch
                                         if (launcherRoot.mode === "search") return launcherRoot.ctrl.startPage
-                                            if (launcherRoot.mode === "placeholder1") return launcherRoot.ctrl.placeholder1
+                                            if (launcherRoot.mode === "email") return launcherRoot.ctrl.email
                                                 if (launcherRoot.mode === "placeholder2") return launcherRoot.ctrl.placeholder2
                                                     if (launcherRoot.mode === "placeholder3") return launcherRoot.ctrl.placeholder3
                                             return null
@@ -101,12 +101,17 @@
                         return
                     }
 
-                    if (trimmed.startsWith("placeholder1activatetext")) {
-                        launcherRoot.mode = "placeholder1"
-                        const p1Query = trimmed.substring(2).trim()
-                        if (launcherRoot.ctrl.placeholder1 && typeof launcherRoot.ctrl.placeholder1.refreshFilter === "function") {
-                            launcherRoot.ctrl.placeholder1.refreshFilter(p1Query)
+                    if (trimmed.startsWith("email")) {
+                        launcherRoot.mode = "Email"
+
+                        const p1Query = trimmed.substring(5).trim()
+
+                        if (launcherRoot.ctrl.email &&
+                            typeof launcherRoot.ctrl.email.refreshFilter === "function")
+                        {
+                            launcherRoot.ctrl.email.refreshFilter(p1Query)
                         }
+
                         return
                     }
 
@@ -191,11 +196,11 @@
             }
 
 //Placeholders
-            function togglePlaceholder1() {
-                if (launcherRoot.mode === "placeholder1" && launcherWindow.visible) {
+            function toggleEmail() {
+                if (launcherRoot.mode === "Email" && launcherWindow.visible) {
                     launcherRoot.closeOverlay()
                 } else {
-                    launcherRoot.openPlaceholder1()
+                    launcherRoot.openEmail()
                 }
             }
 
@@ -1012,15 +1017,26 @@
 
 
                     /*
-                     * PLACEHOLDER 1 LOADER
+                     * CLEANED EMAIL APPS DASHBOARD LOADER GATEWAY
                      */
                     Loader {
-                        id: placeholder1Loader
-                        active: launcherRoot.mode === "placeholder1"
+                        id: emailLoader
+                        active: launcherRoot.mode.toLowerCase() === "email"
                         visible: active
+
+                        // Maintain your clean system scaling proportions
                         width: parent.width
                         height: parent.contentHeight
-                        source: "Placeholder1.qml"
+
+                        // Seamlessly load your dedicated external workspace script file
+                        source: "Email.qml"
+
+                        // Automatically hooks keyboard focus straight down onto your script on load
+                        onLoaded: {
+                            if (item) {
+                                item.forceActiveFocus()
+                            }
+                        }
                     }
 
                     /*

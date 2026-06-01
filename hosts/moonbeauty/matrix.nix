@@ -164,6 +164,7 @@ in
         { addr = "0.0.0.0"; port = 80; }
         { addr = "[::]"; port = 80; }
       ];
+
       extraConfig = ''
         client_max_body_size 30M;
         access_log off;
@@ -233,12 +234,19 @@ in
     wantedBy = [ "multi-user.target" ];
     serviceConfig = {
       EnvironmentFile = config.sops.secrets.cloudflare_token.path;
-      ExecStart = lib.mkForce "${unstablePkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate run --protocol quic";
+
+      ExecStart = lib.mkForce ''
+        ${unstablePkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate run \
+          --protocol quic \
+          --http2-origin \
+          --origin-server-name moonburst.net
+      '';
       Restart = "always";
       RestartSec = "5s";
       User = "continuwuity";
     };
   };
+
 
   users.groups.continuwuity = {};
   users.users.continuwuity = {

@@ -6,7 +6,7 @@ let
     # ░░▀░░▀░▀░▀░▀░▀▀▀░▀░▀░▀▀░░▀▀▀░▀▀▀░▀▀▀
   super = "Mod4";
   alt = "Mod1";
-  term = "${pkgs.kitty}/bin/kitty";
+  term = "${pkgs.ghostty}/bin/ghostty";
   explorer = "${pkgs.nemo}/bin/nemo";
   music = "${pkgs.audacious}/bin/audacious";
   launchpad = "walker";

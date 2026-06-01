@@ -1,7 +1,7 @@
 {
   description = "Moonburst's NixOS flake config";
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
     nur.url = "github:nix-community/NUR";
     stylix = {
@@ -9,7 +9,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     home-manager = {
-      url = "github:nix-community/home-manager/release-25.11";
+      url = "github:nix-community/home-manager/release-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     flake-parts.url = "github:hercules-ci/flake-parts";
@@ -49,7 +49,7 @@
                 home-manager.extraSpecialArgs = { inherit inputs; inherit (inputs) nixpkgs-unstable; };
                 home-manager.users.moonburst = { pkgs, ... }: {
                   imports = [ ./hosts/moonbeauty/packages.nix ];
-                  home.stateVersion = "25.11";
+                  home.stateVersion = "26.05";
                 };
               }
             ];
@@ -69,7 +69,7 @@
                 home-manager.backupFileExtension = "backup";
                 home-manager.extraSpecialArgs = { inherit inputs; inherit (inputs) nixpkgs-unstable; };
                 home-manager.users.moonburst = { pkgs, ... }: {
-                  home.stateVersion = "25.11";
+                  home.stateVersion = "26.05";
                 };
               }
             ];

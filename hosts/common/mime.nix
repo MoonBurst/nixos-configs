@@ -3,12 +3,12 @@
 let
 
   apps = with pkgs; {
-    browser     = brave;
+    browser     = librewolf;
     editor      = kdePackages.kate;
     fileManager = nemo;
     imageViewer = qview;
     musicPlayer = vlc;
-    pdfViewer   = brave;
+    pdfViewer   = librewolf;
     videoPlayer = vlc;
   };
 
