@@ -184,7 +184,11 @@
         col = smoothstep(-0.08, 1.0, col);
         vec2 termUV = fragCoord.xy / iResolution.xy;
         vec4 terminalColor = texture(iChannel0, termUV);
-        float alpha = step(length(terminalColor.rgb), BLACK_BLEND_THRESHOLD);
+
+            // Aggressively drops off so only absolute near-black gets the background
+        float alpha = pow(1.0 - smoothstep(0.0, 0.15, length(terminalColor.rgb)), 4.0);
+
+
         vec3 blendedColor = mix(terminalColor.rgb, col, alpha);
         fragColor = vec4(blendedColor, terminalColor.a);
     }
