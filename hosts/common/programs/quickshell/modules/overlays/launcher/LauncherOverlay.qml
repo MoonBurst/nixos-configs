@@ -101,7 +101,7 @@
                         return
                     }
 
-                    if (trimmed.startsWith("email")) {
+                    if (trimmed.startsWith("em ")) {
                         launcherRoot.mode = "Email"
 
                         const p1Query = trimmed.substring(5).trim()

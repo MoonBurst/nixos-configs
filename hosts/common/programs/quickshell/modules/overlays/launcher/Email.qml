@@ -1,3 +1,4 @@
+import QtCore
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -37,8 +38,44 @@ Item {
     property int globalBorderWidth: 3
     property int globalPadding: 20
 
-    // Completely sanitized mock contact directory listings for safe public GitHub pushing
+    // CONTACTS LIST START
     property var contactDirectoryList: []
+    Timer {
+        id: contactsLoaderTimer
+        interval: 10
+        running: true
+        repeat: false
+        onTriggered: {
+            var xhr = new XMLHttpRequest();
+            var docUrl = StandardPaths.writableLocation(StandardPaths.DocumentsLocation).toString();
+
+            if (!docUrl.startsWith("file://")) {
+                docUrl = "file://" + docUrl;
+            }
+            var path = docUrl + "/Contacts";
+
+            console.log(">>>> CONTACTS LOADING PATH: " + path);
+
+            xhr.open("GET", path, true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === XMLHttpRequest.DONE) {
+                    if (xhr.status === 200 || xhr.status === 0) {
+                        try {
+                            // Assigns data directly up to the parent directory list
+                            contactDirectoryList = JSON.parse(xhr.responseText);
+                            console.log(">>>> SUCCESS: Loaded " + contactDirectoryList.length + " contacts.");
+                        } catch(e) {
+                            console.log(">>>> PARSING ERROR: Check file formatting.", e);
+                        }
+                    } else {
+                        console.log(">>>> FILE READ ERROR: Terminal system failed to read target content file.");
+                    }
+                }
+            }
+            xhr.send();
+        }
+    }
+    // CONTACTS LIST END
 
     // Automated Stylix Base16 Color Scheme Bridge
     property var stylixTheme: {
@@ -56,9 +93,8 @@ Item {
 
 
     function refreshMail() {
-        statusText.text = "Syncing live mail cache..."
-        forceCacheSyncDownstream.running = false
-            forceCacheSyncDownstream.running = true
+        statusText.text = "Syncing mail cache..."
+        forceCacheSyncDownstream.running = true
     }
 
     function loadMessage(id) {
@@ -76,8 +112,10 @@ Item {
                 break
             }
         }
-        clearExport.running = false
-        clearExport.running = true
+        if (root.emails.length > 0 && emailList.currentIndex >= 0 && emailList.currentIndex < root.emails.length) {
+            readMessage.command = ["himalaya", "message", "read", id]
+            readMessage.running = true
+        }
     }
 
     function deleteCurrentMessage() {
@@ -111,11 +149,20 @@ Item {
 
     Process {
         id: readSopsSecret
-        // Extracts the raw variable directly out of your Nix structure vault safely
-        command: ["sh", "-c", "sops -d --extract '[\"gmail_address\"]' ~/nix/secrets/secrets.yaml 2>/dev/null || echo 'AddAnEmail'"]
+        command: [
+            "cat",
+            "/run/secrets/gmail_address"
+        ]
+
         stdout: StdioCollector {
             onStreamFinished: {
                 root.userEmailAddress = text.trim()
+
+                console.log(
+                    "Loaded email address:",
+                    root.userEmailAddress
+                )
+
                 refreshMail()
                 emailList.forceActiveFocus()
             }
@@ -124,7 +171,7 @@ Item {
 
     Process {
         id: forceCacheSyncDownstream
-        command: ["himalaya", "account", "sync"]
+        command: ["mbsync", "gmail"]
         onExited: {
             mailList.running = false
             mailList.running = true
@@ -133,7 +180,13 @@ Item {
 
     Process {
         id: mailList
-        command: ["himalaya", "--output", "json", "envelope", "list", "not", "flag", "seen"]
+        command: [
+            "himalaya",
+            "--output",
+            "json",
+            "envelope",
+            "list"
+        ]
         stdout: StdioCollector {
             onStreamFinished: {
                 var raw = text.trim()
@@ -153,42 +206,16 @@ Item {
         }
     }
     Process {
-        id: clearExport
-        command: ["sh", "-c", "rm -rf /tmp/himalaya-export && mkdir -p /tmp/himalaya-export"]
-        onExited: {
-            if (root.emails.length > 0 && emailList.currentIndex >= 0 && emailList.currentIndex < root.emails.length) {
-                exportMessage.command = ["himalaya", "message", "export", root.emails[emailList.currentIndex].id, "--destination", "/tmp/himalaya-export"]
-                exportMessage.running = true
-            } else {
-                root.messageBody = "No message selected."
-            }
+        id: readMessage
+        stdout: StdioCollector {
+            onStreamFinished: root.messageBody = text
         }
-    }
-
-    Process {
-        id: exportMessage
-        onExited: {
-            readPlain.running = false
-            readPlain.running = true
-        }
-    }
-
-    Process {
-        id: readPlain
-        command: ["cat", "/tmp/himalaya-export/plain.txt"]
-        stdout: StdioCollector { onStreamFinished: root.messageBody = text }
     }
 
     Process {
         id: sendEmailProcess
-        command: [
-            "python3",
-            "-c",
-            "import sys, subprocess; f=open('/tmp/himalaya-draft.txt','w'); f.write(' '.join(sys.argv[1:])); f.close(); p=subprocess.run('himalaya template send < /tmp/himalaya-draft.txt 2> /tmp/himalaya-error.log', shell=True); sys.exit(p.returncode)",
-            root.isComposing ? composeEditorInput.text : replyInput.text
-        ]
+
         onExited: (exitCode) => {
-            Quickshell.execDetached(["rm", "-f", "/tmp/himalaya-draft.txt"])
             if (exitCode === 0) {
                 root.isReplying = false
                 root.isComposing = false
@@ -361,7 +388,7 @@ Item {
 
                         // NEW EMAIL BUTTON
                         Rectangle {
-                            width: 140; height: 32; color: stylixTheme ? stylixTheme.base00 : "#675DDB"; radius: 4
+                            width: 140; height: 50; color: stylixTheme ? stylixTheme.base00 : "#675DDB"; radius: 4
                             border.color: stylixTheme ? stylixTheme.base05 : "#ffffff"
                             border.width: stylixTheme ? stylixTheme.globalBorderWidth : root.globalBorderWidth
 
@@ -387,7 +414,7 @@ Item {
 
                         // REFRESH F5 BUTTON
                         Rectangle {
-                            width: 110; height: 32; color: stylixTheme ? stylixTheme.base02 : "#2a2a3a"; radius: 4
+                            width: 110; height: 50; color: stylixTheme ? stylixTheme.base02 : "#2a2a3a"; radius: 4
                             // ADDED: Theme-aware dynamic default card borders
                             border.color: stylixTheme ? stylixTheme.base05 : "#ffffff"
                             border.width: stylixTheme ? stylixTheme.globalBorderWidth : root.globalBorderWidth
@@ -405,7 +432,7 @@ Item {
 
                         // REPLY ENTER BUTTON
                         Rectangle {
-                            width: 130; height: 32; color: stylixTheme ? stylixTheme.base02 : "#2a2a3a"; radius: 4
+                            width: 130; height: 50; color: stylixTheme ? stylixTheme.base02 : "#2a2a3a"; radius: 4
                             // ADDED: Theme-aware dynamic default card borders
                             border.color: stylixTheme ? stylixTheme.base05 : "#ffffff"
                             border.width: stylixTheme ? stylixTheme.globalBorderWidth : root.globalBorderWidth
@@ -466,6 +493,28 @@ Item {
         border.color: stylixTheme ? stylixTheme.base03 : "#675DDB"
         border.width: stylixTheme ? (stylixTheme.globalBorderWidth + 2) : 3
         z: 99
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         Column {
             anchors.fill: parent
             anchors.margins: (stylixTheme ? stylixTheme.globalPadding : root.globalPadding) * 1.2
@@ -478,18 +527,15 @@ Item {
                 // SEND MESSAGE BUTTON
                 Rectangle {
                     width: 160
-                    height: 38
-                    // FIXED: Color schema synchronized with theme base values
+                    height: 50
                     color: stylixTheme ? stylixTheme.base02 : "#2a2a3a"
                     radius: 6
-                    // FIXED: Dynamic default border added
                     border.color: stylixTheme ? stylixTheme.base05 : "#ffffff"
                     border.width: stylixTheme ? stylixTheme.globalBorderWidth : root.globalBorderWidth
 
                     Text {
                         anchors.centerIn: parent
                         text: "Send Message"
-                        // FIXED: Enforces default font style sheets, color profiles, and sizing scales
                         color: stylixTheme ? stylixTheme.base05 : "white"
                         font.family: stylixTheme ? stylixTheme.fontFamily : root.fontFamily
                         font.bold: true
@@ -499,17 +545,46 @@ Item {
                     MouseArea {
                         anchors.fill: parent
                         onClicked: {
-                            composeEditorInput.text = "From: " + root.userEmailAddress + "\n" + "To: " + customAddressField.text + "\n" + "Subject: " + composeSubjectInput.text + "\n\n" + composeMailBodyArea.text;
-                            sendEmailProcess.running = false
-                            sendEmailProcess.running = true
+                            if (typeof sendEmailProcess !== "undefined") {
+                                // Protect body text strings from breaking standard shell execution blocks
+                                var cleanBody = composeMailBodyArea.text.replace(/"/g, '\\"');
+                                var cleanSubject = composeSubjectInput.text.replace(/"/g, '\\"');
+                                var cleanTo = customAddressField.text.replace(/"/g, '\\"');
+
+                                // FIXED PARAMETER ALIGNMENT:
+                                // 1. '-a gmail' sits immediately up front as a global modifier context flag
+                                // 2. Swapped command to 'template send' to cleanly process standard input piping
+                                // 3. Implemented a reliable printf statement chain to preserve exact header separation
+                                sendEmailProcess.command = [
+                                    "sh",
+                                    "-c",
+                                    "cat > /tmp/qs-mail.eml <<'EOF'\n" +
+                                    "From: " + root.userEmailAddress + "\n" +
+                                    "To: " + cleanTo + "\n" +
+                                    "Subject: " + cleanSubject + "\n\n" +
+                                    cleanBody + "\n" +
+                                    "EOF\n" +
+                                    "himalaya message send < /tmp/qs-mail.eml > /tmp/himalaya-send.log 2> /tmp/himalaya-error.log"
+                                ];
+
+                                sendEmailProcess.running = false
+                                sendEmailProcess.running = true
+                            }
                         }
                     }
+
+
+
+
+
+
+
                 }
 
                 // DISCARD (ESC) BUTTON
                 Rectangle {
                     width: 120
-                    height: 38
+                    height: 50
                     color: stylixTheme ? stylixTheme.base02 : "#2a2a3a"
                     radius: 6
                     border.color: stylixTheme ? stylixTheme.base05 : "#ffffff"
@@ -533,8 +608,6 @@ Item {
                     }
                 }
             }
-
-
 
             Row {
                 width: parent.width; spacing: 14
@@ -561,6 +634,7 @@ Item {
                     }
                 }
             }
+
             Text { text: "Quick-Select From Saved Contact Directory Grid:"; color: "white"; font.pixelSize: stylixTheme ? stylixTheme.globalFontSize : 20; font.family: stylixTheme ? stylixTheme.fontFamily : "Fira Sans" }
             Rectangle {
                 width: parent.width; height: 130; color: stylixTheme ? stylixTheme.base00 : "#1a1a2a"; radius: 6; border.color: "#333"
@@ -575,25 +649,76 @@ Item {
                         }
                         MouseArea {
                             anchors.fill: parent
-                            onClicked: { customAddressField.text = modelData.addr; composeMailBodyArea.forceActiveFocus() }
+                            onClicked: {
+                                customAddressField.text = modelData.addr
+                                // Triggers the address block's structural text listener explicitly
+                                customAddressField.textChanged()
+                                composeMailBodyArea.forceActiveFocus()
+                            }
                         }
                     }
                 }
             }
+
             Text { text: "Write Email Message Contents:"; color: "white"; font.pixelSize: stylixTheme ? stylixTheme.globalFontSize : 20; font.family: stylixTheme ? stylixTheme.fontFamily : "Fira Sans" }
+
             Rectangle {
-                width: parent.width; height: parent.height - 350; color: stylixTheme ? stylixTheme.base00 : "#1a1a2a"; radius: 6; border.color: "#333"
+                id: bodyContainer
+                width: parent.width
+                height: 250
+                color: stylixTheme ? stylixTheme.base00 : "#1a1a2a"
+                radius: 6
+                border.color: "#333"
+
+                // Background click handler to guarantee focus catch
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: composeMailBodyArea.forceActiveFocus()
+                }
+
                 Flickable {
-                    anchors.fill: parent; anchors.margins: 12; clip: true; contentHeight: composeMailBodyArea.paintedHeight + 20
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    clip: true
+                    contentHeight: composeMailBodyArea.paintedHeight + 20
+                    // Stops drag logic from eating mouse single-clicks when empty
+                    interactive: contentHeight > height
+
                     TextEdit {
-                        id: composeMailBodyArea; width: parent.width - 10; wrapMode: TextEdit.WrapAnywhere; color: "white"; font.family: "monospace"; font.pixelSize: stylixTheme ? stylixTheme.globalFontSize : 20; selectByMouse: true
-                        Keys.onPressed: (event) => { if (event.key === Qt.Key_Escape) { root.isComposing = false; emailList.forceActiveFocus(); event.accepted = true } }
+                        id: composeMailBodyArea
+                        anchors.fill: parent
+                        wrapMode: TextEdit.WrapAnywhere
+                        color: "white"
+                        font.family: "monospace"
+                        font.pixelSize: stylixTheme ? stylixTheme.globalFontSize : 20
+                        selectByMouse: true
+                        focus: true
+                        activeFocusOnTab: true
+
+                        // Syncs body typing directly back to output string model
+                        onTextChanged: composeEditorInput.text = "From: " + root.userEmailAddress + "\nTo: " + customAddressField.text + "\nSubject: " + composeSubjectInput.text + "\n\n" + text
+
+                        Keys.onPressed: (event) => {
+                            if (event.key === Qt.Key_Escape) {
+                                root.isComposing = false
+                                emailList.forceActiveFocus()
+                                event.accepted = true
+                            }
+                        }
                     }
                 }
             }
             TextEdit { id: composeEditorInput; visible: false; text: "" }
         }
     }
+
+
+
+
+
+
+
+
     /*
      * DYNAMIC REPLY MODAL VIEWPORT OVERLAY
      */
@@ -611,7 +736,21 @@ Item {
                     Text { anchors.centerIn: parent; text: "Send (Ctrl+Enter)"; color: stylixTheme ? stylixTheme.base05 : "#F7F700"; font.family: stylixTheme ? stylixTheme.fontFamily : "Fira Sans"; font.bold: true; font.pixelSize: stylixTheme ? stylixTheme.globalFontSize : 20 }
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: { root.replyText = replyInput.text; sendEmailProcess.running = false; sendEmailProcess.running = true }
+                        onClicked: {
+                            var replyBody = replyInput.text.replace(/\\/g, "\\\\").replace(/"/g, '\\\"')
+
+                            sendEmailProcess.command = [
+                                "sh",
+                                "-c",
+                                "cat > /tmp/qs-mail.eml <<'EOF'\\n" +
+                                replyBody + "\\n" +
+                                "EOF\\n" +
+                                "himalaya message send < /tmp/qs-mail.eml > /tmp/himalaya-send.log 2> /tmp/himalaya-error.log"
+                            ]
+
+                            sendEmailProcess.running = false
+                            sendEmailProcess.running = true
+                        }
                     }
                 }
                 Rectangle {
@@ -628,7 +767,20 @@ Item {
                         id: replyInput; width: parent.width - 10; wrapMode: TextEdit.WrapAnywhere; color: stylixTheme ? stylixTheme.base05 : "#F7F700"; font.family: "monospace"; font.pixelSize: stylixTheme ? (stylixTheme.globalFontSize + 6) : 26; selectByMouse: true
                         Keys.onPressed: (event) => {
                             if (event.key === Qt.Key_Return && (event.modifiers & Qt.ControlModifier)) {
-                                root.replyText = replyInput.text; sendEmailProcess.running = false; sendEmailProcess.running = true; event.accepted = true
+                                var replyBody = replyInput.text.replace(/\\/g, "\\\\").replace(/"/g, '\\\"')
+
+                                sendEmailProcess.command = [
+                                    "sh",
+                                    "-c",
+                                    "cat > /tmp/qs-mail.eml <<'EOF'\\n" +
+                                    replyBody + "\\n" +
+                                    "EOF\\n" +
+                                    "himalaya message send < /tmp/qs-mail.eml > /tmp/himalaya-send.log 2> /tmp/himalaya-error.log"
+                                ]
+
+                                sendEmailProcess.running = false
+                                sendEmailProcess.running = true
+                                event.accepted = true
                             } else if (event.key === Qt.Key_Escape) {
                                 root.isReplying = false; emailList.forceActiveFocus(); event.accepted = true
                             }

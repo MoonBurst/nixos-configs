@@ -11,6 +11,11 @@ Item {
     required property var rootItem
     required property var controller
 
+    // CRITICAL FIX: Explicitly expose the tracking variable property handle line.
+    // This allows NotificationOverlay to pin the live un-garbage-collected C++
+    // object context straight to this visual element layer instance structure.
+    property var originalNotification: null
+
     property real targetY: rootItem ? rootItem.overlaysHeightBaseline : 250
     property int stackIndex: 0
 
@@ -31,7 +36,6 @@ Item {
 
     property int hiddenX: width + 50
     property int shownX: 0
-
 
     z: cardWindow.state === "DISMISSED"
     ? 1000
@@ -89,10 +93,6 @@ Item {
             anchors.margins: 10
             spacing: 12
 
-            /*
-             * INTEGRATED: Added the rulesLoader icon mapping mechanism directly inside
-             * your exact image frame layout parameters.
-             */
             Image {
                 id: notificationIcon
                 width: visible ? 100 : 0

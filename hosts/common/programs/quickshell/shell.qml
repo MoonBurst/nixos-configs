@@ -40,7 +40,7 @@ ShellRoot {
     readonly property
     var primaryScreen: Quickshell.screens.find(s => s.name === "DP-1")
 
-    property bool debugNotifications: false
+    property bool debugNotifications: true
 
     /*
      * =========================================================================
@@ -436,7 +436,6 @@ ShellRoot {
      * NOTIFICATION SERVER
      * =========================================================================
      */
-
     NotificationServer {
         id: notificationServer
 
@@ -461,18 +460,14 @@ ShellRoot {
                 console.log("NOTIFICATION DEBUG")
                 console.log("==================================================")
 
-                console.log("APP:", notification.appName)
+                console.log("APP:", notification.desktopEntry || notification.appName)
                 console.log("SUMMARY:", notification.summary)
                 console.log("BODY:", notification.body)
 
-                if (notification.actions?.values) {
-
-                    for (
-                        let i = 0; i < notification.actions.values.length;
-                    ++i
-                    ) {
-                        const act =
-                        notification.actions.values[i]
+                // CORRECTED FOR QUICKSHELL NATIVE C++ IMPLEMENTATION
+                if (notification.actions && notification.actions.length > 0) {
+                    for (let i = 0; i < notification.actions.length; ++i) {
+                        const act = notification.actions[i]
 
                         if (!act) {
                             continue
@@ -480,33 +475,24 @@ ShellRoot {
 
                         console.log(
                             "ACTION:",
-                            act.identifier,
-                            act.label || act.text || ""
+                            act.identifier, // Reverted to Quickshell native 'identifier'
+                            act.text        // Quickshell native 'text'
                         )
                     }
+                } else {
+                    console.log("ACTIONS: None available")
                 }
 
                 if (notification.hints) {
-
                     for (let hintKey in notification.hints) {
-
                         try {
-
                             console.log(
                                 "HINT:",
                                 hintKey,
-                                JSON.stringify(
-                                    notification.hints[hintKey]
-                                )
+                                JSON.stringify(notification.hints[hintKey])
                             )
-
                         } catch (e) {
-
-                            console.log(
-                                "HINT:",
-                                hintKey,
-                                "[binary]"
-                            )
+                            console.log("HINT:", hintKey, "[binary]")
                         }
                     }
                 }
@@ -520,25 +506,20 @@ ShellRoot {
              * ================================================================
              */
 
-            let topScope =
-            notificationServer.parent
+            let topScope = notificationServer.parent
 
-            if (
-                topScope &&
-                topScope.cardComponentTemplate
-            ) {
+            if (topScope && topScope.cardComponentTemplate) {
 
-                let popupCard =
-                topScope.cardComponentTemplate.createObject(
+                // Pass the notification object straight into the template's initial properties
+                let popupCard = topScope.cardComponentTemplate.createObject(
                     topScope, {
                         notification: notification
                     }
                 )
 
                 if (topScope.activeNotifications) {
-                    topScope.activeNotifications.push(
-                        popupCard
-                    )
+                    // Push the clean raw component right into the array deck
+                    topScope.activeNotifications.push(popupCard)
                 }
 
                 if (topScope.positionNotificationsDeck) {
@@ -551,6 +532,8 @@ ShellRoot {
                     )
                 }
             }
+
+
         }
     }
 }

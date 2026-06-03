@@ -22,7 +22,9 @@ Item {
     property int textBodySize: shell.theme.globalFontSize || 20
     property int holdDurationMs: 5000
 
-    property var activeNotifications: []
+    ListModel {
+        id: activeNotificationsModel
+    }
 
     // ============================================================================
     // ROUTING & IPC
@@ -30,6 +32,7 @@ Item {
     Local.NotificationIPC {
         id: notificationIPC
         rootItem: root
+        notifModel: activeNotificationsModel
     }
 
     Local.NotificationRules {
@@ -66,55 +69,60 @@ Item {
         )
 
         implicitWidth: root.cardWidth + 100
-
         color: "transparent"
-
-        /*
-         * CLICK THROUGH
-         */
-
         mask: Region {}
 
-        WlrLayershell.keyboardFocus:
-        WlrKeyboardFocus.None
-
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
         WlrLayershell.exclusiveZone: 0
-
-        WlrLayershell.layer:
-        WlrLayer.Overlay
+        WlrLayershell.layer: WlrLayer.Overlay
 
         WlrLayershell.margins.top: 0
-        WlrLayershell.margins.right:
-        shell.theme.globalPadding || 20
+        WlrLayershell.margins.right: shell.theme.globalPadding || 20
         WlrLayershell.margins.bottom: 0
 
         Item {
             id: canvasContent
-
             anchors.fill: parent
         }
     }
+
     // ============================================================================
     // STATE SELECTION ENGINE
     // ============================================================================
     function handleNotification(notification) {
+        if (notification) {
+            notification.tracked = true;
+        }
+
         const isShowEvent = notification.summary && notification.summary.length > 0;
 
         if (!isShowEvent) {
-            let existingEntry = activeNotifications.find(entry => entry.notification.id === notification.id);
-            if (existingEntry) {
-                notificationIPC.dismiss(existingEntry.card);
+            for (let idx = 0; idx < activeNotificationsModel.count; idx++) {
+                let itemEntry = activeNotificationsModel.get(idx);
+                if (itemEntry && itemEntry.notifId === notification.id) {
+                    notificationIPC.dismiss(itemEntry.cardRef);
+                    break;
+                }
             }
             return;
         }
 
-        let existingEntry = activeNotifications.find(entry => entry.notification.id === notification.id);
-
-        if (existingEntry) {
-            if (existingEntry.card) {
-                existingEntry.card.notification = notification;
+        let existingIndex = -1;
+        for (let idx = 0; idx < activeNotificationsModel.count; idx++) {
+            let itemEntry = activeNotificationsModel.get(idx);
+            if (itemEntry && itemEntry.notifId === notification.id) {
+                existingIndex = idx;
+                break;
             }
-            existingEntry.notification = notification;
+        }
+
+        if (existingIndex !== -1) {
+            let existingEntry = activeNotificationsModel.get(existingIndex);
+            if (existingEntry && existingEntry.cardRef) {
+                existingEntry.cardRef.notification = notification;
+                // Update persistent structural handle links
+                existingEntry.cardRef.originalNotification = notification;
+            }
         } else {
             let popupCard = cardComponentTemplate.createObject(canvasContent, {
                 notification: notification,
@@ -123,12 +131,22 @@ Item {
                 controller: notificationIPC
             });
 
-            let entry = {
-                card: popupCard,
-                notification: notification
-            };
+            // CRITICAL ARCHITECTURAL CONTEXT LOCK:
+            // Injects the raw notification handle directly as an instance variable onto the visual card node.
+            // This forces Quickshell's internal QML layout garbage collector to anchor the live C++ properties.
+            if (popupCard) {
+                popupCard.notification = notification;
+                popupCard.originalNotification = notification;
+            }
 
-            activeNotifications.unshift(entry);
+            activeNotificationsModel.insert(0, {
+                "cardRef": popupCard,
+                "notifId": notification.id,
+                "summary": notification.summary || "",
+                "body": notification.body || "",
+                "appName": notification.desktopEntry || notification.appName || ""
+            });
+
             notificationIPC.playNotificationSound(notification);
             positionNotificationsDeck();
             rulesLoader.handleIncomingNotificationCues(notification);
@@ -137,13 +155,13 @@ Item {
 
     function positionNotificationsDeck() {
         let currentY = root.overlaysHeightBaseline;
-        const totalCards = activeNotifications.length;
+        const totalCards = activeNotificationsModel.count;
 
         for (let i = totalCards - 1; i >= 0; i--) {
-            let entry = activeNotifications[i];
-            if (!entry || !entry.card) continue;
+            let entry = activeNotificationsModel.get(i);
+            if (!entry || !entry.cardRef) continue;
 
-            let item = entry.card;
+            let item = entry.cardRef;
             item.targetY = currentY;
             item.stackIndex = (totalCards - 1) - i;
 
@@ -155,9 +173,9 @@ Item {
         if (!itemInstance)
             return;
         let index = -1;
-        for (let i = 0; i < activeNotifications.length; i++) {
-            let entry = activeNotifications[i];
-            if (entry.card === itemInstance) {
+        for (let i = 0; i < activeNotificationsModel.count; i++) {
+            let entry = activeNotificationsModel.get(i);
+            if (entry && entry.cardRef === itemInstance) {
                 index = i;
                 break;
             }
@@ -166,7 +184,7 @@ Item {
         if (index === -1)
             return;
 
-        activeNotifications.splice(index, 1);
+        activeNotificationsModel.remove(index);
         positionNotificationsDeck();
     }
 
