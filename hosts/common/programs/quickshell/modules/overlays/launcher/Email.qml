@@ -11,21 +11,19 @@ Item {
     property string userEmailAddress: ""
     property var emails: []
     property string messageBody: ""
+    property string statusMessage: "Loading..."
+    property var messageCache: ({})
     property bool isReplying: false
 
     // Interactive Module Composition Window Visibilities
     property bool isComposing: false
-    property string composeToAddress: ""
     property string composeSubject: ""
-    property string composeBodyText: ""
 
-    property string replyText: ""
     property string selectedId: ""
 
     property string currentReplyTo: ""
     property string currentSubject: ""
     property int currentListIndex: 0
-    property string actionTargetId: ""
 
     // FIXED FALLBACK VARIABLES: Clearly initialized with hardcoded defaults to eliminate [undefined] assignment log warnings
     property int globalFontSize: 20
@@ -92,8 +90,28 @@ Item {
     }
 
 
+
+    function currentEmail() {
+        if (emailList.currentIndex < 0 || emailList.currentIndex >= emails.length)
+            return null
+            return emails[emailList.currentIndex]
+    }
+
+    function sendRawEmail(content) {
+        sendEmailProcess.command = [
+            "sh",
+            "-c",
+            "cat > /tmp/qs-mail.eml <<'EOF'\n" +
+            content +
+            "\nEOF\n" +
+            "himalaya message send < /tmp/qs-mail.eml > /tmp/himalaya-send.log 2> /tmp/himalaya-error.log"
+        ]
+        sendEmailProcess.running = false
+        sendEmailProcess.running = true
+    }
+
     function refreshMail() {
-        statusText.text = "Syncing mail cache..."
+        root.statusMessage = "Syncing mail cache..."
         forceCacheSyncDownstream.running = true
     }
 
@@ -123,7 +141,7 @@ Item {
         if (!currentMail) return
 
             var targetId = currentMail.id
-            var tempArray = emails
+            var tempArray = emails.slice()
             tempArray.splice(emailList.currentIndex, 1)
             emails = tempArray
             messageBody = "Message moved to Trash locally."
@@ -134,7 +152,7 @@ Item {
 
     function spamTargetMessage(msgId) {
         if (!msgId) return
-            var tempArray = emails
+            var tempArray = emails.slice()
             tempArray.splice(emailList.currentIndex, 1)
             emails = tempArray
             messageBody = "Flagged as spam locally."
@@ -163,7 +181,7 @@ Item {
                     root.userEmailAddress
                 )
 
-                refreshMail()
+                mailList.running = true
                 emailList.forceActiveFocus()
             }
         }
@@ -192,15 +210,15 @@ Item {
                 var raw = text.trim()
                 if (!raw.length) {
                     root.emails = []
-                    statusText.text = "0 unread email(s)"
+                    root.statusMessage = "0 message(s)"
                     return
                 }
                 try {
                     root.emails = JSON.parse(raw)
-                    statusText.text = root.emails.length + " unread email(s) [Current Cache]"
+                    root.statusMessage = root.emails.length + " message(s)"
                 } catch (e) {
                     root.emails = []
-                    statusText.text = "Failed to load current cache"
+                    root.statusMessage = "Failed to load current cache"
                 }
             }
         }
@@ -266,7 +284,7 @@ Item {
 
                     Text {
                         id: statusText
-                        text: "Loading..."
+                        text: root.statusMessage
                         color: stylixTheme ? stylixTheme.base07 : "#aaaaaa"
                         font.family: stylixTheme ? stylixTheme.fontFamily : "Fira Sans"
                         font.pixelSize: stylixTheme ? (stylixTheme.globalFontSize + 4) : 24
