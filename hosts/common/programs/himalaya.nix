@@ -1,70 +1,61 @@
 { pkgs, osConfig, lib, ... }:
 
 let
-gmailAddressFile = osConfig.sops.secrets.gmail_address.path;
-gmailPassFile = osConfig.sops.secrets.gmail_app_password.path;
+  gmailPassFile = osConfig.sops.secrets.gmail_app_password.path;
 in
 {
-home.packages = [
-pkgs.himalaya
-pkgs.goimapnotify
-pkgs.isync
-pkgs.libnotify
-];
+  home.packages = [
+    pkgs.himalaya
+    pkgs.goimapnotify
+    pkgs.isync
+    pkgs.libnotify
+  ];
 
-# =========================================================================
+  # =========================================================================
+  # Himalaya Configuration
+  # =========================================================================
 
-# Himalaya Configuration
+  xdg.configFile."himalaya/config.toml".text = ''
+    [accounts.gmail]
+    default = true
+    display-name = "Moonburst"
 
-# =========================================================================
+    email = "moonburstplays@gmail.com"
 
-xdg.configFile."himalaya/config.toml".text = ''
-[accounts.gmail]
-default = true
-display-name = "Moonburst"
+    backend.type = "maildir"
+    backend.root-dir = "/home/moonburst/.local/share/mail/gmail"
+    backend.maildirpp = false
 
+    [accounts.gmail.folder.aliases]
+    inbox = "INBOX"
+    drafts = "[Gmail]/Drafts"
+    sent = "[Gmail]/Sent Mail"
+    trash = "[Gmail]/Trash"
+    spam = "[Gmail]/Spam"
 
-email = "moonburstplays@gmail.com"
+    [accounts.gmail.message.send.backend]
+    type = "smtp"
+    host = "smtp.gmail.com"
+    port = 465
 
-backend.type = "maildir"
-backend.root-dir = "/home/moonburst/.local/share/mail/gmail"
-backend.maildirpp = false
+    login = "moonburstplays@gmail.com"
 
-[accounts.gmail.folder.aliases]
-inbox = "INBOX"
-drafts = "[Gmail]/Drafts"
-sent = "[Gmail]/Sent Mail"
-trash = "[Gmail]/Trash"
-spam = "[Gmail]/Spam"
+    encryption.type = "tls"
 
-[accounts.gmail.message.send.backend]
-type = "smtp"
-host = "smtp.gmail.com"
-port = 465
+    auth.type = "password"
+    auth.cmd = "${pkgs.coreutils}/bin/cat ${gmailPassFile}"
+  '';
 
-login = "moonburstplays@gmail.com"
+  # =========================================================================
+  # mbsync Configuration
+  # =========================================================================
 
-encryption.type = "tls"
-
-auth.type = "password"
-auth.cmd = "${pkgs.coreutils}/bin/cat ${gmailPassFile}"
-
-
-'';
-
-# =========================================================================
-
-# mbsync Configuration
-
-# =========================================================================
-
-home.file.".mbsyncrc".text = ''
+  home.file.".mbsyncrc".text = ''
 IMAPAccount gmail
 Host imap.gmail.com
-UserOpenCmd "${pkgs.coreutils}/bin/cat ${gmailAddressFile}"
+User moonburstplays@gmail.com
 PassCmd "${pkgs.coreutils}/bin/cat ${gmailPassFile}"
 TLSType IMAPS
-
 
 IMAPStore gmail-remote
 Account gmail
@@ -82,99 +73,84 @@ Create Near
 Sync All
 Expunge Near
 SyncState *
-
-
 '';
 
-# =========================================================================
+  # =========================================================================
+  # goimapnotify Configuration
+  # =========================================================================
 
-# goimapnotify Configuration
+  xdg.configFile."goimapnotify/goimapnotify.json".text =
+    builtins.toJSON {
+      host = "imap.gmail.com";
+      port = 993;
+      tls = true;
 
-# =========================================================================
+      username = "moonburstplays@gmail.com";
 
-xdg.configFile."goimapnotify/goimapnotify.json".text =
-builtins.toJSON {
-host = "imap.gmail.com";
-port = 993;
-tls = true;
+      passwordCmd =
+        "${pkgs.coreutils}/bin/cat ${gmailPassFile} | ${pkgs.coreutils}/bin/tr -d '\\n\\r '";
 
+      boxes = [ "INBOX" ];
 
-  usernameCmd =
-    "${pkgs.coreutils}/bin/cat ${gmailAddressFile} | ${pkgs.coreutils}/bin/tr -d '\\n\\r '";
+      onNewMail =
+        "${pkgs.bash}/bin/sh $HOME/.config/goimapnotify/sync-and-notify.sh";
+    };
 
-  passwordCmd =
-    "${pkgs.coreutils}/bin/cat ${gmailPassFile} | ${pkgs.coreutils}/bin/tr -d '\\n\\r '";
+  xdg.configFile."goimapnotify/sync-and-notify.sh" = {
+    executable = true;
 
-  boxes = [ "INBOX" ];
+    text = ''
+      #!/bin/sh
 
-  onNewMail =
-    "${pkgs.bash}/bin/sh $HOME/.config/goimapnotify/sync-and-notify.sh";
-};
+      ${pkgs.isync}/bin/mbsync -c "$HOME/.mbsyncrc" gmail
 
+      if [ $? -eq 0 ]; then
+        ${pkgs.libnotify}/bin/notify-send \
+          -i mail-unread \
+          "Himalaya Mail" \
+          "New email received in your Inbox!"
+      else
+        ${pkgs.libnotify}/bin/notify-send \
+          -i dialog-error \
+          "Himalaya Mail" \
+          "Mail synchronization failed."
+      fi
+    '';
+  };
 
-xdg.configFile."goimapnotify/sync-and-notify.sh" = {
-executable = true;
+  # =========================================================================
+  # Maildir Creation
+  # =========================================================================
 
+  home.activation.ensureMailDir =
+    let
+      mkdir = "${pkgs.coreutils}/bin/mkdir";
+    in
+    lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      $DRY_RUN_CMD ${mkdir} -p $HOME/.local/share/mail/gmail
+    '';
 
-text = ''
-  #!/bin/sh
+  # =========================================================================
+  # goimapnotify Service
+  # =========================================================================
 
-  ${pkgs.isync}/bin/mbsync -c "$HOME/.mbsyncrc" gmail
+  systemd.user.services.go-imapnotify = {
+    Unit = {
+      Description = "Real-time IMAP IDLE mail synchronization daemon via mbsync";
+      After = [ "network.target" ];
+    };
 
-  if [ $? -eq 0 ]; then
-    ${pkgs.libnotify}/bin/notify-send \
-      -i mail-unread \
-      "Himalaya Mail" \
-      "New email received in your Inbox!"
-  else
-    ${pkgs.libnotify}/bin/notify-send \
-      -i dialog-error \
-      "Himalaya Mail" \
-      "Mail synchronization failed."
-  fi
-'';
+    Service = {
+      Type = "simple";
+      ExecStart =
+        "${pkgs.goimapnotify}/bin/goimapnotify -conf %h/.config/goimapnotify/goimapnotify.json";
 
-};
+      Restart = "always";
+      RestartSec = "10";
+    };
 
-# =========================================================================
-
-# Maildir Creation
-
-# =========================================================================
-
-home.activation.ensureMailDir =
-let
-mkdir = "${pkgs.coreutils}/bin/mkdir";
-in
-lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-$DRY_RUN_CMD ${mkdir} -p $HOME/.local/share/mail/gmail
-'';
-
-# =========================================================================
-
-# goimapnotify Service
-
-# =========================================================================
-
-systemd.user.services.go-imapnotify = {
-Unit = {
-Description = "Real-time IMAP IDLE mail synchronization daemon via mbsync";
-After = [ "network.target" ];
-};
-
-
-Service = {
-  Type = "simple";
-  ExecStart =
-    "${pkgs.goimapnotify}/bin/goimapnotify -conf %h/.config/goimapnotify/goimapnotify.json";
-
-  Restart = "always";
-  RestartSec = "10";
-};
-
-Install = {
-  WantedBy = [ "default.target" ];
-};
-
-};
+    Install = {
+      WantedBy = [ "default.target" ];
+    };
+  };
 }
