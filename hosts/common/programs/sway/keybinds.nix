@@ -1,13 +1,24 @@
-{ pkgs, lib, ... }:
+{ pkgs, lib, config, ... }:
 
 let
     # ░█░█░█▀█░█▀▄░▀█▀░█▀█░█▀▄░█░░░█▀▀░█▀▀
-    # ░▀▄▀░█▀█░█▀▄░░█░░█▀█░█▀▄░█░░░█▀▀░▀▀█
+    # ░█▀▄░█▀█░█▀▄░░█░░█▀█░█▀▄░█░░░█▀▀░▀▀█
     # ░░▀░░▀░▀░▀░▀░▀▀▀░▀░▀░▀▀░░▀▀▀░▀▀▀░▀▀▀
   super = "Mod4";
   alt = "Mod1";
-  term = "${pkgs.ghostty}/bin/ghostty";
-  explorer = "${pkgs.nemo}/bin/nemo";
+
+  # SAFELY RESOLVE: Falls back gracefully if Home Manager evaluates this isolated from the NixOS options tree
+  targetTerminal = if builtins.hasAttr "apps" config && builtins.hasAttr "terminal" config.apps
+                   then config.apps.terminal
+                   else pkgs.ghostty;
+
+  targetFileManager = if builtins.hasAttr "apps" config && builtins.hasAttr "fileManager" config.apps
+                      then config.apps.fileManager
+                      else pkgs.nemo;
+
+  term = "${targetTerminal}/bin/${targetTerminal.pname or targetTerminal.name or "ghostty"}";
+  explorer = "${targetFileManager}/bin/${targetFileManager.pname or targetFileManager.name or "nemo"}";
+
   music = "${pkgs.audacious}/bin/audacious";
   launchpad = "walker";
   scriptsDir = ../../scripts;
@@ -17,7 +28,7 @@ in
 
 # ░█▀█░█▀█░█▀█░░░█░░░█▀█░█░█░█▀█░█▀▀░█░█░█▀▀░█▀▄░█▀▀
 # ░█▀█░█▀▀░█▀▀░░░█░░░█▀█░█░█░█░█░█░░░█▀█░█▀▀░█▀▄░▀▀█
-# ░▀░▀░▀░░░▀░░░░░▀▀▀░▀░▀░▀▀▀░▀░▀░▀▀▀░▀░▀░▀▀▀░▀░▀░▀▀▀
+# ░▀░▀░▀░░░▀░░░░░▀▀▀░▀░▀░▀░▀░▀▀▀░▀░▀░▀▀▀░▀░▀░▀▀▀░▀░▀
     "${super}+Return" = "exec ${term}";
     "${super}+q" = "exec ${pkgs.bash}/bin/bash ${scriptsDir}/safekill.sh";
     "${super}+Shift+q" = "kill";
@@ -57,7 +68,7 @@ in
 
     # ░█░█░█▀█░█▀▄░█░█░█▀▀░█▀█░█▀█░█▀▀░█▀▀
     # ░█▄█░█░█░█▀▄░█▀▄░▀▀█░█▀▀░█▀█░█░░░█▀▀
-    # ░▀░▀░▀▀▀░▀░▀░▀░▀░▀▀▀░▀░░░▀░▀░▀▀▀░▀▀▀
+    # ░▀░▀░▀▀▀░▀░▀░▀░▀░▀▀▀░▀░░░▀░▀░▀▀▀░▀░▀
     # **Workspace Navigation**
     "${super}+1" = "workspace number 1";
     "${super}+2" = "workspace number 2";

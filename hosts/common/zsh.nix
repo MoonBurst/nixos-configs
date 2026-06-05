@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, config, ... }:
 
 {
   programs.zsh = {
@@ -99,8 +99,6 @@
     XDG_CURRENT_DESKTOP = "sway";
     XDG_SESSION_DESKTOP = "sway";
     XDG_SESSION_TYPE = "wayland";
-    EDITOR = "micro";
-    TERMINAL = "ghostty";
     CARGO_HOME = "$HOME/.local/share/cargo";
     DOTNET_CLI_HOME = "$HOME/.local/share/dotnet";
     GNUPGHOME = "$HOME/.local/share/gnupg";
@@ -110,6 +108,10 @@
     PASSWORD_STORE_DIR = "$HOME/.local/share/pass";
     RUSTUP_HOME = "$HOME/.local/share/rustup";
     CLIPHIST_DB_PATH = "/tmp/cliphist_db";
+
+    # DYNAMIC SOURCE LINKING: Evaluates to package name strings dynamically based on mime.nix config options
+    EDITOR = "${config.apps.editor.pname or config.apps.editor.name or "micro"}";
+    TERMINAL = "${config.apps.terminal.pname or config.apps.terminal.name or "ghostty"}";
   };
 
   users.defaultUserShell = pkgs.zsh;

@@ -1029,7 +1029,7 @@
                         height: parent.contentHeight
 
                         // Seamlessly load your dedicated external workspace script file
-                        source: "Email.qml"
+                        source: "Email/Email.qml"
 
                         // Automatically hooks keyboard focus straight down onto your script on load
                         onLoaded: {

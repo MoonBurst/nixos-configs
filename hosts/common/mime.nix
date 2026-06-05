@@ -1,15 +1,15 @@
-{ pkgs, lib, ... }:
+{ pkgs, lib, config, ... }:
 
 let
-
-  apps = with pkgs; {
-    browser     = librewolf;
-    editor      = kdePackages.kate;
-    fileManager = nemo;
-    imageViewer = qview;
-    musicPlayer = vlc;
-    pdfViewer   = librewolf;
-    videoPlayer = vlc;
+  apps = {
+    browser     = pkgs.librewolf;
+    editor      = pkgs.kdePackages.kate;
+    fileManager = pkgs.nemo;
+    imageViewer = pkgs.qview;
+    musicPlayer = pkgs.vlc;
+    pdfViewer   = pkgs.librewolf;
+    videoPlayer = pkgs.vlc;
+    terminal    = pkgs.ghostty;
   };
 
   # This helper finds the .desktop filename inside the package automatically
@@ -38,52 +38,72 @@ let
   dumb = pkg: [ (getDesktop pkg) "mime-fallback.desktop" ];
 
 in {
-  # --- 3. SYSTEM LEVEL HOOKS ---
-  environment.systemPackages = [
-    mimeNotifier
-    (pkgs.makeDesktopItem {
-      name = "mime-fallback";
-      desktopName = "MIME Notifier";
-      exec = "${mimeNotifier}/bin/mime-fallback %u";
-    })
-  ];
+  # --- 1. SYSTEM LEVEL OPTIONS ---
+  options.apps = lib.mkOption {
+    type = lib.types.attrsOf lib.types.package;
+    default = {};
+    description = "Centralized applications list owned by mime.nix";
+  };
 
-  home-manager.users.moonburst = {
-    xdg.mimeApps = {
-      enable = true;
-      defaultApplications = lib.mkForce {
-        # Web & Browser
-        "text/html"              = dumb apps.browser;
-        "x-scheme-handler/http"  = dumb apps.browser;
-        "x-scheme-handler/https" = dumb apps.browser;
-        "application/xhtml+xml"  = dumb apps.browser;
+  # --- 2. SYSTEM LEVEL CONFIGURATIONS ---
+  config = {
+    # FIXED: Nesting the dynamic module injection safely inside the config block
+    _module.args.apps = apps;
 
-        # Audio
-        "audio/flac"             = dumb apps.musicPlayer;
-        "audio/x-flac"           = dumb apps.musicPlayer;
-        "audio/mpeg"             = dumb apps.musicPlayer;
-        "audio/mp3"              = dumb apps.musicPlayer;
-        "audio/ogg"              = dumb apps.musicPlayer;
-        "audio/wav"              = dumb apps.musicPlayer;
+    # Expose the option mapping populated for regular system configurations
+    apps = apps;
 
-        # Video
-        "video/mp4"              = dumb apps.videoPlayer;
-        "video/mpeg"             = dumb apps.videoPlayer;
-        "video/x-matroska"       = dumb apps.videoPlayer;
-        "video/quicktime"        = dumb apps.videoPlayer;
+    environment.systemPackages = [
+      mimeNotifier
+      (pkgs.makeDesktopItem {
+        name = "mime-fallback";
+        desktopName = "MIME Notifier";
+        exec = "${mimeNotifier}/bin/mime-fallback %u";
+      })
+    ];
 
-        # Images
-        "image/jpeg"             = dumb apps.imageViewer;
-        "image/png"              = dumb apps.imageViewer;
-        "image/webp"             = dumb apps.imageViewer;
-        "image/gif"              = dumb apps.imageViewer;
-        "image/bmp"              = dumb apps.imageViewer;
+    environment.variables = {
+      TERMINAL = "${apps.terminal.pname or apps.terminal.name or "ghostty"}";
+    };
 
-        # Documents & Files
-        "application/pdf"        = dumb apps.pdfViewer;
-        "inode/directory"        = dumb apps.fileManager;
-        "text/plain"             = dumb apps.editor;
-        "application/x-shellscript" = dumb apps.editor;
+    home-manager.users.moonburst = {
+      xdg.mimeApps = {
+        enable = true;
+        defaultApplications = lib.mkForce {
+          # Web & Browser
+          "text/html"              = dumb apps.browser;
+          "x-scheme-handler/http"  = dumb apps.browser;
+          "x-scheme-handler/https" = dumb apps.browser;
+          "application/xhtml+xml"  = dumb apps.browser;
+
+          # Audio
+          "audio/flac"             = dumb apps.musicPlayer;
+          "audio/x-flac"           = dumb apps.musicPlayer;
+          "audio/mpeg"             = dumb apps.musicPlayer;
+          "audio/mp3"              = dumb apps.musicPlayer;
+          "audio/ogg"              = dumb apps.musicPlayer;
+          "audio/wav"              = dumb apps.musicPlayer;
+
+          # Video
+          "video/mp4"              = dumb apps.videoPlayer;
+          "video/mpeg"             = dumb apps.videoPlayer;
+          "video/x-matroska"       = dumb apps.videoPlayer;
+          "video/quicktime"        = dumb apps.videoPlayer;
+
+          # Images
+          "image/jpeg"             = dumb apps.imageViewer;
+          "image/png"              = dumb apps.imageViewer;
+          "image/webp"             = dumb apps.imageViewer;
+          "image/gif"              = dumb apps.imageViewer;
+          "image/bmp"              = dumb apps.imageViewer;
+
+          # Documents & Files
+          "application/pdf"        = dumb apps.pdfViewer;
+          "inode/directory"        = dumb apps.fileManager;
+          "text/plain"             = dumb apps.editor;
+          "application/x-shellscript" = dumb apps.editor;
+          "x-scheme-handler/terminal" = dumb apps.terminal;
+        };
       };
     };
   };

@@ -6,7 +6,6 @@
     ./window-rules.nix
   ];
 
-  # Instruct Stylix to handle Sway styling templates natively
   stylix.targets.sway.enable = true;
 
   wayland.windowManager.sway = {
@@ -19,7 +18,6 @@
     config = rec {
       modifier = "Mod4";
 
-      # Explicitly empty to prevent default bar generation alongside Waybar
       bars = [ ];
 
       input."type:pointer" = {
@@ -28,33 +26,22 @@
 
       focus.followMouse = false;
 
-      # FIXED AUTOSTART LAUNCHER: Wrapped the variables in an explicit bash wrapper execution string
-      # to prevent Sway's internal parser engine from throwing syntax line crashes.
       startup = [
         {
           command = (
             let
               colors = config.lib.stylix.colors.withHashtag;
-            in ''
-              exec ${pkgs.bash}/bin/bash -c " \
-                ${pkgs.toybox}/bin/killall -q quickshell || true; \
-                STYLIX_BASE00='${colors.base00}' \
-                STYLIX_BASE01='${colors.base01}' \
-                STYLIX_BASE03='${colors.base03}' \
-                STYLIX_BASE05='${colors.base05}' \
-                STYLIX_BASE08='${colors.base08}' \
-                NIXOS_SWAYMSG_PATH='${pkgs.sway}/bin/swaymsg' \
-                NIXOS_DBUSSEND_PATH='${pkgs.dbus}/bin/dbus-send' \
-                quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml \
-              "
-            ''
+              wallpaperScript = "/home/moonburst/nix/hosts/common/scripts/wallpaper.sh";
+            in
+              # FIXED ONE-LINER BLOCK: Stripped all layout newlines and trailing line-break backslashes
+              # to prevent Sway's config engine from splitting internal parameters into invalid commands.
+              "exec ${pkgs.bash}/bin/bash -c \"${pkgs.toybox}/bin/killall -q quickshell || true && ${pkgs.dbus}/bin/dbus-update-activation-environment --systemd DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_DATA_DIRS XDG_CONFIG_HOME && ${pkgs.bash}/bin/bash ${wallpaperScript} daemon & STYLIX_BASE00='${colors.base00}' STYLIX_BASE01='${colors.base01}' STYLIX_BASE03='${colors.base03}' STYLIX_BASE05='${colors.base05}' STYLIX_BASE08='${colors.base08}' NIXOS_SWAYMSG_PATH='${pkgs.sway}/bin/swaymsg' NIXOS_DBUSSEND_PATH='${pkgs.dbus}/bin/dbus-send' quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml\""
           );
           always = true;
         }
       ];
     };
 
-    # Extract system colors from your theme with native hashtags built-in
     extraConfig = let
       colors  = config.lib.stylix.colors.withHashtag;
       base00  = colors.base00;
@@ -67,6 +54,7 @@
       no_focus [window_role="pop-up"]
       # Forces apps to focus smoothly when requested by deep-linking widgets
       focus_on_window_activation focus
+      default_border none
 
       # Syntax: client.<class> <border> <background> <text> <indicator> <child_border>
       client.focused          ${base08} ${base00} ${base05} ${base08} ${base08}

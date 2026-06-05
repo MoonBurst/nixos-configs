@@ -1,21 +1,29 @@
 #!/usr/bin/env bash
 
+# Use the dynamic system path hooks or default to local sockets safely
+SWAY_MSG="${NIXOS_SWAYMSG_PATH:-swaymsg}"
+
 if [ -z "$SWAYSOCK" ]; then
-    RUNTIME_DIR="/run/user/$(id -u)" 
+    RUNTIME_DIR="/run/user/$(id -u)"
     if [ -d "$RUNTIME_DIR" ]; then
         SWAYSOCK=$(find "$RUNTIME_DIR" -maxdepth 1 -type s -name "sway-ipc.*.sock" -printf "%T@ %p\n" | sort -n | tail -1 | awk '{print $2}')
-        export SWAYSOCK 
+        export SWAYSOCK
     fi
 fi
+
 if [ -z "$SWAYSOCK" ]; then
     echo "Error: SWAYSOCK environment variable not set and could not be found. Cannot connect to Sway." >&2
-    exit 1 
+    exit 1
 fi
 
-# Define your outputs exactly as they appear in 'swaymsg -t get_outputs'
-# IMPORTANT: The order here matters for which output gets which image.
+# Define your outputs dynamically using the system monitor array
 OUTPUTS=("DP-1" "DP-2" "HDMI-A-1" "HDMI-A-2")
-WALLPAPER_DIR="/home/moonburst/Pictures/wallpapers"
+WALLPAPER_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/wallpapers"
+
+# Fallback path if the primary directory structure is absent
+if [ ! -d "$WALLPAPER_DIR" ]; then
+    WALLPAPER_DIR="$HOME/Pictures/wallpapers"
+fi
 
 # 1. Get a list of all suitable image files and shuffle them.
 SHUFFLED_WALLPAPERS=()
@@ -40,5 +48,5 @@ for i in "${!OUTPUTS[@]}"; do
     output="${OUTPUTS[$i]}"
     wallpaper_index=$(( i % NUM_WALLPAPERS ))
     RANDOM_WALLPAPER="${SHUFFLED_WALLPAPERS[$wallpaper_index]}"
-    swaymsg "output \"$output\" bg \"$RANDOM_WALLPAPER\" fit"
+    $SWAY_MSG "output \"$output\" bg \"$RANDOM_WALLPAPER\" fit"
 done

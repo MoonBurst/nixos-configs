@@ -49,7 +49,9 @@ Item {
         { symbol: "λ", name: "lambda greek" },
         { symbol: "π", name: "pi greek" },
         { symbol: "Ω", name: "omega greek" },
-        { symbol: "ゴ", name: "jojo" }
+        { symbol: "ゴ", name: "jojo" },
+        { symbol: "™", name: "tm" }
+
     ]
 
 

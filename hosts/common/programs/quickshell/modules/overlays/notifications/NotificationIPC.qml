@@ -90,6 +90,7 @@ Item {
             Quickshell.execDetached(["mpv", "--no-video", "--volume=80", trackPath]);
         }
     }
+
     // ============================================================================
     // ACTIVATE INTERFACE (UNIVERSAL APPLICATION JUMP ENGINE)
     // ============================================================================
@@ -111,20 +112,26 @@ Item {
         highlight(card);
 
         // 1. DYNAMIC GLOBAL WINDOW STEERING LAYER
-        // Automatically builds a loose multi-conditional matching sequence using any string tokens provided
         if (appNameStr.length > 0 || desktopHint.length > 0) {
             let primaryTarget = appNameStr || desktopHint;
             let secondaryTarget = desktopHint || appNameStr;
-
-            // Clean common suffix text strings out to prevent mismatching wrapped clients
             let baseNameClean = primaryTarget.replace(/-electron|-client/gi, "");
 
             console.log("Dynamic target resolution rule processing for app: " + primaryTarget);
 
-            // Fires a unified, relaxed regex-like compositor selector query.
-            // It searches for exact matches, lowercase variations, or clean names across Sway app_id or class fields.
-            let swayCommand = '[app_id="(?i)^' + primaryTarget + '$" or app_id="(?i)^' + secondaryTarget + '$" or app_id="(?i)^' + baseNameClean + '$" or class="(?i)^' + primaryTarget + '$" or class="(?i)^' + baseNameClean + '$"] focus';
+            // FIX: Loop through targets to guarantee 'focus parent; focus child' appends to EVERY option cleanly
+            let targets = [primaryTarget, secondaryTarget, baseNameClean];
+            let commandParts = [];
 
+            for (let i = 0; i < targets.length; i++) {
+                let tgt = targets[i];
+                if (tgt && tgt.length > 0) {
+                    commandParts.push('[app_id="' + tgt + '"] focus; focus parent; focus child');
+                    commandParts.push('[class="' + tgt + '"] focus; focus parent; focus child');
+                }
+            }
+
+            let swayCommand = commandParts.join("; ");
             console.log("Dispatching dynamic Sway selector command: swaymsg " + swayCommand);
             Quickshell.execDetached(["swaymsg", swayCommand]);
         }
@@ -133,7 +140,6 @@ Item {
         if (liveNotif && liveNotif.actions && liveNotif.actions.length > 0) {
             let targetAction = null;
 
-            // Search through the application actions for the standard "default" action callback
             for (let i = 0; i < liveNotif.actions.length; i++) {
                 if (liveNotif.actions[i].identifier === "default") {
                     targetAction = liveNotif.actions[i];
@@ -141,15 +147,23 @@ Item {
                 }
             }
 
-            // Fallback to index 0 if no specific default keyword indicator was explicitly assigned
-            if (!targetAction) targetAction = liveNotif.actions[0];
+            if (!targetAction && liveNotif.actions.length > 0) {
+                let firstActionIndex = 0;
+                targetAction = liveNotif.actions[firstActionIndex];
+            }
 
             if (targetAction && typeof targetAction.invoke === "function") {
-                console.log("SUCCESS: Dispatching native C++ action loop invocation over D-Bus -> " + targetAction.identifier);
+                console.log("SUCCESS: Scheduling native C++ action loop invocation over D-Bus -> " + targetAction.identifier);
 
-                // Triggers the hard-compiled C++ wrapper method. This passes activation
-                // security variables safely back home to any application natively over D-Bus.
-                targetAction.invoke();
+                let dbusTimer = Qt.createQmlObject(
+                    'import QtQuick; Timer { interval: 120; repeat: false; }',
+                    ipc
+                );
+                dbusTimer.triggered.connect(function() {
+                    targetAction.invoke();
+                    dbusTimer.destroy();
+                });
+                dbusTimer.start();
                 return;
             }
         }
@@ -157,7 +171,7 @@ Item {
         console.log("Warning: Window focus complete, but no valid target action was available to execute.");
     }
 
-    function jumpToLatest() {
+    function jumpToLatestInternal() {
         console.log("jumpToLatest called");
 
         let entry = getNewest();
@@ -178,7 +192,6 @@ Item {
 
         ipc.activate(visualCard, textSummary, textBody, textAppName);
 
-        // Delay visual dismissal by 400ms to allow application navigation transitions to settle cleanly
         let delayedDismissTimer = Qt.createQmlObject(
             'import QtQuick; Timer { interval: 400; repeat: false; }',
             ipc
@@ -197,12 +210,12 @@ Item {
     IpcHandler {
         target: "global_notif"
 
-        function dismissLatest() {
+        function dismissLatest(): void {
             ipc.dismissLatest();
         }
 
-        function jumpToLatest() {
-            ipc.jumpToLatest();
+        function jumpToLatest(): void {
+            ipc.jumpToLatestInternal();
         }
     }
 }

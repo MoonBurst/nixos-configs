@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 
-# Find the binaries dynamically
-SWAY_MSG=$(command -v swaymsg)
-JQ=$(command -v jq)
+# Centralized binary hooks injected via Nix build contexts
+SWAY_MSG="${NIXOS_SWAYMSG_PATH:-swaymsg}"
+JQ="@jqBin@/bin/jq"
 
-if [ -z "$SWAY_MSG" ]; then
+if ! command -v "$SWAY_MSG" &> /dev/null && [ ! -f "$SWAY_MSG" ]; then
     notify-send "Error" "swaymsg not found"
     exit 1
 fi
 
+# Fetch focused window class parameters
 TARGET_ID=$($SWAY_MSG -t get_tree | $JQ -r '.. | select(.focused?) | (.app_id // .window_properties.class)')
 EXCLUSION_LIST="gamescope|geany"
 
