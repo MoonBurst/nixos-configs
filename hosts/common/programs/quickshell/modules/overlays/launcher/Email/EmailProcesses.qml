@@ -47,6 +47,7 @@ Item {
     function loadMessage(messageId) {
         readMessage.command = [
             "himalaya",
+            "--config", "/home/moonburst/.config/himalaya/config.toml",
             "message",
             "read",
             messageId
@@ -55,10 +56,20 @@ Item {
         readMessage.running = true
     }
 
+    function deleteMessage(messageId) {
+        controller.statusMessage = "Moving message to trash..."
+        deleteMessageProcess.command = [
+            "sh",
+            "-c",
+            "himalaya --config /home/moonburst/.config/himalaya/config.toml --account gmail message delete --yes " + messageId + " && sh $HOME/.config/goimapnotify/sync-and-notify.sh"
+        ]
+        deleteMessageProcess.running = false
+        deleteMessageProcess.running = true
+    }
+
     Component.onCompleted: {
         readSopsSecret.running = true
     }
-
     Process {
         id: readSopsSecret
 
@@ -80,6 +91,8 @@ Item {
 
         command: [
             "mbsync",
+            "-c",
+            "/home/moonburst/.config/mbsync/mbsyncrc",
             "gmail"
         ]
 
@@ -96,19 +109,21 @@ Item {
             if (controller.isImportantOnlyView) {
                 return [
                     "himalaya",
-                    "--output",
-                    "json",
-                    "envelope",
-                    "list",
+                    "--config", "/home/moonburst/.config/himalaya/config.toml",
+                    "--output", "json",
+                    "envelope", "list",
+                    "--page", "1",
+                    "--page-size", "500",
                     "--query", "flagged"
                 ]
             }
             return [
                 "himalaya",
-                "--output",
-                "json",
-                "envelope",
-                "list"
+                "--config", "/home/moonburst/.config/himalaya/config.toml",
+                "--output", "json",
+                "envelope", "list",
+                "--page", "1",
+                "--page-size", "500"
             ]
         }
 
@@ -165,6 +180,19 @@ Item {
 
             refreshMail()
             root.sendSucceeded()
+        }
+    }
+
+    Process {
+        id: deleteMessageProcess
+        onExited: (exitCode) => {
+            if (exitCode === 0) {
+                controller.statusMessage = "Message deleted successfully."
+                mailList.running = false
+                mailList.running = true
+            } else {
+                controller.statusMessage = "Failed to purge email from server."
+            }
         }
     }
 

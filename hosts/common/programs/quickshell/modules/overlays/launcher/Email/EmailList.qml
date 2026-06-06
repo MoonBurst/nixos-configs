@@ -100,6 +100,8 @@ Rectangle {
 
                 processes.loadMessage(email.id)
     }
+
+
     function deleteCurrentMessage() {
         var filtered = getFilteredEmails();
         var mail = filtered[emailList.currentIndex]
@@ -133,15 +135,12 @@ Rectangle {
 
         controller.emails = tmp
         controller.selectedId = ""
-        controller.messageBody = "Message moved to Trash locally."
+        controller.statusMessage = "Moving message to trash..."
 
-        Quickshell.execDetached([
-            "himalaya",
-            "message",
-            "delete",
-            mail.id
-        ])
+        // FIX: Ensure this reads 'processes' exactly to match Email.qml
+        processes.deleteMessage(mail.id);
     }
+
 
     Column {
         anchors.fill: parent
@@ -361,15 +360,10 @@ Rectangle {
                             }
                 }
 
-                Keys.onPressed: (event) => {
-                    if (event.key === Qt.Key_Delete &&
-                        !controller.isReplying &&
-                        !controller.isComposing) {
 
-                        deleteCurrentMessage()
-                        event.accepted = true
-                        }
-                }
+
+
+
 
                 delegate: Rectangle {
                     width: emailList.width

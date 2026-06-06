@@ -104,6 +104,7 @@ Item {
             event.accepted = true;
             return;
         }
+
     }
 
     EmailController {
