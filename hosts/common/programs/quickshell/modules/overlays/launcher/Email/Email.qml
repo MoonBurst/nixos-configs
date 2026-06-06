@@ -5,13 +5,28 @@ import "."
 Item {
     id: root
 
-    // Explicit widescreen footprint passed down cleanly to nested views
     width: 1500
     height: 900
-
     focus: true
 
     property alias innerListView: emailListContainer.innerListView
+
+    property var stylixTheme: {
+        if (typeof launcherRoot !== "undefined" && launcherRoot && launcherRoot.ctrl && launcherRoot.ctrl.theme)
+            return launcherRoot.ctrl.theme;
+        if (typeof shell !== "undefined" && shell && shell.theme)
+            return shell.theme;
+        return null;
+    }
+
+    EmailController {
+        id: controller
+    }
+
+    EmailProcesses {
+        id: processes
+        controller: controller
+    }
 
     Connections {
         target: controller
@@ -89,7 +104,6 @@ Item {
                 if (controller.selectedId === email.id &&
                     controller.messageBody !== "" &&
                     controller.messageBody.indexOf("Loading") !== 0) {
-
                     controller.isReplying = true;
                     } else {
                         emailListContainer.openCurrentMessage();
@@ -104,35 +118,10 @@ Item {
             event.accepted = true;
             return;
         }
-
-    }
-
-    EmailController {
-        id: controller
-    }
-
-    EmailProcesses {
-        id: processes
-        controller: controller
-    }
-
-    property var stylixTheme: {
-        if (typeof launcherRoot !== "undefined" && launcherRoot.ctrl && launcherRoot.ctrl.theme)
-            return launcherRoot.ctrl.theme
-
-            if (typeof shell !== "undefined" && shell.theme)
-                return shell.theme
-
-                if (typeof theme !== "undefined")
-                    return theme
-
-                    return null
     }
     Rectangle {
         anchors.fill: parent
         color: root.stylixTheme ? root.stylixTheme.base00 : "#111115"
-
-        // RESTORED BORDER LAYER: Formally draws the outline border bubble around the workspace container frame
         border.color: root.stylixTheme ? root.stylixTheme.base03 : "#333345"
         border.width: root.stylixTheme ? root.stylixTheme.globalBorderWidth : 1
         radius: root.stylixTheme ? root.stylixTheme.defaultCardRadius : 8
@@ -144,10 +133,8 @@ Item {
 
             EmailList {
                 id: emailListContainer
-
                 width: parent.width * 0.42
                 height: parent.height
-
                 controller: controller
                 processes: processes
                 stylixTheme: root.stylixTheme
@@ -156,7 +143,6 @@ Item {
             EmailPreview {
                 width: parent.width * 0.58 - (root.stylixTheme ? root.stylixTheme.globalPadding : 12)
                 height: parent.height
-
                 controller: controller
                 processes: processes
                 stylixTheme: root.stylixTheme

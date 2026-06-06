@@ -17,6 +17,29 @@ Item {
         forceCacheSyncDownstream.running = true
     }
 
+    function updateMailListCommand() {
+        if (controller.isImportantOnlyView) {
+            mailList.command = [
+                "/etc/profiles/per-user/moonburst/bin/himalaya",
+                "--config", "/home/moonburst/.config/himalaya/config.toml",
+                "--output", "json",
+                "envelope", "list",
+                "--page", "1",
+                "--page-size", "500",
+                "--query", "flagged"
+            ];
+        } else {
+            mailList.command = [
+                "/etc/profiles/per-user/moonburst/bin/himalaya",
+                "--config", "/home/moonburst/.config/himalaya/config.toml",
+                "--output", "json",
+                "envelope", "list",
+                "--page", "1",
+                "--page-size", "500"
+            ];
+        }
+    }
+
     function sendEmail(from, to, subject, body) {
         sendRawEmail(
             "From: " + from + "\n" +
@@ -37,7 +60,7 @@ Item {
             "cat > /tmp/qs-mail.eml <<'EOF'\n" +
             content +
             "\nEOF\n" +
-            "himalaya message send < /tmp/qs-mail.eml > /tmp/himalaya-send.log 2> /tmp/himalaya-error.log"
+            "/etc/profiles/per-user/moonburst/bin/himalaya message send < /tmp/qs-mail.eml > /tmp/himalaya-send.log 2> /tmp/himalaya-error.log"
         ]
 
         sendEmailProcess.running = false
@@ -46,7 +69,7 @@ Item {
 
     function loadMessage(messageId) {
         readMessage.command = [
-            "himalaya",
+            "/etc/profiles/per-user/moonburst/bin/himalaya",
             "--config", "/home/moonburst/.config/himalaya/config.toml",
             "message",
             "read",
@@ -59,9 +82,9 @@ Item {
     function deleteMessage(messageId) {
         controller.statusMessage = "Moving message to trash..."
         deleteMessageProcess.command = [
-            "sh",
-            "-c",
-            "himalaya --config /home/moonburst/.config/himalaya/config.toml --account gmail message delete --yes " + messageId + " && sh $HOME/.config/goimapnotify/sync-and-notify.sh"
+            "/home/moonburst/.config/goimapnotify/sync-and-notify.sh",
+            "delete",
+            messageId
         ]
         deleteMessageProcess.running = false
         deleteMessageProcess.running = true
@@ -81,6 +104,7 @@ Item {
         stdout: StdioCollector {
             onStreamFinished: {
                 controller.userEmailAddress = text.trim()
+                root.updateMailListCommand();
                 mailList.running = true
             }
         }
@@ -96,36 +120,26 @@ Item {
             "gmail"
         ]
 
-        onExited: {
-            mailList.running = false
-            mailList.running = true
+        onRunningChanged: {
+            if (!forceCacheSyncDownstream.running) {
+                mailList.running = false;
+                root.updateMailListCommand();
+                mailList.running = true;
+            }
         }
     }
 
     Process {
         id: mailList
 
-        command: {
-            if (controller.isImportantOnlyView) {
-                return [
-                    "himalaya",
-                    "--config", "/home/moonburst/.config/himalaya/config.toml",
-                    "--output", "json",
-                    "envelope", "list",
-                    "--page", "1",
-                    "--page-size", "500",
-                    "--query", "flagged"
-                ]
-            }
-            return [
-                "himalaya",
-                "--config", "/home/moonburst/.config/himalaya/config.toml",
-                "--output", "json",
-                "envelope", "list",
-                "--page", "1",
-                "--page-size", "500"
-            ]
-        }
+        command: [
+            "/etc/profiles/per-user/moonburst/bin/himalaya",
+            "--config", "/home/moonburst/.config/himalaya/config.toml",
+            "--output", "json",
+            "envelope", "list",
+            "--page", "1",
+            "--page-size", "500"
+        ]
 
         stdout: StdioCollector {
             onStreamFinished: {
@@ -135,21 +149,24 @@ Item {
                     controller.emails = []
                     controller.statusMessage = "0 message(s)"
                     root.mailListUpdated()
-                    return
+                    return;
                 }
 
                 try {
-                    controller.emails = JSON.parse(raw)
-                    controller.statusMessage =
-                    controller.emails.length + " message(s)"
-
-                    if (controller.currentListIndex >= controller.emails.length) {
-                        controller.currentListIndex = 0
+                    // FIXED: Dynamic structural fallback verification safely injects objects into the list model array
+                    var parsed = JSON.parse(raw);
+                    if (Array.isArray(parsed)) {
+                        controller.emails = parsed;
+                        controller.statusMessage = parsed.length + " message(s)";
+                    } else {
+                        controller.emails = [];
+                        controller.statusMessage = "0 message(s)";
                     }
+
+                    controller.currentListIndex = 0;
                 } catch (e) {
                     controller.emails = []
-                    controller.statusMessage =
-                    "Failed to load current cache"
+                    controller.statusMessage = "Failed to load current cache"
                 }
 
                 root.mailListUpdated()
@@ -171,27 +188,32 @@ Item {
     Process {
         id: sendEmailProcess
 
-        onExited: {
-            controller.isReplying = false
-            controller.isComposing = false
-
-            controller.messageBody =
-            "Message transmitted successfully upstream!"
-
-            refreshMail()
-            root.sendSucceeded()
+        onRunningChanged: {
+            if (!sendEmailProcess.running) {
+                controller.isReplying = false;
+                controller.isComposing = false;
+                controller.messageBody = "Message transmitted successfully upstream!";
+                root.refreshMail();
+                root.sendSucceeded();
+            }
         }
     }
 
     Process {
         id: deleteMessageProcess
-        onExited: (exitCode) => {
-            if (exitCode === 0) {
-                controller.statusMessage = "Message deleted successfully."
-                mailList.running = false
-                mailList.running = true
-            } else {
-                controller.statusMessage = "Failed to purge email from server."
+
+        command: []
+
+        onRunningChanged: {
+            if (!deleteMessageProcess.running) {
+                if (deleteMessageProcess.exitCode === 0) {
+                    controller.statusMessage = "Message deleted successfully.";
+                    mailList.running = false;
+                    root.updateMailListCommand();
+                    mailList.running = true;
+                } else {
+                    controller.statusMessage = "Failed to purge email from server.";
+                }
             }
         }
     }
@@ -206,10 +228,7 @@ Item {
 
         stdout: StdioCollector {
             onStreamFinished: {
-                controller.messageBody =
-                "Himalaya Debug Error:\n\n" +
-                text.trim()
-
+                controller.messageBody = "Himalaya Debug Error:\n\n" + text.trim()
                 root.sendFailed()
             }
         }

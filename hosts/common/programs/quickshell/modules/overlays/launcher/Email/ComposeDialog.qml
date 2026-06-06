@@ -36,6 +36,11 @@ Rectangle {
 
     focus: root.visible
 
+    // FIX: Bubble up internal child properties to root scope via global property aliases
+    property alias addressField: addressField
+    property alias subjectField: subjectField
+    property alias bodyEditor: bodyEditor
+
     property var cachedContactsList: []
     property var matchedSuggestions: []
 
@@ -174,7 +179,6 @@ Rectangle {
 
                 MouseArea {
                     anchors.fill: parent
-
                     onClicked: {
                         controller.isComposing = false
                     }
@@ -238,9 +242,10 @@ Rectangle {
                             return;
                         }
 
+                        // FIX: Pulls the first suggestion item out of the array matching your tab entry press
                         if (event.key === Qt.Key_Tab) {
                             if (root.matchedSuggestions.length > 0) {
-                                addressField.text = root.matchedSuggestions;
+                                addressField.text = root.matchedSuggestions[0];
                                 root.matchedSuggestions = [];
                             }
                             subjectField.forceActiveFocus();
@@ -326,7 +331,7 @@ Rectangle {
                             onClicked: {
                                 addressField.text = modelData;
                                 root.matchedSuggestions = [];
-                                subjectField.forceActiveFocus();
+                                root.subjectField.forceActiveFocus();
                             }
                         }
                     }

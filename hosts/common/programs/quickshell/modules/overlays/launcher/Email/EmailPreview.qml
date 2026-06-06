@@ -17,58 +17,45 @@ Rectangle {
     radius: stylixTheme ? stylixTheme.defaultCardRadius : 0
 
     function openReply() {
-        if (!controller.messageBody ||
-            controller.messageBody.indexOf("Loading") === 0)
-            return
+        if (!controller.messageBody || controller.messageBody.indexOf("Loading") === 0)
+            return;
 
-            controller.replyText =
-            "From: " + controller.userEmailAddress + "\n" +
-            "To: " + controller.currentReplyTo + "\n" +
-            "Subject: " + controller.currentSubject + "\n\n" +
-            "--- Original Message ---\n" +
-            controller.messageBody
+        controller.replyText =
+        "From: " + controller.userEmailAddress + "\n" +
+        "To: " + controller.currentReplyTo + "\n" +
+        "Subject: " + controller.currentSubject + "\n\n" +
+        "--- Original Message ---\n" +
+        controller.messageBody;
 
-            controller.isReplying = true
+        controller.isReplying = true;
     }
 
     function trashCurrentMessage() {
         if (controller.currentListIndex < 0)
-            return
+            return;
 
-            var mail =
-            controller.emails[controller.currentListIndex]
+        var mail = controller.emails[controller.currentListIndex];
+        if (!mail)
+            return;
 
-            if (!mail)
-                return
+        var tmp = controller.emails.slice();
+        tmp.splice(controller.currentListIndex, 1);
 
-                var tmp = controller.emails.slice()
+        controller.emails = tmp;
+        controller.selectedId = "";
+        controller.messageBody = "Message moved to Trash locally.";
 
-                tmp.splice(controller.currentListIndex, 1)
-
-                controller.emails = tmp
-                controller.selectedId = ""
-                controller.messageBody =
-                "Message moved to Trash locally."
-
-                Quickshell.execDetached([
-                    "himalaya",
-                    "message",
-                    "delete",
-                    mail.id
-                ])
+        Quickshell.execDetached([
+            "himalaya",
+            "message",
+            "delete",
+            mail.id
+        ]);
     }
-
     Column {
         anchors.fill: parent
-        anchors.margins:
-        stylixTheme
-        ? stylixTheme.globalPadding
-        : 8
-
-        spacing:
-        stylixTheme
-        ? stylixTheme.globalPadding
-        : 8
+        anchors.margins: stylixTheme ? stylixTheme.globalPadding : 8
+        spacing: stylixTheme ? stylixTheme.globalPadding : 8
 
         Row {
             spacing: 8
@@ -76,105 +63,50 @@ Rectangle {
             Rectangle {
                 width: 140
                 height: 50
-
-                color:
-                stylixTheme
-                ? stylixTheme.base00
-                : "#675DDB"
-
+                color: stylixTheme ? stylixTheme.base00 : "#675DDB"
                 radius: 4
-
-                border.color:
-                stylixTheme
-                ? stylixTheme.base05
-                : "#ffffff"
-
-                border.width:
-                stylixTheme
-                ? stylixTheme.globalBorderWidth
-                : 3
+                border.color: stylixTheme ? stylixTheme.base05 : "#ffffff"
+                border.width: stylixTheme ? stylixTheme.globalBorderWidth : 3
 
                 Text {
                     anchors.centerIn: parent
-
                     text: "✉ New Email"
-
-                    color:
-                    stylixTheme
-                    ? stylixTheme.base05
-                    : "white"
-
+                    color: stylixTheme ? stylixTheme.base05 : "white"
                     font.bold: true
-
-                    font.family:
-                    stylixTheme
-                    ? stylixTheme.fontFamily
-                    : "Fira Sans"
-
-                    font.pixelSize:
-                    stylixTheme
-                    ? stylixTheme.globalFontSize
-                    : 20
+                    font.family: stylixTheme ? stylixTheme.fontFamily : "Fira Sans"
+                    font.pixelSize: stylixTheme ? stylixTheme.globalFontSize : 20
                 }
 
                 MouseArea {
                     anchors.fill: parent
-
                     onClicked: {
-                        controller.composeToAddress = ""
-                        controller.composeSubject = ""
-                        controller.composeBodyText = ""
-                        controller.isComposing = true
+                        controller.composeToAddress = "";
+                        controller.composeSubject = "";
+                        controller.composeBodyText = "";
+                        controller.isComposing = true;
                     }
                 }
             }
+
             Rectangle {
                 width: 120
                 height: 50
-
-                color:
-                stylixTheme
-                ? stylixTheme.base02
-                : "#2a2a3a"
-
+                color: stylixTheme ? stylixTheme.base02 : "#2a2a3a"
                 radius: 4
-
-                border.color:
-                stylixTheme
-                ? stylixTheme.base05
-                : "#ffffff"
-
-                border.width:
-                stylixTheme
-                ? stylixTheme.globalBorderWidth
-                : 3
+                border.color: stylixTheme ? stylixTheme.base05 : "#ffffff"
+                border.width: stylixTheme ? stylixTheme.globalBorderWidth : 3
 
                 Text {
                     anchors.centerIn: parent
-
                     text: "Refresh (F5)"
-
-                    color:
-                    stylixTheme
-                    ? stylixTheme.base05
-                    : "white"
-
+                    color: stylixTheme ? stylixTheme.base05 : "white"
                     font.bold: true
-
-                    font.family:
-                    stylixTheme
-                    ? stylixTheme.fontFamily
-                    : "Fira Sans"
-
-                    font.pixelSize:
-                    stylixTheme
-                    ? stylixTheme.globalFontSize
-                    : 20
+                    font.family: stylixTheme ? stylixTheme.fontFamily : "Fira Sans"
+                    font.pixelSize: stylixTheme ? stylixTheme.globalFontSize : 20
                 }
 
                 MouseArea {
                     anchors.fill: parent
-
                     onClicked: processes.refreshMail()
                 }
             }
@@ -182,45 +114,18 @@ Rectangle {
             Rectangle {
                 width: 130
                 height: 50
-
-                color:
-                stylixTheme
-                ? stylixTheme.base02
-                : "#2a2a3a"
-
+                color: stylixTheme ? stylixTheme.base02 : "#2a2a3a"
                 radius: 4
-
-                border.color:
-                stylixTheme
-                ? stylixTheme.base05
-                : "#ffffff"
-
-                border.width:
-                stylixTheme
-                ? stylixTheme.globalBorderWidth
-                : 3
+                border.color: stylixTheme ? stylixTheme.base05 : "#ffffff"
+                border.width: stylixTheme ? stylixTheme.globalBorderWidth : 3
 
                 Text {
                     anchors.centerIn: parent
-
                     text: "Reply (Enter)"
-
-                    color:
-                    stylixTheme
-                    ? stylixTheme.base05
-                    : "white"
-
+                    color: stylixTheme ? stylixTheme.base05 : "white"
                     font.bold: true
-
-                    font.family:
-                    stylixTheme
-                    ? stylixTheme.fontFamily
-                    : "Fira Sans"
-
-                    font.pixelSize:
-                    stylixTheme
-                    ? stylixTheme.globalFontSize
-                    : 20
+                    font.family: stylixTheme ? stylixTheme.fontFamily : "Fira Sans"
+                    font.pixelSize: stylixTheme ? stylixTheme.globalFontSize : 20
                 }
 
                 MouseArea {
@@ -228,51 +133,48 @@ Rectangle {
                     onClicked: openReply()
                 }
             }
-
         }
 
         Rectangle {
             width: parent.width
             height: parent.height - 70
-
             color: "transparent"
 
             Flickable {
+                id: messageFlickable
                 anchors.fill: parent
-
                 clip: true
-
-                contentHeight:
-                messageText.paintedHeight + 40
+                contentHeight: messageText.paintedHeight + 40
+                contentWidth: parent.width
+                boundsBehavior: Flickable.StopAtBounds
+                interactive: true
 
                 Text {
                     id: messageText
-
                     width: parent.width
-
                     text: controller.messageBody
-
                     wrapMode: Text.Wrap
-
                     textFormat: Text.PlainText
-
-                    color:
-                    stylixTheme
-                    ? stylixTheme.base06
-                    : "white"
-
-                    font.family:
-                    stylixTheme
-                    ? stylixTheme.fontFamily
-                    : "Fira Sans"
-
-                    font.pixelSize:
-                    stylixTheme
-                    ? stylixTheme.globalFontSize + 2
-                    : 22
-
+                    color: stylixTheme ? stylixTheme.base06 : "white"
+                    font.family: stylixTheme ? stylixTheme.fontFamily : "Fira Sans"
+                    font.pixelSize: stylixTheme ? stylixTheme.globalFontSize + 2 : 22
                     lineHeight: 1.15
                 }
+
+                Keys.onUpPressed: { messageFlickable.contentY = Math.max(0, messageFlickable.contentY - 30); }
+                Keys.onDownPressed: { messageFlickable.contentY = Math.min(messageFlickable.contentHeight - messageFlickable.height, messageFlickable.contentY + 30); }
+            }
+
+            Rectangle {
+                id: previewScrollHandle
+                visible: messageFlickable.contentHeight > messageFlickable.height
+                width: 6
+                radius: 3
+                color: stylixTheme ? stylixTheme.base04 : "#555565"
+                anchors.right: parent.right
+                anchors.rightMargin: 2
+                height: Math.max(30, (messageFlickable.height / messageFlickable.contentHeight) * messageFlickable.height)
+                y: (messageFlickable.contentY / (messageFlickable.contentHeight - messageFlickable.height)) * (messageFlickable.height - height)
             }
         }
     }
