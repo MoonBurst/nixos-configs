@@ -24,12 +24,12 @@ Rectangle {
             color: stylixTheme ? stylixTheme.base07 : "#aaaaaa"
 
             font.family: stylixTheme
-                ? stylixTheme.fontFamily
-                : "Fira Sans"
+            ? stylixTheme.fontFamily
+            : "Fira Sans"
 
             font.pixelSize: stylixTheme
-                ? stylixTheme.globalFontSize + 4
-                : 24
+            ? stylixTheme.globalFontSize + 4
+            : 24
         }
 
         ListView {
@@ -52,41 +52,41 @@ Rectangle {
                 controller.currentListIndex = currentIndex
             }
 
-            Keys.onUpPressed: {
-                if (currentIndex > 0)
-                    currentIndex--
+            // Map keystrokes strictly into the required external layout object
+            Keys.onUpPressed: (event) => {
+                if (emailList && emailList.currentIndex > 0) {
+                    emailList.currentIndex--;
+                    listView.currentIndex = emailList.currentIndex;
+                    event.accepted = true;
+                }
             }
 
-            Keys.onDownPressed: {
-                if (currentIndex < controller.emails.length - 1)
-                    currentIndex++
+            Keys.onDownPressed: (event) => {
+                if (emailList && emailList.currentIndex < controller.emails.length - 1) {
+                    emailList.currentIndex++;
+                    listView.currentIndex = emailList.currentIndex;
+                    event.accepted = true;
+                }
             }
 
             Keys.onReturnPressed: {
                 if (controller.isReplying || controller.isComposing)
                     return
 
-                var email = controller.emails[currentIndex]
+                    var email = controller.emails[currentIndex]
 
-                if (!email)
-                    return
+                    if (!email)
+                        return
 
-                if (controller.selectedId === email.id
-                        && controller.messageBody.length > 0) {
+                        if (controller.selectedId === email.id
+                            && controller.messageBody.length > 0) {
 
-                    controller.openReply()
+                            controller.openReply()
 
-                } else {
+                            } else {
 
-                    controller.loadMessage(email.id)
-                }
-            }
-
-            Keys.onPressed: function(event) {
-                if (event.key === Qt.Key_Delete) {
-                    controller.deleteCurrentMessage()
-                    event.accepted = true
-                }
+                                controller.loadMessage(email.id)
+                            }
             }
 
             delegate: Rectangle {
@@ -94,28 +94,29 @@ Rectangle {
                 height: 105
 
                 radius: stylixTheme
-                    ? stylixTheme.defaultCardRadius - 2
-                    : 8
+                ? stylixTheme.defaultCardRadius - 2
+                : 8
 
                 color: controller.currentListIndex === index
-                    ? (stylixTheme
-                        ? stylixTheme.base03
-                        : "#003399")
-                    : "transparent"
+                ? (stylixTheme
+                ? stylixTheme.base03
+                : "#003399")
+                : "transparent"
 
                 border.width: controller.selectedId === modelData.id
-                    ? 2
-                    : 0
+                ? 2
+                : 0
 
                 border.color: stylixTheme
-                    ? stylixTheme.base0A
-                    : "#FABD2F"
+                ? stylixTheme.base0A
+                : "#FABD2F"
 
                 MouseArea {
                     anchors.fill: parent
 
                     onClicked: {
                         listView.currentIndex = index
+                        if (emailList) emailList.currentIndex = index;
                         controller.loadMessage(modelData.id)
                         listView.forceActiveFocus()
                     }
@@ -131,23 +132,23 @@ Rectangle {
                         width: parent.width - 24
 
                         text: modelData.from
-                            ? (modelData.from.name
-                               || modelData.from.addr)
-                            : ""
+                        ? (modelData.from.name
+                        || modelData.from.addr)
+                        : ""
 
                         color: stylixTheme
-                            ? stylixTheme.base08
-                            : "#ff6666"
+                        ? stylixTheme.base08
+                        : "#ff6666"
 
                         font.bold: true
 
                         font.family: stylixTheme
-                            ? stylixTheme.fontFamily
-                            : "Fira Sans"
+                        ? stylixTheme.fontFamily
+                        : "Fira Sans"
 
                         font.pixelSize: stylixTheme
-                            ? stylixTheme.globalFontSize + 2
-                            : 22
+                        ? stylixTheme.globalFontSize + 2
+                        : 22
 
                         elide: Text.ElideRight
                     }
@@ -158,16 +159,16 @@ Rectangle {
                         text: modelData.subject || "(No Subject)"
 
                         color: stylixTheme
-                            ? stylixTheme.base05
-                            : "white"
+                        ? stylixTheme.base05
+                        : "white"
 
                         font.family: stylixTheme
-                            ? stylixTheme.fontFamily
-                            : "Fira Sans"
+                        ? stylixTheme.fontFamily
+                        : "Fira Sans"
 
                         font.pixelSize: stylixTheme
-                            ? stylixTheme.globalFontSize
-                            : 20
+                        ? stylixTheme.globalFontSize
+                        : 20
 
                         elide: Text.ElideRight
                     }
@@ -176,16 +177,16 @@ Rectangle {
                         text: modelData.date || ""
 
                         color: stylixTheme
-                            ? stylixTheme.base04
-                            : "#999999"
+                        ? stylixTheme.base04
+                        : "#999999"
 
                         font.family: stylixTheme
-                            ? stylixTheme.fontFamily
-                            : "Fira Sans"
+                        ? stylixTheme.fontFamily
+                        : "Fira Sans"
 
                         font.pixelSize: stylixTheme
-                            ? stylixTheme.globalFontSize - 4
-                            : 12
+                        ? stylixTheme.globalFontSize - 4
+                        : 12
                     }
                 }
             }

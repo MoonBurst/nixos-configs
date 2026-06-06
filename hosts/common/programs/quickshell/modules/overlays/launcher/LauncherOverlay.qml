@@ -1015,26 +1015,43 @@
                     }
 
 
-
                     /*
-                     * CLEANED EMAIL APPS DASHBOARD LOADER GATEWAY
+                     * CLEANED EMAIL APPS DASHBOARD LOADER GATEWAY (1500x900 CENTERING WRAPPER)
                      */
-                    Loader {
-                        id: emailLoader
-                        active: launcherRoot.mode.toLowerCase() === "email"
-                        visible: active
-
-                        // Maintain your clean system scaling proportions
+                    Item {
+                        // Expand the outer wrapper canvas to occupy the full resolution of your screen monitor
                         width: parent.width
-                        height: parent.contentHeight
+                        height: parent.height
 
-                        // Seamlessly load your dedicated external workspace script file
-                        source: "Email/Email.qml"
+                        Loader {
+                            id: emailLoader
+                            active: launcherRoot.mode.toLowerCase() === "email"
+                            visible: active
 
-                        // Automatically hooks keyboard focus straight down onto your script on load
-                        onLoaded: {
-                            if (item) {
-                                item.forceActiveFocus()
+                            // Hard-locks your spacious high-resolution widescreen canvas bounds template
+                            width: 1500
+                            height: 900
+
+                            // Safe layout anchoring inside an independent positioning frame container wrapper
+                            // This successfully anchors the 1500x900 box directly to the middle of the display monitor
+                            anchors.centerIn: parent
+
+                            // Seamlessly load your dedicated external workspace script file
+                            source: "Email/Email.qml"
+
+                            // Force the layout container item to handle core keyboard focus loops on load
+                            focus: launcherRoot.mode.toLowerCase() === "email"
+                            // Pin active keyboard control straight onto your inner ListView alias on successful load
+                            onLoaded: {
+                                if (item) {
+                                    Qt.callLater(function() {
+                                        if (item.innerListView) {
+                                            item.innerListView.forceActiveFocus();
+                                        } else {
+                                            item.forceActiveFocus();
+                                        }
+                                    })
+                                }
                             }
                         }
                     }

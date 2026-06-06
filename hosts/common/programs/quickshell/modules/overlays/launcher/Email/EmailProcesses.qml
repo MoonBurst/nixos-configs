@@ -5,7 +5,6 @@ import Quickshell.Io
 Item {
     id: root
 
-    ```
     required property QtObject controller
 
     signal mailListUpdated()
@@ -45,12 +44,12 @@ Item {
         sendEmailProcess.running = true
     }
 
-    function loadMessage(id) {
+    function loadMessage(messageId) {
         readMessage.command = [
             "himalaya",
             "message",
             "read",
-            id
+            messageId
         ]
 
         readMessage.running = true
@@ -58,50 +57,6 @@ Item {
 
     Component.onCompleted: {
         readSopsSecret.running = true
-    }
-
-    Timer {
-        id: contactsLoaderTimer
-
-        interval: 10
-        running: true
-        repeat: false
-
-        onTriggered: {
-            var xhr = new XMLHttpRequest()
-
-            var docUrl = StandardPaths.writableLocation(
-                StandardPaths.DocumentsLocation
-            ).toString()
-
-            if (!docUrl.startsWith("file://"))
-                docUrl = "file://" + docUrl
-
-                xhr.open(
-                    "GET",
-                    docUrl + "/Contacts",
-                    true
-                )
-
-                xhr.onreadystatechange = function() {
-                    if (xhr.readyState !== XMLHttpRequest.DONE)
-                        return
-
-                        if (xhr.status === 200 || xhr.status === 0) {
-                            try {
-                                controller.contactDirectoryList =
-                                JSON.parse(xhr.responseText)
-                            } catch (e) {
-                                console.log(
-                                    "Failed to parse contacts:",
-                                    e
-                                )
-                            }
-                        }
-                }
-
-                xhr.send()
-        }
     }
 
     Process {
@@ -114,9 +69,7 @@ Item {
 
         stdout: StdioCollector {
             onStreamFinished: {
-                controller.userEmailAddress =
-                text.trim()
-
+                controller.userEmailAddress = text.trim()
                 mailList.running = true
             }
         }
@@ -139,13 +92,25 @@ Item {
     Process {
         id: mailList
 
-        command: [
-            "himalaya",
-            "--output",
-            "json",
-            "envelope",
-            "list"
-        ]
+        command: {
+            if (controller.isImportantOnlyView) {
+                return [
+                    "himalaya",
+                    "--output",
+                    "json",
+                    "envelope",
+                    "list",
+                    "--query", "flagged"
+                ]
+            }
+            return [
+                "himalaya",
+                "--output",
+                "json",
+                "envelope",
+                "list"
+            ]
+        }
 
         stdout: StdioCollector {
             onStreamFinished: {
@@ -153,23 +118,21 @@ Item {
 
                 if (!raw.length) {
                     controller.emails = []
-                    controller.statusMessage =
-                    "0 message(s)"
-
+                    controller.statusMessage = "0 message(s)"
                     root.mailListUpdated()
                     return
                 }
 
                 try {
-                    controller.emails =
-                    JSON.parse(raw)
-
+                    controller.emails = JSON.parse(raw)
                     controller.statusMessage =
-                    controller.emails.length +
-                    " message(s)"
+                    controller.emails.length + " message(s)"
+
+                    if (controller.currentListIndex >= controller.emails.length) {
+                        controller.currentListIndex = 0
+                    }
                 } catch (e) {
                     controller.emails = []
-
                     controller.statusMessage =
                     "Failed to load current cache"
                 }
@@ -193,21 +156,15 @@ Item {
     Process {
         id: sendEmailProcess
 
-        onExited: (exitCode) => {
-            if (exitCode === 0) {
-                controller.isReplying = false
-                controller.isComposing = false
+        onExited: {
+            controller.isReplying = false
+            controller.isComposing = false
 
-                controller.messageBody =
-                "Message transmitted successfully upstream!"
+            controller.messageBody =
+            "Message transmitted successfully upstream!"
 
-                refreshMail()
-
-                root.sendSucceeded()
-            } else {
-                readErrorLog.running = false
-                readErrorLog.running = true
-            }
+            refreshMail()
+            root.sendSucceeded()
         }
     }
 
@@ -229,6 +186,4 @@ Item {
             }
         }
     }
-    ```
-
 }

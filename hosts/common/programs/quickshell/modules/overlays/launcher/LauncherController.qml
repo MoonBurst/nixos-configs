@@ -1,4 +1,5 @@
 pragma Singleton
+import "./Email"
 
 import QtQuick
 

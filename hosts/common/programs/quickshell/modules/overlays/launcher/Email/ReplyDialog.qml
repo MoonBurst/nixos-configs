@@ -5,7 +5,6 @@ import QtQuick.Controls
 Rectangle {
     id: root
 
-
     required property QtObject controller
     required property QtObject processes
 
@@ -33,6 +32,15 @@ Rectangle {
     border.width: stylixTheme
     ? stylixTheme.globalBorderWidth
     : 3
+
+    // Clean keyboard isolation loop to make sure this dialog never swallows list keys when invisible
+    focus: root.visible
+
+    onVisibleChanged: {
+        if (root.visible) {
+            replyEditor.forceActiveFocus();
+        }
+    }
 
     function sendReply() {
         if (processes.sendRawMessage) {
@@ -142,12 +150,16 @@ Rectangle {
                     ? stylixTheme.globalFontSize + 4
                     : 24
 
+                    // Strictly run text bindings only if the editor window is actively targeted
+                    focus: root.visible
+
                     onTextChanged: {
-                        controller.replyText = text
+                        if (root.visible) {
+                            controller.replyText = text
+                        }
                     }
 
-                    Keys.onPressed: function(event) {
-
+                    Keys.onPressed: {
                         if (event.key === Qt.Key_Escape) {
                             controller.isReplying = false
                             event.accepted = true
@@ -166,6 +178,4 @@ Rectangle {
             }
         }
     }
-
-
 }

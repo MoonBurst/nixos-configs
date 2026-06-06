@@ -2,6 +2,7 @@ import QtQml
 import QtQuick
 import QtQuick.Controls
 import Quickshell
+
 Rectangle {
     id: root
 
@@ -20,54 +21,54 @@ Rectangle {
             controller.messageBody.indexOf("Loading") === 0)
             return
 
-        controller.replyText =
+            controller.replyText =
             "From: " + controller.userEmailAddress + "\n" +
             "To: " + controller.currentReplyTo + "\n" +
             "Subject: " + controller.currentSubject + "\n\n" +
             "--- Original Message ---\n" +
             controller.messageBody
 
-        controller.isReplying = true
+            controller.isReplying = true
     }
 
     function trashCurrentMessage() {
         if (controller.currentListIndex < 0)
             return
 
-        var mail =
+            var mail =
             controller.emails[controller.currentListIndex]
 
-        if (!mail)
-            return
+            if (!mail)
+                return
 
-        var tmp = controller.emails.slice()
+                var tmp = controller.emails.slice()
 
-        tmp.splice(controller.currentListIndex, 1)
+                tmp.splice(controller.currentListIndex, 1)
 
-        controller.emails = tmp
-        controller.selectedId = ""
-        controller.messageBody =
-            "Message moved to Trash locally."
+                controller.emails = tmp
+                controller.selectedId = ""
+                controller.messageBody =
+                "Message moved to Trash locally."
 
-        Quickshell.execDetached([
-            "himalaya",
-            "message",
-            "delete",
-            mail.id
-        ])
+                Quickshell.execDetached([
+                    "himalaya",
+                    "message",
+                    "delete",
+                    mail.id
+                ])
     }
 
     Column {
         anchors.fill: parent
         anchors.margins:
-            stylixTheme
-                ? stylixTheme.globalPadding
-                : 8
+        stylixTheme
+        ? stylixTheme.globalPadding
+        : 8
 
         spacing:
-            stylixTheme
-                ? stylixTheme.globalPadding
-                : 8
+        stylixTheme
+        ? stylixTheme.globalPadding
+        : 8
 
         Row {
             spacing: 8
@@ -77,21 +78,21 @@ Rectangle {
                 height: 50
 
                 color:
-                    stylixTheme
-                        ? stylixTheme.base00
-                        : "#675DDB"
+                stylixTheme
+                ? stylixTheme.base00
+                : "#675DDB"
 
                 radius: 4
 
                 border.color:
-                    stylixTheme
-                        ? stylixTheme.base05
-                        : "#ffffff"
+                stylixTheme
+                ? stylixTheme.base05
+                : "#ffffff"
 
                 border.width:
-                    stylixTheme
-                        ? stylixTheme.globalBorderWidth
-                        : 3
+                stylixTheme
+                ? stylixTheme.globalBorderWidth
+                : 3
 
                 Text {
                     anchors.centerIn: parent
@@ -99,21 +100,21 @@ Rectangle {
                     text: "✉ New Email"
 
                     color:
-                        stylixTheme
-                            ? stylixTheme.base05
-                            : "white"
+                    stylixTheme
+                    ? stylixTheme.base05
+                    : "white"
 
                     font.bold: true
 
                     font.family:
-                        stylixTheme
-                            ? stylixTheme.fontFamily
-                            : "Fira Sans"
+                    stylixTheme
+                    ? stylixTheme.fontFamily
+                    : "Fira Sans"
 
                     font.pixelSize:
-                        stylixTheme
-                            ? stylixTheme.globalFontSize
-                            : 20
+                    stylixTheme
+                    ? stylixTheme.globalFontSize
+                    : 20
                 }
 
                 MouseArea {
@@ -127,27 +128,26 @@ Rectangle {
                     }
                 }
             }
-
             Rectangle {
                 width: 120
                 height: 50
 
                 color:
-                    stylixTheme
-                        ? stylixTheme.base02
-                        : "#2a2a3a"
+                stylixTheme
+                ? stylixTheme.base02
+                : "#2a2a3a"
 
                 radius: 4
 
                 border.color:
-                    stylixTheme
-                        ? stylixTheme.base05
-                        : "#ffffff"
+                stylixTheme
+                ? stylixTheme.base05
+                : "#ffffff"
 
                 border.width:
-                    stylixTheme
-                        ? stylixTheme.globalBorderWidth
-                        : 3
+                stylixTheme
+                ? stylixTheme.globalBorderWidth
+                : 3
 
                 Text {
                     anchors.centerIn: parent
@@ -155,21 +155,21 @@ Rectangle {
                     text: "Refresh (F5)"
 
                     color:
-                        stylixTheme
-                            ? stylixTheme.base05
-                            : "white"
+                    stylixTheme
+                    ? stylixTheme.base05
+                    : "white"
 
                     font.bold: true
 
                     font.family:
-                        stylixTheme
-                            ? stylixTheme.fontFamily
-                            : "Fira Sans"
+                    stylixTheme
+                    ? stylixTheme.fontFamily
+                    : "Fira Sans"
 
                     font.pixelSize:
-                        stylixTheme
-                            ? stylixTheme.globalFontSize
-                            : 20
+                    stylixTheme
+                    ? stylixTheme.globalFontSize
+                    : 20
                 }
 
                 MouseArea {
@@ -184,21 +184,21 @@ Rectangle {
                 height: 50
 
                 color:
-                    stylixTheme
-                        ? stylixTheme.base02
-                        : "#2a2a3a"
+                stylixTheme
+                ? stylixTheme.base02
+                : "#2a2a3a"
 
                 radius: 4
 
                 border.color:
-                    stylixTheme
-                        ? stylixTheme.base05
-                        : "#ffffff"
+                stylixTheme
+                ? stylixTheme.base05
+                : "#ffffff"
 
                 border.width:
-                    stylixTheme
-                        ? stylixTheme.globalBorderWidth
-                        : 3
+                stylixTheme
+                ? stylixTheme.globalBorderWidth
+                : 3
 
                 Text {
                     anchors.centerIn: parent
@@ -206,21 +206,21 @@ Rectangle {
                     text: "Reply (Enter)"
 
                     color:
-                        stylixTheme
-                            ? stylixTheme.base05
-                            : "white"
+                    stylixTheme
+                    ? stylixTheme.base05
+                    : "white"
 
                     font.bold: true
 
                     font.family:
-                        stylixTheme
-                            ? stylixTheme.fontFamily
-                            : "Fira Sans"
+                    stylixTheme
+                    ? stylixTheme.fontFamily
+                    : "Fira Sans"
 
                     font.pixelSize:
-                        stylixTheme
-                            ? stylixTheme.globalFontSize
-                            : 20
+                    stylixTheme
+                    ? stylixTheme.globalFontSize
+                    : 20
                 }
 
                 MouseArea {
@@ -229,57 +229,6 @@ Rectangle {
                 }
             }
 
-            Rectangle {
-                width: 100
-                height: 50
-
-                visible:
-                    controller.emails.length > 0 &&
-                    controller.currentListIndex >= 0
-
-                color:
-                    stylixTheme
-                        ? stylixTheme.base02
-                        : "#2a2a3a"
-
-                radius: 4
-
-                border.color:
-                    stylixTheme
-                        ? stylixTheme.base08
-                        : "#ff6666"
-
-                border.width:
-                    stylixTheme
-                        ? stylixTheme.globalBorderWidth
-                        : 2
-
-                Text {
-                    anchors.centerIn: parent
-
-                    text: "Trash"
-
-                    color:
-                        stylixTheme
-                            ? stylixTheme.base08
-                            : "#ff6666"
-
-                    font.family:
-                        stylixTheme
-                            ? stylixTheme.fontFamily
-                            : "Fira Sans"
-
-                    font.pixelSize:
-                        stylixTheme
-                            ? stylixTheme.globalFontSize
-                            : 20
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: trashCurrentMessage()
-                }
-            }
         }
 
         Rectangle {
@@ -294,7 +243,7 @@ Rectangle {
                 clip: true
 
                 contentHeight:
-                    messageText.paintedHeight + 40
+                messageText.paintedHeight + 40
 
                 Text {
                     id: messageText
@@ -308,33 +257,23 @@ Rectangle {
                     textFormat: Text.PlainText
 
                     color:
-                        stylixTheme
-                            ? stylixTheme.base06
-                            : "white"
+                    stylixTheme
+                    ? stylixTheme.base06
+                    : "white"
 
                     font.family:
-                        stylixTheme
-                            ? stylixTheme.fontFamily
-                            : "Fira Sans"
+                    stylixTheme
+                    ? stylixTheme.fontFamily
+                    : "Fira Sans"
 
                     font.pixelSize:
-                        stylixTheme
-                            ? stylixTheme.globalFontSize + 2
-                            : 22
+                    stylixTheme
+                    ? stylixTheme.globalFontSize + 2
+                    : 22
 
                     lineHeight: 1.15
                 }
             }
-        }
-    }
-
-    Shortcut {
-        sequence: "F5"
-
-        onActivated: {
-            if (!controller.isReplying &&
-                !controller.isComposing)
-                processes.refreshMail()
         }
     }
 }
