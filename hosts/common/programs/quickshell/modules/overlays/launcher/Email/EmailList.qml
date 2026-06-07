@@ -101,7 +101,6 @@ Rectangle {
         processes.loadMessage(msgId);
     }
 
-
     function deleteCurrentMessage() {
         console.log("--> deleteCurrentMessage() function was called successfully!");
 
@@ -112,17 +111,19 @@ Rectangle {
             return;
         }
 
-
-        var msgId = mail.id ? String(mail.id) : "";
+        var env = mail.envelope ? mail.envelope : mail;
+        var msgId = mail.id ? String(mail.id) : (env.id ? String(env.id) : "");
 
         console.log("--> Front-end extracted unique msgId text: [" + msgId + "]");
         if (!msgId || msgId === "") return;
 
-        // Optimistically remove the item from the local array list view so it vanishes instantly
         var tmp = [];
         for (var j = 0; j < controller.emails.length; j++) {
             var checkMail = controller.emails[j];
-            if (checkMail.id && String(checkMail.id) !== msgId) {
+            var checkEnv = checkMail.envelope ? checkMail.envelope : checkMail;
+            var checkId = checkMail.id ? String(checkMail.id) : (checkEnv.id ? String(checkEnv.id) : "");
+
+            if (checkId !== msgId) {
                 tmp.push(checkMail);
             }
         }
@@ -131,11 +132,8 @@ Rectangle {
         controller.selectedId = "";
         controller.statusMessage = "Message deleted successfully.";
 
-        // Pass the actual file prefix to your backend delete process script
         processes.deleteMessage(msgId);
     }
-
-
     Column {
         anchors.fill: parent
         anchors.margins: stylixTheme ? stylixTheme.globalPadding / 2 : 6
@@ -245,6 +243,7 @@ Rectangle {
                 }
             }
         }
+
         Rectangle {
             width: parent.width
             height: parent.height - statusText.height - 66
@@ -281,15 +280,7 @@ Rectangle {
                     if (!email) return;
 
                     var env = email.envelope ? email.envelope : email;
-
-                    var msgId = "";
-                    if (email.id && typeof email.id === "object" && email.id.id) {
-                        msgId = String(email.id.id);
-                    } else if (env.id && typeof env.id === "object" && env.id.id) {
-                        msgId = String(env.id.id);
-                    } else {
-                        msgId = email.id ? String(email.id) : (env.id ? String(env.id) : "");
-                    }
+                    var msgId = email.id ? String(email.id) : (env.id ? String(env.id) : "");
 
                     if (controller.selectedId === msgId && controller.messageBody !== "" && controller.messageBody.indexOf("Loading") !== 0) {
                         controller.isReplying = true;
@@ -309,13 +300,12 @@ Rectangle {
                     }
                 }
 
-
                 delegate: Rectangle {
                     width: emailList.width
                     height: 105
                     radius: stylixTheme ? stylixTheme.defaultCardRadius - 2 : 8
                     color: controller.currentListIndex === index ? (stylixTheme ? stylixTheme.base03 : "#003399") : "transparent"
-                    border.width: (controller.selectedId === modelData.id || (modelData.envelope && controller.selectedId === modelData.envelope.id)) ? 2 : 0
+                    border.width: (controller.selectedId === String(modelData.id) || (modelData.envelope && controller.selectedId === String(modelData.envelope.id))) ? 2 : 0
                     border.color: stylixTheme ? stylixTheme.base0A : "#FABD2F"
 
                     MouseArea {

@@ -11,10 +11,12 @@ in
     pkgs.goimapnotify
     pkgs.isync
     pkgs.libnotify
+    pkgs.ripgrep
+    pkgs.gawk
   ];
 
   # =========================================================================
-  # Centralized EmailProcesses.qml Configuration (Optimized Context)
+  # Declarative EmailProcesses.qml Configuration (Backend Workers Only)
   # =========================================================================
 
   home.file."nix/hosts/common/programs/quickshell/modules/overlays/launcher/Email/EmailProcesses.qml".text = ''
@@ -39,54 +41,29 @@ in
             forceCacheSyncDownstream.running = true
         }
 
+        // FIXED: Utilized explicit Nix macro interpolation boundaries to substitute target path characters cleanly
         function updateMailListCommand() {
-            var shellPrefix = "export HIMALAYA_GMAIL_ADDRESS=\"$(cat " + gmailAddrFile + ")\"; ";
-
-            if (controller.isImportantOnlyView) {
-                mailList.command = [
-                    "${pkgs.bash}/bin/sh", "-c",
-                    shellPrefix + "${pkgs.himalaya}/bin/himalaya --config ${homeDir}/.config/himalaya/config.toml --output json envelope list --page 1 --page-size 500 --query flagged | ${pkgs.coreutils}/bin/tee /tmp/qs-raw-emails.json"
-                ];
-            } else {
-                mailList.command = [
-                    "${pkgs.bash}/bin/sh", "-c",
-                    shellPrefix + "${pkgs.himalaya}/bin/himalaya --config ${homeDir}/.config/himalaya/config.toml --output json envelope list --page 1 --page-size 500 | ${pkgs.coreutils}/bin/tee /tmp/qs-raw-emails.json"
-                ];
-            }
+            mailList.command = [
+                "${pkgs.bash}/bin/sh", "-c",
+                "export HIMALAYA_GMAIL_ADDRESS=\"$(${pkgs.coreutils}/bin/cat ${gmailAddrFile} | ${pkgs.coreutils}/bin/tr -d '\\n\\r ')\"; ${pkgs.himalaya}/bin/himalaya --config ${homeDir}/.config/himalaya/config.toml --output json envelope list --page 1 --page-size 500"
+            ];
         }
 
         function sendEmail(from, to, subject, body) {
-            sendRawEmail(
-                "From: " + from + "\n" +
-                "To: " + to + "\n" +
-                "Subject: " + subject + "\n\n" +
-                body
-            )
-        }
-
-        function sendRawMessage(content) {
-            sendRawEmail(content)
-        }
-
-        function sendRawEmail(content) {
-            var shellPrefix = "export HIMALAYA_GMAIL_ADDRESS=\"$(cat " + gmailAddrFile + ")\"; ";
-
             sendEmailProcess.command = [
                 "${pkgs.bash}/bin/sh", "-c",
-                shellPrefix + "${pkgs.coreutils}/bin/cat > /tmp/qs-mail.eml <<'EOF'\n" + content + "\nEOF\n" +
-                "${pkgs.himalaya}/bin/himalaya message send < /tmp/qs-mail.eml > /tmp/himalaya-send.log 2> /tmp/himalaya-error.log"
-            ]
-            sendEmailProcess.running = false
-            sendEmailProcess.running = true
+                "export HIMALAYA_GMAIL_ADDRESS=\"$(${pkgs.coreutils}/bin/cat ${gmailAddrFile} | ${pkgs.coreutils}/bin/tr -d '\\n\\r ')\"; ${pkgs.coreutils}/bin/cat > /tmp/qs-mail.eml <<'EOF'\nFrom: " + from + "\nTo: " + to + "\nSubject: " + subject + "\n\n" + body + "\nEOF\n" +
+                "${pkgs.himalaya}/bin/himalaya message send < /tmp/qs-mail.eml"
+            ];
+            sendEmailProcess.running = true;
         }
 
         function loadMessage(messageId) {
-            var shellPrefix = "export HIMALAYA_GMAIL_ADDRESS=\"$(cat " + gmailAddrFile + ")\"; ";
             readMessage.command = [
                 "${pkgs.bash}/bin/sh", "-c",
-                shellPrefix + "${pkgs.himalaya}/bin/himalaya --config ${homeDir}/.config/himalaya/config.toml message read " + messageId
-            ]
-            readMessage.running = true
+                "export HIMALAYA_GMAIL_ADDRESS=\"$(${pkgs.coreutils}/bin/cat ${gmailAddrFile} | ${pkgs.coreutils}/bin/tr -d '\\n\\r ')\"; ${pkgs.himalaya}/bin/himalaya --config ${homeDir}/.config/himalaya/config.toml message read " + messageId
+            ];
+            readMessage.running = true;
         }
 
         function deleteMessage(messageId) {
@@ -94,11 +71,12 @@ in
             tmpDeleted.push(String(messageId));
             root.locallyDeletedIds = tmpDeleted;
 
-            var shellPrefix = "export HIMALAYA_GMAIL_ADDRESS=\"$(cat " + gmailAddrFile + ")\"; ";
             deleteMessageProcess.command = [
                 "${pkgs.bash}/bin/sh", "-c",
-                shellPrefix + "${pkgs.himalaya}/bin/himalaya --config ${homeDir}/.config/himalaya/config.toml message delete " + messageId
-            ]
+                "export HIMALAYA_GMAIL_ADDRESS=\"$(${pkgs.coreutils}/bin/cat ${gmailAddrFile} | ${pkgs.coreutils}/bin/tr -d '\\n\\r ')\"; " +
+                "export HIMALAYA_GMAIL_PASSWORD=\"$(${pkgs.coreutils}/bin/cat ${gmailPassFile} | ${pkgs.coreutils}/bin/tr -d '\\n\\r ')\"; " +
+                "${pkgs.himalaya}/bin/himalaya --config ${homeDir}/.config/himalaya/config.toml message delete --account gmail " + messageId + " 2>/tmp/himalaya-error.log"
+            ];
             deleteMessageProcess.running = false
             deleteMessageProcess.running = true
         }
@@ -109,7 +87,7 @@ in
 
         Process {
             id: readSopsSecret
-            command: [ "${pkgs.coreutils}/bin/cat", "'' + gmailAddrFile + ''" ]
+            command: [ "${pkgs.coreutils}/bin/cat", "${gmailAddrFile}" ]
             stdout: StdioCollector {
                 onStreamFinished: {
                     controller.userEmailAddress = text.trim()
@@ -118,116 +96,57 @@ in
                 }
             }
         }
+
         Process {
             id: forceCacheSyncDownstream
-            command: [ "${pkgs.bash}/bin/sh", "-c", "export HIMALAYA_GMAIL_ADDRESS=\"$(cat '' + gmailAddrFile + '')\"; export HIMALAYA_GMAIL_PASSWORD=\"$(cat '' + gmailPassFile + '')\"; ${pkgs.isync}/bin/mbsync -c ${homeDir}/.config/mbsync/mbsyncrc gmail" ]
+            command: [ "${pkgs.bash}/bin/sh", "-c", "export HIMALAYA_GMAIL_ADDRESS=\"$(${pkgs.coreutils}/bin/cat ${gmailAddrFile} | ${pkgs.coreutils}/bin/tr -d '\\n\\r ')\"; export HIMALAYA_GMAIL_PASSWORD=\"$(${pkgs.coreutils}/bin/cat ${gmailPassFile} | ${pkgs.coreutils}/bin/tr -d '\\n\\r ')\"; ${pkgs.isync}/bin/mbsync -c ${homeDir}/.config/mbsync/mbsyncrc gmail" ]
             onRunningChanged: {
                 if (!forceCacheSyncDownstream.running) {
-                    mailList.running = false
-                    root.updateMailListCommand()
-                    mailList.running = true
+                    mailList.running = false;
+                    root.updateMailListCommand();
+                    mailList.running = true;
                 }
             }
         }
 
         Process {
             id: mailList
-            command: [
-                "${pkgs.bash}/bin/sh", "-c",
-                "export HIMALAYA_GMAIL_ADDRESS=\"$(cat " + gmailAddrFile + ")\"; ${pkgs.himalaya}/bin/himalaya --config ${homeDir}/.config/himalaya/config.toml --output json envelope list --page 1 --page-size 500 | ${pkgs.coreutils}/bin/tee /tmp/qs-raw-emails.json"
-            ]
-
             stdout: StdioCollector {
                 onStreamFinished: {
-                    var raw = text.trim()
+                    var raw = text.trim();
                     if (!raw.length) {
-                        controller.emails = []
-                        controller.statusMessage = "0 message(s)"
-                        root.mailListUpdated()
-                        return
+                        controller.emails = [];
+                        root.mailListUpdated();
+                        return;
                     }
-
                     try {
-                        var parsedData = JSON.parse(raw)
-                        var targetArray = []
+                        var parsedData = JSON.parse(raw);
+                        var targetArray = [];
                         var rawItems = Array.isArray(parsedData) ? parsedData : (parsedData.envelopes || parsedData.items || []);
-
-                        var extractId = function(obj) {
-                            if (!obj) return "";
-                            if (typeof obj !== "object") return String(obj);
-                            return obj.id ? (typeof obj.id === "object" ? String(obj.id.id) : String(obj.id)) : "";
-                        };
-
                         for (var i = 0; i < rawItems.length; i++) {
                             var item = rawItems[i];
-                            var itemId = extractId(item) || extractId(item.envelope);
+                            var itemId = item.id ? String(item.id) : "";
                             if (root.locallyDeletedIds.indexOf(itemId) === -1) {
                                 targetArray.push(item);
                             }
                         }
-
                         controller.emails = targetArray;
                         controller.statusMessage = targetArray.length + " message(s)";
-                        if (controller.currentListIndex >= targetArray.length) {
-                            controller.currentListIndex = Math.max(0, targetArray.length - 1);
-                        }
                     } catch (e) {
-                        controller.emails = []
-                        controller.statusMessage = "Parse Error: " + String(e.message).substring(0, 30)
+                        controller.statusMessage = "Parse Error";
                     }
-                    root.mailListUpdated()
+                    root.mailListUpdated();
                 }
             }
         }
 
-        Process {
-            id: readMessage
-            stdout: StdioCollector {
-                onStreamFinished: {
-                    controller.messageBody = text
-                    root.messageLoaded()
-                }
-            }
-        }
-
-        Process {
-            id: sendEmailProcess
-            onRunningChanged: {
-                if (!sendEmailProcess.running) {
-                    controller.isReplying = false
-                    controller.isComposing = false
-                    controller.messageBody = "Message transmitted successfully upstream!"
-                    root.refreshMail()
-                    root.sendSucceeded()
-                }
-            }
-        }
-
-        Process {
-            id: deleteMessageProcess
-            onRunningChanged: {
-                if (!deleteMessageProcess.running) {
-                    mailList.running = false
-                    root.updateMailListCommand()
-                    mailList.running = true
-                }
-            }
-        }
-
-        Process {
-            id: readErrorLog
-            command: [ "${pkgs.coreutils}/bin/cat", "/tmp/himalaya-error.log" ]
-            stdout: StdioCollector {
-                onStreamFinished: {
-                    controller.messageBody = "Himalaya Debug Error:\n\n" + text.trim()
-                    root.sendFailed()
-                }
-            }
-        }
+        Process { id: readMessage; stdout: StdioCollector { onStreamFinished: { controller.messageBody = text; root.messageLoaded(); } } }
+        Process { id: sendEmailProcess; onRunningChanged: { if (!sendEmailProcess.running) root.refreshMail(); } }
+        Process { id: deleteMessageProcess; onRunningChanged: { if (!deleteMessageProcess.running) root.refreshMail(); } }
     }
   '';
   # =========================================================================
-  # Himalaya Live Configuration (Pointed directly to your 472 email labels)
+  # Himalaya Live Configuration
   # =========================================================================
 
   xdg.configFile."himalaya/config.toml".text = ''
@@ -238,20 +157,19 @@ in
 
     [accounts.gmail.backend]
     type = "maildir"
-    # FIXED: Re-targeted Himalaya's root Maildir path to look flat inside your populated Important folder context tree
     root-dir = "${homeDir}/.local/share/mail/gmail/[Gmail]/Important"
     maildirpp = false
 
     [accounts.gmail.folder.aliases]
     inbox = "."
-    drafts = "../Drafts"
-    sent = "../Sent Mail"
-    trash = "../Trash"
-    spam = "../Spam"
+    drafts = "${homeDir}/.local/share/mail/gmail/[Gmail]/Drafts"
+    sent = "${homeDir}/.local/share/mail/gmail/[Gmail]/Sent Mail"
+    trash = "${homeDir}/.local/share/mail/gmail/[Gmail]/Trash"
+    spam = "${homeDir}/.local/share/mail/gmail/[Gmail]/Spam"
 
     [accounts.gmail.message.send.backend]
     type = "smtp"
-    host = "smtp.gmail.com"
+    host = "://gmail.com"
     port = 465
     login = "$HIMALAYA_GMAIL_ADDRESS"
     encryption.type = "tls"
@@ -273,11 +191,11 @@ in
     SyncState *
 
     IMAPAccount gmail
-    Host imap.gmail.com
+    Host ://gmail.com
     TLSType IMAPS
     CertificateFile /etc/ssl/certs/ca-certificates.crt
-    User "$HIMALAYA_GMAIL_ADDRESS"
-    Pass "$HIMALAYA_GMAIL_PASSWORD"
+    UserCmd "${pkgs.bash}/bin/sh -c '${pkgs.coreutils}/bin/cat ${gmailAddrFile} | ${pkgs.coreutils}/bin/tr -d \"\\n\\r \"'"
+    PassCmd "${pkgs.bash}/bin/sh -c '${pkgs.coreutils}/bin/cat ${gmailPassFile} | ${pkgs.coreutils}/bin/tr -d \"\\n\\r \"'"
 
     IMAPStore gmail-remote
     Account gmail
@@ -302,17 +220,17 @@ in
   # =========================================================================
 
   xdg.configFile."goimapnotify/goimapnotify.json".text = builtins.toJSON {
-    host = "imap.gmail.com";
+    host = "://gmail.com";
     port = 993;
     tls = true;
-    usernameCmd = "${pkgs.coreutils}/bin/cat ${gmailAddrFile} | ${pkgs.coreutils}/bin/tr -d '\\n\\r '";
-    passwordCmd = "${pkgs.coreutils}/bin/cat ${gmailPassFile} | ${pkgs.coreutils}/bin/tr -d '\\n\\r '";
-    boxes = [ "INBOX" ];
+    usernameCmd = "${pkgs.bash}/bin/sh -c '${pkgs.coreutils}/bin/cat ${gmailAddrFile} | ${pkgs.coreutils}/bin/tr -d \"\\\\n\\\\r \"'";
+    passwordCmd = "${pkgs.bash}/bin/sh -c '${pkgs.coreutils}/bin/cat ${gmailPassFile} | ${pkgs.coreutils}/bin/tr -d \"\\\\n\\\\r \"'";
+    boxes = [ "[Gmail]/Important" ];
     onNewMail = "${pkgs.bash}/bin/sh -c 'export HIMALAYA_GMAIL_ADDRESS=\"$(${pkgs.coreutils}/bin/cat ${gmailAddrFile} | ${pkgs.coreutils}/bin/tr -d \"\\\\n\\\\r \")\"; export HIMALAYA_GMAIL_PASSWORD=\"$(${pkgs.coreutils}/bin/cat ${gmailPassFile} | ${pkgs.coreutils}/bin/tr -d \"\\\\n\\\\r \")\"; ${pkgs.isync}/bin/mbsync -c ${homeDir}/.config/mbsync/mbsyncrc gmail'";
   };
 
   # =========================================================================
-  # Maildir Creation
+  # Maildir Directory Verification
   # =========================================================================
 
   home.activation.ensureMailDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
@@ -320,7 +238,7 @@ in
   '';
 
   # =========================================================================
-  # goimapnotify Service
+  # Centralized background IMAP systemd worker service
   # =========================================================================
 
   systemd.user.services.go-imapnotify = {
