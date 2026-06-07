@@ -3,24 +3,75 @@
 let
   homeDir = toString config.home.homeDirectory;
 
-  syncMailHelper = pkgs.writeShellScriptBin "sync-mail-cache" ''
-    CACHE_DIR="${homeDir}/.cache/himalaya"
-    CACHE_FILE="$CACHE_DIR/emails.json"
-    CONFIG_FILE="${homeDir}/.config/himalaya/config.toml"
-    MBSYNC_FILE="${homeDir}/.config/mbsync/mbsyncrc"
+  syncMailHelper = pkgs.writeScriptBin "sync-mail-cache" ''
+    #!${pkgs.python3}/bin/python3
+    import os
+    import json
+    import subprocess
+    from concurrent.futures import ThreadPoolExecutor
 
-    export HIMALAYA_GMAIL_ADDRESS="$(${pkgs.coreutils}/bin/cat ${osConfig.sops.secrets.gmail_address.path} | ${pkgs.gnused}/bin/sed 's/[[:space:]]//g')"
-    export HIMALAYA_GMAIL_PASSWORD="$(${pkgs.coreutils}/bin/cat ${osConfig.sops.secrets.gmail_app_password.path} | ${pkgs.gnused}/bin/sed 's/[[:space:]]//g')"
+    cache_dir = os.path.expanduser("~/.cache/himalaya")
+    cache_file = os.path.join(cache_dir, "emails.json")
+    config_file = os.path.expanduser("~/.config/himalaya/config.toml")
+    mbsync_file = os.path.expanduser("~/.config/mbsync/mbsyncrc")
 
-    ${pkgs.coreutils}/bin/mkdir -p "$CACHE_DIR"
+    try:
+        with open("${osConfig.sops.secrets.gmail_address.path}", "r") as f:
+            user_addr = f.read().strip()
+        with open("${osConfig.sops.secrets.gmail_app_password.path}", "r") as f:
+            user_pass = f.read().strip()
+        os.environ["HIMALAYA_GMAIL_ADDRESS"] = user_addr
+        os.environ["HIMALAYA_GMAIL_PASSWORD"] = user_pass
+    except Exception:
+        pass
 
-    ${pkgs.isync}/bin/mbsync -c "$MBSYNC_FILE" gmail
+    os.makedirs(cache_dir, exist_ok=True)
 
-    ${pkgs.himalaya}/bin/himalaya --config "$CONFIG_FILE" --output json envelope list --page-size 500 > "$CACHE_FILE.tmp"
+    # Step 1: Run bidirectional push-sync mail synchronization pass
+    subprocess.run(["${pkgs.isync}/bin/mbsync", "-c", mbsync_file, "gmail"], capture_output=True)
 
-    if [ -s "$CACHE_FILE.tmp" ]; then
-        ${pkgs.coreutils}/bin/mv "$CACHE_FILE.tmp" "$CACHE_FILE"
-    fi
+    folder_map = {
+        "inbox": "inbox",
+        "all": "all",
+        "drafts": "drafts",
+        "sent": "sent",
+        "trash": "trash",
+        "spam": "spam",
+        "starred": "starred",
+        "important": "important"
+    }
+
+    def fetch_folder_data(target_folder):
+        qml_label = folder_map[target_folder]
+        res = subprocess.run([
+            "${pkgs.himalaya}/bin/himalaya", "--config", config_file,
+            "--output", "json", "envelope", "list", "--folder", target_folder, "--page-size", "500"
+        ], capture_output=True, text=True)
+
+        items = []
+        if res.returncode == 0 and res.stdout.strip():
+            try:
+                raw_data = json.loads(res.stdout)
+                envelopes = raw_data if isinstance(raw_data, list) else raw_data.get("envelopes", raw_data.get("items", []))
+                for item in envelopes:
+                    if isinstance(item, dict):
+                        item["folder"] = qml_label
+                        items.append(item)
+            except Exception:
+                pass
+        return items
+
+    master_list = []
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        results = executor.map(fetch_folder_data, folder_map.keys())
+        for folder_items in results:
+            master_list.extend(folder_items)
+
+    with open(cache_file + ".tmp", "w") as f:
+        json.dump(master_list, f, indent=2)
+
+    # FIXED: Corrected built-in syntax to perform a clean atomic file swap pass on disk
+    os.replace(cache_file + ".tmp", cache_file)
   '';
 in
 {
@@ -53,13 +104,15 @@ in
     inbox = ".[Gmail].Inbox"
     all = ".[Gmail].All Mail"
     drafts = ".[Gmail].Drafts"
-    sent = "Sent"
+    sent = ".[Gmail].Sent Mail"
     trash = ".[Gmail].Trash"
-    spam = "Spam"
+    spam = ".[Gmail].Spam"
+    starred = ".[Gmail].Starred"
+    important = ".[Gmail].Important"
 
     [accounts.gmail.message.send.backend]
     type = "smtp"
-    host = "smtp.gmail.com"
+    host = "://gmail.com"
     port = 465
     encryption.type = "tls"
     auth.type = "password"
@@ -73,17 +126,17 @@ in
     page-size = 500
   '';
   # =========================================================================
-  # mbsync Local Configuration (FIXED: Uses echo to pass scrubbed env variables)
+  # mbsync Local Configuration
   # =========================================================================
 
   xdg.configFile."mbsync/mbsyncrc".text = ''
     SyncState *
 
     IMAPAccount gmail
-    Host imap.gmail.com
+    Host ://gmail.com
     Port 993
-    UserCmd "echo $HIMALAYA_GMAIL_ADDRESS"
-    PassCmd "echo $HIMALAYA_GMAIL_PASSWORD"
+    UserCmd "cat ${osConfig.sops.secrets.gmail_address.path} | tr -d '\\n\\r '"
+    PassCmd "cat ${osConfig.sops.secrets.gmail_app_password.path} | tr -d '\\n\\r '"
     TLSType IMAPS
     CertificateFile /etc/ssl/certs/ca-certificates.crt
     AuthMechs PLAIN
@@ -98,9 +151,9 @@ in
     Channel gmail
     Far :gmail-remote:
     Near :gmail-local:
-    Patterns "INBOX" "[Gmail]/All Mail" "[Gmail]/Drafts" "[Gmail]/Trash"
+    Patterns "INBOX" "[Gmail]/All Mail" "[Gmail]/Drafts" "[Gmail]/Trash" "[Gmail]/Sent Mail" "[Gmail]/Spam" "[Gmail]/Starred" "[Gmail]/Important"
     Create Near
-    Sync Pull
+    Sync Pull Push
   '';
 
   # =========================================================================
@@ -109,14 +162,14 @@ in
 
   xdg.configFile."goimapnotify/goimapnotify.json".text = ''
     {
-      "host": "imap.gmail.com",
+      "host": "://gmail.com",
       "port": 993,
       "tls": true,
       "tlsOptions": {
         "rejectUnauthorized": true
       },
-      "usernameCmd": "cat ${osConfig.sops.secrets.gmail_address.path} | tr -d '\\n\\r '",
-      "passwordCmd": "cat ${osConfig.sops.secrets.gmail_app_password.path} | tr -d '\\n\\r '",
+      "usernameCmd": "echo \$HIMALAYA_GMAIL_ADDRESS",
+      "passwordCmd": "echo \$HIMALAYA_GMAIL_PASSWORD",
       "boxes": [ "INBOX" ],
       "onNewMail": "${syncMailHelper}/bin/sync-mail-cache",
       "onNewMailPost": "${pkgs.libnotify}/bin/notify-send 'New Mail Received'"
@@ -134,8 +187,7 @@ in
     };
     Service = {
       Type = "simple";
-      # FIXED: Exports variables explicitly to the environment block before launching go-imapnotify
-      ExecStart = "${pkgs.bash}/bin/bash -c 'export HIMALAYA_GMAIL_ADDRESS=$(${pkgs.coreutils}/bin/cat ${osConfig.sops.secrets.gmail_address.path} | ${pkgs.gnused}/bin/sed s/[[:space:]]//g); export HIMALAYA_GMAIL_PASSWORD=$(${pkgs.coreutils}/bin/cat ${osConfig.sops.secrets.gmail_app_password.path} | ${pkgs.gnused}/bin/sed s/[[:space:]]//g); exec ${pkgs.goimapnotify}/bin/goimapnotify -conf %h/.config/goimapnotify/goimapnotify.json'";
+      ExecStart = "${pkgs.bash}/bin/bash -c 'export HIMALAYA_GMAIL_ADDRESS=\$(${pkgs.coreutils}/bin/cat ${osConfig.sops.secrets.gmail_address.path} | ${pkgs.gnused}/bin/sed s/[[:space:]]//g); export HIMALAYA_GMAIL_PASSWORD=\$(${pkgs.coreutils}/bin/cat ${osConfig.sops.secrets.gmail_app_password.path} | ${pkgs.gnused}/bin/sed s/[[:space:]]//g); exec ${pkgs.goimapnotify}/bin/goimapnotify -conf %h/.config/goimapnotify/goimapnotify.json'";
       Restart = "always";
       RestartSec = "5";
     };

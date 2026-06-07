@@ -24,6 +24,35 @@ Rectangle {
 
     onVisibleChanged: {
         if (root.visible) {
+            var rawBody = "";
+            if (controller.messageBody && String(controller.messageBody).trim().length > 0) {
+                rawBody = String(controller.messageBody);
+            } else if (controller.currentMessageBody && String(controller.currentMessageBody).trim().length > 0) {
+                rawBody = String(controller.currentMessageBody);
+            } else if (processes.innerMessageBody && String(processes.innerMessageBody).trim().length > 0) {
+                rawBody = String(processes.innerMessageBody);
+            }
+
+            rawBody = rawBody.trim();
+            if (rawBody === "" || rawBody === "Loading message...") {
+                rawBody = "(No plain text content available in message body)";
+            } else {
+                // FIXED: Aggressively filters out raw <#part> and <#/part> MIME headers using Regex replacements
+                rawBody = rawBody.replace(/<#part[^>]*>/gi, "");
+                rawBody = rawBody.replace(/<#\/part>/gi, "");
+                rawBody = rawBody.trim();
+            }
+
+            var sender = controller.currentReplyTo ? String(controller.currentReplyTo) : "Sender";
+            var attribution = "\n\nOn " + new Date().toLocaleString() + ", " + sender + " wrote:\n";
+
+            var cleanLines = rawBody.replace(/\r\n/g, "\n").split("\n");
+            var citedHistory = cleanLines.map(function(line) {
+                return "> " + line;
+            }).join("\n");
+
+            replyEditor.text = attribution + citedHistory;
+            replyEditor.cursorPosition = 0;
             replyEditor.forceActiveFocus();
         }
     }
@@ -37,17 +66,13 @@ Rectangle {
             console.log("No reply send function found");
         }
     }
-
     Column {
         anchors.fill: parent
-        // FIXED: Pushed top and side padding deeper to prevent text titles from touching the outer container frame lines
         anchors.topMargin: stylixTheme ? (stylixTheme.globalPadding + 8) : 28
-        anchors.bottomMargin: stylixTheme ? stylixTheme.globalPadding : 20
-        anchors.leftMargin: stylixTheme ? stylixTheme.globalPadding : 20
-        anchors.rightMargin: stylixTheme ? stylixTheme.globalPadding : 20
+        anchors.bottomMargin: stylixTheme ? (stylixTheme.globalPadding) : 20
+        anchors.leftMargin: stylixTheme ? (stylixTheme.globalPadding) : 20
+        anchors.rightMargin: stylixTheme ? (stylixTheme.globalPadding) : 20
         spacing: 16
-
-        // FIXED: Elevates the buttons layout stack above the outer bounding box edge layers
         z: 1
 
         Row {
@@ -89,7 +114,6 @@ Rectangle {
                 TextEdit {
                     id: replyEditor
                     width: parent.width
-                    text: controller.replyText
                     wrapMode: TextEdit.Wrap
                     color: "white"
                     font.family: "monospace"
@@ -120,4 +144,3 @@ Rectangle {
         }
     }
 }
-

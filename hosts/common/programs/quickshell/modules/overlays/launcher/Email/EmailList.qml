@@ -22,154 +22,118 @@ Rectangle {
     border.width: stylixTheme ? stylixTheme.globalBorderWidth : controller.globalBorderWidth
     radius: stylixTheme ? stylixTheme.defaultCardRadius : controller.defaultCardRadius
 
+    property var locallyDeletedIds: []
+
     property var _cachedInbox: []
     property var _cachedAll: []
     property var _cachedDrafts: []
     property var _cachedTrash: []
+    property var _cachedSent: []
+    property var _cachedSpam: []
+    property var _cachedStarred: []
+    property var _cachedImportant: []
 
     function forceSearchFocus() {
+        searchField.focus = true;
         searchField.forceActiveFocus();
+        searchField.selectAll();
     }
 
     function rebuildFolderCaches() {
         var list = controller.emails;
-        if (!list) {
+        if (!list || !Array.isArray(list)) {
             _cachedInbox = []; _cachedAll = []; _cachedDrafts = []; _cachedTrash = [];
+            _cachedSent = []; _cachedSpam = []; _cachedStarred = []; _cachedImportant = [];
             return;
         }
 
         var ib = []; var al = []; var dr = []; var tr = [];
+        var sn = []; var sp = []; var st = []; var im = [];
+        var seenIds = {};
 
         for (var i = 0; i < list.length; i++) {
             var item = list[i];
+            if (!item) continue;
+
             var env = item.envelope ? item.envelope : item;
+            var msgId = (item.id !== undefined && item.id !== null) ? String(item.id) : ((env && env.id !== undefined) ? String(env.id) : "");
+            var folderStr = item.folder ? String(item.folder).toLowerCase() : ((env && env.folder) ? String(env.folder).toLowerCase() : "");
+            folderStr = folderStr.trim();
 
-            var subjectStr = item.subject ? String(item.subject).toUpperCase() : (env.subject ? String(env.subject).toUpperCase() : "");
-            var flagsStr = env.flags ? String(env.flags).toUpperCase() : "";
-            var folderStr = item.folder ? String(item.folder).toUpperCase() : "";
+            if (folderStr === "inbox") ib.push(item);
+            else if (folderStr === "drafts") dr.push(item);
+            else if (folderStr === "trash") tr.push(item);
+            else if (folderStr === "sent") sn.push(item);
+            else if (folderStr === "spam") sp.push(item);
+            else if (folderStr === "starred") st.push(item);
+            else if (folderStr === "important") im.push(item);
 
-            var isSystemNoise = (flagsStr.indexOf("DRAFT") !== -1 || subjectStr.indexOf("DRAFT") !== -1 ||
-            flagsStr.indexOf("TRASH") !== -1 || flagsStr.indexOf("DELETED") !== -1);
-            var isInboxMail = (folderStr.indexOf("INBOX") !== -1 || flagsStr.indexOf("INBOX") !== -1);
-
-            al.push(item);
-
-            if (!isSystemNoise && (isInboxMail || flagsStr.indexOf("SEEN") === -1)) {
-                ib.push(item);
-            }
-            if (flagsStr.indexOf("DRAFT") !== -1 || subjectStr.indexOf("DRAFT") !== -1) {
-                dr.push(item);
-            }
-            if (flagsStr.indexOf("TRASH") !== -1 || flagsStr.indexOf("DELETED") !== -1) {
-                tr.push(item);
+            if (msgId !== "" && !seenIds[msgId]) {
+                seenIds[msgId] = true;
+                al.push(item);
             }
         }
 
         _cachedInbox = ib; _cachedAll = al; _cachedDrafts = dr; _cachedTrash = tr;
+        _cachedSent = sn; _cachedSpam = sp; _cachedStarred = st; _cachedImportant = im;
     }
-
     function getFilteredEmails() {
         var activeTarget = controller.currentFolder ? controller.currentFolder.toUpperCase() : "INBOX";
-        var targetSource = _cachedInbox;
+        var rawSource = _cachedInbox;
 
-        if (activeTarget === "ALL MAIL") targetSource = _cachedAll;
-        else if (activeTarget === "DRAFTS") targetSource = _cachedDrafts;
-        else if (activeTarget === "TRASH") targetSource = _cachedTrash;
+        if (activeTarget === "ALL MAIL") rawSource = _cachedAll;
+        else if (activeTarget === "DRAFTS") rawSource = _cachedDrafts;
+        else if (activeTarget === "TRASH") rawSource = _cachedTrash;
+        else if (activeTarget === "SENT MAIL" || activeTarget === "SENT") rawSource = _cachedSent;
+        else if (activeTarget === "SPAM") rawSource = _cachedSpam;
+        else if (activeTarget === "STARRED") rawSource = _cachedStarred;
+        else if (activeTarget === "IMPORTANT") rawSource = _cachedImportant;
+
+        var targetSource = [];
+        var deleteMap = {};
+
+        for (var d = 0; d < root.locallyDeletedIds.length; d++) {
+            deleteMap[String(root.locallyDeletedIds[d])] = true;
+        }
+
+        for (var m = 0; m < rawSource.length; m++) {
+            var mailItem = rawSource[m];
+            var mailEnv = mailItem.envelope ? mailItem.envelope : mailItem;
+            var mailId = mailItem.id ? String(mailItem.id) : (mailEnv.id ? String(mailEnv.id) : "");
+
+            if (!deleteMap[mailId] && mailId !== "") {
+                targetSource.push(mailItem);
+            }
+        }
 
         var queryText = controller.searchQuery.trim();
         if (queryText === "") return targetSource;
 
         var tempMatches = [];
-        if (controller.isRegexSearch) {
-            try {
-                var regex = new RegExp(queryText, "i");
-                for (var j = 0; j < targetSource.length; j++) {
-                    var mail = targetSource[j];
-                    var subEnv = mail.envelope ? mail.envelope : mail;
-                    if (regex.test(mail.subject || subEnv.subject || "") ||
-                        regex.test(mail.from ? (mail.from.name || mail.from.addr || "") : (subEnv.from ? (subEnv.from.name || subEnv.from.addr || "") : ""))) {
-                        tempMatches.push(mail);
-                        }
-                }
-            } catch (e) {
-                return targetSource;
-            }
-        } else {
-            var query = queryText.toLowerCase();
-            for (var k = 0; k < targetSource.length; k++) {
-                var rawMail = targetSource[k];
-                var cleanEnv = rawMail.envelope ? rawMail.envelope : rawMail;
+        var query = queryText.toLowerCase();
+        for (var k = 0; k < targetSource.length; k++) {
+            var rawMail = targetSource[k];
+            var cleanEnv = rawMail.envelope ? rawMail.envelope : rawMail;
+            var subText = String(rawMail.subject || cleanEnv.subject || "").toLowerCase();
+            var fromObj = rawMail.from ? rawMail.from : (cleanEnv.from || {});
+            var nameText = String(fromObj.name || "").toLowerCase();
+            var addrText = String(fromObj.addr || "").toLowerCase();
 
-                var subText = String(rawMail.subject || cleanEnv.subject || "").toLowerCase();
-                var fromObj = rawMail.from ? rawMail.from : (cleanEnv.from || {});
-                var nameText = String(fromObj.name || "").toLowerCase();
-                var addrText = String(fromObj.addr || "").toLowerCase();
-
-                if (subText.indexOf(query) !== -1 || nameText.indexOf(query) !== -1 || addrText.indexOf(query) !== -1) {
-                    tempMatches.push(rawMail);
-                }
+            if (subText.indexOf(query) !== -1 || nameText.indexOf(query) !== -1 || addrText.indexOf(query) !== -1) {
+                tempMatches.push(rawMail);
             }
         }
         return tempMatches;
     }
-    function openCurrentMessage() {
-        var filtered = getFilteredEmails();
-        var email = filtered[emailList.currentIndex];
-        if (!email) return;
 
-        var msgId = "";
-        var env = email.envelope ? email.envelope : email;
-
-        if (email.id !== undefined && email.id !== null) {
-            msgId = (typeof email.id === "object") ? String(email.id.id || "") : String(email.id);
-        } else if (env.id !== undefined && env.id !== null) {
-            msgId = (typeof env.id === "object") ? String(env.id.id || "") : String(env.id);
-        }
-
-        msgId = msgId.trim();
-        if (!msgId || msgId === "" || msgId === "undefined") return;
-
-        controller.selectedId = msgId;
-        controller.messageBody = "Loading message...";
-
-        var fromObj = email.from ? email.from : env.from;
-        controller.currentReplyTo = fromObj ? (fromObj.addr || fromObj || "") : "";
-        controller.currentSubject = email.subject ? email.subject : (env.subject ? env.subject : "");
-
-        if (controller.currentSubject.toLowerCase().indexOf("re:") !== 0) {
-            controller.currentSubject = "Re: " + controller.currentSubject;
-        }
-
-        processes.loadMessage(msgId);
-    }
-
-    function deleteCurrentMessage() {
-        var filtered = getFilteredEmails();
-        var mail = filtered[emailList.currentIndex];
-        if (!mail) return;
-
-        var env = mail.envelope ? mail.envelope : mail;
-        var msgId = mail.id ? String(mail.id) : (env.id ? String(env.id) : "");
-        if (!msgId || msgId === "") return;
-
-        controller.selectedId = "";
-        controller.statusMessage = "Deleting message...";
-        processes.deleteMessage(msgId);
-    }
-
-    Component.onCompleted: {
-        rebuildFolderCaches();
-        emailList.forceActiveFocus();
+    Connections {
+        target: processes
+        function onMailListUpdated() { root.rebuildFolderCaches(); }
     }
 
     Connections {
         target: controller
-        function onEmailsChanged() { rebuildFolderCaches(); }
-        function onCurrentFolderChanged() {
-            emailList.currentIndex = 0;
-            controller.currentListIndex = 0;
-            controller.statusMessage = "Viewing " + controller.currentFolder;
-        }
+        function onEmailsChanged() { root.rebuildFolderCaches(); }
     }
 
     Column {
@@ -195,9 +159,10 @@ Rectangle {
                 width: parent.width - 86; height: parent.height
                 anchors.left: parent.left; anchors.leftMargin: 8; color: "white"
                 font.family: stylixTheme ? stylixTheme.fontFamily : controller.fontFamily
-                font.pixelSize: stylixTheme ? stylixTheme.globalFontSize : controller.globalFontSize
+                font.pixelSize: stylixTheme ? (stylixTheme.globalFontSize) : (controller.globalFontSize)
                 verticalAlignment: TextInput.AlignVCenter
                 text: controller.searchQuery
+                activeFocusOnTab: false
 
                 onTextChanged: {
                     controller.searchQuery = text;
@@ -214,39 +179,6 @@ Rectangle {
                     verticalAlignment: Text.AlignVCenter
                 }
             }
-
-            Rectangle {
-                id: importantToggleButton
-                width: 32; height: 24; radius: 3
-                anchors.right: regexToggleButton.left; anchors.rightMargin: 6; anchors.verticalCenter: parent.verticalCenter
-                color: controller.isImportantOnlyView ? root.buttonActiveColor : "transparent"
-                border.color: controller.isImportantOnlyView ? root.searchActiveColor : "#333345"
-                border.width: 1
-
-                Text { anchors.centerIn: parent; text: "⭐"; font.pixelSize: 14; color: controller.isImportantOnlyView ? "white" : "#777785" }
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        controller.isImportantOnlyView = !controller.isImportantOnlyView;
-                        processes.refreshMail();
-                    }
-                }
-            }
-
-            Rectangle {
-                id: regexToggleButton
-                width: 32; height: 24; radius: 3
-                anchors.right: parent.right; anchors.rightMargin: 8; anchors.verticalCenter: parent.verticalCenter
-                color: controller.isRegexSearch ? root.buttonActiveColor : "transparent"
-                border.color: controller.isRegexSearch ? root.searchActiveColor : "#333345"
-                border.width: 1
-
-                Text { anchors.centerIn: parent; text: ".*"; font.bold: true; font.pixelSize: 14; color: controller.isRegexSearch ? "white" : "#777785" }
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: { controller.isRegexSearch = !controller.isRegexSearch; }
-                }
-            }
         }
 
         Rectangle {
@@ -260,35 +192,23 @@ Rectangle {
                 anchors.fill: parent
                 model: root.getFilteredEmails()
                 spacing: 8
-                focus: !controller.isReplying && !controller.isComposing
-                activeFocusOnTab: true
-
-                Keys.onUpPressed: (event) => { if (currentIndex > 0) { currentIndex--; controller.currentListIndex = currentIndex; } }
-                Keys.onDownPressed: (event) => { if (currentIndex < count - 1) { currentIndex++; controller.currentListIndex = currentIndex; } }
-                Keys.onPressed: (event) => { if (event.key === Qt.Key_Delete || event.key === Qt.Key_Backspace) { deleteCurrentMessage(); event.accepted = true; } }
+                activeFocusOnTab: false
+                clip: true
+                reuseItems: false
+                cacheBuffer: 0
+                highlightFollowsCurrentItem: true
+                currentIndex: controller.currentListIndex
 
                 delegate: Rectangle {
                     width: emailList.width
                     height: stylixTheme ? (stylixTheme.defaultCardHeight * 0.75) : (controller.defaultCardHeight * 0.75)
                     radius: stylixTheme ? (stylixTheme.defaultCardRadius - 2) : (controller.defaultCardRadius - 2)
                     color: controller.currentListIndex === index ? (stylixTheme ? stylixTheme.base02 : "#1a1a1a") : "transparent"
-
                     border.width: (controller.currentListIndex === index) ? (stylixTheme ? stylixTheme.globalBorderWidth : controller.globalBorderWidth) : 0
                     border.color: stylixTheme ? stylixTheme.base05 : "#FABD2F"
 
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            emailList.currentIndex = index;
-                            controller.currentListIndex = index;
-                            openCurrentMessage();
-                            emailList.forceActiveFocus();
-                        }
-                    }
-
                     Column {
                         anchors.fill: parent; anchors.margins: 12; spacing: 4
-
                         Text {
                             width: parent.width - 24
                             text: modelData.from ? (modelData.from.name || modelData.from.addr || modelData.from) : (modelData.envelope && modelData.envelope.from ? (modelData.envelope.from.name || modelData.envelope.from.addr) : "")
@@ -304,12 +224,6 @@ Rectangle {
                             font.family: stylixTheme ? stylixTheme.fontFamily : controller.fontFamily
                             font.pixelSize: stylixTheme ? (stylixTheme.globalFontSize) : (controller.globalFontSize)
                             elide: Text.ElideRight
-                        }
-                        Text {
-                            text: modelData.date ? modelData.date : (modelData.envelope && modelData.envelope.date ? modelData.envelope.date : "")
-                            color: stylixTheme ? stylixTheme.base04 : "#999999"
-                            font.family: stylixTheme ? stylixTheme.fontFamily : controller.fontFamily
-                            font.pixelSize: stylixTheme ? (stylixTheme.globalFontSize - 4) : (controller.globalFontSize - 4)
                         }
                     }
                 }

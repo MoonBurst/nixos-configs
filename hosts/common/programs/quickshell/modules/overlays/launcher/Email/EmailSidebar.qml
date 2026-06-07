@@ -7,10 +7,22 @@ Rectangle {
     required property QtObject processes
     property var stylixTheme
 
+    // FIXED: Lock focus down to completely prevent the layout loop from stealing focus from EmailList
+    focus: false
+    activeFocusOnTab: false
+
     color: stylixTheme ? stylixTheme.base01 : "#1a1a24"
     border.color: stylixTheme ? stylixTheme.base02 : "#333345"
     border.width: stylixTheme ? stylixTheme.globalBorderWidth : controller.globalBorderWidth
     radius: stylixTheme ? stylixTheme.defaultCardRadius : controller.defaultCardRadius
+
+    // FIXED: Intercept Alt modifier keys on the sidebar level to prevent focus trapping
+    Keys.onPressed: (event) => {
+        if (event.modifiers & Qt.AltModifier) {
+            event.accepted = false; // Bubbles hotkeys right past the sidebar frame
+            return;
+        }
+    }
 
     Column {
         anchors.fill: parent
@@ -25,14 +37,13 @@ Rectangle {
             font.pixelSize: stylixTheme ? (stylixTheme.globalFontSize + 2) : (controller.globalFontSize + 2)
         }
         Repeater {
-            model: ["INBOX", "ALL MAIL", "DRAFTS", "TRASH"]
+            model: ["INBOX", "ALL MAIL", "DRAFTS", "SENT MAIL", "SPAM", "STARRED", "IMPORTANT", "TRASH"]
 
             delegate: Rectangle {
                 width: parent.width
                 height: stylixTheme ? (stylixTheme.defaultCardHeight * 0.4) : (controller.defaultCardHeight * 0.4)
                 radius: stylixTheme ? (stylixTheme.defaultCardRadius - 4) : (controller.defaultCardRadius - 4)
 
-                // FIXED: Re-mapped directly to your global controller variable tree state
                 color: (controller.currentFolder === modelData)
                 ? (stylixTheme ? stylixTheme.base02 : "#1a1a1a")
                 : "transparent"
@@ -48,7 +59,13 @@ Rectangle {
                     spacing: stylixTheme ? (stylixTheme.globalPadding / 2) : (controller.globalPadding / 2)
 
                     Text {
-                        text: modelData === "INBOX" ? "📥 " : (modelData === "ALL MAIL" ? "📦 " : (modelData === "DRAFTS" ? "📝 " : "🗑️ "))
+                        text: modelData === "INBOX" ? "📥 "
+                        : (modelData === "ALL MAIL" ? "📦 "
+                        : (modelData === "DRAFTS" ? "📝 "
+                        : (modelData === "SENT MAIL" ? "📤 "
+                        : (modelData === "SPAM" ? "🔥 "
+                        : (modelData === "STARRED" ? "⭐ "
+                        : (modelData === "IMPORTANT" ? "🏷️ " : "🗑️ "))))))
                         font.pixelSize: stylixTheme ? (stylixTheme.globalFontSize - 2) : (controller.globalFontSize - 2)
                         anchors.verticalCenter: parent.verticalCenter
                     }
@@ -65,12 +82,10 @@ Rectangle {
 
                 MouseArea {
                     anchors.fill: parent
+                    // FIXED: Mouse clicks keep keyboard focus safely focused onto your active EmailList rows
                     onClicked: {
-                        // FIXED: Saves the selected folder into your global controller model so the backend loader can read it
                         controller.currentFolder = modelData;
-                        controller.emails = [];
-                        processes.refreshMail();
-                        sideRoot.forceActiveFocus();
+                        root.innerListView.forceActiveFocus();
                     }
                 }
             }
