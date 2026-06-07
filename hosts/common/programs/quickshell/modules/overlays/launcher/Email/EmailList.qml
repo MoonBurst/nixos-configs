@@ -53,6 +53,7 @@ Rectangle {
             var isInboxMail = (folderStr.indexOf("INBOX") !== -1 || flagsStr.indexOf("INBOX") !== -1);
 
             al.push(item);
+
             if (!isSystemNoise && (isInboxMail || flagsStr.indexOf("SEEN") === -1)) {
                 ib.push(item);
             }
@@ -111,22 +112,6 @@ Rectangle {
         }
         return tempMatches;
     }
-
-    Component.onCompleted: {
-        rebuildFolderCaches();
-        emailList.forceActiveFocus();
-    }
-
-    Connections {
-        target: controller
-        function onEmailsChanged() { rebuildFolderCaches(); }
-        function onCurrentFolderChanged() {
-            emailList.currentIndex = 0;
-            controller.currentListIndex = 0;
-            controller.statusMessage = "Viewing " + controller.currentFolder;
-        }
-    }
-    // FIXED: Safely unpacks msgId across all Himalaya versions and calls processes.loadMessage
     function openCurrentMessage() {
         var filtered = getFilteredEmails();
         var email = filtered[emailList.currentIndex];
@@ -167,18 +152,24 @@ Rectangle {
         var msgId = mail.id ? String(mail.id) : (env.id ? String(env.id) : "");
         if (!msgId || msgId === "") return;
 
-        var tmp = [];
-        for (var j = 0; j < controller.emails.length; j++) {
-            var checkMail = controller.emails[j];
-            var checkEnv = checkMail.envelope ? checkMail.envelope : checkMail;
-            var checkId = checkMail.id ? String(checkMail.id) : (checkEnv.id ? String(checkEnv.id) : "");
-            if (checkId !== msgId) tmp.push(checkMail);
-        }
-
-        controller.emails = tmp;
         controller.selectedId = "";
-        controller.statusMessage = "Message deleted successfully.";
+        controller.statusMessage = "Deleting message...";
         processes.deleteMessage(msgId);
+    }
+
+    Component.onCompleted: {
+        rebuildFolderCaches();
+        emailList.forceActiveFocus();
+    }
+
+    Connections {
+        target: controller
+        function onEmailsChanged() { rebuildFolderCaches(); }
+        function onCurrentFolderChanged() {
+            emailList.currentIndex = 0;
+            controller.currentListIndex = 0;
+            controller.statusMessage = "Viewing " + controller.currentFolder;
+        }
     }
 
     Column {

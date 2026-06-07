@@ -2,24 +2,20 @@
 
 let
   homeDir = toString config.home.homeDirectory;
-  myEmail = "moonburstplays@gmail.com";
 
-  # NATIVE BUILD: Escaped characters force evaluation at runtime, preventing compile-time secret leaks
   syncMailHelper = pkgs.writeShellScriptBin "sync-mail-cache" ''
     CACHE_DIR="${homeDir}/.cache/himalaya"
     CACHE_FILE="$CACHE_DIR/emails.json"
     CONFIG_FILE="${homeDir}/.config/himalaya/config.toml"
     MBSYNC_FILE="${homeDir}/.config/mbsync/mbsyncrc"
 
-    export HIMALAYA_GMAIL_ADDRESS="${myEmail}"
-    export HIMALAYA_GMAIL_PASSWORD="$(${pkgs.coreutils}/bin/cat ${osConfig.sops.secrets.gmail_app_password.path})"
+    export HIMALAYA_GMAIL_ADDRESS="$(${pkgs.coreutils}/bin/cat ${osConfig.sops.secrets.gmail_address.path} | ${pkgs.gnused}/bin/sed 's/[[:space:]]//g')"
+    export HIMALAYA_GMAIL_PASSWORD="$(${pkgs.coreutils}/bin/cat ${osConfig.sops.secrets.gmail_app_password.path} | ${pkgs.gnused}/bin/sed 's/[[:space:]]//g')"
 
     ${pkgs.coreutils}/bin/mkdir -p "$CACHE_DIR"
 
-    # Step 1: Run background delta download synchronization pass
     ${pkgs.isync}/bin/mbsync -c "$MBSYNC_FILE" gmail
 
-    # Step 2: Compile full mail metadata down to a fast static JSON array cache file
     ${pkgs.himalaya}/bin/himalaya --config "$CONFIG_FILE" --output json envelope list --page-size 500 > "$CACHE_FILE.tmp"
 
     if [ -s "$CACHE_FILE.tmp" ]; then
@@ -46,7 +42,7 @@ in
     [accounts.gmail]
     default = true
     display-name = "Moonburst"
-    email = "${myEmail}"
+    email = "$HIMALAYA_GMAIL_ADDRESS"
 
     [accounts.gmail.backend]
     type = "maildir"
@@ -67,7 +63,7 @@ in
     port = 465
     encryption.type = "tls"
     auth.type = "password"
-    login = "${myEmail}"
+    login = "$HIMALAYA_GMAIL_ADDRESS"
     auth.cmd = "cat ${osConfig.sops.secrets.gmail_app_password.path}"
 
     [accounts.gmail.message.read]
@@ -77,7 +73,7 @@ in
     page-size = 500
   '';
   # =========================================================================
-  # mbsync Local Configuration
+  # mbsync Local Configuration (FIXED: Uses echo to pass scrubbed env variables)
   # =========================================================================
 
   xdg.configFile."mbsync/mbsyncrc".text = ''
@@ -86,8 +82,8 @@ in
     IMAPAccount gmail
     Host imap.gmail.com
     Port 993
-    User "${myEmail}"
-    PassCmd "cat ${osConfig.sops.secrets.gmail_app_password.path}"
+    UserCmd "echo $HIMALAYA_GMAIL_ADDRESS"
+    PassCmd "echo $HIMALAYA_GMAIL_PASSWORD"
     TLSType IMAPS
     CertificateFile /etc/ssl/certs/ca-certificates.crt
     AuthMechs PLAIN
@@ -119,12 +115,11 @@ in
       "tlsOptions": {
         "rejectUnauthorized": true
       },
-      "username": "${myEmail}",
-      "passwordCmd": "cat ${osConfig.sops.secrets.gmail_app_password.path}",
+      "usernameCmd": "cat ${osConfig.sops.secrets.gmail_address.path} | tr -d '\\n\\r '",
+      "passwordCmd": "cat ${osConfig.sops.secrets.gmail_app_password.path} | tr -d '\\n\\r '",
       "boxes": [ "INBOX" ],
       "onNewMail": "${syncMailHelper}/bin/sync-mail-cache",
-      "onNewMailPost": "${pkgs.libnotify}/bin/notify-send 'New Mail Received'",
-      "wait": 1
+      "onNewMailPost": "${pkgs.libnotify}/bin/notify-send 'New Mail Received'"
     }
   '';
 
@@ -139,9 +134,10 @@ in
     };
     Service = {
       Type = "simple";
-      ExecStart = "${pkgs.goimapnotify}/bin/goimapnotify -conf %h/.config/goimapnotify/goimapnotify.json";
+      # FIXED: Exports variables explicitly to the environment block before launching go-imapnotify
+      ExecStart = "${pkgs.bash}/bin/bash -c 'export HIMALAYA_GMAIL_ADDRESS=$(${pkgs.coreutils}/bin/cat ${osConfig.sops.secrets.gmail_address.path} | ${pkgs.gnused}/bin/sed s/[[:space:]]//g); export HIMALAYA_GMAIL_PASSWORD=$(${pkgs.coreutils}/bin/cat ${osConfig.sops.secrets.gmail_app_password.path} | ${pkgs.gnused}/bin/sed s/[[:space:]]//g); exec ${pkgs.goimapnotify}/bin/goimapnotify -conf %h/.config/goimapnotify/goimapnotify.json'";
       Restart = "always";
-      RestartSec = "10";
+      RestartSec = "5";
     };
     Install = { WantedBy = [ "default.target" ]; };
   };
