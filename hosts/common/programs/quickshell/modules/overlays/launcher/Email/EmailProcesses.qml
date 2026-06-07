@@ -83,28 +83,20 @@ Item {
         cacheReader.running = false;
         cacheReader.running = true;
     }
-    // FIXED: Uses raw busctl D-Bus commands to escape any local systemd unit sandboxing completely
+    // FIXED: Uses an atomic file move to completely guarantee that systemd never reads a half-written draft file
     function sendEmail(from, to, subject, body) {
-        controller.statusMessage = "Sending email...";
-
+        controller.statusMessage = "Queueing message...";
         var cleanUser = controller.userEmailAddress ? String(controller.userEmailAddress).trim() : from;
 
-        // Build the clean bash execution command string
-        var execCmd = "export HIMALAYA_GMAIL_ADDRESS='" + cleanUser + "'; " +
-        "export HIMALAYA_GMAIL_PASSWORD='$(cat /home/moonburst/.config/mbsync/mbsyncrc | grep PassCmd | head -n 1 | sed \"s/.*\\\"cat \\\\(.*\\\\) |.*/\\\\1/\" | xargs cat 2>/dev/null || cat /run/secrets/gmail_app_password | tr -d \"\\\\n\\\\r \")'; " +
-        "cat > /tmp/qs-mail.eml <<'EOF'\nFrom: " + cleanUser + "\nTo: " + to + "\nSubject: " + subject + "\n\n" + body + "\nEOF\n" +
-        "if himalaya message send < /tmp/qs-mail.eml 2> /tmp/himalaya-send-error.log; then " +
-        "  notify-send 'Mail System' 'Email sent successfully!' -i mail-message-new; " +
-        "else " +
-        "  notify-send 'Mail System' 'Failed to send email. Check logs.' -u critical -i mail-message-alert; " +
-        "fi";
+        // Target paths
+        var tmpFilename = "/tmp/qs_mail_draft_" + Math.floor(Math.random() * 100000) + ".tmp";
+        var finalQueuePath = "/home/moonburst/.cache/himalaya/queue/mail_" + Math.floor(Math.random() * 100000) + ".eml";
 
-        // FIXED: Calls StartTransientUnit via D-Bus to guarantee full, un-sandboxed network access
+        // FIXED: Writes to /tmp first, then flips it into the watched folder instantly using mv
         sendEmailProcess.command = [
-            "busctl", "--user", "call", "org.freedesktop.systemd1", "/org/freedesktop/systemd1",
-            "org.freedesktop.systemd1.Manager", "StartTransientUnit", "ssssala(sa(sv))",
-            "himalaya-send-" + Math.floor(Math.random() * 100000) + ".service", "replace",
-            "/bin/sh", "2", "-c", execCmd, "0"
+            "/bin/sh", "-c",
+            "cat > " + tmpFilename + " <<'EOF'\nFrom: " + cleanUser + "\nTo: " + to + "\nSubject: " + subject + "\n\n" + body + "\nEOF\n" +
+            "mv " + tmpFilename + " " + finalQueuePath
         ];
         sendEmailProcess.running = true;
     }
@@ -112,14 +104,13 @@ Item {
     function loadMessage(messageId) {
         var activeFolder = controller.currentFolder ? String(controller.currentFolder).toLowerCase().trim() : "inbox";
         if (activeFolder === "sent mail") activeFolder = "sent";
-
         var cleanUser = controller.userEmailAddress ? String(controller.userEmailAddress).trim() : "";
 
         readMessage.command = [
             "/bin/sh", "-c",
             "export HIMALAYA_GMAIL_ADDRESS=\"" + cleanUser + "\"; himalaya --config /home/moonburst/.config/himalaya/config.toml message read --folder " + activeFolder + " " + messageId
         ];
-        readMessage.readMessage.running = true;
+        readMessage.running = true;
     }
 
     function deleteMessage(messageId) {

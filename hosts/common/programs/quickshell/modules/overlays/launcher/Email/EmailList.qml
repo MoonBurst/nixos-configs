@@ -39,6 +39,41 @@ Rectangle {
         searchField.selectAll();
     }
 
+    function sortFolderWithPriority(mailArray) {
+        if (!mailArray || mailArray.length === 0) return [];
+
+        return mailArray.sort(function(a, b) {
+            var envA = a.envelope ? a.envelope : a;
+            var envB = b.envelope ? b.envelope : b;
+
+            var aSeen = (a.seen !== undefined) ? a.seen : ((envA && envA.seen !== undefined) ? envA.seen : true);
+            var bSeen = (b.seen !== undefined) ? b.seen : ((envB && envB.seen !== undefined) ? envB.seen : true);
+
+            var aUnread = !aSeen;
+            var bUnread = !bSeen;
+
+            if (aUnread && !bUnread) return -1;
+            if (!aUnread && bUnread) return 1;
+
+            var dateStrA = a.date || (envA ? envA.date : "");
+            var dateStrB = b.date || (envB ? envB.date : "");
+
+            var timeA = dateStrA ? Date.parse(dateStrA) : 0;
+            var timeB = dateStrB ? Date.parse(dateStrB) : 0;
+
+            if (isNaN(timeA)) timeA = 0;
+            if (isNaN(timeB)) timeB = 0;
+
+            if (timeA !== timeB) {
+                return timeB - timeA;
+            }
+
+            var idA = parseInt(a.id || (envA ? envA.id : 0)) || 0;
+            var idB = parseInt(b.id || (envB ? envB.id : 0)) || 0;
+            return idB - idA;
+        });
+    }
+
     function rebuildFolderCaches() {
         var list = controller.emails;
         if (!list || !Array.isArray(list)) {
@@ -74,14 +109,21 @@ Rectangle {
             }
         }
 
-        _cachedInbox = ib; _cachedAll = al; _cachedDrafts = dr; _cachedTrash = tr;
-        _cachedSent = sn; _cachedSpam = sp; _cachedStarred = st; _cachedImportant = im;
+        _cachedInbox = sortFolderWithPriority(ib);
+        _cachedAll = sortFolderWithPriority(al);
+        _cachedDrafts = sortFolderWithPriority(dr);
+        _cachedTrash = sortFolderWithPriority(tr);
+        _cachedSent = sortFolderWithPriority(sn);
+        _cachedSpam = sortFolderWithPriority(sp);
+        _cachedStarred = sortFolderWithPriority(st);
+        _cachedImportant = sortFolderWithPriority(im);
     }
+    // FIXED: Broadened name checking constraints accept multiple text string variants cleanly during rapid folder switches
     function getFilteredEmails() {
-        var activeTarget = controller.currentFolder ? controller.currentFolder.toUpperCase() : "INBOX";
+        var activeTarget = controller.currentFolder ? String(controller.currentFolder).toUpperCase().trim() : "INBOX";
         var rawSource = _cachedInbox;
 
-        if (activeTarget === "ALL MAIL") rawSource = _cachedAll;
+        if (activeTarget === "ALL MAIL" || activeTarget === "ALL") rawSource = _cachedAll;
         else if (activeTarget === "DRAFTS") rawSource = _cachedDrafts;
         else if (activeTarget === "TRASH") rawSource = _cachedTrash;
         else if (activeTarget === "SENT MAIL" || activeTarget === "SENT") rawSource = _cachedSent;
@@ -134,8 +176,13 @@ Rectangle {
     Connections {
         target: controller
         function onEmailsChanged() { root.rebuildFolderCaches(); }
+        function onCurrentFolderChanged() {
+            emailList.currentIndex = 0;
+            controller.currentListIndex = 0;
+            controller.statusMessage = "Viewing " + controller.currentFolder;
+            emailList.forceActiveFocus();
+        }
     }
-
     Column {
         anchors.fill: parent
         anchors.margins: stylixTheme ? (stylixTheme.globalPadding / 2) : (controller.globalPadding / 2)
@@ -199,6 +246,10 @@ Rectangle {
                 highlightFollowsCurrentItem: true
                 currentIndex: controller.currentListIndex
 
+                Keys.onUpPressed: (event) => { event.accepted = false; }
+                Keys.onDownPressed: (event) => { event.accepted = false; }
+                Keys.onPressed: (event) => { if (event.key === Qt.Key_Delete || event.key === Qt.Key_Backspace) { deleteCurrentMessage(); event.accepted = true; } }
+
                 delegate: Rectangle {
                     width: emailList.width
                     height: stylixTheme ? (stylixTheme.defaultCardHeight * 0.75) : (controller.defaultCardHeight * 0.75)
@@ -212,8 +263,17 @@ Rectangle {
                         Text {
                             width: parent.width - 24
                             text: modelData.from ? (modelData.from.name || modelData.from.addr || modelData.from) : (modelData.envelope && modelData.envelope.from ? (modelData.envelope.from.name || modelData.envelope.from.addr) : "")
-                            color: stylixTheme ? stylixTheme.base08 : "#ff6666"
-                            font.bold: true; font.family: stylixTheme ? stylixTheme.fontFamily : controller.fontFamily
+                            color: {
+                                var e = modelData.envelope ? modelData.envelope : modelData;
+                                var isSeen = (modelData.seen !== undefined) ? modelData.seen : ((e && e.seen !== undefined) ? e.seen : true);
+                                return (!isSeen) ? (stylixTheme ? stylixTheme.base0B : "#a6e22e") : (stylixTheme ? stylixTheme.base08 : "#ff6666");
+                            }
+                            font.bold: {
+                                var e = modelData.envelope ? modelData.envelope : modelData;
+                                var isSeen = (modelData.seen !== undefined) ? modelData.seen : ((e && e.seen !== undefined) ? e.seen : true);
+                                return !isSeen;
+                            }
+                            font.family: stylixTheme ? stylixTheme.fontFamily : controller.fontFamily
                             font.pixelSize: stylixTheme ? (stylixTheme.globalFontSize + 2) : (controller.globalFontSize + 2)
                             elide: Text.ElideRight
                         }
@@ -221,6 +281,11 @@ Rectangle {
                             width: parent.width - 24
                             text: modelData.subject !== undefined ? modelData.subject : (modelData.envelope && modelData.envelope.subject !== undefined ? modelData.envelope.subject : "(No Subject)")
                             color: stylixTheme ? stylixTheme.base05 : "white"
+                            font.bold: {
+                                var e = modelData.envelope ? modelData.envelope : modelData;
+                                var isSeen = (modelData.seen !== undefined) ? modelData.seen : ((e && e.seen !== undefined) ? e.seen : true);
+                                return !isSeen;
+                            }
                             font.family: stylixTheme ? stylixTheme.fontFamily : controller.fontFamily
                             font.pixelSize: stylixTheme ? (stylixTheme.globalFontSize) : (controller.globalFontSize)
                             elide: Text.ElideRight

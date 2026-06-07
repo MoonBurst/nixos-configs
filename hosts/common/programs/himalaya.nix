@@ -8,12 +8,14 @@ let
     import os
     import json
     import subprocess
+    import shutil
     from concurrent.futures import ThreadPoolExecutor
 
     cache_dir = os.path.expanduser("~/.cache/himalaya")
     cache_file = os.path.join(cache_dir, "emails.json")
     config_file = os.path.expanduser("~/.config/himalaya/config.toml")
     mbsync_file = os.path.expanduser("~/.config/mbsync/mbsyncrc")
+    queue_dir = os.path.join(cache_dir, "queue")
 
     try:
         with open("${osConfig.sops.secrets.gmail_address.path}", "r") as f:
@@ -25,20 +27,49 @@ let
     except Exception:
         pass
 
-    os.makedirs(cache_dir, exist_ok=True)
+    os.makedirs(queue_dir, exist_ok=True)
 
-    # Step 1: Run bidirectional push-sync mail synchronization pass
+    if os.path.exists(queue_dir):
+        for filename in os.listdir(queue_dir):
+            file_path = os.path.join(queue_dir, filename)
+            if os.path.isfile(file_path):
+                temp_processing_path = f"/tmp/sending_{filename}"
+                try:
+                    shutil.move(file_path, temp_processing_path)
+                except Exception:
+                    continue
+
+                with open(temp_processing_path, "r") as f:
+                    draft_content = f.read()
+
+                os.environ["HOSTALIASES"] = "/etc/hosts"
+                res = subprocess.run(
+                    ["${pkgs.himalaya}/bin/himalaya", "--config", config_file, "message", "send"],
+                    input=draft_content, capture_output=True, text=True
+                )
+
+                if res.returncode == 0:
+                    subprocess.run(["${pkgs.libnotify}/bin/notify-send", "Mail System", "Email sent successfully!", "-i", "mail-message-new"])
+                    try:
+                        os.remove(temp_processing_path)
+                    except Exception:
+                        pass
+                else:
+                    with open("/tmp/himalaya-send-error.log", "w") as err_f:
+                        err_f.write(res.stderr)
+                    subprocess.run(["${pkgs.libnotify}/bin/notify-send", "Mail System", "Failed to send email. Check /tmp/himalaya-send-error.log", "-u", "critical", "-i", "mail-message-alert"])
+                    try:
+                        shutil.move(temp_processing_path, file_path)
+                    except Exception:
+                        pass
+
+    # Run the background sync passes sequentially
+    subprocess.run(["${pkgs.isync}/bin/mbsync", "-c", mbsync_file, "gmail:INBOX"], capture_output=True)
     subprocess.run(["${pkgs.isync}/bin/mbsync", "-c", mbsync_file, "gmail"], capture_output=True)
 
     folder_map = {
-        "inbox": "inbox",
-        "all": "all",
-        "drafts": "drafts",
-        "sent": "sent",
-        "trash": "trash",
-        "spam": "spam",
-        "starred": "starred",
-        "important": "important"
+        "inbox": "inbox", "all": "all", "drafts": "drafts", "sent": "sent",
+        "trash": "trash", "spam": "spam", "starred": "starred", "important": "important"
     }
 
     def fetch_folder_data(target_folder):
@@ -70,23 +101,16 @@ let
     with open(cache_file + ".tmp", "w") as f:
         json.dump(master_list, f, indent=2)
 
-    # FIXED: Corrected built-in syntax to perform a clean atomic file swap pass on disk
     os.replace(cache_file + ".tmp", cache_file)
   '';
 in
 {
   home.packages = [
-    pkgs.himalaya
-    pkgs.goimapnotify
-    pkgs.isync
-    pkgs.libnotify
-    pkgs.ripgrep
-    pkgs.gawk
-    syncMailHelper
+    pkgs.himalaya pkgs.isync pkgs.libnotify pkgs.ripgrep pkgs.gawk syncMailHelper
   ];
 
   # =========================================================================
-  # Himalaya Core Configuration (MIME Read and Maildir Structures)
+  # Himalaya Core Configuration (FIXED: Corrected root folder namespace)
   # =========================================================================
 
   xdg.configFile."himalaya/config.toml".text = ''
@@ -100,8 +124,9 @@ in
     root-dir = "${homeDir}/.local/share/mail/gmail"
     maildirpp = true
 
+    # FIXED: Realigned the inbox key target mapping back to the standard plain native IMAP root layer
     [accounts.gmail.folder.aliases]
-    inbox = ".[Gmail].Inbox"
+    inbox = "INBOX"
     all = ".[Gmail].All Mail"
     drafts = ".[Gmail].Drafts"
     sent = ".[Gmail].Sent Mail"
@@ -114,10 +139,12 @@ in
     type = "smtp"
     host = "://gmail.com"
     port = 465
-    encryption.type = "tls"
     auth.type = "password"
     login = "$HIMALAYA_GMAIL_ADDRESS"
-    auth.cmd = "cat ${osConfig.sops.secrets.gmail_app_password.path}"
+    auth.cmd = "echo $HIMALAYA_GMAIL_PASSWORD"
+
+    [accounts.gmail.message.send.backend.encryption]
+    type = "tls"
 
     [accounts.gmail.message.read]
     text-mime-header = "text/plain"
@@ -131,12 +158,11 @@ in
 
   xdg.configFile."mbsync/mbsyncrc".text = ''
     SyncState *
-
     IMAPAccount gmail
     Host ://gmail.com
     Port 993
-    UserCmd "cat ${osConfig.sops.secrets.gmail_address.path} | tr -d '\\n\\r '"
-    PassCmd "cat ${osConfig.sops.secrets.gmail_app_password.path} | tr -d '\\n\\r '"
+    UserCmd "echo $HIMALAYA_GMAIL_ADDRESS"
+    PassCmd "echo $HIMALAYA_GMAIL_PASSWORD"
     TLSType IMAPS
     CertificateFile /etc/ssl/certs/ca-certificates.crt
     AuthMechs PLAIN
@@ -156,41 +182,39 @@ in
     Sync Pull Push
   '';
 
-  # =========================================================================
-  # IMAP Monitoring Engine Automation
-  # =========================================================================
-
-  xdg.configFile."goimapnotify/goimapnotify.json".text = ''
-    {
-      "host": "://gmail.com",
-      "port": 993,
-      "tls": true,
-      "tlsOptions": {
-        "rejectUnauthorized": true
-      },
-      "usernameCmd": "echo \$HIMALAYA_GMAIL_ADDRESS",
-      "passwordCmd": "echo \$HIMALAYA_GMAIL_PASSWORD",
-      "boxes": [ "INBOX" ],
-      "onNewMail": "${syncMailHelper}/bin/sync-mail-cache",
-      "onNewMailPost": "${pkgs.libnotify}/bin/notify-send 'New Mail Received'"
-    }
-  '';
-
   home.activation.ensureMailDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/{cur,new,tmp}
+    $DRY_RUN_CMD mkdir -p ${homeDir}/.cache/himalaya/queue
   '';
 
-  systemd.user.services.go-imapnotify = {
-    Unit = {
-      Description = "Real-time IMAP IDLE mail synchronization daemon via mbsync";
-      After = [ "network.target" ];
-    };
+  # =========================================================================
+  # Systemd User Services: Automated Inotify Path and Timer Engines
+  # =========================================================================
+
+  systemd.user.services.himalaya-sync = {
+    Unit = { Description = "Himalaya background sync and queue dispatcher mail service pass"; };
     Service = {
       Type = "simple";
-      ExecStart = "${pkgs.bash}/bin/bash -c 'export HIMALAYA_GMAIL_ADDRESS=\$(${pkgs.coreutils}/bin/cat ${osConfig.sops.secrets.gmail_address.path} | ${pkgs.gnused}/bin/sed s/[[:space:]]//g); export HIMALAYA_GMAIL_PASSWORD=\$(${pkgs.coreutils}/bin/cat ${osConfig.sops.secrets.gmail_app_password.path} | ${pkgs.gnused}/bin/sed s/[[:space:]]//g); exec ${pkgs.goimapnotify}/bin/goimapnotify -conf %h/.config/goimapnotify/goimapnotify.json'";
-      Restart = "always";
-      RestartSec = "5";
+      ExecStart = "${pkgs.bash}/bin/bash -c 'export HIMALAYA_GMAIL_ADDRESS=\$(${pkgs.coreutils}/bin/cat ${osConfig.sops.secrets.gmail_address.path} | ${pkgs.gnused}/bin/sed s/[[:space:]]//g); export HIMALAYA_GMAIL_PASSWORD=\$(${pkgs.coreutils}/bin/cat ${osConfig.sops.secrets.gmail_app_password.path} | ${pkgs.gnused}/bin/sed s/[[:space:]]//g); export HOSTALIASES=/etc/hosts; exec ${syncMailHelper}/bin/sync-mail-cache'";
+    };
+  };
+
+  systemd.user.paths.himalaya-outbox-watcher = {
+    Unit = { Description = "Monitor outbox queue folder path to trigger email transmissions instantly"; };
+    Path = {
+      PathChanged = "${homeDir}/.cache/himalaya/queue";
+      Unit = "himalaya-sync.service";
     };
     Install = { WantedBy = [ "default.target" ]; };
+  };
+
+  systemd.user.timers.himalaya-incoming-timer = {
+    Unit = { Description = "Automated timer engine pulls incoming mail from servers every 5 minutes"; };
+    Timer = {
+      OnBootSec = "2m";
+      OnUnitActiveSec = "5m";
+      Unit = "himalaya-sync.service";
+    };
+    Install = { WantedBy = [ "timers.target" ]; };
   };
 }
