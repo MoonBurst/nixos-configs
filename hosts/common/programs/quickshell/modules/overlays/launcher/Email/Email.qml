@@ -113,11 +113,8 @@ Item {
             return;
         }
 
-        if (event.key === Qt.Key_Delete) {
-            emailListContainer.deleteCurrentMessage();
-            event.accepted = true;
-            return;
-        }
+        // FIXED: Completely removed the redundant and duplicate Key_Delete block handler from here
+        // Deletion keyboard intercepts are now explicitly and cleanly managed inside EmailList.qml only
     }
     Rectangle {
         anchors.fill: parent

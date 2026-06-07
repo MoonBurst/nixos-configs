@@ -78,7 +78,16 @@ Rectangle {
         if (!email) return;
 
         var env = email.envelope ? email.envelope : email;
-        var msgId = email.id ? email.id : env.id;
+
+        var msgId = "";
+        if (email.id && typeof email.id === "object" && email.id.id) {
+            msgId = String(email.id.id);
+        } else if (env.id && typeof env.id === "object" && env.id.id) {
+            msgId = String(env.id.id);
+        } else {
+            msgId = email.id ? String(email.id) : (env.id ? String(env.id) : "");
+        }
+
         if (!msgId) return;
 
         controller.selectedId = msgId;
@@ -91,46 +100,41 @@ Rectangle {
         }
         processes.loadMessage(msgId);
     }
+
+
     function deleteCurrentMessage() {
+        console.log("--> deleteCurrentMessage() function was called successfully!");
+
         var filtered = getFilteredEmails();
         var mail = filtered[emailList.currentIndex];
-        if (!mail) return;
-
-        var env = mail.envelope ? mail.envelope : mail;
-        var msgId = mail.id ? mail.id : env.id;
-        if (!msgId) return;
-
-        var isFlagged = false;
-        if (env.flags && Array.isArray(env.flags)) {
-            for (var i = 0; i < env.flags.length; i++) {
-                var flag = String(env.flags[i]).toLowerCase();
-                if (flag === "flagged" || flag === "starred" || flag === "important") {
-                    isFlagged = true;
-                    break;
-                }
-            }
-        }
-
-        if (isFlagged) {
-            controller.statusMessage = "⚠️ CRITICAL: Starred messages are immune to deletion!";
+        if (!mail) {
+            console.log("--> Deletion error: Active email item is undefined.");
             return;
         }
 
-        var tmp = controller.emails.slice();
-        for (var j = 0; j < tmp.length; j++) {
-            var checkEnv = tmp[j].envelope ? tmp[j].envelope : tmp[j];
-            var checkId = tmp[j].id ? tmp[j].id : checkEnv.id;
-            if (checkId === msgId) {
-                tmp.splice(j, 1);
-                break;
+
+        var msgId = mail.id ? String(mail.id) : "";
+
+        console.log("--> Front-end extracted unique msgId text: [" + msgId + "]");
+        if (!msgId || msgId === "") return;
+
+        // Optimistically remove the item from the local array list view so it vanishes instantly
+        var tmp = [];
+        for (var j = 0; j < controller.emails.length; j++) {
+            var checkMail = controller.emails[j];
+            if (checkMail.id && String(checkMail.id) !== msgId) {
+                tmp.push(checkMail);
             }
         }
 
         controller.emails = tmp;
         controller.selectedId = "";
-        controller.statusMessage = "Moving message to trash...";
+        controller.statusMessage = "Message deleted successfully.";
+
+        // Pass the actual file prefix to your backend delete process script
         processes.deleteMessage(msgId);
     }
+
 
     Column {
         anchors.fill: parent
@@ -277,7 +281,15 @@ Rectangle {
                     if (!email) return;
 
                     var env = email.envelope ? email.envelope : email;
-                    var msgId = email.id ? email.id : env.id;
+
+                    var msgId = "";
+                    if (email.id && typeof email.id === "object" && email.id.id) {
+                        msgId = String(email.id.id);
+                    } else if (env.id && typeof env.id === "object" && env.id.id) {
+                        msgId = String(env.id.id);
+                    } else {
+                        msgId = email.id ? String(email.id) : (env.id ? String(env.id) : "");
+                    }
 
                     if (controller.selectedId === msgId && controller.messageBody !== "" && controller.messageBody.indexOf("Loading") !== 0) {
                         controller.isReplying = true;
@@ -286,28 +298,23 @@ Rectangle {
                     }
                     event.accepted = true;
                 }
+
                 Keys.onPressed: (event) => {
+                    console.log("--> Keys.onPressed intercepted key ID: " + event.key);
+
                     if (event.key === Qt.Key_Delete || event.key === Qt.Key_Backspace) {
-                        var filtered = root.getFilteredEmails();
-                        if (filtered && filtered.length > currentIndex) {
-                            var activeMessage = filtered[currentIndex];
-                            var targetEnv = activeMessage.envelope ? activeMessage.envelope : activeMessage;
-                            var targetId = activeMessage.id ? activeMessage.id : targetEnv.id;
-                            if (targetId) {
-                                processes.deleteMessage(targetId);
-                                event.accepted = true;
-                            }
-                        }
+                        console.log("--> Match found! Hitting core deletion function now.");
+                        deleteCurrentMessage();
+                        event.accepted = true;
                     }
                 }
+
 
                 delegate: Rectangle {
                     width: emailList.width
                     height: 105
                     radius: stylixTheme ? stylixTheme.defaultCardRadius - 2 : 8
                     color: controller.currentListIndex === index ? (stylixTheme ? stylixTheme.base03 : "#003399") : "transparent"
-
-                    // FIXED: Re-grouped the logic conditions to remove the invalid parenthesis tokens
                     border.width: (controller.selectedId === modelData.id || (modelData.envelope && controller.selectedId === modelData.envelope.id)) ? 2 : 0
                     border.color: stylixTheme ? stylixTheme.base0A : "#FABD2F"
 

@@ -7,6 +7,7 @@ import Quickshell.Io
 import Quickshell.Services.Pam
 
 import "./modules/overlays/notifications" as Notifications
+import "./modules/overlays/quickshot" as Quickshot
 import "./modules/overlays/launcher" as LauncherModule
 import "./modules/bar/tray" as SystemTray
 import "./modules/bar/ram" as RamCapsule
