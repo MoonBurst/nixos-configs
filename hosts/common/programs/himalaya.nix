@@ -31,7 +31,7 @@ in
 
     # FIXED: Direct fallback mapping to open your active Archive messages folder natively
     [accounts.gmail.folder.aliases]
-    inbox = ".[Gmail].All Mail"
+    inbox = ".[Gmail].Inbox"
     all = ".[Gmail].All Mail"
     drafts = ".[Gmail].Drafts"
     sent = "Sent"

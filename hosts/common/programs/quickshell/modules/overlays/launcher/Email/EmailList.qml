@@ -37,30 +37,35 @@ Rectangle {
             var item = list[i];
             var env = item.envelope ? item.envelope : item;
 
-            var folderStr = item.folder ? String(item.folder).toUpperCase() : "";
             var subjectStr = item.subject ? String(item.subject).toUpperCase() : (env.subject ? String(env.subject).toUpperCase() : "");
             var flagsStr = env.flags ? String(env.flags).toUpperCase() : "";
+            var folderStr = item.folder ? String(item.folder).toUpperCase() : "";
 
+            // FIXED: Leverages native mail attributes to isolate active Inbox mail from Archive streams
             if (activeTarget === "INBOX") {
-                if (folderStr === "INBOX" || folderStr === "") {
-                    if (subjectStr.indexOf("DRAFT") === -1 && flagsStr.indexOf("DRAFT") === -1) {
-                        folderMatches.push(item);
-                    }
+                // Shows item if it is explicitly marked for INBOX, or lacks trash/draft/archive flags
+                var isInboxMail = (folderStr.indexOf("INBOX") !== -1 || flagsStr.indexOf("INBOX") !== -1);
+                var isSystemNoise = (flagsStr.indexOf("DRAFT") !== -1 || subjectStr.indexOf("DRAFT") !== -1 ||
+                flagsStr.indexOf("TRASH") !== -1 || flagsStr.indexOf("DELETED") !== -1);
+
+                // Fallback: If no explicit flags exist, filter out read/archived history items
+                if (!isSystemNoise && (isInboxMail || flagsStr.indexOf("SEEN") === -1)) {
+                    folderMatches.push(item);
                 }
             } else if (activeTarget === "ALL MAIL") {
                 folderMatches.push(item);
             } else if (activeTarget === "DRAFTS") {
-                if (folderStr === "DRAFTS" || folderStr === ".DRAFTS" || subjectStr.indexOf("DRAFT") !== -1 || flagsStr.indexOf("DRAFT") !== -1) {
+                if (flagsStr.indexOf("DRAFT") !== -1 || subjectStr.indexOf("DRAFT") !== -1) {
                     folderMatches.push(item);
                 }
             } else if (activeTarget === "TRASH") {
-                if (folderStr === "TRASH" || folderStr === ".TRASH" || flagsStr.indexOf("TRASH") !== -1 || flagsStr.indexOf("DELETED") !== -1) {
+                if (flagsStr.indexOf("TRASH") !== -1 || flagsStr.indexOf("DELETED") !== -1) {
                     folderMatches.push(item);
                 }
             }
         }
 
-        var targetSource = folderMatches.length > 0 ? folderMatches : list;
+        var targetSource = folderMatches;
         if (controller.searchQuery.trim() === "") return targetSource;
 
         var tempMatches = [];
@@ -111,7 +116,6 @@ Rectangle {
             processes.refreshMail();
         }
     }
-
     function openCurrentMessage() {
         var filtered = getFilteredEmails();
         var email = filtered[emailList.currentIndex];
@@ -165,7 +169,7 @@ Rectangle {
         controller.statusMessage = "Message deleted successfully.";
         processes.deleteMessage(msgId);
     }
-    // FIXED: Premature root closing brace stripped out from here to keep object layout intact
+
     Column {
         anchors.fill: parent
         anchors.margins: stylixTheme ? (stylixTheme.globalPadding / 2) : (controller.globalPadding / 2)
@@ -296,7 +300,7 @@ Rectangle {
                             text: modelData.subject !== undefined ? modelData.subject : (modelData.envelope && modelData.envelope.subject !== undefined ? modelData.envelope.subject : "(No Subject)")
                             color: stylixTheme ? stylixTheme.base05 : "white"
                             font.family: stylixTheme ? stylixTheme.fontFamily : controller.fontFamily
-                            font.pixelSize: stylixTheme ? stylixTheme.globalFontSize : controller.globalFontSize
+                            font.pixelSize: stylixTheme ? (stylixTheme.globalFontSize) : (controller.globalFontSize)
                             elide: Text.ElideRight
                         }
                         Text {
@@ -310,4 +314,4 @@ Rectangle {
             }
         }
     }
-} // FIXED: Root closing brace securely captures the entire setup structure at the very end of the file
+}
