@@ -1,6 +1,6 @@
+import QtQml
 import QtQuick
 import QtQuick.Controls
-import Quickshell
 import Quickshell.Io
 
 Rectangle {
@@ -8,466 +8,264 @@ Rectangle {
 
     required property QtObject controller
     required property QtObject processes
-
     property var stylixTheme
 
     visible: controller.isComposing
-
     anchors.centerIn: parent
 
-    width: 1000
-    height: 1000
-
+    width: stylixTheme ? (controller.defaultCardWidth * 2.3) : 1000
+    height: stylixTheme ? (controller.defaultCardHeight * 6.4) : 900
     z: 99
 
-    radius: stylixTheme ? stylixTheme.defaultCardRadius : 10
+    radius: stylixTheme ? stylixTheme.defaultCardRadius : controller.defaultCardRadius
 
-    color: stylixTheme ? stylixTheme.base01 : "#0F0F0F"
+    color: stylixTheme ? stylixTheme.base01 : "#1a1a24"
+    border.color: stylixTheme ? stylixTheme.base05 : "#ffffff"
+    border.width: stylixTheme ? stylixTheme.globalBorderWidth : controller.globalBorderWidth
 
-    border.color:
-    stylixTheme
-    ? stylixTheme.base03
-    : "#675DDB"
-
-    border.width:
-    stylixTheme
-    ? stylixTheme.globalBorderWidth + 2
-    : 3
-
-    focus: root.visible
-
-    // FIX: Bubble up internal child properties to root scope via global property aliases
-    property alias addressField: addressField
-    property alias subjectField: subjectField
-    property alias bodyEditor: bodyEditor
-
-    property var cachedContactsList: []
-    property var matchedSuggestions: []
+    property var rawContacts: []
+    property var filteredContacts: []
 
     onVisibleChanged: {
         if (root.visible) {
-            Qt.callLater(function() {
-                addressField.forceActiveFocus();
-            });
-            matchedSuggestions = [];
-            readContactsFileProcess.running = false;
-            readContactsFileProcess.running = true;
+            toField.forceActiveFocus();
+            contactsLoader.running = true;
         }
+    }
+
+    function handleSend() {
+        if (toField.text.trim() === "") return;
+        processes.sendEmail(
+            controller.userEmailAddress,
+            toField.text,
+            subjectField.text,
+            bodyEditor.text
+        );
+        controller.isComposing = false;
     }
 
     Process {
-        id: readContactsFileProcess
-        command: ["sh", "-c", "cat ~/Documents/Contacts"]
-
+        id: contactsLoader
+        command: ["cat", "/home/moonburst/Documents/Contacts"]
         stdout: StdioCollector {
             onStreamFinished: {
                 var rawLines = text.split("\n");
-                var cleanArray = [];
+                var cleanList = [];
                 for (var i = 0; i < rawLines.length; i++) {
                     var trimmed = rawLines[i].trim();
-                    if (trimmed.length > 0) {
-                        cleanArray.push(trimmed);
-                    }
+                    if (trimmed.length > 0) cleanList.push(trimmed);
                 }
-                root.cachedContactsList = cleanArray;
+                root.rawContacts = cleanList;
             }
         }
     }
 
-    function sendMessage() {
-        var cleanBody =
-        bodyEditor.text.replace(/"/g, '\\"')
-
-        var cleanSubject =
-        subjectField.text.replace(/"/g, '\\"')
-
-        var cleanTo =
-        addressField.text.replace(/"/g, '\\"')
-
-        processes.sendEmail(
-            controller.userEmailAddress,
-            cleanTo,
-            cleanSubject,
-            cleanBody
-        )
-
-        controller.isComposing = false
+    function updateSuggestions(currentInput) {
+        if (currentInput.trim() === "") {
+            root.filteredContacts = [];
+            return;
+        }
+        var matches = [];
+        var query = currentInput.toLowerCase();
+        for (var i = 0; i < root.rawContacts.length; i++) {
+            var item = root.rawContacts[i];
+            if (item.toLowerCase().indexOf(query) !== -1) {
+                matches.push(item);
+            }
+        }
+        root.filteredContacts = matches;
     }
-
     Column {
         anchors.fill: parent
-        anchors.margins:
-        stylixTheme
-        ? stylixTheme.globalPadding
-        : 20
-
+        anchors.margins: stylixTheme ? stylixTheme.globalPadding : controller.globalPadding
         spacing: 12
 
         Row {
-            spacing: 12
+            spacing: stylixTheme ? (stylixTheme.globalPadding / 2) : 10
 
             Rectangle {
-                width: 200
-                height: 50
-
-                color:
-                stylixTheme
-                ? stylixTheme.base02
-                : "#2a2a3a"
-
-                radius: 6
-
-                border.color:
-                stylixTheme
-                ? stylixTheme.base05
-                : "#ffffff"
-
-                border.width:
-                stylixTheme
-                ? stylixTheme.globalBorderWidth
-                : 3
-
-                Text {
-                    anchors.centerIn: parent
-                    text: "Send Message"
-
-                    color:
-                    stylixTheme
-                    ? stylixTheme.base05
-                    : "white"
-
-                    font.bold: true
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: sendMessage()
-                }
+                width: 180; height: 40; radius: 6
+                color: stylixTheme ? stylixTheme.base02 : "#003399"
+                border.color: stylixTheme ? stylixTheme.base05 : "#ffffff"
+                border.width: stylixTheme ? stylixTheme.globalBorderWidth : controller.globalBorderWidth
+                Text { anchors.centerIn: parent; text: "Send (Ctrl+Enter)"; color: stylixTheme ? stylixTheme.base05 : "white"; font.bold: true; font.family: stylixTheme ? stylixTheme.fontFamily : controller.fontFamily }
+                MouseArea { anchors.fill: parent; onClicked: handleSend() }
             }
 
             Rectangle {
-                width: 120
-                height: 50
-
-                color:
-                stylixTheme
-                ? stylixTheme.base02
-                : "#aa2222"
-
-                radius: 6
-
-                border.color:
-                stylixTheme
-                ? stylixTheme.base05
-                : "#ffffff"
-
-                border.width:
-                stylixTheme
-                ? stylixTheme.globalBorderWidth
-                : 3
-
-                Text {
-                    anchors.centerIn: parent
-                    text: "Discard"
-                    color:
-                    stylixTheme
-                    ? stylixTheme.base05
-                    : "#aa2222"
-
-                    font.bold: true
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        controller.isComposing = false
-                    }
-                }
+                width: 160; height: 40; radius: 6
+                color: stylixTheme ? stylixTheme.base02 : "#1a1a2a"
+                border.color: stylixTheme ? stylixTheme.base05 : "#ffffff"
+                border.width: stylixTheme ? stylixTheme.globalBorderWidth : controller.globalBorderWidth
+                Text { anchors.centerIn: parent; text: "Cancel (Esc)"; color: stylixTheme ? stylixTheme.base05 : "white"; font.bold: true; font.family: stylixTheme ? stylixTheme.fontFamily : controller.fontFamily }
+                MouseArea { anchors.fill: parent; onClicked: { controller.isComposing = false; } }
             }
         }
-        Text {
-            text: "To"
-            color: "white"
-        }
 
-        Item {
+        Column {
             width: parent.width
-            height: 42
-            z: 100
+            spacing: 6
+            z: 10
 
+            Text { text: "To:"; color: stylixTheme ? stylixTheme.base05 : "white"; font.bold: true; font.family: stylixTheme ? stylixTheme.fontFamily : controller.fontFamily }
             Rectangle {
-                anchors.fill: parent
-                color: stylixTheme ? stylixTheme.base00 : "#1a1a2a"
+                width: parent.width; height: 40; radius: 4
+                color: stylixTheme ? stylixTheme.base00 : "#16161c"
+                border.color: toField.activeFocus ? (stylixTheme ? stylixTheme.base05 : "#ffffff") : (stylixTheme ? stylixTheme.base02 : "#333345")
+                border.width: stylixTheme ? stylixTheme.globalBorderWidth : controller.globalBorderWidth
 
                 TextInput {
-                    id: addressField
-
-                    anchors.fill: parent
-                    anchors.margins: 8
-
+                    id: toField; anchors.fill: parent; anchors.margins: 8; color: "white";
                     text: controller.composeToAddress
-
-                    color: "white"
-                    focus: root.visible
+                    font.family: stylixTheme ? stylixTheme.fontFamily : controller.fontFamily;
+                    font.pixelSize: stylixTheme ? stylixTheme.globalFontSize : controller.globalFontSize
+                    activeFocusOnTab: true
 
                     onTextChanged: {
-                        if (root.visible) {
-                            controller.composeToAddress = text
-
-                            if (text.trim().length === 0) {
-                                root.matchedSuggestions = [];
-                                return;
-                            }
-
-                            var query = text.toLowerCase();
-                            var tempMatches = [];
-                            for (var i = 0; i < root.cachedContactsList.length; i++) {
-                                var contact = root.cachedContactsList[i];
-                                if (contact.toLowerCase().indexOf(query) !== -1) {
-                                    tempMatches.push(contact);
-                                }
-                            }
-                            root.matchedSuggestions = tempMatches;
-                        }
+                        controller.composeToAddress = text;
+                        root.updateSuggestions(text);
                     }
 
                     Keys.onPressed: (event) => {
-                        if (event.key === Qt.Key_Escape) {
-                            if (root.matchedSuggestions.length > 0) {
-                                root.matchedSuggestions = [];
-                            } else {
-                                controller.isComposing = false;
-                            }
-                            event.accepted = true;
-                            return;
-                        }
-
-                        // FIX: Pulls the first suggestion item out of the array matching your tab entry press
                         if (event.key === Qt.Key_Tab) {
-                            if (root.matchedSuggestions.length > 0) {
-                                addressField.text = root.matchedSuggestions[0];
-                                root.matchedSuggestions = [];
+                            if (root.filteredContacts.length > 0) {
+                                var topSuggestion = String(root.filteredContacts[0]);
+                                text = topSuggestion;
+                                controller.composeToAddress = topSuggestion;
+                                root.filteredContacts = [];
+                                subjectField.forceActiveFocus();
+                                event.accepted = true;
+                                return;
                             }
-                            subjectField.forceActiveFocus();
-                            event.accepted = true;
-                            return;
                         }
-
-                        if (event.key === Qt.Key_Down && root.matchedSuggestions.length > 0) {
-                            suggestionListView.forceActiveFocus();
-                            suggestionListView.currentIndex = 0;
+                        if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && (event.modifiers & Qt.ControlModifier)) {
+                            root.handleSend();
                             event.accepted = true;
-                            return;
-                        }
-
-                        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                            subjectField.forceActiveFocus();
-                            event.accepted = true;
-                            return;
                         }
                     }
                 }
             }
 
             Rectangle {
-                id: suggestionPanel
-                visible: root.matchedSuggestions.length > 0
-
+                id: suggestionsMenuFrame
                 width: parent.width
-                height: Math.min(200, root.matchedSuggestions.length * 40)
-
-                anchors.top: parent.bottom
-                anchors.topMargin: 4
-
-                color: stylixTheme ? stylixTheme.base02 : "#222230"
-                border.color: stylixTheme ? stylixTheme.base03 : "#444455"
+                height: Math.min(200, filteredContactsRepeater.count * 35)
+                visible: root.filteredContacts.length > 0
+                color: stylixTheme ? stylixTheme.base00 : "#1e1e24"
+                border.color: stylixTheme ? stylixTheme.base03 : "#333345"
                 border.width: 1
                 radius: 4
 
-                ListView {
-                    id: suggestionListView
+                Flickable {
+                    id: suggestionsFlickable
                     anchors.fill: parent
-                    model: root.matchedSuggestions
                     clip: true
+                    contentWidth: parent.width
+                    contentHeight: filteredContactsRepeater.count * 35
+                    boundsBehavior: Flickable.StopAtBounds
 
-                    highlight: Rectangle {
-                        color: stylixTheme ? stylixTheme.base03 : "#333355"
+                    Column {
+                        width: parent.width
+                        Repeater {
+                            id: filteredContactsRepeater
+                            model: root.filteredContacts
+                            delegate: Rectangle {
+                                width: parent.width; height: 35
+                                color: mouseInSuggestion.containsMouse ? (stylixTheme ? stylixTheme.base02 : "#333355") : "transparent"
+
+                                Text {
+                                    anchors.left: parent.left; anchors.leftMargin: 10; anchors.verticalCenter: parent.verticalCenter
+                                    text: modelData; color: "white"
+                                    font.family: stylixTheme ? stylixTheme.fontFamily : controller.fontFamily
+                                }
+                                MouseArea {
+                                    id: mouseInSuggestion
+                                    anchors.fill: parent; hoverEnabled: true
+                                    onClicked: {
+                                        toField.text = modelData;
+                                        root.filteredContacts = [];
+                                        subjectField.forceActiveFocus();
+                                    }
+                                }
+                            }
+                        }
                     }
+                }
+
+                Rectangle {
+                    id: menuScrollIndicator
+                    visible: suggestionsFlickable.contentHeight > suggestionsMenuFrame.height
+                    width: 5; radius: 2.5
+                    color: stylixTheme ? stylixTheme.base04 : "#555565"
+                    anchors.right: parent.right; anchors.rightMargin: 3
+                    height: Math.max(20, (suggestionsMenuFrame.height / suggestionsFlickable.contentHeight) * suggestionsMenuFrame.height)
+                    y: (suggestionsFlickable.contentY / (suggestionsFlickable.contentHeight - suggestionsMenuFrame.height)) * (suggestionsMenuFrame.height - height)
+                }
+            }
+            Text { text: "Subject:"; color: stylixTheme ? stylixTheme.base05 : "white"; font.bold: true; font.family: stylixTheme ? stylixTheme.fontFamily : controller.fontFamily }
+            Rectangle {
+                width: parent.width; height: 40; radius: 4
+                color: stylixTheme ? stylixTheme.base00 : "#16161c"
+                border.color: subjectField.activeFocus ? (stylixTheme ? stylixTheme.base05 : "#ffffff") : (stylixTheme ? stylixTheme.base02 : "#333345")
+                border.width: stylixTheme ? stylixTheme.globalBorderWidth : controller.globalBorderWidth
+
+                TextInput {
+                    id: subjectField; anchors.fill: parent; anchors.margins: 8; color: "white";
+                    text: controller.composeSubject; onTextChanged: controller.composeSubject = text;
+                    font.family: stylixTheme ? stylixTheme.fontFamily : controller.fontFamily;
+                    font.pixelSize: stylixTheme ? stylixTheme.globalFontSize : controller.globalFontSize
+                    activeFocusOnTab: true
 
                     Keys.onPressed: (event) => {
-                        if (event.key === Qt.Key_Escape) {
-                            root.matchedSuggestions = [];
-                            addressField.forceActiveFocus();
+                        if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && (event.modifiers & Qt.ControlModifier)) {
+                            root.handleSend();
                             event.accepted = true;
-                            return;
-                        }
-
-                        if (event.key === Qt.Key_Tab || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                            if (currentIndex >= 0 && currentIndex < root.matchedSuggestions.length) {
-                                addressField.text = root.matchedSuggestions[currentIndex];
-                                root.matchedSuggestions = [];
-                                subjectField.forceActiveFocus();
-                            }
-                            event.accepted = true;
-                            return;
-                        }
-                    }
-
-                    delegate: Item {
-                        width: suggestionListView.width
-                        height: 40
-
-                        Text {
-                            anchors.left: parent.left
-                            anchors.leftMargin: 12
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: modelData
-                            color: "white"
-                            font.pixelSize: 16
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: {
-                                addressField.text = modelData;
-                                root.matchedSuggestions = [];
-                                root.subjectField.forceActiveFocus();
-                            }
                         }
                     }
                 }
             }
         }
-        Text {
-            text: "Subject"
-            color: "white"
-        }
 
         Rectangle {
             width: parent.width
-            height: 42
-
-            color:
-            stylixTheme
-            ? stylixTheme.base00
-            : "#1a1a2a"
-
-            TextInput {
-                id: subjectField
-
-                anchors.fill: parent
-                anchors.margins: 8
-
-                text: controller.composeSubject
-
-                color: "white"
-
-                focus: root.visible
-
-                onTextChanged: {
-                    if (root.visible) {
-                        controller.composeSubject = text
-                    }
-                }
-
-                Keys.onPressed: (event) => {
-                    if (event.key === Qt.Key_Escape) {
-                        controller.isComposing = false;
-                        event.accepted = true;
-                        return;
-                    }
-                    if (event.key === Qt.Key_Tab || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                        bodyEditor.forceActiveFocus();
-                        event.accepted = true;
-                        return;
-                    }
-                }
-            }
-        }
-
-        Text {
-            text: "Message"
-            color: "white"
-        }
-
-        Rectangle {
-            id: messageContainer
-            width: parent.width
-            height: parent.height - 300
-
-            color:
-            stylixTheme
-            ? stylixTheme.base00
-            : "#1a1a2a"
-
-            clip: true
+            height: parent.height - 240
+            color: stylixTheme ? stylixTheme.base00 : "#1a1a2a"
+            border.color: bodyEditor.activeFocus ? (stylixTheme ? stylixTheme.base05 : "#ffffff") : (stylixTheme ? stylixTheme.base02 : "#333345")
+            border.width: stylixTheme ? stylixTheme.globalBorderWidth : controller.globalBorderWidth
+            radius: 4
 
             Flickable {
-                id: messageFlickable
                 anchors.fill: parent
                 anchors.margins: 12
-
                 clip: true
-                contentHeight: bodyEditor.paintedHeight + 40
+                contentHeight: bodyEditor.contentHeight + 20
 
                 TextEdit {
                     id: bodyEditor
-
-                    width: parent.width - 24
-
+                    width: parent.width
                     text: controller.composeBodyText
-
                     wrapMode: TextEdit.Wrap
-
                     color: "white"
-
                     font.family: "monospace"
+                    font.pixelSize: stylixTheme ? controller.globalFontSize : 20
+                    activeFocusOnTab: true
 
-                    font.pixelSize:
-                    stylixTheme
-                    ? stylixTheme.globalFontSize
-                    : 20
-
-                    focus: root.visible
-
-                    onTextChanged: {
-                        if (root.visible) {
-                            controller.composeBodyText = text
-                        }
-                    }
+                    onTextChanged: controller.composeBodyText = text
 
                     Keys.onPressed: (event) => {
                         if (event.key === Qt.Key_Escape) {
-                            controller.isComposing = false
-                            event.accepted = true
-                            return
+                            controller.isComposing = false;
+                            event.accepted = true;
+                            return;
                         }
-
-                        if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) &&
-                            (event.modifiers & Qt.ControlModifier)) {
-
-                            sendMessage()
-                            event.accepted = true
-                            return
-                            }
+                        if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && (event.modifiers & Qt.ControlModifier)) {
+                            root.handleSend();
+                            event.accepted = true;
+                        }
                     }
                 }
-            }
-
-            Rectangle {
-                id: customScrollHandle
-                visible: messageFlickable.contentHeight > messageFlickable.height
-
-                width: 6
-                radius: 3
-                color: stylixTheme ? stylixTheme.base04 : "#555565"
-
-                anchors.right: parent.right
-                anchors.rightMargin: 4
-
-                height: Math.max(30, (messageFlickable.height / messageFlickable.contentHeight) * messageFlickable.height)
-                y: (messageFlickable.contentY / (messageFlickable.contentHeight - messageFlickable.height)) * (messageFlickable.height - height)
             }
         }
     }
 }
+

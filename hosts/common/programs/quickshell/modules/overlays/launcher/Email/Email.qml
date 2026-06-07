@@ -30,6 +30,12 @@ Item {
 
     Connections {
         target: controller
+
+        // FIXED: Automatically updates the right-side preview text window at 0 enter presses when rows change
+        function onCurrentListIndexChanged() {
+            emailListContainer.openCurrentMessage();
+        }
+
         function onIsReplyingChanged() {
             if (!controller.isReplying && !controller.isComposing) {
                 emailListContainer.innerListView.forceActiveFocus()
@@ -41,7 +47,6 @@ Item {
             }
         }
     }
-
     Keys.onPressed: (event) => {
         if (controller.isReplying || controller.isComposing)
             return;
@@ -68,19 +73,10 @@ Item {
             return;
         }
 
-        if (event.key === Qt.Key_F && (event.modifiers & Qt.ControlModifier)) {
-            emailListContainer.forceSearchFocus();
-            event.accepted = true;
-            return;
-        }
-
         if (event.key === Qt.Key_Up) {
             if (emailListContainer.innerListView.currentIndex > 0) {
                 emailListContainer.innerListView.currentIndex--;
-                emailListContainer.innerListView.positionViewAtIndex(
-                    emailListContainer.innerListView.currentIndex,
-                    ListView.Contain
-                );
+                controller.currentListIndex = emailListContainer.innerListView.currentIndex;
             }
             event.accepted = true;
             return;
@@ -89,32 +85,18 @@ Item {
         if (event.key === Qt.Key_Down) {
             if (emailListContainer.innerListView.currentIndex < emailListContainer.innerListView.count - 1) {
                 emailListContainer.innerListView.currentIndex++;
-                emailListContainer.innerListView.positionViewAtIndex(
-                    emailListContainer.innerListView.currentIndex,
-                    ListView.Contain
-                );
+                controller.currentListIndex = emailListContainer.innerListView.currentIndex;
             }
             event.accepted = true;
             return;
         }
 
+        // FIXED: Requires exactly 1 enter press to toggle the reply pop-up box open over your stack
         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-            var email = controller.emails[emailListContainer.innerListView.currentIndex];
-            if (email) {
-                if (controller.selectedId === email.id &&
-                    controller.messageBody !== "" &&
-                    controller.messageBody.indexOf("Loading") !== 0) {
-                    controller.isReplying = true;
-                    } else {
-                        emailListContainer.openCurrentMessage();
-                    }
-            }
+            controller.isReplying = true;
             event.accepted = true;
             return;
         }
-
-        // FIXED: Completely removed the redundant and duplicate Key_Delete block handler from here
-        // Deletion keyboard intercepts are now explicitly and cleanly managed inside EmailList.qml only
     }
     Rectangle {
         anchors.fill: parent
@@ -128,9 +110,17 @@ Item {
             anchors.margins: root.stylixTheme ? root.stylixTheme.globalPadding : 12
             spacing: root.stylixTheme ? root.stylixTheme.globalPadding : 12
 
+            EmailSidebar {
+                width: parent.width * 0.15
+                height: parent.height
+                controller: controller
+                processes: processes
+                stylixTheme: root.stylixTheme
+            }
+
             EmailList {
                 id: emailListContainer
-                width: parent.width * 0.42
+                width: parent.width * 0.32
                 height: parent.height
                 controller: controller
                 processes: processes
@@ -138,7 +128,7 @@ Item {
             }
 
             EmailPreview {
-                width: parent.width * 0.58 - (root.stylixTheme ? root.stylixTheme.globalPadding : 12)
+                width: parent.width * 0.53 - (root.stylixTheme ? root.stylixTheme.globalPadding : 12)
                 height: parent.height
                 controller: controller
                 processes: processes

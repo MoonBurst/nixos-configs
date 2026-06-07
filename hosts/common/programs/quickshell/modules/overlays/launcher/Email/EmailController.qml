@@ -5,6 +5,7 @@ QtObject {
     id: controller
 
     property string userEmailAddress: ""
+    property string currentFolder: "INBOX"
 
     property var emails: []
     property var messageCache: ({})
@@ -26,7 +27,6 @@ QtObject {
     property bool isRegexSearch: false
     property bool isImportantOnlyView: false
 
-
     property string composeToAddress: ""
     property string composeSubject: ""
     property string composeBodyText: ""
@@ -46,10 +46,8 @@ QtObject {
     property int globalBorderWidth: 3
     property int globalPadding: 20
 
-    // Custom helper signal to forcefully push interface updates across modules
     signal modelDataForceRefreshed()
 
-    // Invoked by the lists to guarantee index syncs pass cleanly down to the core layout
     function updateActiveSelection(newIndex) {
         if (emails && newIndex >= 0 && newIndex < emails.length) {
             currentListIndex = newIndex;
@@ -57,7 +55,6 @@ QtObject {
         }
     }
 
-    // Unified helper function to navigate up safely through your email array data
     function navigateUp() {
         if (isReplying || isComposing)
             return;
@@ -68,7 +65,6 @@ QtObject {
         }
     }
 
-    // Unified helper function to navigate down safely through your email array data
     function navigateDown() {
         if (isReplying || isComposing)
             return;
