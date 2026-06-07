@@ -3,6 +3,29 @@
 let
   homeDir = toString config.home.homeDirectory;
   myEmail = "moonburstplays@gmail.com";
+
+  # NATIVE BUILD: Escaped characters force evaluation at runtime, preventing compile-time secret leaks
+  syncMailHelper = pkgs.writeShellScriptBin "sync-mail-cache" ''
+    CACHE_DIR="${homeDir}/.cache/himalaya"
+    CACHE_FILE="$CACHE_DIR/emails.json"
+    CONFIG_FILE="${homeDir}/.config/himalaya/config.toml"
+    MBSYNC_FILE="${homeDir}/.config/mbsync/mbsyncrc"
+
+    export HIMALAYA_GMAIL_ADDRESS="${myEmail}"
+    export HIMALAYA_GMAIL_PASSWORD="$(${pkgs.coreutils}/bin/cat ${osConfig.sops.secrets.gmail_app_password.path})"
+
+    ${pkgs.coreutils}/bin/mkdir -p "$CACHE_DIR"
+
+    # Step 1: Run background delta download synchronization pass
+    ${pkgs.isync}/bin/mbsync -c "$MBSYNC_FILE" gmail
+
+    # Step 2: Compile full mail metadata down to a fast static JSON array cache file
+    ${pkgs.himalaya}/bin/himalaya --config "$CONFIG_FILE" --output json envelope list --page-size 500 > "$CACHE_FILE.tmp"
+
+    if [ -s "$CACHE_FILE.tmp" ]; then
+        ${pkgs.coreutils}/bin/mv "$CACHE_FILE.tmp" "$CACHE_FILE"
+    fi
+  '';
 in
 {
   home.packages = [
@@ -12,6 +35,7 @@ in
     pkgs.libnotify
     pkgs.ripgrep
     pkgs.gawk
+    syncMailHelper
   ];
 
   # =========================================================================
@@ -29,7 +53,6 @@ in
     root-dir = "${homeDir}/.local/share/mail/gmail"
     maildirpp = true
 
-    # FIXED: Direct fallback mapping to open your active Archive messages folder natively
     [accounts.gmail.folder.aliases]
     inbox = ".[Gmail].Inbox"
     all = ".[Gmail].All Mail"
@@ -53,7 +76,6 @@ in
     [accounts.gmail.envelope.list]
     page-size = 500
   '';
-
   # =========================================================================
   # mbsync Local Configuration
   # =========================================================================
@@ -86,7 +108,7 @@ in
   '';
 
   # =========================================================================
-  # IMAP Monitoring Engine Automation (FIXED: Root-Level Syntax with Wait)
+  # IMAP Monitoring Engine Automation
   # =========================================================================
 
   xdg.configFile."goimapnotify/goimapnotify.json".text = ''
@@ -100,7 +122,7 @@ in
       "username": "${myEmail}",
       "passwordCmd": "cat ${osConfig.sops.secrets.gmail_app_password.path}",
       "boxes": [ "INBOX" ],
-      "onNewMail": "${pkgs.isync}/bin/mbsync -c %h/.config/mbsync/mbsyncrc gmail",
+      "onNewMail": "${syncMailHelper}/bin/sync-mail-cache",
       "onNewMailPost": "${pkgs.libnotify}/bin/notify-send 'New Mail Received'",
       "wait": 1
     }

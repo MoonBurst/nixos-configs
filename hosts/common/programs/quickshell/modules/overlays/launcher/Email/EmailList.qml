@@ -22,16 +22,25 @@ Rectangle {
     border.width: stylixTheme ? stylixTheme.globalBorderWidth : controller.globalBorderWidth
     radius: stylixTheme ? stylixTheme.defaultCardRadius : controller.defaultCardRadius
 
+    // PERFORMANCE FIXED: Background storage pointers prevent layout recalculation thrashing
+    property var _cachedInbox: []
+    property var _cachedAll: []
+    property var _cachedDrafts: []
+    property var _cachedTrash: []
+
     function forceSearchFocus() {
         searchField.forceActiveFocus();
     }
 
-    function getFilteredEmails() {
+    // FAST TRACK: Rebuilds data maps ONLY when the raw database array explicitly drops changes
+    function rebuildFolderCaches() {
         var list = controller.emails;
-        if (!list) return [];
+        if (!list) {
+            _cachedInbox = []; _cachedAll = []; _cachedDrafts = []; _cachedTrash = [];
+            return;
+        }
 
-        var folderMatches = [];
-        var activeTarget = controller.currentFolder ? controller.currentFolder.toUpperCase() : "INBOX";
+        var ib = []; var al = []; var dr = []; var tr = [];
 
         for (var i = 0; i < list.length; i++) {
             var item = list[i];
@@ -41,31 +50,34 @@ Rectangle {
             var flagsStr = env.flags ? String(env.flags).toUpperCase() : "";
             var folderStr = item.folder ? String(item.folder).toUpperCase() : "";
 
-            // FIXED: Leverages native mail attributes to isolate active Inbox mail from Archive streams
-            if (activeTarget === "INBOX") {
-                // Shows item if it is explicitly marked for INBOX, or lacks trash/draft/archive flags
-                var isInboxMail = (folderStr.indexOf("INBOX") !== -1 || flagsStr.indexOf("INBOX") !== -1);
-                var isSystemNoise = (flagsStr.indexOf("DRAFT") !== -1 || subjectStr.indexOf("DRAFT") !== -1 ||
-                flagsStr.indexOf("TRASH") !== -1 || flagsStr.indexOf("DELETED") !== -1);
+            var isSystemNoise = (flagsStr.indexOf("DRAFT") !== -1 || subjectStr.indexOf("DRAFT") !== -1 ||
+            flagsStr.indexOf("TRASH") !== -1 || flagsStr.indexOf("DELETED") !== -1);
+            var isInboxMail = (folderStr.indexOf("INBOX") !== -1 || flagsStr.indexOf("INBOX") !== -1);
 
-                // Fallback: If no explicit flags exist, filter out read/archived history items
-                if (!isSystemNoise && (isInboxMail || flagsStr.indexOf("SEEN") === -1)) {
-                    folderMatches.push(item);
-                }
-            } else if (activeTarget === "ALL MAIL") {
-                folderMatches.push(item);
-            } else if (activeTarget === "DRAFTS") {
-                if (flagsStr.indexOf("DRAFT") !== -1 || subjectStr.indexOf("DRAFT") !== -1) {
-                    folderMatches.push(item);
-                }
-            } else if (activeTarget === "TRASH") {
-                if (flagsStr.indexOf("TRASH") !== -1 || flagsStr.indexOf("DELETED") !== -1) {
-                    folderMatches.push(item);
-                }
+            // Sort directly into the background buckets
+            al.push(item);
+            if (!isSystemNoise && (isInboxMail || flagsStr.indexOf("SEEN") === -1)) {
+                ib.push(item);
+            }
+            if (flagsStr.indexOf("DRAFT") !== -1 || subjectStr.indexOf("DRAFT") !== -1) {
+                dr.push(item);
+            }
+            if (flagsStr.indexOf("TRASH") !== -1 || flagsStr.indexOf("DELETED") !== -1) {
+                tr.push(item);
             }
         }
 
-        var targetSource = folderMatches;
+        _cachedInbox = ib; _cachedAll = al; _cachedDrafts = dr; _cachedTrash = tr;
+    }
+
+    function getFilteredEmails() {
+        var activeTarget = controller.currentFolder ? controller.currentFolder.toUpperCase() : "INBOX";
+        var targetSource = _cachedInbox;
+
+        if (activeTarget === "ALL MAIL") targetSource = _cachedAll;
+        else if (activeTarget === "DRAFTS") targetSource = _cachedDrafts;
+        else if (activeTarget === "TRASH") targetSource = _cachedTrash;
+
         if (controller.searchQuery.trim() === "") return targetSource;
 
         var tempMatches = [];
@@ -104,11 +116,13 @@ Rectangle {
     }
 
     Component.onCompleted: {
-        emailList.forceActiveFocus()
+        rebuildFolderCaches();
+        emailList.forceActiveFocus();
     }
 
     Connections {
         target: controller
+        function onEmailsChanged() { rebuildFolderCaches(); }
         function onCurrentFolderChanged() {
             emailList.currentIndex = 0;
             controller.currentListIndex = 0;
