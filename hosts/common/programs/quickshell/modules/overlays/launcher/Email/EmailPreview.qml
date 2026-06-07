@@ -45,12 +45,7 @@ Rectangle {
         controller.selectedId = "";
         controller.messageBody = "Message moved to Trash locally.";
 
-        Quickshell.execDetached([
-            "himalaya",
-            "message",
-            "delete",
-            mail.id
-        ]);
+        processes.deleteMessage(mail.id);
     }
     Column {
         anchors.fill: parent

@@ -22,7 +22,6 @@ Rectangle {
     border.width: stylixTheme ? stylixTheme.globalBorderWidth : controller.globalBorderWidth
     radius: stylixTheme ? stylixTheme.defaultCardRadius : controller.defaultCardRadius
 
-    // PERFORMANCE FIXED: Background storage pointers prevent layout recalculation thrashing
     property var _cachedInbox: []
     property var _cachedAll: []
     property var _cachedDrafts: []
@@ -32,7 +31,6 @@ Rectangle {
         searchField.forceActiveFocus();
     }
 
-    // FAST TRACK: Rebuilds data maps ONLY when the raw database array explicitly drops changes
     function rebuildFolderCaches() {
         var list = controller.emails;
         if (!list) {
@@ -54,7 +52,6 @@ Rectangle {
             flagsStr.indexOf("TRASH") !== -1 || flagsStr.indexOf("DELETED") !== -1);
             var isInboxMail = (folderStr.indexOf("INBOX") !== -1 || flagsStr.indexOf("INBOX") !== -1);
 
-            // Sort directly into the background buckets
             al.push(item);
             if (!isSystemNoise && (isInboxMail || flagsStr.indexOf("SEEN") === -1)) {
                 ib.push(item);
@@ -78,34 +75,34 @@ Rectangle {
         else if (activeTarget === "DRAFTS") targetSource = _cachedDrafts;
         else if (activeTarget === "TRASH") targetSource = _cachedTrash;
 
-        if (controller.searchQuery.trim() === "") return targetSource;
+        var queryText = controller.searchQuery.trim();
+        if (queryText === "") return targetSource;
 
         var tempMatches = [];
         if (controller.isRegexSearch) {
             try {
-                var regex = new RegExp(controller.searchQuery, "i");
+                var regex = new RegExp(queryText, "i");
                 for (var j = 0; j < targetSource.length; j++) {
                     var mail = targetSource[j];
                     var subEnv = mail.envelope ? mail.envelope : mail;
-                    var subject = mail.subject ? String(mail.subject) : (subEnv.subject ? String(subEnv.subject) : "");
-                    var fromName = mail.from ? (mail.from.name || "") : (subEnv.from && subEnv.from.name ? String(subEnv.from.name) : "");
-                    var fromAddr = mail.from ? (mail.from.addr || "") : (subEnv.from && subEnv.from.addr ? String(subEnv.from.addr) : "");
-
-                    if (regex.test(subject) || regex.test(fromName) || regex.test(fromAddr)) {
+                    if (regex.test(mail.subject || subEnv.subject || "") ||
+                        regex.test(mail.from ? (mail.from.name || mail.from.addr || "") : (subEnv.from ? (subEnv.from.name || subEnv.from.addr || "") : ""))) {
                         tempMatches.push(mail);
-                    }
+                        }
                 }
             } catch (e) {
                 return targetSource;
             }
         } else {
-            var query = controller.searchQuery.toLowerCase();
+            var query = queryText.toLowerCase();
             for (var k = 0; k < targetSource.length; k++) {
                 var rawMail = targetSource[k];
                 var cleanEnv = rawMail.envelope ? rawMail.envelope : rawMail;
-                var subText = rawMail.subject ? String(rawMail.subject).toLowerCase() : (cleanEnv.subject ? String(cleanEnv.subject).toLowerCase() : "");
-                var nameText = rawMail.from ? String(rawMail.from.name || "").toLowerCase() : (cleanEnv.from && cleanEnv.from.name ? String(cleanEnv.from.name).toLowerCase() : "");
-                var addrText = rawMail.from ? String(rawMail.from.addr || "").toLowerCase() : (cleanEnv.from && cleanEnv.from.addr ? String(cleanEnv.from.addr).toLowerCase() : "");
+
+                var subText = String(rawMail.subject || cleanEnv.subject || "").toLowerCase();
+                var fromObj = rawMail.from ? rawMail.from : (cleanEnv.from || {});
+                var nameText = String(fromObj.name || "").toLowerCase();
+                var addrText = String(fromObj.addr || "").toLowerCase();
 
                 if (subText.indexOf(query) !== -1 || nameText.indexOf(query) !== -1 || addrText.indexOf(query) !== -1) {
                     tempMatches.push(rawMail);
@@ -126,10 +123,10 @@ Rectangle {
         function onCurrentFolderChanged() {
             emailList.currentIndex = 0;
             controller.currentListIndex = 0;
-            controller.statusMessage = "Loading " + controller.currentFolder + "...";
-            processes.refreshMail();
+            controller.statusMessage = "Viewing " + controller.currentFolder;
         }
     }
+    // FIXED: Safely unpacks msgId across all Himalaya versions and calls processes.loadMessage
     function openCurrentMessage() {
         var filtered = getFilteredEmails();
         var email = filtered[emailList.currentIndex];
@@ -148,7 +145,7 @@ Rectangle {
         if (!msgId || msgId === "" || msgId === "undefined") return;
 
         controller.selectedId = msgId;
-        controller.messageBody = "Loading message from local cache...";
+        controller.messageBody = "Loading message...";
 
         var fromObj = email.from ? email.from : env.from;
         controller.currentReplyTo = fromObj ? (fromObj.addr || fromObj || "") : "";
