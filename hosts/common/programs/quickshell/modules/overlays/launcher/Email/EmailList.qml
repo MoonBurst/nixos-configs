@@ -25,49 +25,91 @@ Rectangle {
     function forceSearchFocus() {
         searchField.forceActiveFocus();
     }
+
     function getFilteredEmails() {
         var list = controller.emails;
         if (!list) return [];
-        if (controller.searchQuery.trim() === "") return list;
+
+        var folderMatches = [];
+        var activeTarget = controller.currentFolder ? controller.currentFolder.toUpperCase() : "INBOX";
+
+        for (var i = 0; i < list.length; i++) {
+            var item = list[i];
+            var env = item.envelope ? item.envelope : item;
+
+            var folderStr = item.folder ? String(item.folder).toUpperCase() : "";
+            var subjectStr = item.subject ? String(item.subject).toUpperCase() : (env.subject ? String(env.subject).toUpperCase() : "");
+            var flagsStr = env.flags ? String(env.flags).toUpperCase() : "";
+
+            if (activeTarget === "INBOX") {
+                if (folderStr === "INBOX" || folderStr === "") {
+                    if (subjectStr.indexOf("DRAFT") === -1 && flagsStr.indexOf("DRAFT") === -1) {
+                        folderMatches.push(item);
+                    }
+                }
+            } else if (activeTarget === "ALL MAIL") {
+                folderMatches.push(item);
+            } else if (activeTarget === "DRAFTS") {
+                if (folderStr === "DRAFTS" || folderStr === ".DRAFTS" || subjectStr.indexOf("DRAFT") !== -1 || flagsStr.indexOf("DRAFT") !== -1) {
+                    folderMatches.push(item);
+                }
+            } else if (activeTarget === "TRASH") {
+                if (folderStr === "TRASH" || folderStr === ".TRASH" || flagsStr.indexOf("TRASH") !== -1 || flagsStr.indexOf("DELETED") !== -1) {
+                    folderMatches.push(item);
+                }
+            }
+        }
+
+        var targetSource = folderMatches.length > 0 ? folderMatches : list;
+        if (controller.searchQuery.trim() === "") return targetSource;
 
         var tempMatches = [];
         if (controller.isRegexSearch) {
             try {
                 var regex = new RegExp(controller.searchQuery, "i");
-                for (var i = 0; i < list.length; i++) {
-                    var mail = list[i];
-                    var env = mail.envelope ? mail.envelope : mail;
-
-                    var subject = mail.subject ? String(mail.subject) : (env.subject ? String(env.subject) : "");
-                    var fromName = mail.from ? (mail.from.name || "") : (env.from && env.from.name ? String(env.from.name) : "");
-                    var fromAddr = mail.from ? (mail.from.addr || "") : (env.from && env.from.addr ? String(env.from.addr) : "");
+                for (var j = 0; j < targetSource.length; j++) {
+                    var mail = targetSource[j];
+                    var subEnv = mail.envelope ? mail.envelope : mail;
+                    var subject = mail.subject ? String(mail.subject) : (subEnv.subject ? String(subEnv.subject) : "");
+                    var fromName = mail.from ? (mail.from.name || "") : (subEnv.from && subEnv.from.name ? String(subEnv.from.name) : "");
+                    var fromAddr = mail.from ? (mail.from.addr || "") : (subEnv.from && subEnv.from.addr ? String(subEnv.from.addr) : "");
 
                     if (regex.test(subject) || regex.test(fromName) || regex.test(fromAddr)) {
                         tempMatches.push(mail);
                     }
                 }
             } catch (e) {
-                return list;
+                return targetSource;
             }
         } else {
             var query = controller.searchQuery.toLowerCase();
-            for (var i = 0; i < list.length; i++) {
-                var mail = list[i];
-                var env = mail.envelope ? mail.envelope : mail;
+            for (var k = 0; k < targetSource.length; k++) {
+                var rawMail = targetSource[k];
+                var cleanEnv = rawMail.envelope ? rawMail.envelope : rawMail;
+                var subText = rawMail.subject ? String(rawMail.subject).toLowerCase() : (cleanEnv.subject ? String(cleanEnv.subject).toLowerCase() : "");
+                var nameText = rawMail.from ? String(rawMail.from.name || "").toLowerCase() : (cleanEnv.from && cleanEnv.from.name ? String(cleanEnv.from.name).toLowerCase() : "");
+                var addrText = rawMail.from ? String(rawMail.from.addr || "").toLowerCase() : (cleanEnv.from && cleanEnv.from.addr ? String(cleanEnv.from.addr).toLowerCase() : "");
 
-                var subject = mail.subject ? String(mail.subject).toLowerCase() : (env.subject ? String(env.subject).toLowerCase() : "");
-                var fromName = mail.from ? String(mail.from.name || "").toLowerCase() : (env.from && env.from.name ? String(env.from.name).toLowerCase() : "");
-                var fromAddr = mail.from ? String(mail.from.addr || "").toLowerCase() : (env.from && env.from.addr ? String(env.from.addr).toLowerCase() : "");
-
-                if (subject.indexOf(query) !== -1 || fromName.indexOf(query) !== -1 || fromAddr.indexOf(query) !== -1) {
-                    tempMatches.push(mail);
+                if (subText.indexOf(query) !== -1 || nameText.indexOf(query) !== -1 || addrText.indexOf(query) !== -1) {
+                    tempMatches.push(rawMail);
                 }
             }
         }
         return tempMatches;
     }
+
     Component.onCompleted: {
         emailList.forceActiveFocus()
+    }
+
+    Connections {
+        target: controller
+        function onCurrentFolderChanged() {
+            emailList.currentIndex = 0;
+            controller.currentListIndex = 0;
+            controller.statusMessage = "Loading " + controller.currentFolder + "...";
+            processes.refreshMail();
+        }
     }
 
     function openCurrentMessage() {
@@ -75,7 +117,6 @@ Rectangle {
         var email = filtered[emailList.currentIndex];
         if (!email) return;
 
-        // FIXED: Checks both root level keys and envelope sub-properties for the unique ID string token
         var msgId = "";
         var env = email.envelope ? email.envelope : email;
 
@@ -91,7 +132,6 @@ Rectangle {
         controller.selectedId = msgId;
         controller.messageBody = "Loading message from local cache...";
 
-        // Adaptive routing for From and Subject details
         var fromObj = email.from ? email.from : env.from;
         controller.currentReplyTo = fromObj ? (fromObj.addr || fromObj || "") : "";
         controller.currentSubject = email.subject ? email.subject : (env.subject ? env.subject : "");
@@ -125,6 +165,7 @@ Rectangle {
         controller.statusMessage = "Message deleted successfully.";
         processes.deleteMessage(msgId);
     }
+    // FIXED: Premature root closing brace stripped out from here to keep object layout intact
     Column {
         anchors.fill: parent
         anchors.margins: stylixTheme ? (stylixTheme.globalPadding / 2) : (controller.globalPadding / 2)
@@ -201,6 +242,7 @@ Rectangle {
                 }
             }
         }
+
         Rectangle {
             width: parent.width
             height: parent.height - statusText.height - 66
@@ -241,7 +283,6 @@ Rectangle {
                     Column {
                         anchors.fill: parent; anchors.margins: 12; spacing: 4
 
-                        // FIXED: Adaptive text properties map parameters out of root keys and fallback objects simultaneously
                         Text {
                             width: parent.width - 24
                             text: modelData.from ? (modelData.from.name || modelData.from.addr || modelData.from) : (modelData.envelope && modelData.envelope.from ? (modelData.envelope.from.name || modelData.envelope.from.addr) : "")
@@ -269,4 +310,4 @@ Rectangle {
             }
         }
     }
-}
+} // FIXED: Root closing brace securely captures the entire setup structure at the very end of the file
