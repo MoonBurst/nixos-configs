@@ -37,7 +37,6 @@ Rectangle {
             if (rawBody === "" || rawBody === "Loading message...") {
                 rawBody = "(No plain text content available in message body)";
             } else {
-                // FIXED: Aggressively filters out raw <#part> and <#/part> MIME headers using Regex replacements
                 rawBody = rawBody.replace(/<#part[^>]*>/gi, "");
                 rawBody = rawBody.replace(/<#\/part>/gi, "");
                 rawBody = rawBody.trim();
@@ -46,7 +45,9 @@ Rectangle {
             var sender = controller.currentReplyTo ? String(controller.currentReplyTo) : "Sender";
             var attribution = "\n\nOn " + new Date().toLocaleString() + ", " + sender + " wrote:\n";
 
-            var cleanLines = rawBody.replace(/\r\n/g, "\n").split("\n");
+            // FIXED: Added safe fallback to guarantee string data structure compliance before running regex match pipelines
+            var cleanString = rawBody ? String(rawBody) : "";
+            var cleanLines = cleanString.replace(/\r\n/g, "\n").split("\n");
             var citedHistory = cleanLines.map(function(line) {
                 return "> " + line;
             }).join("\n");
@@ -63,9 +64,13 @@ Rectangle {
         } else if (processes.sendRawEmail) {
             processes.sendRawEmail(replyEditor.text);
         } else {
-            console.log("No reply send function found");
+            if (processes.sendEmail) {
+                processes.sendEmail(controller.userEmailAddress, controller.currentReplyTo, controller.currentSubject, replyEditor.text);
+                controller.isReplying = false;
+            }
         }
     }
+
     Column {
         anchors.fill: parent
         anchors.topMargin: stylixTheme ? (stylixTheme.globalPadding + 8) : 28

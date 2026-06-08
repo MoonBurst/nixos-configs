@@ -7,7 +7,6 @@ Rectangle {
     required property QtObject processes
     property var stylixTheme
 
-    // FIXED: Lock focus down to completely prevent the layout loop from stealing focus from EmailList
     focus: false
     activeFocusOnTab: false
 
@@ -16,10 +15,9 @@ Rectangle {
     border.width: stylixTheme ? stylixTheme.globalBorderWidth : controller.globalBorderWidth
     radius: stylixTheme ? stylixTheme.defaultCardRadius : controller.defaultCardRadius
 
-    // FIXED: Intercept Alt modifier keys on the sidebar level to prevent focus trapping
     Keys.onPressed: (event) => {
         if (event.modifiers & Qt.AltModifier) {
-            event.accepted = false; // Bubbles hotkeys right past the sidebar frame
+            event.accepted = false;
             return;
         }
     }
@@ -36,6 +34,7 @@ Rectangle {
             font.family: stylixTheme ? stylixTheme.fontFamily : controller.fontFamily
             font.pixelSize: stylixTheme ? (stylixTheme.globalFontSize + 2) : (controller.globalFontSize + 2)
         }
+
         Repeater {
             model: ["INBOX", "ALL MAIL", "DRAFTS", "SENT MAIL", "SPAM", "STARRED", "IMPORTANT", "TRASH"]
 
@@ -82,10 +81,9 @@ Rectangle {
 
                 MouseArea {
                     anchors.fill: parent
-                    // FIXED: Mouse clicks keep keyboard focus safely focused onto your active EmailList rows
+                    // FIXED: Cleared the invalid .innerListView reference evaluation pointer bug
                     onClicked: {
                         controller.currentFolder = modelData;
-                        root.innerListView.forceActiveFocus();
                     }
                 }
             }

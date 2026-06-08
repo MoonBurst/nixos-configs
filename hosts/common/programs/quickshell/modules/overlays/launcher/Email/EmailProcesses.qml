@@ -16,7 +16,7 @@ Item {
 
     Process {
         id: cacheReader
-        command: [ "cat", "/home/moonburst/.cache/himalaya/emails.json" ]
+        command: [ "/bin/sh", "-c", "cat " + Quickshell.env("HOME") + "/.cache/himalaya/emails.json" ]
         stdout: StdioCollector {
             onStreamFinished: {
                 var raw = text.trim();
@@ -57,10 +57,11 @@ Item {
                         var itemId = "";
 
                         if (item.id !== undefined && item.id !== null) {
-                            itemId = String(item.id);
+                            itemId = (typeof item.id === "object") ? String(item.id.id || "") : String(item.id);
                         } else if (env && env.id !== undefined && env.id !== null) {
-                            itemId = String(env.id);
+                            itemId = (typeof env.id === "object") ? String(env.id.id || "") : String(env.id);
                         }
+                        itemId = itemId.trim();
 
                         if (!deleteMap[itemId] && itemId !== "") {
                             targetArray.push(item);
@@ -83,49 +84,74 @@ Item {
         cacheReader.running = false;
         cacheReader.running = true;
     }
-    // FIXED: Uses an atomic file move to completely guarantee that systemd never reads a half-written draft file
+
     function sendEmail(from, to, subject, body) {
-        controller.statusMessage = "Queueing message...";
+        controller.statusMessage = "Sending message...";
         var cleanUser = controller.userEmailAddress ? String(controller.userEmailAddress).trim() : from;
-
-        // Target paths
         var tmpFilename = "/tmp/qs_mail_draft_" + Math.floor(Math.random() * 100000) + ".tmp";
-        var finalQueuePath = "/home/moonburst/.cache/himalaya/queue/mail_" + Math.floor(Math.random() * 100000) + ".eml";
 
-        // FIXED: Writes to /tmp first, then flips it into the watched folder instantly using mv
         sendEmailProcess.command = [
             "/bin/sh", "-c",
-            "cat > " + tmpFilename + " <<'EOF'\nFrom: " + cleanUser + "\nTo: " + to + "\nSubject: " + subject + "\n\n" + body + "\nEOF\n" +
-            "mv " + tmpFilename + " " + finalQueuePath
+            // Pull Nix SOPS parameters straight into the active subshell context
+            "export HIMALAYA_GMAIL_ADDRESS=$(cat /run/secrets/gmail_address | tr -d '[[:space:]]'); " +
+            "export HIMALAYA_GMAIL_PASSWORD=$(cat /run/secrets/gmail_app_password | tr -d '[[:space:]]'); " +
+            "eval $(systemctl --user show-environment | grep HIMALAYA_GMAIL_ || true); " +
+
+            // Generate standard electronic message headers inside the temporary layout draft
+            "printf 'From: %s\\nTo: %s\\nSubject: %s\\n\\n%s\\n' \"$HIMALAYA_GMAIL_ADDRESS\" \"" + to + "\" \"" + subject + "\" \"" + body + "\" > " + tmpFilename + "; " +
+
+            // Inject the completed draft file straight into the himalaya sender engine pipeline
+            "if himalaya --config " + Quickshell.env("HOME") + "/.config/himalaya/config.toml message send < " + tmpFilename + " 2>/tmp/himalaya-send-error.log; then " +
+            "  rm -f " + tmpFilename + "; " +
+            "  notify-send 'Mail System' 'Email sent successfully!' -i mail-message-new; " +
+            "else " +
+            "  notify-send 'Mail System' 'Failed to send email. Check /tmp/himalaya-send-error.log' -u critical -i mail-message-alert; " +
+            "fi"
         ];
         sendEmailProcess.running = true;
     }
 
-    function loadMessage(messageId) {
-        var activeFolder = controller.currentFolder ? String(controller.currentFolder).toLowerCase().trim() : "inbox";
-        if (activeFolder === "sent mail") activeFolder = "sent";
-        var cleanUser = controller.userEmailAddress ? String(controller.userEmailAddress).trim() : "";
 
+    function loadMessage(messageId) {
+        var cleanUser = controller.userEmailAddress ? String(controller.userEmailAddress).trim() : "";
+        var safeMessageId = String(messageId).replace(/[^a-zA-Z0-9_\-\.\@]/g, "");
+
+        if (!safeMessageId || safeMessageId === "" || safeMessageId === "undefined") {
+            return;
+        }
+
+        var activeFolderContext = controller.currentFolder ? String(controller.currentFolder).trim() : "INBOX";
+
+        // Construct our clean script location pointer path string
+        var scriptPath = Quickshell.env("HOME") + "/nix/hosts/common/programs/quickshell/modules/overlays/launcher/Email/get_msg.py";
+
+        // FIXED: Flatten everything cleanly into a single shell payload entry string to block argument shifting bugs!
         readMessage.command = [
-            "/bin/sh", "-c",
-            "export HIMALAYA_GMAIL_ADDRESS=\"" + cleanUser + "\"; himalaya --config /home/moonburst/.config/himalaya/config.toml message read --folder " + activeFolder + " " + messageId
+            "/bin/sh",
+            "-c",
+            "export HIMALAYA_GMAIL_ADDRESS='" + cleanUser + "'; " +
+            "eval $(systemctl --user show-environment | grep HIMALAYA_GMAIL_ || true); " +
+            "exec '" + scriptPath + "' '" + safeMessageId + "' '" + activeFolderContext + "'"
         ];
         readMessage.running = true;
     }
 
-    function deleteMessage(messageId) {
-        var tmpDeleted = root.locallyDeletedIds ? root.locallyDeletedIds.slice() : [];
-        tmpDeleted.push(String(messageId));
-        root.locallyDeletedIds = tmpDeleted;
 
-        var activeFolder = controller.currentFolder ? String(controller.currentFolder).toLowerCase().trim() : "inbox";
-        if (activeFolder === "sent mail") activeFolder = "sent";
+
+    function deleteMessage(messageId) {
+        var safeMessageId = String(messageId).replace(/[^a-zA-Z0-9_\-\.\@]/g, "");
+        if (!safeMessageId) return;
+
+        var tmpDeleted = root.locallyDeletedIds ? root.locallyDeletedIds.slice() : [];
+        tmpDeleted.push(safeMessageId);
+        root.locallyDeletedIds = tmpDeleted;
 
         deleteMessageProcess.command = [
             "/bin/sh", "-c",
-            "export HIMALAYA_GMAIL_ADDRESS=\"$(cat /run/secrets/gmail_address | tr -d '\\n\\r ')\"; " +
-            "export HIMALAYA_GMAIL_PASSWORD=\"$(cat /run/secrets/gmail_app_password | tr -d '\\n\\r ')\"; " +
-            "himalaya --config /home/moonburst/.config/himalaya/config.toml message delete --folder " + activeFolder + " --account gmail " + messageId + "; " +
+            "mkdir -p " + Quickshell.env("HOME") + "/.local/share/mail/gmail/'.[Gmail].Trash'/cur; " +
+            "find " + Quickshell.env("HOME") + "/.local/share/mail/gmail/ -type f -name \"*" + safeMessageId + "*\" | while read -r file; do " +
+            "  mv \"$file\" " + Quickshell.env("HOME") + "/.local/share/mail/gmail/'.[Gmail].Trash'/cur/ 2>/dev/null; " +
+            "done; " +
             "sync-mail-cache"
         ];
         deleteMessageProcess.running = true;

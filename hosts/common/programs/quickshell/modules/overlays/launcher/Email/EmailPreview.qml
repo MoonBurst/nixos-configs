@@ -1,6 +1,4 @@
-import QtQml
 import QtQuick
-import QtQuick.Controls
 import Quickshell
 
 Rectangle {
@@ -8,169 +6,50 @@ Rectangle {
 
     required property QtObject controller
     required property QtObject processes
-
     property var stylixTheme
 
-    color: stylixTheme ? stylixTheme.base01 : "#181818"
-    border.color: stylixTheme ? stylixTheme.base02 : "#333333"
-    border.width: stylixTheme ? stylixTheme.globalBorderWidth : 1
-    radius: stylixTheme ? stylixTheme.defaultCardRadius : 0
+    color: stylixTheme ? stylixTheme.base01 : "#1a1a24"
+    border.color: stylixTheme ? stylixTheme.base02 : "#444455"
+    border.width: stylixTheme ? stylixTheme.globalBorderWidth : controller.globalBorderWidth
+    radius: stylixTheme ? stylixTheme.defaultCardRadius : controller.defaultCardRadius
 
-    function openReply() {
-        if (!controller.messageBody || controller.messageBody.indexOf("Loading") === 0)
-            return;
-
-        controller.replyText =
-        "From: " + controller.userEmailAddress + "\n" +
-        "To: " + controller.currentReplyTo + "\n" +
-        "Subject: " + controller.currentSubject + "\n\n" +
-        "--- Original Message ---\n" +
-        controller.messageBody;
-
-        controller.isReplying = true;
-    }
-
-    function trashCurrentMessage() {
-        if (controller.currentListIndex < 0)
-            return;
-
-        var mail = controller.emails[controller.currentListIndex];
-        if (!mail)
-            return;
-
-        var tmp = controller.emails.slice();
-        tmp.splice(controller.currentListIndex, 1);
-
-        controller.emails = tmp;
-        controller.selectedId = "";
-        controller.messageBody = "Message moved to Trash locally.";
-
-        processes.deleteMessage(mail.id);
-    }
-    Column {
-        anchors.fill: parent
-        anchors.margins: stylixTheme ? stylixTheme.globalPadding : 8
-        spacing: stylixTheme ? stylixTheme.globalPadding : 8
-
-        Row {
-            spacing: 8
-
-            Rectangle {
-                width: 140
-                height: 50
-                color: stylixTheme ? stylixTheme.base00 : "#675DDB"
-                radius: 4
-                border.color: stylixTheme ? stylixTheme.base05 : "#ffffff"
-                border.width: stylixTheme ? stylixTheme.globalBorderWidth : 3
-
-                Text {
-                    anchors.centerIn: parent
-                    text: "✉ New Email"
-                    color: stylixTheme ? stylixTheme.base05 : "white"
-                    font.bold: true
-                    font.family: stylixTheme ? stylixTheme.fontFamily : "Fira Sans"
-                    font.pixelSize: stylixTheme ? stylixTheme.globalFontSize : 20
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        controller.composeToAddress = "";
-                        controller.composeSubject = "";
-                        controller.composeBodyText = "";
-                        controller.isComposing = true;
-                    }
-                }
-            }
-
-            Rectangle {
-                width: 120
-                height: 50
-                color: stylixTheme ? stylixTheme.base02 : "#2a2a3a"
-                radius: 4
-                border.color: stylixTheme ? stylixTheme.base05 : "#ffffff"
-                border.width: stylixTheme ? stylixTheme.globalBorderWidth : 3
-
-                Text {
-                    anchors.centerIn: parent
-                    text: "Refresh (F5)"
-                    color: stylixTheme ? stylixTheme.base05 : "white"
-                    font.bold: true
-                    font.family: stylixTheme ? stylixTheme.fontFamily : "Fira Sans"
-                    font.pixelSize: stylixTheme ? stylixTheme.globalFontSize : 20
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: processes.refreshMail()
-                }
-            }
-
-            Rectangle {
-                width: 130
-                height: 50
-                color: stylixTheme ? stylixTheme.base02 : "#2a2a3a"
-                radius: 4
-                border.color: stylixTheme ? stylixTheme.base05 : "#ffffff"
-                border.width: stylixTheme ? stylixTheme.globalBorderWidth : 3
-
-                Text {
-                    anchors.centerIn: parent
-                    text: "Reply (Enter)"
-                    color: stylixTheme ? stylixTheme.base05 : "white"
-                    font.bold: true
-                    font.family: stylixTheme ? stylixTheme.fontFamily : "Fira Sans"
-                    font.pixelSize: stylixTheme ? stylixTheme.globalFontSize : 20
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: openReply()
-                }
-            }
+    function getMessageBodyText() {
+        var txt = "";
+        if (controller.messageBody && String(controller.messageBody).trim().length > 0) {
+            txt = String(controller.messageBody);
+        } else if (controller.currentMessageBody && String(controller.currentMessageBody).trim().length > 0) {
+            txt = String(controller.currentMessageBody);
+        } else if (processes.innerMessageBody && String(processes.innerMessageBody).trim().length > 0) {
+            txt = String(processes.innerMessageBody);
         }
 
-        Rectangle {
+        var cleanTxt = txt.trim();
+        if (cleanTxt === "Loading message...") return "⏳ Reading message file from local disk maildir store...";
+        if (cleanTxt === "") return "📄 Select an email row item from the list to display its message contents here.";
+
+        cleanTxt = cleanTxt.replace(/<#part[^>]*>/gi, "");
+        cleanTxt = cleanTxt.replace(/<#\/part>/gi, "");
+
+        return cleanTxt.trim();
+    }
+
+    Flickable {
+        anchors.fill: parent
+        anchors.margins: stylixTheme ? stylixTheme.globalPadding : 16
+        clip: true
+        contentWidth: parent.width - (stylixTheme ? (stylixTheme.globalPadding * 2) : 32)
+        contentHeight: previewTextDisplay.contentHeight + 40
+
+        Text {
+            id: previewTextDisplay
+            // FIXED: Matches child width perfectly to the content container wrap boundary
             width: parent.width
-            height: parent.height - 70
-            color: "transparent"
+            text: root.getMessageBodyText()
+            wrapMode: Text.Wrap
+            color: "white"
 
-            Flickable {
-                id: messageFlickable
-                anchors.fill: parent
-                clip: true
-                contentHeight: messageText.paintedHeight + 40
-                contentWidth: parent.width
-                boundsBehavior: Flickable.StopAtBounds
-                interactive: true
-
-                Text {
-                    id: messageText
-                    width: parent.width
-                    text: controller.messageBody
-                    wrapMode: Text.Wrap
-                    textFormat: Text.PlainText
-                    color: stylixTheme ? stylixTheme.base06 : "white"
-                    font.family: stylixTheme ? stylixTheme.fontFamily : "Fira Sans"
-                    font.pixelSize: stylixTheme ? stylixTheme.globalFontSize + 2 : 22
-                    lineHeight: 1.15
-                }
-
-                Keys.onUpPressed: { messageFlickable.contentY = Math.max(0, messageFlickable.contentY - 30); }
-                Keys.onDownPressed: { messageFlickable.contentY = Math.min(messageFlickable.contentHeight - messageFlickable.height, messageFlickable.contentY + 30); }
-            }
-
-            Rectangle {
-                id: previewScrollHandle
-                visible: messageFlickable.contentHeight > messageFlickable.height
-                width: 6
-                radius: 3
-                color: stylixTheme ? stylixTheme.base04 : "#555565"
-                anchors.right: parent.right
-                anchors.rightMargin: 2
-                height: Math.max(30, (messageFlickable.height / messageFlickable.contentHeight) * messageFlickable.height)
-                y: (messageFlickable.contentY / (messageFlickable.contentHeight - messageFlickable.height)) * (messageFlickable.height - height)
-            }
+            font.family: "monospace"
+            font.pixelSize: stylixTheme ? (stylixTheme.globalFontSize + 2) : 16
         }
     }
 }

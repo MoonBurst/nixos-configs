@@ -56,14 +56,12 @@ QtObject {
     }
 
     function navigateUp() {
-        if (isReplying || isComposing)
-            return;
-
         if (currentListIndex > 0) {
             currentListIndex--;
-            modelDataForceRefreshed();
+            modelDataForceRefreshed(); // 💥 RESET TRIGGER 1
         }
     }
+
 
     function navigateDown() {
         if (isReplying || isComposing)

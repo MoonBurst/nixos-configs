@@ -61,20 +61,23 @@ Rectangle {
     }
 
     function updateSuggestions(currentInput) {
-        if (currentInput.trim() === "") {
+        var query = currentInput.trim().toLowerCase();
+        if (query === "") {
             root.filteredContacts = [];
             return;
         }
+
         var matches = [];
-        var query = currentInput.toLowerCase();
-        for (var i = 0; i < root.rawContacts.length; i++) {
-            var item = root.rawContacts[i];
-            if (item.toLowerCase().indexOf(query) !== -1) {
-                matches.push(item);
+        var src = root.rawContacts;
+        var len = src.length;
+        for (var i = 0; i < len; i++) {
+            if (src[i].toLowerCase().indexOf(query) !== -1) {
+                matches.push(src[i]);
             }
         }
         root.filteredContacts = matches;
     }
+
     Column {
         anchors.fill: parent
         anchors.margins: stylixTheme ? stylixTheme.globalPadding : controller.globalPadding
@@ -101,7 +104,6 @@ Rectangle {
                 MouseArea { anchors.fill: parent; onClicked: { controller.isComposing = false; } }
             }
         }
-
         Column {
             width: parent.width
             spacing: 6
@@ -202,6 +204,7 @@ Rectangle {
                     y: (suggestionsFlickable.contentY / (suggestionsFlickable.contentHeight - suggestionsMenuFrame.height)) * (suggestionsMenuFrame.height - height)
                 }
             }
+
             Text { text: "Subject:"; color: stylixTheme ? stylixTheme.base05 : "white"; font.bold: true; font.family: stylixTheme ? stylixTheme.fontFamily : controller.fontFamily }
             Rectangle {
                 width: parent.width; height: 40; radius: 4
@@ -268,4 +271,3 @@ Rectangle {
         }
     }
 }
-

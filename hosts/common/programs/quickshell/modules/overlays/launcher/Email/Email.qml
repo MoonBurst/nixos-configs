@@ -23,29 +23,39 @@ Item {
     EmailController { id: controller }
     EmailProcesses { id: processes; controller: controller }
 
-    // Unified message loader subroutine used by both scrolling and folder shifts
+    // Unified message loader subroutine aligned with your new secure delegate ID rules
     function triggerMessagePreview() {
         if (emailListContainer.innerListView.count > 0 && emailListContainer.innerListView.currentIndex >= 0) {
             var filtered = emailListContainer.getFilteredEmails();
-            var email = filtered[emailListContainer.innerListView.currentIndex];
-            if (!email) return;
+            var emailObj = filtered[emailListContainer.innerListView.currentIndex];
+            if (!emailObj) return;
 
-            var env = email.envelope ? email.envelope : email;
-            var msgId = email.id ? String(email.id) : (env && env.id ? String(env.id) : "");
-            msgId = msgId.trim();
-            if (!msgId) return;
+            // Extract the clean ID using the exact properties your cache script generates
+            var rawId = "";
+            if (emailObj.id !== undefined && emailObj.id !== null) {
+                rawId = (typeof emailObj.id === "object") ? String(emailObj.id.id || "") : String(emailObj.id);
+            }
+            rawId = rawId.trim();
 
-            controller.selectedId = msgId;
+            // FIXED: Safety guard halts empty or corrupt parameter strings from ever reaching bash
+            if (!rawId || rawId === "" || rawId === "undefined") {
+                return;
+            }
+
+            controller.selectedId = rawId;
             controller.messageBody = "Loading message...";
-            var fromObj = email.from ? email.from : env.from;
+
+            var env = emailObj.envelope ? emailObj.envelope : emailObj;
+            var fromObj = emailObj.from ? emailObj.from : env.from;
             controller.currentReplyTo = fromObj ? (fromObj.addr || fromObj || "") : "";
-            controller.currentSubject = email.subject ? email.subject : (env.subject ? env.subject : "");
+            controller.currentSubject = emailObj.subject ? emailObj.subject : (env.subject ? env.subject : "");
+
             if (controller.currentSubject.toLowerCase().indexOf("re:") !== 0) {
                 controller.currentSubject = "Re: " + controller.currentSubject;
             }
-            processes.loadMessage(msgId);
+
+            processes.loadMessage(rawId);
         } else {
-            // FIXED: If the folder is entirely empty, clear out the leftover preview layout text
             controller.selectedId = "";
             controller.messageBody = "(No messages in this folder)";
         }
@@ -72,17 +82,17 @@ Item {
         emailListContainer.innerListView.currentIndex = 0;
         controller.currentListIndex = 0;
 
-        root.forceActiveFocus();
+        Qt.callLater(function() { emailListContainer.innerListView.forceActiveFocus(); });
     }
 
     Connections {
         target: controller
         function onCurrentListIndexChanged() { selectionDebounceTimer.restart(); }
-
-        // FIXED: Handles first-message preview loading natively AFTER dataset swapping completes safely
         function onCurrentFolderChanged() {
-            root.forceActiveFocus();
-            root.triggerMessagePreview();
+            Qt.callLater(function() {
+                emailListContainer.innerListView.forceActiveFocus();
+                root.triggerMessagePreview();
+            });
         }
     }
 
@@ -133,26 +143,6 @@ Item {
 
         if (event.key === Qt.Key_F5) {
             processes.refreshMail();
-            event.accepted = true;
-            return;
-        }
-
-        if (event.key === Qt.Key_Up) {
-            if (emailListContainer.innerListView.count > 0 && emailListContainer.innerListView.currentIndex > 0) {
-                emailListContainer.innerListView.currentIndex--;
-                emailListContainer.innerListView.positionViewAtIndex(emailListContainer.innerListView.currentIndex, ListView.Contain);
-                controller.currentListIndex = emailListContainer.innerListView.currentIndex;
-            }
-            event.accepted = true;
-            return;
-        }
-
-        if (event.key === Qt.Key_Down) {
-            if (emailListContainer.innerListView.count > 0 && emailListContainer.innerListView.currentIndex < emailListContainer.innerListView.count - 1) {
-                emailListContainer.innerListView.currentIndex++;
-                emailListContainer.innerListView.positionViewAtIndex(emailListContainer.innerListView.currentIndex, ListView.Contain);
-                controller.currentListIndex = emailListContainer.innerListView.currentIndex;
-            }
             event.accepted = true;
             return;
         }
