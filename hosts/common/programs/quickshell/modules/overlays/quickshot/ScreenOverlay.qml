@@ -433,20 +433,34 @@ PanelWindow {
     }
 
     // ---- Keyboard ------------------------------------------------------------
+    // ---- Keyboard ------------------------------------------------------------
     function onKey(e) {
         if (e.key === Qt.Key_Escape) {
-            root.cancel();
+            // 1. Forcefully trigger an IPC call to set quickshotActive to false in shell.qml
+            Quickshell.execDetached(["qs", "ipc", "call", "screenshot", "close"]);
+
             e.accepted = true;
             return;
         }
         if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
             ShotState.copyRequested();
+            // 2. Also close via IPC after copying so you aren't stuck in a frozen veil
+            Quickshell.execDetached(["qs", "ipc", "call", "screenshot", "close"]);
             e.accepted = true;
             return;
         }
         if (e.modifiers & Qt.ControlModifier) {
-            if (e.key === Qt.Key_S) { ShotState.saveRequested(); e.accepted = true; }
-            else if (e.key === Qt.Key_C) { ShotState.copyRequested(); e.accepted = true; }
+            if (e.key === Qt.Key_S) {
+                ShotState.saveRequested();
+                // 3. Also close via IPC after saving
+                Quickshell.execDetached(["qs", "ipc", "call", "screenshot", "close"]);
+                e.accepted = true;
+            }
+            else if (e.key === Qt.Key_C) {
+                ShotState.copyRequested();
+                Quickshell.execDetached(["qs", "ipc", "call", "screenshot", "close"]);
+                e.accepted = true;
+            }
             else if (e.key === Qt.Key_Z) { ShotState.undoRequested(); e.accepted = true; }
             return;
         }
@@ -468,6 +482,9 @@ PanelWindow {
     }
 
 
+    function cancel() {
+        Qt.quit();
+    }
 
     // ---- Export --------------------------------------------------------------
     function exportRegion(mode) {

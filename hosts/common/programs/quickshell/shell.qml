@@ -553,12 +553,12 @@ ShellRoot {
 
         function open(): void {
             console.log("-> IPC received: Activating quickshot overlay")
-            rootWindow.quickshotActive = true
+            quickshotActive = true
         }
 
         function close(): void {
             console.log("-> IPC received: Deactivating quickshot overlay")
-            rootWindow.quickshotActive = false
+            quickshotActive = false
         }
     }
 
@@ -566,11 +566,8 @@ ShellRoot {
         model: Quickshell.screens
 
         QuickshotModule.ScreenOverlay {
-            // Check if your ScreenOverlay uses 'visible' or handles it internally
-            visible: rootWindow.quickshotActive
-
-            // Injects the specific monitor structure directly into the window module
-            screen: modelData
+            visible: quickshotActive
+            modelData: modelData
         }
     }
 

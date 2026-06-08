@@ -121,7 +121,7 @@ in {
 
       [accounts.gmail.message.send.backend]
       type = "smtp"
-      host = "smtp.gmail.com"
+      host = "://gmail.com"
       port = 465
       auth.type = "password"
       login = "$HIMALAYA_GMAIL_ADDRESS"
@@ -144,7 +144,7 @@ in {
       SyncState *
 
       IMAPAccount gmail
-      Host imap.gmail.com
+      Host ://gmail.com
       Port 993
       UserCmd "echo $HIMALAYA_GMAIL_ADDRESS"
       PassCmd "echo $HIMALAYA_GMAIL_PASSWORD"
@@ -170,15 +170,16 @@ in {
     '';
   };
 
+  # Fixed quote processing by removing string nesting mechanics entirely
   home.activation.ensureMailDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/INBOX/{cur,new,tmp}
-    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/\"[Gmail]/All Mail\"/{cur,new,tmp}
-    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/\"[Gmail]/Drafts\"/{cur,new,tmp}
-    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/\"[Gmail]/Important\"/{cur,new,tmp}
-    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/\"[Gmail]/Sent Mail\"/{cur,new,tmp}
-    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/\"[Gmail]/Spam\"/{cur,new,tmp}
-    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/\"[Gmail]/Starred\"/{cur,new,tmp}
-    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/\"[Gmail]/Trash\"/{cur,new,tmp}
+    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/\[Gmail\]/All\ Mail/{cur,new,tmp}
+    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/\[Gmail\]/Drafts/{cur,new,tmp}
+    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/\[Gmail\]/Important/{cur,new,tmp}
+    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/\[Gmail\]/Sent\ Mail/{cur,new,tmp}
+    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/\[Gmail\]/Spam/{cur,new,tmp}
+    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/\[Gmail\]/Starred/{cur,new,tmp}
+    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/\[Gmail\]/Trash/{cur,new,tmp}
     $DRY_RUN_CMD mkdir -p ${homeDir}/.cache/himalaya/queue
   '';
 
