@@ -88,9 +88,6 @@ let
     print("Mail cache sync finalized successfully.")
   '';
 in {
-  # FIXED: Placed inside the correct home option group mapping [2.3]
-  home.backupFileExtension = "hm-backup";
-
   home.packages = [
     pkgs.himalaya
     pkgs.isync
