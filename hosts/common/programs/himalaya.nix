@@ -88,8 +88,8 @@ let
     print("Mail cache sync finalized successfully.")
   '';
 in {
-  # CRUCIAL: Force-backs up conflicting home files to allow activation updates
-  home-manager.backupFileExtension = "hm-backup";
+  # FIXED: Placed inside the correct home option group mapping [2.3]
+  home.backupFileExtension = "hm-backup";
 
   home.packages = [
     pkgs.himalaya
@@ -124,7 +124,7 @@ in {
 
       [accounts.gmail.message.send.backend]
       type = "smtp"
-      host = "smtp.gmail.com"
+      host = "://gmail.com"
       port = 465
       auth.type = "password"
       login = "$HIMALAYA_GMAIL_ADDRESS"
@@ -147,7 +147,7 @@ in {
       SyncState *
 
       IMAPAccount gmail
-      Host imap.gmail.com
+      Host ://gmail.com
       Port 993
       UserCmd "echo $HIMALAYA_GMAIL_ADDRESS"
       PassCmd "echo $HIMALAYA_GMAIL_PASSWORD"
