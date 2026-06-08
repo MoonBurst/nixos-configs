@@ -22,9 +22,6 @@ import "./modules/bar/borg" as BorgCapsule
 import "./modules/bar/weather" as WeatherCapsule
 import "./modules/bar/calendar" as CalendarCapsule
 import "modules/lockscreen"
-import "./modules/overlays/quickshot" as QuickshotModule
-
-
 
 ShellRoot {
     id: shell
@@ -540,38 +537,4 @@ ShellRoot {
 
         }
     }
-
-    /*
-     * ================================================================
-     *  SCREENSHOT (QUICKSHOT OVERLAY MODULE)
-     * ================================================================
-     */
-    property bool quickshotActive: false
-
-    IpcHandler {
-        target: "screenshot"
-
-        function open(): void {
-            console.log("-> IPC received: Activating quickshot overlay")
-            quickshotActive = true
-        }
-
-        function close(): void {
-            console.log("-> IPC received: Deactivating quickshot overlay")
-            quickshotActive = false
-        }
-    }
-
-    Variants {
-        model: Quickshell.screens
-
-        QuickshotModule.ScreenOverlay {
-            visible: quickshotActive
-            modelData: modelData
-        }
-    }
-
-
-
-
 }

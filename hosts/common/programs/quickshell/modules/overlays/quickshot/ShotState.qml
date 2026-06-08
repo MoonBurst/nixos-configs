@@ -66,7 +66,7 @@ Singleton {
     }
 
     function saveDir() {
-        return home() + "/Pictures/Screenshots";
+        return home() + "/Screenshots";
     }
 
     function timestamp() {

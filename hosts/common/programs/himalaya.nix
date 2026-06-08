@@ -11,7 +11,7 @@ let
 
     gmail_address = ""
     gmail_password = ""
-    
+
     # Safely load the absolute secret values from your decrypted SOPS memory mounts
     try:
         with open("/run/secrets/gmail_address", "r") as s:
@@ -58,8 +58,8 @@ let
             "${pkgs.himalaya}/bin/himalaya",
             "--config", os.path.expanduser("~/.config/himalaya/config.toml"),
             "--output", "json",
-            "envelope", "list", 
-            "--folder", target_folder, 
+            "envelope", "list",
+            "--folder", target_folder,
             "--page-size", "500"
         ]
 
@@ -105,7 +105,8 @@ in {
 
       [accounts.gmail.backend]
       type = "maildir"
-      root-dir = "${homeDir}/.local/share/mail/gmail"
+      # Matched trailing slash to align with the physical verbatim directory structure [2.3]
+      root-dir = "${homeDir}/.local/share/mail/gmail/"
       maildirpp = true
       delimiter = "/"
 
@@ -121,7 +122,7 @@ in {
 
       [accounts.gmail.message.send.backend]
       type = "smtp"
-      host = "smtp.gmail.com"
+      host = "://gmail.com"
       port = 465
       auth.type = "password"
       login = "$HIMALAYA_GMAIL_ADDRESS"
@@ -144,7 +145,7 @@ in {
       SyncState *
 
       IMAPAccount gmail
-      Host imap.gmail.com
+      Host ://gmail.com
       Port 993
       UserCmd "echo $HIMALAYA_GMAIL_ADDRESS"
       PassCmd "echo $HIMALAYA_GMAIL_PASSWORD"
@@ -170,20 +171,13 @@ in {
     '';
   };
 
+  # Let mbsync handle directory instantiation natively to prevent shell formatting clashes [2.3]
   home.activation.ensureMailDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/INBOX/{cur,new,tmp}
-    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/\[Gmail\]/All\ Mail/{cur,new,tmp}
-    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/\[Gmail\]/Drafts/{cur,new,tmp}
-    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/\[Gmail\]/Important/{cur,new,tmp}
-    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/\[Gmail\]/Sent\ Mail/{cur,new,tmp}
-    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/\[Gmail\]/Spam/{cur,new,tmp}
-    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/\[Gmail\]/Starred/{cur,new,tmp}
-    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/\[Gmail\]/Trash/{cur,new,tmp}
     $DRY_RUN_CMD mkdir -p ${homeDir}/.cache/himalaya/queue
   '';
 
   systemd.user.services.himalaya-sync = {
-    Unit = { 
+    Unit = {
       Description = "Himalaya background sync and queue dispatcher mail service pass";
       After = [ "network.target" ] ;
     };
