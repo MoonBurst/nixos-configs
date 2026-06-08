@@ -3,6 +3,7 @@
 let
   homeDir = toString config.home.homeDirectory;
 
+  # This script reads decrypted secrets and filters duplicate Message-IDs
   syncMailHelper = pkgs.writeScriptBin "sync-mail-cache" ''
     #!${pkgs.python3}/bin/python3
     import os, sys, json, subprocess
@@ -38,6 +39,7 @@ let
         print(f"Mbsync Error:\n{res.stderr}")
         sys.exit(1)
 
+    # REMOVED: Important category dropped from cache compiler map
     folder_map = {
       "INBOX": "inbox",
       ".[Gmail].All Mail": "all",
@@ -45,7 +47,6 @@ let
       ".[Gmail].Sent Mail": "sent",
       ".[Gmail].Trash": "trash",
       ".[Gmail].Spam": "spam",
-      ".[Gmail].Important": "important",
       ".[Gmail].Starred": "starred"
     }
 
@@ -113,6 +114,7 @@ in {
       maildirpp = true
       delimiter = "."
 
+      # REMOVED: Important alias removed from Himalaya
       [accounts.gmail.folder.aliases]
       inbox = "INBOX"
       all = ".[Gmail].All Mail"
@@ -121,11 +123,10 @@ in {
       trash = ".[Gmail].Trash"
       spam = ".[Gmail].Spam"
       starred = ".[Gmail].Starred"
-      important = ".[Gmail].Important"
 
       [accounts.gmail.message.send.backend]
       type = "smtp"
-      host = "smtp.gmail.com"
+      host = "://gmail.com"
       port = 465
       auth.type = "password"
       login = "$HIMALAYA_GMAIL_ADDRESS"
@@ -148,7 +149,7 @@ in {
       SyncState *
 
       IMAPAccount gmail
-      Host imap.gmail.com
+      Host ://gmail.com
       Port 993
       UserCmd "echo $HIMALAYA_GMAIL_ADDRESS"
       PassCmd "echo $HIMALAYA_GMAIL_PASSWORD"
@@ -164,10 +165,11 @@ in {
       SubFolders Maildir++
       Inbox ${homeDir}/.local/share/mail/gmail
 
+      # REMOVED: "[Gmail]/Important" removed from tracking patterns list
       Channel gmail
       Far :gmail-remote:
       Near :gmail-local:
-      Patterns "INBOX" "[Gmail]/All Mail" "[Gmail]/Drafts" "[Gmail]/Trash" "[Gmail]/Sent Mail" "[Gmail]/Spam" "[Gmail]/Starred" "[Gmail]/Important"
+      Patterns "INBOX" "[Gmail]/All Mail" "[Gmail]/Drafts" "[Gmail]/Trash" "[Gmail]/Sent Mail" "[Gmail]/Spam" "[Gmail]/Starred"
       Create Near
       Sync All
       Expunge Both
