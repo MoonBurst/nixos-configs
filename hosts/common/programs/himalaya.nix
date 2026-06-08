@@ -11,7 +11,7 @@ let
 
     gmail_address = ""
     gmail_password = ""
-
+    
     # Safely load the absolute secret values from your decrypted SOPS memory mounts
     try:
         with open("/run/secrets/gmail_address", "r") as s:
@@ -58,8 +58,8 @@ let
             "${pkgs.himalaya}/bin/himalaya",
             "--config", os.path.expanduser("~/.config/himalaya/config.toml"),
             "--output", "json",
-            "envelope", "list",
-            "--folder", target_folder,
+            "envelope", "list", 
+            "--folder", target_folder, 
             "--page-size", "500"
         ]
 
@@ -121,7 +121,7 @@ in {
 
       [accounts.gmail.message.send.backend]
       type = "smtp"
-      host = "://gmail.com"
+      host = "smtp.gmail.com"
       port = 465
       auth.type = "password"
       login = "$HIMALAYA_GMAIL_ADDRESS"
@@ -144,7 +144,7 @@ in {
       SyncState *
 
       IMAPAccount gmail
-      Host ://gmail.com
+      Host imap.gmail.com
       Port 993
       UserCmd "echo $HIMALAYA_GMAIL_ADDRESS"
       PassCmd "echo $HIMALAYA_GMAIL_PASSWORD"
@@ -170,7 +170,6 @@ in {
     '';
   };
 
-  # Fixed quote processing by removing string nesting mechanics entirely
   home.activation.ensureMailDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/INBOX/{cur,new,tmp}
     $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/\[Gmail\]/All\ Mail/{cur,new,tmp}
@@ -183,9 +182,8 @@ in {
     $DRY_RUN_CMD mkdir -p ${homeDir}/.cache/himalaya/queue
   '';
 
-  # Automated user service triggers data sync passes silently in the background
   systemd.user.services.himalaya-sync = {
-    Unit = {
+    Unit = { 
       Description = "Himalaya background sync and queue dispatcher mail service pass";
       After = [ "network.target" ] ;
     };
