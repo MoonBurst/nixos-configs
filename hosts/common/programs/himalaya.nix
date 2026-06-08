@@ -88,6 +88,9 @@ let
     print("Mail cache sync finalized successfully.")
   '';
 in {
+  # CRUCIAL: Force-backs up conflicting home files to allow activation updates
+  home-manager.backupFileExtension = "hm-backup";
+
   home.packages = [
     pkgs.himalaya
     pkgs.isync
@@ -105,7 +108,6 @@ in {
 
       [accounts.gmail.backend]
       type = "maildir"
-      # Matched trailing slash to align with the physical verbatim directory structure [2.3]
       root-dir = "${homeDir}/.local/share/mail/gmail/"
       maildirpp = true
       delimiter = "/"
@@ -122,7 +124,7 @@ in {
 
       [accounts.gmail.message.send.backend]
       type = "smtp"
-      host = "://gmail.com"
+      host = "smtp.gmail.com"
       port = 465
       auth.type = "password"
       login = "$HIMALAYA_GMAIL_ADDRESS"
@@ -145,7 +147,7 @@ in {
       SyncState *
 
       IMAPAccount gmail
-      Host ://gmail.com
+      Host imap.gmail.com
       Port 993
       UserCmd "echo $HIMALAYA_GMAIL_ADDRESS"
       PassCmd "echo $HIMALAYA_GMAIL_PASSWORD"
@@ -171,7 +173,6 @@ in {
     '';
   };
 
-  # Let mbsync handle directory instantiation natively to prevent shell formatting clashes [2.3]
   home.activation.ensureMailDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     $DRY_RUN_CMD mkdir -p ${homeDir}/.cache/himalaya/queue
   '';
