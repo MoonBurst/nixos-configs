@@ -127,7 +127,7 @@ in {
 
       [accounts.gmail.message.send.backend]
       type = "smtp"
-      host = "://gmail.com"
+      host = "smtp.gmail.com"
       port = 465
       auth.type = "password"
       login = "$HIMALAYA_GMAIL_ADDRESS"
@@ -150,7 +150,7 @@ in {
       SyncState *
 
       IMAPAccount gmail
-      Host ://gmail.com
+      Host imap.gmail.com
       Port 993
       UserCmd "echo $HIMALAYA_GMAIL_ADDRESS"
       PassCmd "echo $HIMALAYA_GMAIL_PASSWORD"
