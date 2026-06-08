@@ -537,4 +537,28 @@ ShellRoot {
 
         }
     }
+
+
+    IpcHandler {
+        target: "screenshot"
+
+        function open(): void {
+            quickshotLoader.active = true
+        }
+
+        function close(): void {
+            quickshotLoader.active = false
+        }
+    }
+
+    // Inside your monitor loop/Variants block:
+    Variants {
+        // ... monitor setup ...
+        Loader {
+            id: quickshotLoader
+            active: false
+            source: "./modules/overlays/quickshot/ScreenOverlay.qml"
+        }
+    }
+
 }

@@ -120,7 +120,7 @@ in {
 
       [accounts.gmail.message.send.backend]
       type = "smtp"
-      host = "smtp.gmail.com"
+      host = "://gmail.com"
       port = 465
       auth.type = "password"
       login = "$HIMALAYA_GMAIL_ADDRESS"
@@ -143,14 +143,13 @@ in {
       SyncState *
 
       IMAPAccount gmail
-      Host imap.gmail.com
+      Host ://gmail.com
       Port 993
       UserCmd "echo $HIMALAYA_GMAIL_ADDRESS"
       PassCmd "echo $HIMALAYA_GMAIL_PASSWORD"
       TLSType IMAPS
       CertificateFile /etc/ssl/certs/ca-certificates.crt
       AuthMechs PLAIN
-      # Crucial: Restricts parallel network pipeline burst calls to bypass Google security rate drops [2.3]
       PipelineDepth 1
 
       IMAPStore gmail-remote
@@ -170,8 +169,16 @@ in {
     '';
   };
 
+  # Activation script completely builds out the nested subfolder placeholders safely [2.3]
   home.activation.ensureMailDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail
+    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/INBOX/{cur,new,tmp}
+    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/"[Gmail]/All Mail"/{cur,new,tmp}
+    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/"[Gmail]/Drafts"/{cur,new,tmp}
+    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/"[Gmail]/Important"/{cur,new,tmp}
+    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/"[Gmail]/Sent Mail"/{cur,new,tmp}
+    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/"[Gmail]/Spam"/{cur,new,tmp}
+    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/"[Gmail]/Starred"/{cur,new,tmp}
+    $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/"[Gmail]/Trash"/{cur,new,tmp}
     $DRY_RUN_CMD mkdir -p ${homeDir}/.cache/himalaya/queue
   '';
 
