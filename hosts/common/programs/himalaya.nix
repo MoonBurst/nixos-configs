@@ -82,7 +82,6 @@ let
         results = executor.map(fetch_folder_data, folder_map.keys())
         for folder_items in results:
             for item in folder_items:
-                # Track unique message-id tags to drop cross-folder duplicates
                 msg_id = item.get("message-id") or item.get("id")
                 if msg_id not in seen_message_ids:
                     seen_message_ids.add(msg_id)
@@ -111,7 +110,8 @@ in {
 
       [accounts.gmail.backend]
       type = "maildir"
-      root-dir = "${homeDir}/.local/share/mail/gmail/"
+      # Switched root-dir back to standard layout for cleaner matching paths
+      root-dir = "${homeDir}/.local/share/mail/gmail"
       maildirpp = true
       delimiter = "/"
 
@@ -127,7 +127,7 @@ in {
 
       [accounts.gmail.message.send.backend]
       type = "smtp"
-      host = "smtp.gmail.com"
+      host = "://gmail.com"
       port = 465
       auth.type = "password"
       login = "$HIMALAYA_GMAIL_ADDRESS"
@@ -150,7 +150,7 @@ in {
       SyncState *
 
       IMAPAccount gmail
-      Host imap.gmail.com
+      Host ://gmail.com
       Port 993
       UserCmd "echo $HIMALAYA_GMAIL_ADDRESS"
       PassCmd "echo $HIMALAYA_GMAIL_PASSWORD"
@@ -163,8 +163,9 @@ in {
       Account gmail
 
       MaildirStore gmail-local
-      SubFolders Verbatim
-      Path ${homeDir}/.local/share/mail/gmail/
+      # Reverted SubFolders to Maildir++ to perfectly sync with maildirpp layouts
+      SubFolders Maildir++
+      Inbox ${homeDir}/.local/share/mail/gmail
 
       Channel gmail
       Far :gmail-remote:
@@ -173,6 +174,8 @@ in {
       Create Near
       Sync All
       Expunge Both
+      # Testing Parameter: Limits downloads to only the newest 5 messages per folder
+      MaxMessages 5
     '';
   };
 
