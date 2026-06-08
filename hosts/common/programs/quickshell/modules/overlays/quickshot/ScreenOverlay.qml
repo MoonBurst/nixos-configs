@@ -467,9 +467,7 @@ PanelWindow {
         }
     }
 
-    function cancel() {
-        Qt.quit();
-    }
+
 
     // ---- Export --------------------------------------------------------------
     function exportRegion(mode) {

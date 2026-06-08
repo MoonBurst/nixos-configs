@@ -22,6 +22,9 @@ import "./modules/bar/borg" as BorgCapsule
 import "./modules/bar/weather" as WeatherCapsule
 import "./modules/bar/calendar" as CalendarCapsule
 import "modules/lockscreen"
+import "./modules/overlays/quickshot" as QuickshotModule
+
+
 
 ShellRoot {
     id: shell
@@ -538,7 +541,6 @@ ShellRoot {
         }
     }
 
-
     /*
      * ================================================================
      *  SCREENSHOT (QUICKSHOT OVERLAY MODULE)
@@ -551,37 +553,28 @@ ShellRoot {
 
         function open(): void {
             console.log("-> IPC received: Activating quickshot overlay")
-            quickshotActive = true
+            rootWindow.quickshotActive = true
         }
 
         function close(): void {
             console.log("-> IPC received: Deactivating quickshot overlay")
-            quickshotActive = false
+            rootWindow.quickshotActive = false
         }
     }
 
     Variants {
-        // model: Quickshell.screens maps modelData to each monitor instance
         model: Quickshell.screens
 
-        Loader {
-            id: quickshotComponentLoader
-            active: quickshotActive
-            source: Qt.resolvedUrl("./modules/overlays/quickshot/ScreenOverlay.qml")
+        QuickshotModule.ScreenOverlay {
+            // Check if your ScreenOverlay uses 'visible' or handles it internally
+            visible: rootWindow.quickshotActive
 
-            onLoaded: {
-                if (item) {
-                    // 1. Force the inner window component visible
-                    item.visible = true
-
-                    // 2. Safely forward the monitor scope if ScreenOverlay expects a screen property
-                    if (item.hasOwnProperty("screen")) {
-                        item.screen = modelData
-                    }
-                }
-            }
+            // Injects the specific monitor structure directly into the window module
+            screen: modelData
         }
     }
+
+
 
 
 }
