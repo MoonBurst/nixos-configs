@@ -1,1 +1,1 @@
-/nix/store/8c4zv5xs1al8p5540nza245h3r9cs8q9-home-manager-files/nix/hosts/common/programs/quickshell/Theme.qml
+/nix/store/g9426jzrkz4dby1lnw9cj7ssw2nik68v-home-manager-files/nix/hosts/common/programs/quickshell/Theme.qml
