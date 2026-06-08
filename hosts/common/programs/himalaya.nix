@@ -106,7 +106,8 @@ in {
       [accounts.gmail.backend]
       type = "maildir"
       root-dir = "${homeDir}/.local/share/mail/gmail"
-      maildirpp = false
+      maildirpp = true
+      delimiter = "/"
 
       [accounts.gmail.folder.aliases]
       inbox = "INBOX"
@@ -120,7 +121,7 @@ in {
 
       [accounts.gmail.message.send.backend]
       type = "smtp"
-      host = "smtp.gmail.com"
+      host = "://gmail.com"
       port = 465
       auth.type = "password"
       login = "$HIMALAYA_GMAIL_ADDRESS"
@@ -143,7 +144,7 @@ in {
       SyncState *
 
       IMAPAccount gmail
-      Host imap.gmail.com
+      Host ://gmail.com
       Port 993
       UserCmd "echo $HIMALAYA_GMAIL_ADDRESS"
       PassCmd "echo $HIMALAYA_GMAIL_PASSWORD"
@@ -169,7 +170,6 @@ in {
     '';
   };
 
-  # Backslashes are explicitly added to correctly escape the inner double-quotes inside the Home Manager activation script [2.3]
   home.activation.ensureMailDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/INBOX/{cur,new,tmp}
     $DRY_RUN_CMD mkdir -p ${homeDir}/.local/share/mail/gmail/\"[Gmail]/All Mail\"/{cur,new,tmp}

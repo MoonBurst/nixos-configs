@@ -539,39 +539,46 @@ ShellRoot {
     }
 
 
-    ShellRoot {
-        id: rootWindow // Or whatever your root object id is
+    /*
+     * ================================================================
+     *  SCREENSHOT (QUICKSHOT OVERLAY MODULE)
+     * ================================================================
+     */
+    property bool quickshotActive: false
 
-        /*
-         * ================================================================
-         *  SCREENSHOT
-         * ================================================================
-         */
-        property bool quickshotActive: false
+    IpcHandler {
+        target: "screenshot"
 
-        IpcHandler {
-            target: "screenshot"
-
-            function open(): void {
-                console.log("-> IPC received: Changing quickshotActive to TRUE")
-                quickshotActive = true
-            }
-
-            function close(): void {
-                console.log("-> IPC received: Changing quickshotActive to FALSE")
-                quickshotActive = false
-            }
+        function open(): void {
+            console.log("-> IPC received: Activating quickshot overlay")
+            quickshotActive = true
         }
 
-        // --- FIND YOUR ORIGINAL VARIANTS BLOCK AND ADD THE LOADER INSIDE IT ---
-        Variants {
-            // KEEP whatever monitor settings you already had here! (e.g., model: Quickshell.screens)
+        function close(): void {
+            console.log("-> IPC received: Deactivating quickshot overlay")
+            quickshotActive = false
+        }
+    }
 
-            // PASTE THIS LOADER INSIDE IT:
-            Loader {
-                active: quickshotActive
-                source: "./modules/overlays/quickshot/ScreenOverlay.qml"
-                anchors.fill: parent
+    Variants {
+        // model: Quickshell.screens maps modelData to each monitor instance
+        model: Quickshell.screens
+
+        Loader {
+            id: quickshotComponentLoader
+            active: quickshotActive
+            source: Qt.resolvedUrl("./modules/overlays/quickshot/ScreenOverlay.qml")
+
+            onLoaded: {
+                if (item) {
+                    // 1. Force the inner window component visible
+                    item.visible = true
+
+                    // 2. Safely forward the monitor scope if ScreenOverlay expects a screen property
+                    if (item.hasOwnProperty("screen")) {
+                        item.screen = modelData
+                    }
+                }
             }
         }
     }
