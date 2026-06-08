@@ -125,8 +125,7 @@ in {
 
       [accounts.gmail.message.send.backend]
       type = "smtp"
-      # FIXED: Hardcoded clean IPv4 address to completely bypass terminal DNS lookup bugs
-      host = "74.125.142.108"
+      host = "smtp.gmail.com"
       port = 465
       auth.type = "password"
       login = "$HIMALAYA_GMAIL_ADDRESS"
