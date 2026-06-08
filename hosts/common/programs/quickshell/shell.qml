@@ -539,26 +539,42 @@ ShellRoot {
     }
 
 
-    IpcHandler {
-        target: "screenshot"
+    ShellRoot {
+        id: rootWindow // Or whatever your root object id is
 
-        function open(): void {
-            quickshotLoader.active = true
+        /*
+         * ================================================================
+         *  SCREENSHOT
+         * ================================================================
+         */
+        property bool quickshotActive: false
+
+        IpcHandler {
+            target: "screenshot"
+
+            function open(): void {
+                console.log("-> IPC received: Changing quickshotActive to TRUE")
+                quickshotActive = true
+            }
+
+            function close(): void {
+                console.log("-> IPC received: Changing quickshotActive to FALSE")
+                quickshotActive = false
+            }
         }
 
-        function close(): void {
-            quickshotLoader.active = false
+        // --- FIND YOUR ORIGINAL VARIANTS BLOCK AND ADD THE LOADER INSIDE IT ---
+        Variants {
+            // KEEP whatever monitor settings you already had here! (e.g., model: Quickshell.screens)
+
+            // PASTE THIS LOADER INSIDE IT:
+            Loader {
+                active: quickshotActive
+                source: "./modules/overlays/quickshot/ScreenOverlay.qml"
+                anchors.fill: parent
+            }
         }
     }
 
-    // Inside your monitor loop/Variants block:
-    Variants {
-        // ... monitor setup ...
-        Loader {
-            id: quickshotLoader
-            active: false
-            source: "./modules/overlays/quickshot/ScreenOverlay.qml"
-        }
-    }
 
 }
