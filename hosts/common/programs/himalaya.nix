@@ -3,7 +3,7 @@
 let
   homeDir = toString config.home.homeDirectory;
 
-  # This script reads decrypted secrets directly from /run/secrets/ at runtime
+  # This script reads decrypted secrets and filters duplicate Message-IDs
   syncMailHelper = pkgs.writeScriptBin "sync-mail-cache" ''
     #!${pkgs.python3}/bin/python3
     import os, sys, json, subprocess
@@ -12,7 +12,6 @@ let
     gmail_address = ""
     gmail_password = ""
 
-    # Safely load the absolute secret values from your decrypted SOPS memory mounts
     try:
         with open("/run/secrets/gmail_address", "r") as s:
             gmail_address = s.read().strip()
@@ -30,7 +29,6 @@ let
     cache_file = os.path.join(cache_dir, "emails.json")
     mbsync_file = os.path.expanduser("~/.config/mbsync/mbsyncrc")
 
-    # Set up our isolated environment copy for background child synchronization processes
     env_copy = os.environ.copy()
     if gmail_address: env_copy["HIMALAYA_GMAIL_ADDRESS"] = gmail_address
     if gmail_password: env_copy["HIMALAYA_GMAIL_PASSWORD"] = gmail_password
@@ -78,9 +76,17 @@ let
         return items
 
     master_list = []
+    seen_message_ids = set()
+
     with ThreadPoolExecutor(max_workers=8) as executor:
         results = executor.map(fetch_folder_data, folder_map.keys())
-        for folder_items in results: master_list.extend(folder_items)
+        for folder_items in results:
+            for item in folder_items:
+                # Track unique message-id tags to drop cross-folder duplicates
+                msg_id = item.get("message-id") or item.get("id")
+                if msg_id not in seen_message_ids:
+                    seen_message_ids.add(msg_id)
+                    master_list.append(item)
 
     with open(cache_file + ".tmp", "w") as f:
         json.dump(master_list, f, indent=2)
