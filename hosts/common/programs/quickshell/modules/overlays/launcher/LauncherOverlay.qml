@@ -23,12 +23,10 @@
             readonly property bool isAppsOpen: mode === "apps"
             readonly property bool isClipboardOpen: mode === "clipboard"
             readonly property bool isEmailOpen: mode === "Email"
-            readonly property bool isPlaceholder2Open: mode === "placeholder2"
-            readonly property bool isPlaceholder3Open: mode === "placeholder3"
 
             // Global Controller Alias to eliminate deep JavaScript scope resolution costs
-            readonly property
-            var ctrl: LauncherModule.LauncherController
+            readonly property var ctrl: LauncherModule.LauncherController
+
 
             // Centralized active controller tracking
             property
@@ -46,8 +44,6 @@
                                     if (launcherRoot.mode === "unicode") return launcherRoot.ctrl.unicodeSearch
                                         if (launcherRoot.mode === "search") return launcherRoot.ctrl.startPage
                                             if (launcherRoot.mode === "email") return launcherRoot.ctrl.email
-                                                if (launcherRoot.mode === "placeholder2") return launcherRoot.ctrl.placeholder2
-                                                    if (launcherRoot.mode === "placeholder3") return launcherRoot.ctrl.placeholder3
                                             return null
                 }
             }
@@ -115,24 +111,6 @@
                         return
                     }
 
-                    if (trimmed.startsWith("placeholder2activatetext")) {
-                        launcherRoot.mode = "placeholder2"
-                        const p2Query = trimmed.substring(2).trim()
-                        if (launcherRoot.ctrl.placeholder2 && typeof launcherRoot.ctrl.placeholder2.refreshFilter === "function") {
-                            launcherRoot.ctrl.placeholder2.refreshFilter(p2Query)
-                        }
-                        return
-                    }
-
-                    if (trimmed.startsWith("placeholder3activatetext")) {
-                        launcherRoot.mode = "placeholder3"
-                        const p3Query = trimmed.substring(2).trim()
-                        if (launcherRoot.ctrl.placeholder3 && typeof launcherRoot.ctrl.placeholder3.refreshFilter === "function") {
-                            launcherRoot.ctrl.placeholder3.refreshFilter(p3Query)
-                        }
-                        return
-                    }
-
 
                     if (launcherRoot.ctrl.mathEngine.runCalculator(trimmed)) {
                         launcherRoot.mode = "math"
@@ -195,7 +173,7 @@
                 searchField.forceActiveFocus()
             }
 
-//Placeholders
+//Email
             function toggleEmail() {
                 if (launcherRoot.mode === "Email" && launcherWindow.visible) {
                     launcherRoot.closeOverlay()
@@ -204,21 +182,6 @@
                 }
             }
 
-            function togglePlaceholder2() {
-                if (launcherRoot.mode === "placeholder2" && launcherWindow.visible) {
-                    launcherRoot.closeOverlay()
-                } else {
-                    launcherRoot.openPlaceholder2()
-                }
-            }
-
-            function togglePlaceholder3() {
-                if (launcherRoot.mode === "placeholder3" && launcherWindow.visible) {
-                    launcherRoot.closeOverlay()
-                } else {
-                    launcherRoot.openPlaceholder3()
-                }
-            }
 
 
             /*
@@ -1041,9 +1004,12 @@
 
                             // Force the layout container item to handle core keyboard focus loops on load
                             focus: launcherRoot.mode.toLowerCase() === "email"
+
                             // Pin active keyboard control straight onto your inner ListView alias on successful load
                             onLoaded: {
                                 if (item) {
+                                    // FIXED: Dynamically inject the root quickshell context handle directly into the loaded module
+
                                     Qt.callLater(function() {
                                         if (item.innerListView) {
                                             item.innerListView.forceActiveFocus();
@@ -1055,31 +1021,6 @@
                             }
                         }
                     }
-
-                    /*
-                     * PLACEHOLDER 2 LOADER
-                     */
-                    Loader {
-                        id: placeholder2Loader
-                        active: launcherRoot.mode === "placeholder2"
-                        visible: active
-                        width: parent.width
-                        height: parent.contentHeight
-                        source: "Placeholder2.qml"
-                    }
-
-                    /*
-                     * PLACEHOLDER 3 LOADER
-                     */
-                    Loader {
-                        id: placeholder3Loader
-                        active: launcherRoot.mode === "placeholder3"
-                        visible: active
-                        width: parent.width
-                        height: parent.contentHeight
-                        source: "Placeholder3.qml"
-                    }
-
                 }
             }
         }

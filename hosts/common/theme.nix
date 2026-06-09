@@ -86,8 +86,13 @@ in
           property int globalBorderWidth: 3
           property int globalPadding: 20
 
+          // CUSTOM BORDER COLOR SLOTS MAP TO LAUNCHER PANELS
+          property color outerBorderColor: base03
+          property color innerBorderColor: base05
+
           function getGlobalTextColor(notification) { return base05 }
       }
     '';
+
   };
 }

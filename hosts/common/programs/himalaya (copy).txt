@@ -1,0 +1,245 @@
+{ pkgs, osConfig, lib, config, ... }:
+
+let
+  homeDir = toString config.home.homeDirectory;
+
+  syncMailHelper = pkgs.writeScriptBin "sync-mail-cache" ''
+    #!${pkgs.python3}/bin/python3
+    import os, sys, json, subprocess, time
+    from concurrent.futures import ThreadPoolExecutor
+
+    real_user = "moonburst"
+    target_home = f"/home/{real_user}"
+
+    gmail_address = ""
+    gmail_password = ""
+
+    try:
+        with open("/run/secrets/gmail_address", "r") as s:
+            gmail_address = s.read().strip()
+        with open("/run/secrets/gmail_app_password", "r") as s:
+            gmail_password = s.read().strip()
+    except Exception:
+        pass
+
+    cache_dir = f"{target_home}/.cache/himalaya"
+    cache_file = os.path.join(cache_dir, "emails.json")
+    mbsync_file = f"{target_home}/.config/mbsync/mbsyncrc"
+    himalaya_config = f"{target_home}/.config/himalaya/config.toml"
+
+    env_copy = os.environ.copy()
+    if gmail_address: env_copy["HIMALAYA_GMAIL_ADDRESS"] = gmail_address
+    if gmail_password: env_copy["HIMALAYA_GMAIL_PASSWORD"] = gmail_password
+
+    # ============================================================================
+    # HIGH-PERFORMANCE COMMA-DELIMITED LIVE TRANSACTION QUEUE CONSUMER
+    # ============================================================================
+    def process_live_text_queue():
+        queue_path = "/tmp/qmail_queue.log"
+        if not os.path.exists(queue_path):
+            return False
+
+        time.sleep(0.02)
+        try:
+            with open(queue_path, "r") as f:
+                lines = f.readlines()
+
+            open(queue_path, "w").close()
+            actions_taken = False
+
+            for line in lines:
+                line = line.strip()
+                if not line: continue
+
+                if line.startswith("DELETE,"):
+                    parts = line.split(",")
+                    if len(parts) >= 3:
+                        target_id = parts[1]
+                        target_folder = parts[2]
+                        cmd = ["${pkgs.himalaya}/bin/himalaya", "--config", himalaya_config, "--folder", target_folder, "message", "delete", str(target_id)]
+                        subprocess.run(cmd, capture_output=True, text=True, env=env_copy)
+                        actions_taken = True
+
+                elif line.startswith("SEND,"):
+                    parts = line.split(",", 3)
+                    if len(parts) >= 4:
+                        to_addr = parts[1]
+                        subject_line = parts[2]
+                        body_content = parts[3]
+                        raw_rfc_message = f"From: {gmail_address}\nTo: {to_addr}\nSubject: {subject_line}\n\n{body_content}"
+                        send_cmd = ["${pkgs.himalaya}/bin/himalaya", "--config", himalaya_config, "message", "send", "-"]
+                        subprocess.run(send_cmd, input=raw_rfc_message, capture_output=True, text=True, env=env_copy)
+                        actions_taken = True
+
+            if actions_taken:
+                rebuild_local_ui_cache()
+                return True
+        except Exception as e:
+            print(f"[Queue Processor Error]: {e}", flush=True)
+        return False
+
+    def rebuild_local_ui_cache():
+        print("Rebuilding emails.json layout index cache vectors...", flush=True)
+        folder_map = {
+          "INBOX": "inbox",
+          ".[Gmail].All Mail": "all",
+          ".[Gmail].Drafts": "drafts",
+          ".[Gmail].Sent Mail": "sent",
+          ".[Gmail].Trash": "trash",
+          ".[Gmail].Spam": "spam",
+          ".[Gmail].Starred": "starred"
+        }
+
+        def fetch_folder_data(target_folder):
+            qml_label = folder_map[target_folder]
+            cmd = ["${pkgs.himalaya}/bin/himalaya", "--config", himalaya_config, "--output", "json", "envelope", "list", "--folder", target_folder, "--page-size", "500"]
+            res = subprocess.run(cmd, capture_output=True, text=True, env=env_copy)
+            items = []
+            if res.returncode == 0 and res.stdout.strip():
+                try:
+                    raw_data = json.loads(res.stdout)
+                    envelopes = raw_data if isinstance(raw_data, list) else raw_data.get("envelopes", raw_data.get("items", []))
+                    for item in envelopes:
+                        if isinstance(item, dict):
+                            item["folder"] = qml_label
+
+                            # FIXED: Extract plaintext message body right inside the python tier to prevent scrambled font rendering loops
+                            msg_id = item.get("id")
+                            if msg_id:
+                                read_cmd = ["${pkgs.himalaya}/bin/himalaya", "--config", himalaya_config, "--folder", target_folder, "message", "read", str(msg_id), "-t", "text/plain"]
+                                read_res = subprocess.run(read_cmd, capture_output=True, text=True, env=env_copy)
+                                if read_res.returncode == 0:
+                                    raw_body = read_res.stdout.strip()
+                                    split_idx = raw_body.find("\n\n")
+                                    if split_idx == -1: split_idx = raw_body.find("\r\n\r\n")
+                                    if split_idx != -1: raw_body = raw_body[split_idx:].strip()
+
+                                    # Filter out unprintable binary control markers cleanly
+                                    item["body_content"] = "".join(ch for ch in raw_body if ord(ch) == 10 or ord(ch) == 13 or 32 <= ord(ch) <= 126)
+                                else:
+                                    item["body_content"] = "(Plaintext content variant body unavailable.)"
+
+                            items.append(item)
+                except Exception: pass
+            return items
+
+        master_list = []
+        seen_message_ids = set()
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            results = executor.map(fetch_folder_data, folder_map.keys())
+            for folder_items in results:
+                for item in folder_items:
+                    msg_id = item.get("message-id") or item.get("id")
+                    if msg_id not in seen_message_ids:
+                        seen_message_ids.add(msg_id)
+                        master_list.append(item)
+
+        os.makedirs(cache_dir, exist_ok=True)
+        with open(cache_file + ".tmp", "w") as f:
+            json.dump(master_list, f, indent=2)
+        os.replace(cache_file + ".tmp", cache_file)
+        print("[Live Queue Engine] Front-end UI cache synchronization pass finalized.", flush=True)
+
+    if len(sys.argv) > 1 and sys.argv[1] == "--daemon":
+        print("[Live Queue Engine] Instantiating high-performance reactive loop...", flush=True)
+        last_sync = 0
+        while True:
+            process_live_text_queue()
+            current_time = time.time()
+            if current_time - last_sync > 300:
+                print(f"Starting scheduled background mbsync sync pass...", flush=True)
+                subprocess.run(["${pkgs.isync}/bin/mbsync", "-c", mbsync_file, "gmail"], capture_output=True, text=True, env=env_copy)
+                rebuild_local_ui_cache()
+                last_sync = current_time
+            time.sleep(0.1)
+        sys.exit(0)
+
+    subprocess.run(["${pkgs.isync}/bin/mbsync", "-c", mbsync_file, "gmail"], capture_output=True, text=True, env=env_copy)
+    rebuild_local_ui_cache()
+  '';
+in
+{
+  home.packages = [ pkgs.himalaya pkgs.isync pkgs.libnotify syncMailHelper ];
+
+  xdg.configFile."himalaya/config.toml".text = ''
+    [accounts.gmail]
+    default = true
+    display-name = "Moonburst"
+    email = "$HIMALAYA_GMAIL_ADDRESS"
+
+    [accounts.gmail.backend]
+    type = "maildir"
+    root-dir = "${homeDir}/.local/share/mail/gmail"
+    maildirpp = true
+    delimiter = "."
+
+    [accounts.gmail.folder.aliases]
+    inbox = "INBOX"
+    all = ".[Gmail].All Mail"
+    drafts = ".[Gmail].Drafts"
+    sent = ".[Gmail].Sent Mail"
+    trash = ".[Gmail].Trash"
+    spam = ".[Gmail].Spam"
+    starred = ".[Gmail].Starred"
+
+    [accounts.gmail.message.send.backend]
+    type = "smtp"
+    host = "://gmail.com"
+    port = 465
+    auth.type = "password"
+    login = "$HIMALAYA_GMAIL_ADDRESS"
+    auth.cmd = "echo $HIMALAYA_GMAIL_PASSWORD"
+
+    [accounts.gmail.message.send.backend.encryption]
+    type = "tls"
+
+    [accounts.gmail.message.read]
+    text-mime-header = "text/plain"
+
+    [accounts.gmail.envelope.list]
+    page-size = 500
+  '';
+
+  xdg.configFile."mbsync/mbsyncrc".text = ''
+    SyncState *
+    IMAPAccount gmail
+    Host ://gmail.com
+    Port 993
+    UserCmd "echo $HIMALAYA_GMAIL_ADDRESS"
+    PassCmd "echo $HIMALAYA_GMAIL_PASSWORD"
+    TLSType IMAPS
+    CertificateFile /etc/ssl/certs/ca-certificates.crt
+    AuthMechs PLAIN
+    PipelineDepth 1
+
+    IMAPStore gmail-remote
+    Account gmail
+
+    MaildirStore gmail-local
+    SubFolders Maildir++
+    Inbox ${homeDir}/.local/share/mail/gmail
+
+    Channel gmail
+    Far :gmail-remote:
+    Near :gmail-local:
+    Patterns "INBOX" "[Gmail]/All Mail" "[Gmail]/Drafts" "[Gmail]/Trash" "[Gmail]/Sent Mail" "[Gmail]/Spam" "[Gmail]/Starred"
+    Create Near
+    Sync All
+    Expunge Both
+    MaxMessages 5
+  '';
+
+  systemd.user.services.himalaya-sync = {
+    Unit = {
+      Description = "Himalaya active live-queue listener and mail engine sync process pass";
+      After = [ "network.target" ] ;
+    };
+    Service = {
+      Type = "simple";
+      ExecStart = "${syncMailHelper}/bin/sync-mail-cache --daemon";
+      Restart = "always";
+      RestartSec = "2";
+    };
+    Install = { WantedBy = [ "default.target" ]; };
+  };
+}
