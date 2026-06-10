@@ -113,7 +113,7 @@ Rectangle {
     Flickable {
         id: bodyFlickableCanvas
         anchors.top: headerRect.bottom; anchors.bottom: parent.bottom; anchors.left: parent.left; anchors.right: parent.right
-        anchors.topMargin: 0; anchors.bottomMargin: previewComp.viewPadding; anchors.leftMargin: previewComp.viewPadding; anchors.rightMargin: previewComp.viewPadding + 16
+        anchors.topMargin: 15; anchors.bottomMargin: previewComp.viewPadding; anchors.leftMargin: previewComp.viewPadding; anchors.rightMargin: previewComp.viewPadding + 16
         contentWidth: width; contentHeight: previewContentLayoutColumn.height; clip: true; visible: activeMailObject !== null
 
         Column {
@@ -190,7 +190,7 @@ Rectangle {
     // Scrollbar Track
     Rectangle {
         id: customVerticalScrollTrack; width: 6; radius: 3; color: previewComp.scrollTrackBg; anchors.right: parent.right; anchors.top: parent.top; anchors.bottom: parent.bottom
-        anchors.topMargin: headerRect.height + previewComp.viewPadding + 10; anchors.bottomMargin: previewComp.viewPadding; anchors.rightMargin: 8
+        anchors.topMargin: headerRect.height + previewComp.viewPadding + 20; anchors.bottomMargin: previewComp.viewPadding; anchors.rightMargin: 8
         visible: bodyFlickableCanvas.contentHeight > bodyFlickableCanvas.height
 
         Rectangle {

@@ -174,6 +174,25 @@ Item {
         mailController.filterEmailsByActiveFolder();
     }
 
+    function handleRestoreFromTrash() {
+        var activeItem = mailController.selectedMail;
+        if (!activeItem || activeItem.folder.toLowerCase() !== "trash") return;
+
+        var emailId = activeItem.id.toString();
+
+        // Write the MOVE recovery action to the SQLite database queue
+        writeToQueue("MOVE", emailId, "trash", "inbox");
+        console.log("[Queue] Restoring message " + emailId + " back to inbox.");
+
+        // Remove the email from the local trash array immediately to provide snappy UI feedback
+        mailController.fullMailCacheList = mailController.fullMailCacheList.filter(item => {
+            return !(item.id.toString() === emailId && item.folder.toLowerCase() === "trash");
+        });
+
+        mailController.recalculateFolderStats();
+        mailController.filterEmailsByActiveFolder();
+    }
+
     function handleStarToggle() {
         var activeItem = mailController.selectedMail;
         if (!activeItem) return;
@@ -258,6 +277,7 @@ Item {
             else if (event.key === Qt.Key_Down) { mailController.cycleEmail(true); event.accepted = true; }
             else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) { rootWindow.initiateEmailReply(); event.accepted = true; }
             else if (event.key === Qt.Key_Delete) { rootWindow.handleDeletion(); event.accepted = true; }
+            else if (event.key === Qt.Key_U) { rootWindow.handleRestoreFromTrash(); event.accepted = true; } // 'U' Key restores from Trash
             else if (event.key === Qt.Key_N) { mailController.isComposing = true; composeWindowOverlay.prepopulateForm("", "", ""); event.accepted = true; }
             else if (event.key === Qt.Key_S) { rootWindow.handleStarToggle(); event.accepted = true; }
             else if (event.key === Qt.Key_R) { rootWindow.handleReadToggle(); event.accepted = true; }
@@ -385,6 +405,9 @@ Item {
 
                         Text { text: "Delete"; font.bold: true; color: (typeof theme !== 'undefined') ? theme.base05 : "#f7f700"; font.pixelSize: 15; font.family: (typeof theme !== 'undefined') ? theme.fontFamily : "Fira Sans" }
                         Text { text: "Delete Email (Cascade)"; color: (typeof theme !== 'undefined') ? theme.base06 : "#ebdbb2"; font.pixelSize: 15; font.family: (typeof theme !== 'undefined') ? theme.fontFamily : "Fira Sans" }
+
+                        Text { text: "U"; font.bold: true; color: (typeof theme !== 'undefined') ? theme.base05 : "#f7f700"; font.pixelSize: 15; font.family: (typeof theme !== 'undefined') ? theme.fontFamily : "Fira Sans" }
+                        Text { text: "Restore Email from Trash"; color: (typeof theme !== 'undefined') ? theme.base06 : "#ebdbb2"; font.pixelSize: 15; font.family: (typeof theme !== 'undefined') ? theme.fontFamily : "Fira Sans" }
 
                         Text { text: "S"; font.bold: true; color: (typeof theme !== 'undefined') ? theme.base05 : "#f7f700"; font.pixelSize: 15; font.family: (typeof theme !== 'undefined') ? theme.fontFamily : "Fira Sans" }
                         Text { text: "Toggle Star / Unstar"; color: (typeof theme !== 'undefined') ? theme.base06 : "#ebdbb2"; font.pixelSize: 15; font.family: (typeof theme !== 'undefined') ? theme.fontFamily : "Fira Sans" }

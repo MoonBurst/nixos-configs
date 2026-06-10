@@ -97,7 +97,6 @@ Patterns "INBOX" "[Gmail]/All Mail" "[Gmail]/Drafts" "[Gmail]/Trash" "[Gmail]/Se
 Create Near
 Sync All
 Expunge Both
-# MaxMessages 5
 """)
 
 env_copy = os.environ.copy()
@@ -338,6 +337,33 @@ def process_live_text_queue():
                         print(f"[Queue Processor Error] Failed to automatically open downloads folder: {oe}", flush=True)
                 else:
                     print(f"[Queue Processor Error] Failed to extract attachments: {res.stderr.strip()}", flush=True)
+
+            # FIXED: SWAPPED ARGUMENT POSITIONS FOR THE MESSAGE MOVE CALL
+            elif action == "MOVE":
+                target_id = arg1
+                source_folder = arg2
+                dest_folder = arg3
+
+                folder_mapping = {
+                    "inbox": "INBOX",
+                    "starred": ".[Gmail].Starred",
+                    "all": ".[Gmail].All Mail",
+                    "drafts": ".[Gmail].Drafts",
+                    "sent": ".[Gmail].Sent Mail",
+                    "trash": ".[Gmail].Trash",
+                    "spam": ".[Gmail].Spam"
+                }
+                canonical_source = folder_mapping.get(source_folder.lower(), source_folder)
+                canonical_dest = folder_mapping.get(dest_folder.lower(), dest_folder)
+
+                print(f"[Queue Processor] Moving message {target_id} from folder '{canonical_source}' to '{canonical_dest}'...", flush=True)
+                # Corrected: canonical_dest (the folder) is the first argument, and str(target_id) is the second.
+                res = run_himalaya(["message", "move", canonical_dest, str(target_id)], canonical_source)
+                if res.returncode == 0:
+                    print(f"[Queue Processor] Successfully moved message {target_id} to '{canonical_dest}'.", flush=True)
+                    actions_taken = True
+                else:
+                    print(f"[Queue Processor Error] Failed to move message: {res.stderr.strip()}", flush=True)
 
             cursor.execute("DELETE FROM queue WHERE id = ?", (row_id,))
         conn.commit()
