@@ -35,12 +35,6 @@ Rectangle {
     property string currentSuggestion: ""
     property var quickshellContext: null
 
-    // Automated Email Signature
-    property string mailSignature: "\n\n--\nSeekers of light..
-    Believe not in justice...
-        Believe not in truth...
-            For they are empty and inconsistent, as are all things"
-
     // Exposed alias to let root window file dialog append attachments
     property alias bodyInput: bodyInput
 
@@ -79,22 +73,16 @@ Rectangle {
     }
 
     // ============================================================================
-    // REACTIONARY INITIAL WORKFLOW FOCUS LINKER WITH AUTOMATED SIGNATURE
+    // REACTIONARY INITIAL WORKFLOW FOCUS LINKER
     // ============================================================================
     function prepopulateForm(toField, subjectField, historyLog) {
         toInput.text = toField;
         subjectInput.text = subjectField;
-
-        // Append signature block automatically
-        if (historyLog !== "") {
-            bodyInput.text = "\n\n" + composeComp.mailSignature + "\n\n" + historyLog;
-        } else {
-            bodyInput.text = composeComp.mailSignature;
-        }
+        bodyInput.text = historyLog;
 
         if (toField !== "") {
             bodyInput.forceActiveFocus();
-            bodyInput.cursorPosition = 0; // Places typing cursor precisely at the top, before the signature
+            bodyInput.cursorPosition = 0;
         } else {
             toInput.forceActiveFocus();
         }
@@ -157,7 +145,7 @@ Rectangle {
         Column {
             anchors.fill: parent; anchors.margins: composeComp.modalPadding; spacing: 25
 
-            // Header Container (Title on the Left)
+            // Header Container (Title on the Left, Attach Button on the Right)
             Item {
                 width: parent.width
                 height: 35
@@ -170,6 +158,30 @@ Rectangle {
                     color: (typeof theme !== 'undefined') ? theme.base05 : "#f7f700"
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
+                }
+
+                // Attach File Button (Emits signal to main window portal file dialogue)
+                Rectangle {
+                    id: attachFileButton
+                    width: 130; height: 28; color: composeComp.fieldBg; radius: 4
+                    border.color: composeComp.innerCardInactiveBorder; border.width: 1
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    Text {
+                        text: "📎 Attach File"
+                        font.family: composeComp.composeFontFamily
+                        font.pixelSize: composeComp.inputFontSize - 4
+                        font.bold: true
+                        color: composeComp.textWriteColor
+                        anchors.centerIn: parent
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: composeComp.attachmentRequested() // Fires signal to Main.qml
+                    }
                 }
             }
 
@@ -194,12 +206,8 @@ Rectangle {
 
                         Keys.onPressed: (event) => {
                             if (event.key === Qt.Key_Tab) {
-                                if (composeComp.currentSuggestion !== "" && toInput.text !== composeComp.currentSuggestion) {
-                                    toInput.text = composeComp.currentSuggestion;
-                                    toInput.cursorPosition = toInput.text.length;
-                                } else {
-                                    subjectInput.forceActiveFocus();
-                                }
+                                if (composeComp.currentSuggestion !== "" && text !== composeComp.currentSuggestion) { childText = composeComp.currentSuggestion; cursorPosition = text.length; }
+                                else { subjectInput.forceActiveFocus(); }
                                 event.accepted = true;
                             }
                         }
