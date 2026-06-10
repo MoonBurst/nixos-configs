@@ -5,23 +5,23 @@ Rectangle {
     id: previewComp
 
     // ============================================================================
-    // THEME & STYLE fallbacks
+    // THEME & STYLE SAFE PROPERTY FALLBACKS
     // ============================================================================
-    property color previewBgColor: (typeof theme !== 'undefined') ? theme.base00 : "#121212"
-    property color headerSectionBg: (typeof theme !== 'undefined') ? theme.base00 : "#121212"
-    property color titleColor: (typeof theme !== 'undefined') ? theme.base05 : "#f7f700"
-    property color bodyTextColor: (typeof theme !== 'undefined') ? theme.base06 : "#ebdbb2"
-    property color scrollTrackBg: (typeof theme !== 'undefined') ? theme.base01 : "#0f0f0f"
-    property color scrollHandleColor: (typeof theme !== 'undefined') ? theme.scrollHandleColor : "#003399"
-    property int viewPadding: (typeof theme !== 'undefined') ? theme.globalPadding : 20
-    property int titleSize: (typeof theme !== 'undefined') ? theme.globalFontSize : 20
-    property int metaSize: (typeof theme !== 'undefined') ? theme.globalFontSize : 20
-    property int bodySize: (typeof theme !== 'undefined') ? theme.globalFontSize : 20
-    property string previewFontFamily: (typeof theme !== 'undefined') ? theme.fontFamily : "Fira Sans"
+    property color previewBgColor: (typeof theme !== 'undefined' && theme.base00) ? theme.base00 : "#121212"
+    property color headerSectionBg: (typeof theme !== 'undefined' && theme.base00) ? theme.base00 : "#121212"
+    property color titleColor: (typeof theme !== 'undefined' && theme.base05) ? theme.base05 : "#f7f700"
+    property color bodyTextColor: (typeof theme !== 'undefined' && theme.base06) ? theme.base06 : "#ebdbb2"
+    property color scrollTrackBg: (typeof theme !== 'undefined' && theme.base01) ? theme.base01 : "#0f0f0f"
+    property color scrollHandleColor: (typeof theme !== 'undefined' && theme.scrollHandleColor) ? theme.scrollHandleColor : "#003399"
+    property int viewPadding: (typeof theme !== 'undefined' && theme.globalPadding) ? theme.globalPadding : 20
+    property int titleSize: (typeof theme !== 'undefined' && theme.globalFontSize) ? theme.globalFontSize : 20
+    property int metaSize: (typeof theme !== 'undefined' && theme.globalFontSize) ? theme.globalFontSize : 20
+    property int bodySize: (typeof theme !== 'undefined' && theme.globalFontSize) ? theme.globalFontSize : 20
+    property string previewFontFamily: (typeof theme !== 'undefined' && theme.fontFamily) ? theme.fontFamily : "Fira Sans"
 
-    property color outerBorderColor: (typeof theme !== 'undefined') ? theme.outerBorderColor : "#003399"
+    property color outerBorderColor: (typeof theme !== 'undefined' && theme.outerBorderColor) ? theme.outerBorderColor : "#003399"
     property int outerBorderThickness: 5
-    property color innerCardActiveBorder: (typeof theme !== 'undefined') ? theme.innerBorderColor : "#fabd2f"
+    property color innerCardActiveBorder: (typeof theme !== 'undefined' && theme.innerBorderColor) ? theme.innerBorderColor : "#fabd2f"
     property int innerCardActiveThickness: 5
 
     // Controller Bindings
@@ -35,7 +35,7 @@ Rectangle {
     color: previewBgColor
     border.color: outerBorderColor
     border.width: outerBorderThickness
-    radius: (typeof theme !== 'undefined') ? theme.defaultCardRadius : 10
+    radius: (typeof theme !== 'undefined' && theme.defaultCardRadius) ? theme.defaultCardRadius : 10
 
     // Consolidated BBCode & Plain-Text Link compiler
     function formatBody(rawText) {
@@ -58,7 +58,7 @@ Rectangle {
         anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
         anchors.margins: previewComp.viewPadding
         height: 100; color: previewComp.headerSectionBg; visible: activeMailObject !== null
-        radius: (typeof theme !== 'undefined') ? theme.defaultCardRadius : 10
+        radius: (typeof theme !== 'undefined' && theme.defaultCardRadius) ? theme.defaultCardRadius : 10
         border.color: previewComp.innerCardActiveBorder; border.width: previewComp.innerCardActiveThickness
 
         Column {
