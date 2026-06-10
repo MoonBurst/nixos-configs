@@ -99,7 +99,7 @@ Patterns "INBOX" "[Gmail]/All Mail" "[Gmail]/Drafts" "[Gmail]/Trash" "[Gmail]/Se
 Create Near
 Sync All
 Expunge Both
-MaxMessages 5
+MaxMessages 500
 """)
 
 env_copy = os.environ.copy()

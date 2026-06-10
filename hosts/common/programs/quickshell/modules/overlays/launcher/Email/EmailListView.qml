@@ -96,9 +96,9 @@ Rectangle {
                 border.color: (index === listComp.activeMailIndex) ? listComp.innerCardActiveBorder : listComp.itemBorderColor
                 border.width: (index === listComp.activeMailIndex) ? listComp.innerCardActiveThickness : 1
 
-                // FIXED: Explicitly cast the returned values to strict booleans using ternary evaluations and double-negations
-                property bool isStarred: modelData.flags ? modelData.flags.includes("flagged") : false
-                property bool isUnread: modelData.flags ? !modelData.flags.includes("seen") : true
+                // FIXED: Map flags to lowercase before executing .includes() to support case-insensitive matching (Flagged/flagged, Seen/seen)
+                property bool isStarred: modelData.flags ? modelData.flags.map(f => f.toLowerCase()).includes("flagged") : false
+                property bool isUnread: modelData.flags ? !modelData.flags.map(f => f.toLowerCase()).includes("seen") : true
                 property bool hasAttachment: !!(modelData["has-attachment"] || modelData.has_attachment || (modelData.attachments && modelData.attachments.length > 0))
 
                 // Compact 2-liner avatar color hash generator (uses functional reduce)
