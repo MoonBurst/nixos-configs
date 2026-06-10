@@ -37,16 +37,16 @@ Rectangle {
 
     // Automated Email Signature
     property string mailSignature: "\n\n--\nSeekers of light..
-    Believe not in justice...
-        Believe not in truth...
-            For they are empty and inconsistent, as are all things"
+          Believe not in justice...
+                    Believe not in truth...
+                              For they are empty and inconsistent, as are all things..."
 
     // Exposed alias to let root window file dialog append attachments
     property alias bodyInput: bodyInput
 
     signal dispatchMailRequested(string to, string subject, string body)
     signal escapeDismissRequested()
-    signal attachmentRequested() // Emitted to trigger root-level FileDialog
+    signal attachmentRequested() // Restored to maintain backward-compatibility with Email.qml instantiation
 
     anchors.fill: parent; color: overlayBgColor
     MouseArea { anchors.fill: parent }
@@ -155,7 +155,7 @@ Rectangle {
         border.color: outerBorderColor; border.width: outerBorderThickness; radius: (typeof theme !== 'undefined') ? theme.defaultCardRadius : 10
 
         Column {
-            anchors.fill: parent; anchors.margins: composeComp.modalPadding; spacing: 25
+            anchors.fill: parent; anchors.margins: composeComp.modalPadding; spacing: 15
 
             // Header Container (Title on the Left)
             Item {
@@ -173,74 +173,79 @@ Rectangle {
                 }
             }
 
-            // 1. RECIPIENT FIELD
-            Rectangle {
-                width: parent.width; height: (typeof theme !== 'undefined' ? theme.defaultCardHeight : 140) - 45; color: composeComp.fieldBg
-                radius: (typeof theme !== 'undefined') ? theme.defaultCardRadius : 10
-                border.color: toInput.activeFocus ? composeComp.innerCardActiveBorder : composeComp.innerCardInactiveBorder
-                border.width: toInput.activeFocus ? composeComp.innerCardActiveThickness : composeComp.innerCardInactiveThickness
+            // Grouped Recipient and Subject Fields (Sit compactly together)
+            Column {
+                width: parent.width; spacing: 8
 
-                Item {
-                    anchors.fill: parent; anchors.margins: 12
+                // 1. RECIPIENT FIELD
+                Rectangle {
+                    width: parent.width; height: (typeof theme !== 'undefined' ? theme.defaultCardHeight : 140) - 45; color: composeComp.fieldBg
+                    radius: (typeof theme !== 'undefined') ? theme.defaultCardRadius : 10
+                    border.color: toInput.activeFocus ? composeComp.innerCardActiveBorder : composeComp.innerCardInactiveBorder
+                    border.width: toInput.activeFocus ? composeComp.innerCardActiveThickness : composeComp.innerCardInactiveThickness
 
-                    Text {
-                        text: composeComp.currentSuggestion; font.family: composeComp.composeFontFamily; font.pixelSize: composeComp.inputFontSize; color: (typeof theme !== 'undefined') ? theme.base0B : "#545454"
-                        anchors.fill: parent; visible: toInput.text !== "" && composeComp.currentSuggestion.toLowerCase().startsWith(toInput.text.toLowerCase())
-                    }
+                    Item {
+                        anchors.fill: parent; anchors.margins: 12
 
-                    TextInput {
-                        id: toInput; anchors.fill: parent; font.family: composeComp.composeFontFamily; font.pixelSize: composeComp.inputFontSize; color: composeComp.textWriteColor
-                        onTextChanged: composeComp.checkAutocompleteSuggestions(text)
-
-                        Keys.onPressed: (event) => {
-                            if (event.key === Qt.Key_Tab) {
-                                if (composeComp.currentSuggestion !== "" && toInput.text !== composeComp.currentSuggestion) {
-                                    toInput.text = composeComp.currentSuggestion;
-                                    toInput.cursorPosition = toInput.text.length;
-                                } else {
-                                    subjectInput.forceActiveFocus();
-                                }
-                                event.accepted = true;
-                            }
-                        }
                         Text {
-                            text: "To: (Type name... [Tab] to auto-complete or hop to subject)"
-                            color: composeComp.placeholderTextColor
-                            visible: parent.text === ""
-                            anchors.fill: parent
-                            font.pixelSize: composeComp.inputFontSize
+                            text: composeComp.currentSuggestion; font.family: composeComp.composeFontFamily; font.pixelSize: composeComp.inputFontSize; color: (typeof theme !== 'undefined') ? theme.base0B : "#545454"
+                            anchors.fill: parent; visible: toInput.text !== "" && composeComp.currentSuggestion.toLowerCase().startsWith(toInput.text.toLowerCase())
+                        }
+
+                        TextInput {
+                            id: toInput; anchors.fill: parent; font.family: composeComp.composeFontFamily; font.pixelSize: composeComp.inputFontSize; color: composeComp.textWriteColor
+                            onTextChanged: composeComp.checkAutocompleteSuggestions(text)
+
+                            Keys.onPressed: (event) => {
+                                if (event.key === Qt.Key_Tab) {
+                                    if (composeComp.currentSuggestion !== "" && toInput.text !== composeComp.currentSuggestion) {
+                                        toInput.text = composeComp.currentSuggestion;
+                                        toInput.cursorPosition = toInput.text.length;
+                                    } else {
+                                        subjectInput.forceActiveFocus();
+                                    }
+                                    event.accepted = true;
+                                }
+                            }
+                            Text {
+                                text: "To: (Type name... [Tab] to auto-complete or hop to subject)"
+                                color: composeComp.placeholderTextColor
+                                visible: parent.text === ""
+                                anchors.fill: parent
+                                font.pixelSize: composeComp.inputFontSize
+                            }
                         }
                     }
                 }
-            }
 
-            // 2. SUBJECT FIELD
-            Rectangle {
-                width: parent.width; height: (typeof theme !== 'undefined' ? theme.defaultCardHeight : 140) - 45; color: composeComp.fieldBg; radius: (typeof theme !== 'undefined') ? theme.defaultCardRadius : 10
-                border.color: subjectInput.activeFocus ? composeComp.innerCardActiveBorder : composeComp.innerCardInactiveBorder
-                border.width: subjectInput.activeFocus ? composeComp.innerCardActiveThickness : composeComp.innerCardInactiveThickness
+                // 2. SUBJECT FIELD
+                Rectangle {
+                    width: parent.width; height: (typeof theme !== 'undefined' ? theme.defaultCardHeight : 140) - 45; color: composeComp.fieldBg; radius: (typeof theme !== 'undefined') ? theme.defaultCardRadius : 10
+                    border.color: subjectInput.activeFocus ? composeComp.innerCardActiveBorder : composeComp.innerCardInactiveBorder
+                    border.width: subjectInput.activeFocus ? composeComp.innerCardActiveThickness : composeComp.innerCardInactiveThickness
 
-                Item {
-                    anchors.fill: parent; anchors.margins: 12
+                    Item {
+                        anchors.fill: parent; anchors.margins: 12
 
-                    TextInput {
-                        id: subjectInput; anchors.fill: parent; font.family: composeComp.composeFontFamily; font.pixelSize: composeComp.inputFontSize; color: composeComp.textWriteColor
+                        TextInput {
+                            id: subjectInput; anchors.fill: parent; font.family: composeComp.composeFontFamily; font.pixelSize: composeComp.inputFontSize; color: composeComp.textWriteColor
 
-                        Keys.onPressed: (event) => {
-                            if (event.key === Qt.Key_Tab) {
-                                bodyInput.forceActiveFocus();
-                                event.accepted = true;
+                            Keys.onPressed: (event) => {
+                                if (event.key === Qt.Key_Tab) {
+                                    bodyInput.forceActiveFocus();
+                                    event.accepted = true;
+                                }
                             }
-                        }
 
-                        Text { text: "Subject:"; color: composeComp.placeholderTextColor; visible: parent.text === ""; anchors.fill: parent; font.pixelSize: composeComp.inputFontSize }
+                            Text { text: "Subject:"; color: composeComp.placeholderTextColor; visible: parent.text === ""; anchors.fill: parent; font.pixelSize: composeComp.inputFontSize }
+                        }
                     }
                 }
             }
 
             // 3. BODY MESSAGE CONTENT CANVAS
             Rectangle {
-                width: parent.width; height: parent.height - 250; color: composeComp.fieldBg
+                width: parent.width; height: parent.height - 290; color: composeComp.fieldBg
                 radius: (typeof theme !== 'undefined') ? theme.defaultCardRadius : 10
                 border.color: bodyInput.activeFocus ? composeComp.innerCardActiveBorder : composeComp.innerCardInactiveBorder
                 border.width: bodyInput.activeFocus ? composeComp.innerCardActiveThickness : composeComp.innerCardInactiveThickness
@@ -275,7 +280,7 @@ Rectangle {
                 }
             }
 
-            // Bottom bar row containing keyboard helper
+            // Bottom bar row containing keyboard helper (Shifted higher)
             Text {
                 text: "Press [Ctrl + Enter] to Send  •  [ESC] to Dismiss  •  [Tab] to Navigate Fields"
                 font.family: composeComp.composeFontFamily
