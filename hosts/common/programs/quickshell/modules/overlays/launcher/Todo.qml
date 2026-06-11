@@ -97,11 +97,6 @@ Rectangle {
             } else if (event.key === Qt.Key_D) { // Ctrl+D deletes Active Board List
                 todoRoot.deleteActiveCategory(); event.accepted = true;
             }
-        } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-            // First-run UX: If no category boards exist, pressing Enter instantly pops open the create-list overlay
-            if (todoRoot.activeCategory === "") {
-                listNameInput.text = ""; addListOverlay.visible = true; listNameInput.forceActiveFocus(); event.accepted = true;
-            }
         } else if (event.text === "?") { // Standard "?" hotkey opens help cheatsheet
             helpOverlay.visible = true; event.accepted = true;
         }
@@ -580,7 +575,7 @@ Rectangle {
                             color: model.completed ? todoRoot.placeholderTextColor : todoRoot.titleColor
                             Layout.fillWidth: true
                             wrapMode: Text.Wrap
-                            Layout.alignment: Qt.AlignVerticalCenter
+                            Layout.alignment: Qt.AlignVCenter
                         }
                     }
 
@@ -652,7 +647,7 @@ Rectangle {
                 font.family: todoRoot.todoFontFamily
                 font.pixelSize: 20
                 color: (typeof shell !== 'undefined' && shell.theme) ? shell.theme.base05 : "#ebdbb2"
-                Layout.alignment: Qt.AlignVerticalCenter
+                Layout.alignment: Qt.AlignVCenter
             }
 
             Repeater {
@@ -664,7 +659,7 @@ Rectangle {
                     color: "transparent"
                     border.color: todoRoot.filterMode === modelData ? todoRoot.innerCardActiveBorder : todoRoot.innerCardInactiveBorder
                     border.width: todoRoot.filterMode === modelData ? todoRoot.innerCardActiveThickness : (todoRoot.globalBorderWidth + 1)
-                    Layout.alignment: Qt.AlignVerticalCenter
+                    Layout.alignment: Qt.AlignVCenter
 
                     Text {
                         id: filterText
@@ -690,7 +685,7 @@ Rectangle {
                 width: todoRoot.pillBtnHeight; height: todoRoot.pillBtnHeight; radius: width / 2
                 color: "transparent"
                 border.color: todoRoot.innerCardInactiveBorder; border.width: (todoRoot.globalBorderWidth + 1)
-                Layout.alignment: Qt.AlignVerticalCenter
+                Layout.alignment: Qt.AlignVCenter
 
                 Text { text: "?"; font.family: todoRoot.todoFontFamily; font.pixelSize: todoRoot.fontButtonSize; font.bold: true; color: todoRoot.textWriteColor; anchors.centerIn: parent }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: helpOverlay.visible = true }
