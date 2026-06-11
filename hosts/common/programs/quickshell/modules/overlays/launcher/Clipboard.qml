@@ -141,7 +141,7 @@ Item {
         }
     }
 
-    // Exported function for central search field navigation (Up)
+
     function moveUp() {
         if (selectedIndex > 0) {
             --selectedIndex
@@ -149,7 +149,7 @@ Item {
         }
     }
 
-    // Exported function for central search field navigation (Down)
+
     function moveDown() {
         if (selectedIndex < filteredClipboardModel.count - 1) {
             ++selectedIndex
@@ -191,7 +191,7 @@ Item {
         deleteProcess.running = true
     }
 
-    // Triggers a complete purge of your clipboard history and clears cached thumbnails in /tmp
+
     function wipeHistory() {
         wipeProcess.running = true
     }
@@ -223,7 +223,6 @@ Item {
     function flushThumbnailQueue() {
         if (thumbnailQueue.length === 0) return;
 
-        // Directory creation folder is run exactly once here instead of 300 times in the row queue loop
         thumbnailWorker.command = [
             "sh",
             "-c",
