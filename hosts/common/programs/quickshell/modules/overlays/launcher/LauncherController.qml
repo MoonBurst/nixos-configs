@@ -16,7 +16,8 @@ Item {
     readonly property alias unicodeSearch: unicodeSearch
     readonly property alias startPage: startPage
     readonly property alias email: email
-    readonly property alias todo:todo
+    readonly property alias todo: todo
+    readonly property alias pass: pass
 
     /*
      * MATH ENGINE
@@ -57,5 +58,7 @@ Item {
         id: todo
     }
 
-
+    Pass {
+        id: pass
+    }
 }

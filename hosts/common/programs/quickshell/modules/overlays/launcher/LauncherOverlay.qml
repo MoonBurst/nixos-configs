@@ -24,6 +24,7 @@ Rectangle {
     readonly property bool isClipboardOpen: mode === "clipboard"
     readonly property bool isEmailOpen: mode === "Email"
     readonly property bool isTodoOpen: mode === "todo"
+    readonly property bool isPassOpen: mode === "pass"
 
     // Global Controller Alias to eliminate deep JavaScript scope resolution costs
     readonly property var ctrl: LauncherModule.LauncherController
@@ -46,7 +47,8 @@ Rectangle {
                                 if (launcherRoot.mode === "search") return launcherRoot.ctrl.startPage
                                     if (launcherRoot.mode === "email") return launcherRoot.ctrl.email
                                         if (launcherRoot.mode === "todo") return launcherRoot.ctrl.todo
-                                            return null
+                                            if (launcherRoot.mode === "pass") return launcherRoot.ctrl.pass
+                                                return null
         }
     }
 
@@ -70,6 +72,16 @@ Rectangle {
             if (currentMode === "clipboard") {
                 launcherRoot.ctrl.clipboard.refreshFilter(trimmed)
                 return
+            }
+
+            // Real-Time Filter: Typing in active password mode filters results on-the-fly (with or without 'pass ' prefix)
+            if (currentMode === "pass") {
+                var query = trimmed;
+                if (trimmed.startsWith("pass ")) {
+                    query = trimmed.substring(5).trim();
+                }
+                launcherRoot.ctrl.pass.searchQuery = query;
+                return;
             }
 
             if (trimmed.length > 1 && trimmed.indexOf("?") === 0) {
@@ -115,6 +127,12 @@ Rectangle {
 
             if (trimmed.startsWith("td ")) {
                 launcherRoot.mode = "todo"
+                return
+            }
+
+            if (trimmed.startsWith("pass ")) {
+                launcherRoot.mode = "pass"
+                launcherRoot.ctrl.pass.searchQuery = trimmed.substring(5).trim()
                 return
             }
 
@@ -166,6 +184,7 @@ Rectangle {
         searchField.forceActiveFocus()
     }
 
+    // Exported function for root shell IPC toggle targeting
     function toggleClipboard() {
         if (launcherRoot.mode === "clipboard" && launcherWindow.visible) launcherRoot.closeOverlay()
             else launcherRoot.openClipboard()
@@ -201,12 +220,27 @@ Rectangle {
         })
     }
 
+    // Exported function for root shell IPC toggle targeting
     function toggleTodo() {
         if (launcherRoot.mode === "todo" && launcherWindow.visible) {
             launcherRoot.closeOverlay()
         } else {
             launcherRoot.openTodo()
         }
+    }
+
+    //Password Manager
+    function openPass() {
+        launcherRoot.mode = "pass"
+        searchField.clear()
+        ctrl.pass.searchQuery = ""
+        launcherWindow.visible = true
+        searchField.forceActiveFocus()
+    }
+
+    function togglePass() {
+        if (launcherRoot.mode === "pass" && launcherWindow.visible) launcherRoot.closeOverlay()
+            else launcherRoot.openPass()
     }
 
     MouseArea {
@@ -250,7 +284,8 @@ Rectangle {
                 leftPadding: 20
                 height: 52
 
-                focus: launcherRoot.mode.toLowerCase() !== "email" && launcherRoot.mode !== "todo"
+                // Forcibly clear active focus only in "todo" and "email" modes (Keeps search bar visible for password queries)
+                focus: launcherRoot.mode !== "todo" && launcherRoot.mode.toLowerCase() !== "email"
                 visible: focus
 
                 color: shell.theme.base05
@@ -270,15 +305,44 @@ Rectangle {
                             if (currentMode === "dictionary")
                                 return "Enter word..."
 
-                                return "Search applications..."
+                                if (currentMode === "pass")
+                                    return "Search passwords..."
+
+                                    return "Search applications..."
                 }
 
+                // Autocomplete layout background layer (No hardcoded values)
                 background: Rectangle {
                     radius: 10
                     color: "transparent"
 
                     border.width: 5
                     border.color: shell.theme.base05
+
+                    // Ghost-Text Autocomplete Suggestion Layer (base0B gray/green theme highlight)
+                    Text {
+                        id: searchSuggestionText
+                        visible: launcherRoot.mode === "pass" && searchField.text !== "" && searchField.activeFocus
+                        text: {
+                            if (launcherRoot.ctrl.pass && launcherRoot.ctrl.pass.filteredModelCount > 0) {
+                                var firstMatch = launcherRoot.ctrl.pass.firstMatchedKey;
+                                var rawText = searchField.text;
+                                var hasPrefix = rawText.startsWith("pass ");
+                                var query = hasPrefix ? rawText.substring(5).trim().toLowerCase() : rawText.trim().toLowerCase();
+
+                                if (query !== "" && firstMatch.toLowerCase().startsWith(query)) {
+                                    return hasPrefix ? "pass " + firstMatch : firstMatch;
+                                }
+                            }
+                            return "";
+                        }
+                        font.family: searchField.font.family
+                        font.pixelSize: searchField.font.pixelSize
+                        color: shell.theme.base0B
+                        anchors.fill: parent
+                        anchors.leftMargin: searchField.leftPadding
+                        verticalAlignment: Text.AlignVCenter
+                    }
                 }
 
                 onTextChanged: {
@@ -315,6 +379,14 @@ Rectangle {
                             ListView.Contain
                         )
 
+                        return
+                    }
+
+                    // FIXED: Explicitly target the exposed 'targetListView' alias inside Pass.qml
+                    if (currentMode === "pass" && passLoader.item && passLoader.item.targetListView) {
+                        launcherRoot.ctrl.pass.selectNext()
+                        passLoader.item.targetListView.currentIndex = launcherRoot.ctrl.pass.selectedIndex
+                        passLoader.item.targetListView.positionViewAtIndex(passLoader.item.targetListView.currentIndex, ListView.Contain)
                         return
                     }
 
@@ -377,7 +449,16 @@ Rectangle {
                         return
                     }
 
-                    // 3. CLIPBOARD MODE HANDLER
+                    // 3. PASSWORD MODE HANDLER
+                    // FIXED: Explicitly target the exposed 'targetListView' alias inside Pass.qml
+                    if (currentMode === "pass" && passLoader.item && passLoader.item.targetListView) {
+                        launcherRoot.ctrl.pass.selectPrev()
+                        passLoader.item.targetListView.currentIndex = launcherRoot.ctrl.pass.selectedIndex
+                        passLoader.item.targetListView.positionViewAtIndex(passLoader.item.targetListView.currentIndex, ListView.Contain)
+                        return
+                    }
+
+                    // 4. CLIPBOARD MODE HANDLER
                     if (
                         currentMode === "clipboard" &&
                         clipboardLoader.item &&
@@ -393,7 +474,7 @@ Rectangle {
                         return
                     }
 
-                    // 4. APPS MODE HANDLER
+                    // 5. APPS MODE HANDLER
                     if (
                         currentMode === "apps" &&
                         appsLoader.item &&
@@ -406,11 +487,31 @@ Rectangle {
 
 
 
-                Keys.onDeletePressed: {
-                    if (launcherRoot.mode !== "clipboard")
-                        return
+                Keys.onPressed: (event) => {
+                    // TAB KEY INTERCEPT: Instantly autocompletes search input to ghost suggestion path (Requires 5-character prefix string slicing)
+                    if (event.key === Qt.Key_Tab) {
+                        if (launcherRoot.mode === "pass" && searchSuggestionText.text !== "") {
+                            searchField.text = searchSuggestionText.text;
+                            searchField.cursorPosition = searchField.text.length;
 
-                        launcherRoot.ctrl.clipboard.deleteSelected()
+                            // Re-filter pass results immediately on autocomplete
+                            var query = searchField.text;
+                            if (query.startsWith("pass ")) {
+                                query = query.substring(5).trim();
+                            }
+                            launcherRoot.ctrl.pass.searchQuery = query;
+
+                            event.accepted = true;
+                            return;
+                        }
+                    }
+
+                    if (event.key === Qt.Key_Delete) {
+                        if (launcherRoot.mode === "clipboard") {
+                            launcherRoot.ctrl.clipboard.deleteSelected()
+                            event.accepted = true;
+                        }
+                    }
                 }
 
                 Keys.onReturnPressed: {
@@ -437,7 +538,14 @@ Rectangle {
                         return
                     }
 
-                    // 4. APPS MODE HANDLER
+                    // 4. PASSWORD MODE HANDLER
+                    if (currentMode === "pass") {
+                        launcherRoot.ctrl.pass.decryptAndCopySelected()
+                        launcherRoot.closeOverlay()
+                        return
+                    }
+
+                    // 5. APPS MODE HANDLER
                     if (
                         currentMode === "apps" &&
                         appsLoader.item &&
@@ -453,7 +561,7 @@ Rectangle {
                         return
                     }
 
-                    // 5. STARTPAGE MODE HANDLER
+                    // 6. STARTPAGE MODE HANDLER
                     if (currentMode === "startpage" && searchLoader.item) {
                         searchLoader.item.openSearch()
                         launcherRoot.closeOverlay()
@@ -474,7 +582,7 @@ Rectangle {
                 visible: active
 
                 width: parent.width
-                height: parent.contentHeight
+                height: active ? parent.contentHeight : 0
                 source: "StartPage.qml"
 
                 onLoaded: {
@@ -494,7 +602,7 @@ Rectangle {
                 active: launcherRoot.mode === "unicode"
                 visible: active
                 width: parent.width
-                height: parent.height
+                height: active ? parent.height : 0
 
                 sourceComponent: ListView {
                     id: unicodeListView
@@ -559,14 +667,14 @@ Rectangle {
             }
 
             /*
-             * PROGRAM LAUNCHER LOADER
+             * PROGRAM LAUNCHER LOADER (Restored to its working, pre-cached 'active: true' state)
              */
             Loader {
                 id: appsLoader
                 active: true
                 visible: launcherRoot.mode === "apps" || launcherRoot.mode === ""
                 width: parent.width
-                height: parent.contentHeight
+                height: active ? parent.contentHeight : 0
                 sourceComponent: Component {
                     ListView {
                         clip: true
@@ -638,7 +746,7 @@ Rectangle {
                 active: launcherRoot.mode === "startPage"
                 visible: active
                 width: parent.width
-                height: parent.contentHeight
+                height: active ? parent.contentHeight : 0
                 source: "StartPage.qml"
             }
             /*
@@ -649,7 +757,7 @@ Rectangle {
                 active: launcherRoot.mode === "clipboard"
                 visible: active
                 width: parent.width
-                height: parent.contentHeight
+                height: active ? parent.contentHeight : 0
 
                 readonly property
                 var listViewInstance: item ? item.targetListView : null
@@ -829,7 +937,7 @@ Rectangle {
                 visible: active
 
                 width: parent.width
-                height: parent.contentHeight
+                height: active ? parent.contentHeight : 0
 
                 sourceComponent: Component {
                     ListView {
@@ -901,7 +1009,7 @@ Rectangle {
                 active: launcherRoot.mode === "math"
                 visible: active
                 width: parent.width
-                height: parent.contentHeight
+                height: active ? parent.contentHeight : 0
                 sourceComponent: Component {
                     Rectangle {
                         radius: 12
@@ -971,7 +1079,8 @@ Rectangle {
             }
 
             /*
-             * TODO LOADER
+             * TODO LIST LOADER
+             * Height is dynamically collapsed to 0 when inactive to prevent any layout shifts.
              */
             Loader {
                 id: todoLoader
@@ -980,7 +1089,7 @@ Rectangle {
                 focus: true
 
                 width: parent.width
-                height: active ? parent.contentHeight + 75: 0
+                height: active ? parent.contentHeight : 0
 
                 source: "Todo.qml"
 
@@ -990,15 +1099,41 @@ Rectangle {
                     }
                 }
             }
+
+            /*
+             * PASSWORD MANAGER LOADER
+             * Height is dynamically collapsed to 0 when inactive to prevent any layout shifts.
+             */
+            Loader {
+                id: passLoader
+                active: launcherRoot.mode === "pass"
+                visible: active
+                focus: true
+
+                width: parent.width
+                height: active ? parent.contentHeight : 0
+
+                source: "Pass.qml"
+
+                onLoaded: {
+                    if (item) {
+                        // FIXED: Explicitly pass down the root shell context to completely silence undefined 'theme' errors
+                        item.shell = launcherRoot.shell;
+                        item.forceActiveFocus()
+                    }
+                }
+            }
         }
     }
 
     /*
- EMAIL LOADER
+     * CLEANED EMAIL APPS DASHBOARD LOADER GATEWAY (1500x900 CENTERING WRAPPER)
+     * Declared OUTSIDE of mainPanel, directly as a child of launcherRoot to prevent column layout displacement.
+     * Height is dynamically collapsed to 0 when inactive to keep positioner layouts flawless.
      */
     Item {
         width: parent.width
-        height: parent.height
+        height: visible ? parent.height : 0
         visible: launcherRoot.mode.toLowerCase() === "email"
 
         Loader {
@@ -1008,10 +1143,9 @@ Rectangle {
 
             // Hard-locks your spacious high-resolution widescreen canvas bounds template
             width: 1500
-            height: 1000
+            height: 900
 
-            // Safe layout anchoring inside an independent positioning frame container wrapper
-            // This successfully anchors the 1500x900 box directly to the middle of the display monitor
+            // This anchors the 1500x900 box directly to the middle of the display monitor
             anchors.centerIn: parent
 
             // Seamlessly load your dedicated external workspace script file
@@ -1023,7 +1157,6 @@ Rectangle {
             // Pin active keyboard control straight onto your inner ListView alias on successful load
             onLoaded: {
                 if (item) {
-                    // FIXED: Dynamically inject the root quickshell context handle directly into the loaded module
 
                     Qt.callLater(function() {
                         if (item.innerListView) {

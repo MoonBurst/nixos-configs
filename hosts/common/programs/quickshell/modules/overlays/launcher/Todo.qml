@@ -144,7 +144,6 @@ Rectangle {
                     tx.executeSql('ALTER TABLE todos ADD COLUMN category TEXT DEFAULT ""');
                     console.log("[Todo DB] Schema updated. Added 'category' column.");
                 } catch (e) {
-                    // Column already exists, safe to ignore
                 }
 
                 // Core Category Table Schema
@@ -346,7 +345,7 @@ Rectangle {
             console.log("[Todo] Task reordered. Swapped ID " + idA + " with " + idB);
         } catch (err) {
             console.error("[Todo DB Error] Task reordering failed: ", err);
-            loadTodos(); // Fallback
+            loadTodos();
         }
     }
 
@@ -359,7 +358,7 @@ Rectangle {
         anchors.leftMargin: todoRoot.todoPadding
         anchors.rightMargin: todoRoot.todoPadding
         anchors.topMargin: todoRoot.todoPadding
-        anchors.bottomMargin: 0 // Align bar tightly on the bottom edge
+        anchors.bottomMargin: 0
         spacing: 15
 
         // A. HORIZONTAL BOARDS ROW
@@ -526,7 +525,7 @@ Rectangle {
                 Keys.onPressed: (event) => {
                     var isAltShiftPressed = (event.modifiers & Qt.AltModifier) && (event.modifiers & Qt.ShiftModifier);
 
-                    if (isAltShiftPressed) { // Intercept Alt+Shift+Up/Down to shift task orders dynamically
+                    if (isAltShiftPressed) {
                         if (event.key === Qt.Key_Up) {
                             todoRoot.moveTodo(currentIndex, true);
                             event.accepted = true;
@@ -537,7 +536,6 @@ Rectangle {
                     } else if (event.key === Qt.Key_Up) {
                         if (currentIndex === 0) { taskInput.forceActiveFocus(); event.accepted = true; }
                     } else if (event.key === Qt.Key_Space || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                        // Enter/Return as well as Space toggles the completed state of the selected task card
                         var item = todoModel.get(currentIndex);
                         if (item) { todoRoot.toggleTodo(item.id, item.completed); event.accepted = true; }
                     } else if (event.key === Qt.Key_Delete) {
@@ -790,9 +788,9 @@ Rectangle {
                     Text { text: "Enter Task Navigation List"; color: todoRoot.textWriteColor; font.pixelSize: todoRoot.globalFontSize - 5; font.family: todoRoot.todoFontFamily }
                     Text { text: "↑ Arrow (on first item)"; font.bold: true; color: todoRoot.titleColor; font.pixelSize: todoRoot.globalFontSize - 5; font.family: todoRoot.todoFontFamily }
                     Text { text: "Return Focus to Typing Input"; color: todoRoot.textWriteColor; font.pixelSize: todoRoot.globalFontSize - 5; font.family: todoRoot.todoFontFamily }
-                    Text { text: "Alt + Shift + ↑ / ↓"; font.bold: true; color: todoRoot.titleColor; font.pixelSize: todoRoot.globalFontSize - 5; font.family: todoRoot.todoFontFamily } // Added re-ordering keys!
+                    Text { text: "Alt + Shift + ↑ / ↓"; font.bold: true; color: todoRoot.titleColor; font.pixelSize: todoRoot.globalFontSize - 5; font.family: todoRoot.todoFontFamily }
                     Text { text: "Move Task Up / Down in List"; color: todoRoot.textWriteColor; font.pixelSize: todoRoot.globalFontSize - 5; font.family: todoRoot.todoFontFamily }
-                    Text { text: "Space / Enter"; font.bold: true; color: todoRoot.titleColor; font.pixelSize: todoRoot.globalFontSize - 5; font.family: todoRoot.todoFontFamily } // Updated to include Enter!
+                    Text { text: "Space / Enter"; font.bold: true; color: todoRoot.titleColor; font.pixelSize: todoRoot.globalFontSize - 5; font.family: todoRoot.todoFontFamily }
                     Text { text: "Toggle Task Completion State"; color: todoRoot.textWriteColor; font.pixelSize: todoRoot.globalFontSize - 5; font.family: todoRoot.todoFontFamily }
                     Text { text: "E"; font.bold: true; color: todoRoot.titleColor; font.pixelSize: todoRoot.globalFontSize - 5; font.family: todoRoot.todoFontFamily }
                     Text { text: "Edit Task Inline (Press Enter/ESC)"; color: todoRoot.textWriteColor; font.pixelSize: todoRoot.globalFontSize - 5; font.family: todoRoot.todoFontFamily }

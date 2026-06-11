@@ -307,7 +307,7 @@ ShellRoot {
                 anchors.rightMargin: shell.theme.globalPadding / 2
                 anchors.verticalCenter: parent.verticalCenter
 
-                width: 200
+                width: 250 // Expanded parent width to match NetCapsule.qml sizing
                 height: mainBarContainer.capsuleHeight
 
                 NetCapsule.NetCapsule {
@@ -463,6 +463,19 @@ ShellRoot {
         }
         function toggle(): void {
             launcherOverlay.toggleTodo()
+        }
+    }
+
+    IpcHandler {
+        target: "pass"
+        function open(): void {
+            launcherOverlay.openPass()
+        }
+        function close(): void {
+            launcherOverlay.closeOverlay()
+        }
+        function toggle(): void {
+            launcherOverlay.togglePass()
         }
     }
 
