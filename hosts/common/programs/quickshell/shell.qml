@@ -81,7 +81,7 @@ ShellRoot {
             id: mainBarContainer
 
             anchors.fill: parent
-         //   anchors.topMargin: shell.theme.globalPadding
+            //   anchors.topMargin: shell.theme.globalPadding
             anchors.leftMargin: shell.theme.globalPadding / 2
             anchors.rightMargin: shell.theme.globalPadding / 2
 
@@ -418,6 +418,51 @@ ShellRoot {
         target: "lockscreen"
         function lock(): void {
             sessionLock.locked = true;
+        }
+    }
+
+    /*
+     * =========================================================================
+     * GLOBAL LAUNCHER OVERLAY IPC TARGETS
+     * =========================================================================
+     */
+
+    IpcHandler {
+        target: "launcher"
+        function open(): void {
+            launcherOverlay.openLauncher()
+        }
+        function close(): void {
+            launcherOverlay.closeOverlay()
+        }
+        function toggle(): void {
+            launcherOverlay.toggleLauncher()
+        }
+    }
+
+    IpcHandler {
+        target: "clipboard"
+        function open(): void {
+            launcherOverlay.openClipboard()
+        }
+        function close(): void {
+            launcherOverlay.closeOverlay()
+        }
+        function toggle(): void {
+            launcherOverlay.toggleClipboard()
+        }
+    }
+
+    IpcHandler {
+        target: "todo"
+        function open(): void {
+            launcherOverlay.openTodo()
+        }
+        function close(): void {
+            launcherOverlay.closeOverlay()
+        }
+        function toggle(): void {
+            launcherOverlay.toggleTodo()
         }
     }
 

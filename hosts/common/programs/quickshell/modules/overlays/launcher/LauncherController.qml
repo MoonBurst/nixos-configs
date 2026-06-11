@@ -16,8 +16,7 @@ Item {
     readonly property alias unicodeSearch: unicodeSearch
     readonly property alias startPage: startPage
     readonly property alias email: email
-    readonly property alias placeholder2: placeholder2
-    readonly property alias placeholder3: placeholder3
+    readonly property alias todo:todo
 
     /*
      * MATH ENGINE
@@ -49,17 +48,13 @@ Item {
     StartPage {
         id: startPage
     }
-/////// PLACEHOLDERS
-   Email {
+
+    Email {
         id: email
     }
 
-   Placeholder2 {
-        id: placeholder2
-    }
-
-    Placeholder3 {
-        id: placeholder3
+    Todo {
+        id: todo
     }
 
 
