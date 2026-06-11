@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.LocalStorage
 
 Rectangle {
     id: composeComp
@@ -35,11 +36,17 @@ Rectangle {
     property string currentSuggestion: ""
     property var quickshellContext: null
 
+    // Draft State Handlers for Tracking Alterations
+    property string initialTo: ""
+    property string initialSubject: ""
+    property string initialBody: ""
+    property bool wasSent: false
+
     // Automated Email Signature
     property string mailSignature: "\n\n--\nSeekers of light..
-          Believe not in justice...
-                    Believe not in truth...
-                              For they are empty and inconsistent, as are all things..."
+    Believe not in justice...
+    Believe not in truth...
+    For they are empty and inconsistent, as are all things..."
 
     // Exposed alias to let root window file dialog append attachments
     property alias bodyInput: bodyInput
@@ -58,6 +65,7 @@ Rectangle {
         sequence: "Ctrl+Return"
         enabled: composeComp.visible
         onActivated: {
+            composeComp.wasSent = true;
             composeComp.dispatchMailRequested(toInput.text, subjectInput.text, bodyInput.text);
         }
     }
@@ -66,6 +74,7 @@ Rectangle {
         sequence: "Ctrl+Enter"
         enabled: composeComp.visible
         onActivated: {
+            composeComp.wasSent = true;
             composeComp.dispatchMailRequested(toInput.text, subjectInput.text, bodyInput.text);
         }
     }
@@ -74,6 +83,9 @@ Rectangle {
         sequence: "Escape"
         enabled: composeComp.visible
         onActivated: {
+            // Force the draft save check immediately before emitting the exit signal to the parent
+            console.log("[ComposeModal] Escape key pressed. Validating unsaved modifications...");
+            composeComp.checkAndSaveDraft();
             composeComp.escapeDismissRequested();
         }
     }
@@ -82,6 +94,7 @@ Rectangle {
     // REACTIONARY INITIAL WORKFLOW FOCUS LINKER WITH AUTOMATED SIGNATURE
     // ============================================================================
     function prepopulateForm(toField, subjectField, historyLog) {
+        composeComp.wasSent = false;
         toInput.text = toField;
         subjectInput.text = subjectField;
 
@@ -92,6 +105,11 @@ Rectangle {
             bodyInput.text = composeComp.mailSignature;
         }
 
+        // Cache baseline values to monitor changes
+        composeComp.initialTo = toInput.text;
+        composeComp.initialSubject = subjectInput.text;
+        composeComp.initialBody = bodyInput.text;
+
         if (toField !== "") {
             bodyInput.forceActiveFocus();
             bodyInput.cursorPosition = 0; // Places typing cursor precisely at the top, before the signature
@@ -100,16 +118,80 @@ Rectangle {
         }
     }
 
+    // ============================================================================
+    // RESTORE EXISTING DRAFT FORM (NO SIGNATURE DOUBLE-APPENDING)
+    // ============================================================================
+    function restoreDraftForm(toField, subjectField, draftBody) {
+        composeComp.wasSent = false;
+        toInput.text = toField;
+        subjectInput.text = subjectField;
+        bodyInput.text = draftBody;
+
+        // Cache baseline values to monitor changes exactly as they are restored
+        composeComp.initialTo = toInput.text;
+        composeComp.initialSubject = subjectInput.text;
+        composeComp.initialBody = bodyInput.text;
+
+        bodyInput.forceActiveFocus();
+        bodyInput.cursorPosition = 0; // Let the user resume typing smoothly
+    }
+
     Component.onCompleted: {
         loadContactsDatabase();
     }
 
     onVisibleChanged: {
         if (visible) {
+            composeComp.wasSent = false;
             if (toInput.text === "") {
                 loadContactsDatabase();
                 toInput.forceActiveFocus();
             }
+            // Capture baseline state in case prepopulateForm wasn't run
+            composeComp.initialTo = toInput.text;
+            composeComp.initialSubject = subjectInput.text;
+            composeComp.initialBody = bodyInput.text;
+        } else {
+            // Screen closing event - check if changes need saving to draft database
+            checkAndSaveDraft();
+        }
+    }
+
+    // Capture component destruction (e.g. if unloaded by a Loader) to guarantee saves
+    Component.onDestruction: {
+        checkAndSaveDraft();
+    }
+
+    // --- Draft Saving Business Logic ---
+    function checkAndSaveDraft() {
+        var isDirty = (toInput.text !== composeComp.initialTo) ||
+        (subjectInput.text !== composeComp.initialSubject) ||
+        (bodyInput.text !== composeComp.initialBody);
+
+        if (isDirty && !composeComp.wasSent) {
+            console.log("[ComposeModal] Changes detected. Saving draft to local queue...");
+            saveDraftOffline(toInput.text, subjectInput.text, bodyInput.text);
+
+            // Re-align the baseline state to mark as clean and prevent duplicate writes
+            composeComp.initialTo = toInput.text;
+            composeComp.initialSubject = subjectInput.text;
+            composeComp.initialBody = bodyInput.text;
+        }
+    }
+
+    function saveDraftOffline(recipient, subject, bodyContent) {
+        try {
+            var db = LocalStorage.openDatabaseSync("QMailQueue", "1.0", "Offline QMail Queue", 1000000);
+            db.transaction(function(tx) {
+                tx.executeSql('CREATE TABLE IF NOT EXISTS queue (id INTEGER PRIMARY KEY AUTOINCREMENT, action TEXT, arg1 TEXT, arg2 TEXT, arg3 TEXT)');
+                tx.executeSql(
+                    'INSERT INTO queue (action, arg1, arg2, arg3) VALUES (?, ?, ?, ?)',
+                              ['DRAFT', recipient, subject, bodyContent]
+                );
+            });
+            console.log("[ComposeModal] Draft successfully written to shared SQLite queue.");
+        } catch (err) {
+            console.error("[ComposeModal Error] Failed to write draft to SQLite database: ", err);
         }
     }
 
@@ -157,7 +239,7 @@ Rectangle {
         Column {
             anchors.fill: parent; anchors.margins: composeComp.modalPadding; spacing: 15
 
-            // Header Container (Title on the Left)
+            // Header Container (Title on the Left, Attachment request button on the Right)
             Item {
                 width: parent.width
                 height: 35
@@ -170,6 +252,28 @@ Rectangle {
                     color: (typeof theme !== 'undefined') ? theme.base05 : "#f7f700"
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
+                }
+
+                Rectangle {
+                    width: 140; height: 32; color: composeComp.fieldBg; radius: 6
+                    border.color: composeComp.innerCardInactiveBorder; border.width: composeComp.innerCardInactiveThickness
+                    anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+
+                    Text {
+                        text: "📎 + Attach"
+                        font.family: composeComp.composeFontFamily
+                        font.pixelSize: composeComp.inputFontSize - 4
+                        font.bold: true
+                        color: composeComp.placeholderTextColor
+                        anchors.centerIn: parent
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            composeComp.attachmentRequested();
+                        }
+                    }
                 }
             }
 

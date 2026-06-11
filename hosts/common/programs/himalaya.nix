@@ -4,7 +4,7 @@ let
   homeDir = toString config.home.homeDirectory;
 
   syncMailHelper = pkgs.writeScriptBin "sync-mail-cache" ''#!${pkgs.python3}/bin/python3
-import os, sys, json, subprocess, time, glob, configparser, sqlite3, getpass, re, shutil
+import os, sys, json, subprocess, time, glob, configparser, sqlite3, getpass, re, shutil, mimetypes, socket, email.utils
 from concurrent.futures import ThreadPoolExecutor
 
 # Resolve usernames and directories dynamically
@@ -110,6 +110,15 @@ def send_notification(title, message):
 
 # Unified downloader and /tmp to Downloads folder movement router
 def download_and_route_attachments(msg_id, folder, destination_dir):
+    # GUARD: If the preview folder already exists and contains files, skip the network download
+    if os.path.exists(destination_dir) and os.listdir(destination_dir):
+        print(f"[Attachment Router] Previews already exist in {destination_dir}. Skipping download.", flush=True)
+        class DummyResult:
+            returncode = 0
+            stdout = ""
+            stderr = ""
+        return DummyResult()
+
     os.makedirs(destination_dir, exist_ok=True)
     cmd = ["${pkgs.himalaya}/bin/himalaya", "--config", himalaya_config, "attachment", "download", str(msg_id), "--folder", folder]
     res = subprocess.run(cmd, capture_output=True, text=True, env=env_copy, cwd=destination_dir)
@@ -219,9 +228,6 @@ def process_live_text_queue():
                     print(f"[Queue] Successfully marked UNREAD {arg1} in '{arg2}'", flush=True)
                     actions_taken = True
             elif action == "SEND":
-                # Print the raw content string received from SQLite to detect any rich-text/escaped characters
-                print(f"[Queue Processor] Raw mail body received: {repr(arg3)}", flush=True)
-
                 # Highly simplified, bulletproof filename and body extraction regex
                 attachments = re.findall(r'filename="([^"]+)"', arg3)
                 clean_body = re.sub(r'<#part[\s\S]*?</#part>', "", arg3).strip()
@@ -245,12 +251,20 @@ def process_live_text_queue():
                         if os.path.exists(filepath):
                             try:
                                 filename = os.path.basename(filepath)
+
+                                # Guess MIME type dynamically based on file extension
+                                ctype, encoding = mimetypes.guess_type(filepath)
+                                if ctype is None or encoding is not None:
+                                    ctype = "application/octet-stream"
+                                maintype, subtype = ctype.split("/", 1)
+
                                 with open(filepath, "rb") as f:
-                                    part = MIMEBase("application", "octet-stream")
+                                    part = MIMEBase(maintype, subtype)
                                     part.set_payload(f.read())
                                 encoders.encode_base64(part)
                                 part.add_header("Content-Disposition", "attachment", filename=filename)
                                 msg.attach(part)
+                                print(f"[Queue Processor] Successfully attached file to RFC payload (MIME: {ctype}): {filepath}", flush=True)
                             except Exception as e:
                                 print(f"[Queue Error] Failed to attach {filepath}: {e}", flush=True)
                         else:
@@ -266,6 +280,26 @@ def process_live_text_queue():
                 else:
                     send_notification("Delivery Failure", f"Failed to send message to {arg1}")
                     print(f"[Queue Error] Send failure: {res.stderr.strip()}", flush=True)
+            elif action == "DRAFT":
+                # Construction and file-handling of offline-first drafts
+                # arg1: To (recipient), arg2: Subject, arg3: Body (content text)
+                raw_rfc_message = f"From: {gmail_address}\nTo: {arg1}\nSubject: {arg2}\nMIME-Version: 1.0\nContent-Type: text/plain; charset=utf-8\nContent-Transfer-Encoding: 8bit\nDate: {email.utils.formatdate(localtime=True)}\n\n{arg3}"
+                draft_dir = f"{target_home}/.local/share/mail/gmail/.[Gmail].Drafts/new"
+                os.makedirs(draft_dir, exist_ok=True)
+
+                hostname = socket.gethostname()
+                pid = os.getpid()
+                t = time.time()
+                filename = f"{int(t)}.M{int((t - int(t)) * 1000000)}P{pid}Q1.{hostname}"
+                filepath = os.path.join(draft_dir, filename)
+
+                try:
+                    with open(filepath, "w") as df:
+                        df.write(raw_rfc_message)
+                    print(f"[Queue Processor] Draft successfully saved to Maildir: {filepath}", flush=True)
+                    actions_taken = True
+                except Exception as e:
+                    print(f"[Queue Error] Failed to write draft to local storage: {e}", flush=True)
             elif action == "CONTACT":
                 contacts_file = f"{target_home}/Documents/Contacts"
                 try:
@@ -338,7 +372,6 @@ def process_live_text_queue():
                 else:
                     print(f"[Queue Processor Error] Failed to extract attachments: {res.stderr.strip()}", flush=True)
 
-            # FIXED: SWAPPED ARGUMENT POSITIONS FOR THE MESSAGE MOVE CALL
             elif action == "MOVE":
                 target_id = arg1
                 source_folder = arg2
@@ -357,7 +390,6 @@ def process_live_text_queue():
                 canonical_dest = folder_mapping.get(dest_folder.lower(), dest_folder)
 
                 print(f"[Queue Processor] Moving message {target_id} from folder '{canonical_source}' to '{canonical_dest}'...", flush=True)
-                # Corrected: canonical_dest (the folder) is the first argument, and str(target_id) is the second.
                 res = run_himalaya(["message", "move", canonical_dest, str(target_id)], canonical_source)
                 if res.returncode == 0:
                     print(f"[Queue Processor] Successfully moved message {target_id} to '{canonical_dest}'.", flush=True)

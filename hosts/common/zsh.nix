@@ -109,6 +109,9 @@
     RUSTUP_HOME = "$HOME/.local/share/rustup";
     CLIPHIST_DB_PATH = "/tmp/cliphist_db";
 
+    # Disable Qt's internal font database debug tracing globally
+    QT_LOGGING_RULES = "qt.text.font.db.debug=false";
+
     # DYNAMIC SOURCE LINKING: Evaluates to package name strings dynamically based on mime.nix config options
     EDITOR = "${config.apps.editor.pname or config.apps.editor.name or "micro"}";
     TERMINAL = "${config.apps.terminal.pname or config.apps.terminal.name or "ghostty"}";

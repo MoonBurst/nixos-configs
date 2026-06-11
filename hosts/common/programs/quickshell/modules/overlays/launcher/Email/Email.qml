@@ -26,6 +26,9 @@ Item {
     property string activeUser: "moonburst"
     property double lastDeleteTime: 0
 
+    // Property alias to expose the timer to child scopes
+    property alias cacheRefreshTimer: cacheRefreshTimer
+
     Component.onCompleted: {
         mailListView.forceActiveFocus();
         mailController.cacheFilePath = "file:///home/" + rootWindow.activeUser + "/.cache/himalaya/emails.json";
@@ -75,7 +78,7 @@ Item {
     }
 
     // ============================================================================
-    // DYNAMIC 100ms LAZY BODY POLLING TIMER
+    // DYNAMIC 100ms LAZY BODY POLLING TIMER (WITH MODEL REFRESH FIX)
     // ============================================================================
     Timer {
         id: bodyFetchPoller
@@ -103,10 +106,11 @@ Item {
                             var bodyText = lines.slice(1).join("\n");
                             mailController.activeMailBody = bodyText;
 
-                            // Save permanently in cache memory context
+                            // Save permanently in cache memory context and reload model to render previews
                             var activeItem = mailController.selectedMail;
                             if (activeItem && activeItem.id.toString() === bodyId) {
                                 activeItem.body_content = bodyText;
+                                mailController.readMailCache(); // Forces QML to reload index cache and render loaded previews instantly
                             }
                             bodyFetchPoller.stop();
                         }
@@ -115,6 +119,19 @@ Item {
             }
             xhr.open("GET", "file:///tmp/qmail_active_body.txt", true);
             xhr.send();
+        }
+    }
+
+    // ============================================================================
+    // CACHE REFRESH TIMER (BRIDGES THE ASYNC DAEMON WORKFLOW WITH THE UI)
+    // ============================================================================
+    Timer {
+        id: cacheRefreshTimer
+        interval: 1200 // 1.2 second delay allows the Python daemon to process the DB row & rebuild cache
+        repeat: false
+        onTriggered: {
+            console.log("[Email] Sync interval elapsed. Refreshing mail cache...");
+            mailController.readMailCache();
         }
     }
 
@@ -258,6 +275,17 @@ Item {
         composeWindowOverlay.prepopulateForm(replyTo, activeItem.subject.startsWith("Re:") ? activeItem.subject : "Re: " + activeItem.subject, conversationLog);
     }
 
+    // Opens and restores a draft without adding standard reply metadata or doubling signatures
+    function initiateDraftEdit() {
+        var activeItem = mailController.selectedMail;
+        if (!activeItem) return;
+        var draftTo = activeItem.from ? (activeItem.from.addr || activeItem.from.name) : "";
+        var draftSubject = activeItem.subject || "";
+        var draftBody = mailController.activeMailBody || "";
+        mailController.isComposing = true;
+        composeWindowOverlay.restoreDraftForm(draftTo, draftSubject, draftBody);
+    }
+
     function handleOutboundDelivery(toAddress, subjectLine, bodyContent) {
         if (!toAddress || toAddress.trim() === "") return;
         writeToQueue("SEND", toAddress.trim(), subjectLine.trim(), bodyContent);
@@ -275,7 +303,15 @@ Item {
         } else {
             if (event.key === Qt.Key_Up) { mailController.cycleEmail(false); event.accepted = true; }
             else if (event.key === Qt.Key_Down) { mailController.cycleEmail(true); event.accepted = true; }
-            else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) { rootWindow.initiateEmailReply(); event.accepted = true; }
+            else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                var activeItem = mailController.selectedMail;
+                if (activeItem && activeItem.folder.toLowerCase() === "drafts") {
+                    rootWindow.initiateDraftEdit();
+                } else {
+                    rootWindow.initiateEmailReply();
+                }
+                event.accepted = true;
+            }
             else if (event.key === Qt.Key_Delete) { rootWindow.handleDeletion(); event.accepted = true; }
             else if (event.key === Qt.Key_U) { rootWindow.handleRestoreFromTrash(); event.accepted = true; } // 'U' Key restores from Trash
             else if (event.key === Qt.Key_N) { mailController.isComposing = true; composeWindowOverlay.prepopulateForm("", "", ""); event.accepted = true; }
@@ -321,8 +357,16 @@ Item {
 
         ComposeModal {
             id: composeWindowOverlay; anchors.fill: parent; visible: mailController.isComposing
-            onEscapeDismissRequested: { mailController.isComposing = false; mailListView.forceActiveFocus(); }
-            onDispatchMailRequested: (to, subject, body) => { rootWindow.handleOutboundDelivery(to, subject, body); mailListView.forceActiveFocus(); }
+            onEscapeDismissRequested: {
+                mailController.isComposing = false;
+                mailListView.forceActiveFocus();
+                cacheRefreshTimer.start(); // Trigger draft sync polling helper
+            }
+            onDispatchMailRequested: (to, subject, body) => {
+                rootWindow.handleOutboundDelivery(to, subject, body);
+                mailListView.forceActiveFocus();
+                cacheRefreshTimer.start(); // Trigger delivery sync polling helper
+            }
 
             // Trigger root-level native file selection dialog when attachment is requested inside modal
             onAttachmentRequested: {
@@ -473,7 +517,7 @@ Item {
         }
     }
 
-    // Visual root drag-and-drop feedback overlay
+    // Visual drag-and-drop feedback overlay
     Rectangle {
         id: rootDropOverlay
         anchors.fill: parent

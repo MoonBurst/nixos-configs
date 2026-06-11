@@ -37,17 +37,43 @@ Rectangle {
     border.width: outerBorderThickness
     radius: (typeof theme !== 'undefined' && theme.defaultCardRadius) ? theme.defaultCardRadius : 10
 
-    // Consolidated BBCode & Plain-Text Link compiler
+    // Consolidated BBCode, HTML Sanitizer, & Plain-Text Link compiler
     function formatBody(rawText) {
         if (!rawText) return "";
-        var formatted = rawText
+
+        // 1. Escape raw HTML brackets first to prevent QML StyledText parser crashes
+        // (common with headers like <user@domain.com>).
+        var escaped = rawText
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+        // 2. Safely translate BBCode markup to valid tags after escaping
+        var formatted = escaped
         .replace(/\[b\](.*?)\[\/b\]/gi, "<b>$1</b>")
         .replace(/\[i\](.*?)\[\/i\]/gi, "<i>$1</i>")
         .replace(/\[u\](.*?)\[\/u\]/gi, "<u>$1</u>")
         .replace(/\[url=(.*?)\](.*?)\[\/url\]/gi, '<a href="$1">$2</a>')
         .replace(/\[url\](.*?)\[\/url\]/gi, '<a href="$1">$1</a>')
         .replace(/\[img\](.*?)\[\/img\]/gi, '<img src="$1" />');
-        return formatted.replace(/(?<!href=")(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>');
+
+        // 3. Convert raw HTTP/HTTPS URLs to clickthroughable anchors.
+        // Utilizes a safe group-matching regex compatible with older Qt5 engines (No lookbehinds).
+        var urlRegex = /(<a [^>]+>.*?<\/a>)|(https?:\/\/[^\s<]+)/g;
+        formatted = formatted.replace(urlRegex, function(match, group1, group2) {
+            if (group1) {
+                // If it's already matched inside an HTML anchor tag, leave it alone
+                return group1;
+            } else {
+                // Otherwise, safely wrap the plain-text URL in an HTML anchor tag
+                return '<a href="' + group2 + '">' + group2 + '</a>';
+            }
+        });
+
+        // 4. Translate raw line breaks to HTML breaks so QML doesn't collapse them
+        formatted = formatted.replace(/\r\n/g, "<br>").replace(/\n/g, "<br>");
+
+        return formatted;
     }
 
     // ============================================================================
@@ -135,7 +161,18 @@ Rectangle {
                     model: activeMailObject && activeMailObject.attachments ? activeMailObject.attachments : []
                     delegate: Column {
                         width: parent.width; spacing: 8
-                        property bool isImage: modelData.mime ? modelData.mime.indexOf("image/") === 0 : false
+
+                        // Robust Image Check: Matches mime type OR standard file extension
+                        property bool isImage: {
+                            if (!modelData) return false;
+                            var mime = (modelData.mime || "").toLowerCase();
+                            var fname = (modelData.filename || "").toLowerCase();
+                            return (mime.indexOf("image/") === 0) ||
+                            fname.endsWith(".png") || fname.endsWith(".jpg") ||
+                            fname.endsWith(".jpeg") || fname.endsWith(".gif") ||
+                            fname.endsWith(".bmp") || fname.endsWith(".webp");
+                        }
+
                         property bool isText: modelData.filename ? (modelData.filename.endsWith(".txt") || modelData.filename.endsWith(".log") || modelData.filename.endsWith(".sh") || modelData.filename.endsWith(".ini") || modelData.filename.endsWith(".zshrc") || modelData.filename.endsWith(".conf")) : false
 
                         Rectangle {
