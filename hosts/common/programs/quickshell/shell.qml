@@ -307,7 +307,7 @@ ShellRoot {
                 anchors.rightMargin: shell.theme.globalPadding / 2
                 anchors.verticalCenter: parent.verticalCenter
 
-                width: 250 // Expanded parent width to match NetCapsule.qml sizing
+                width: 280 // Expanded parent width to match NetCapsule.qml sizing
                 height: mainBarContainer.capsuleHeight
 
                 NetCapsule.NetCapsule {
@@ -423,18 +423,12 @@ ShellRoot {
 
     /*
      * =========================================================================
-     * GLOBAL LAUNCHER OVERLAY IPC TARGETS
+     * GLOBAL LAUNCHER OVERLAY IPC TARGETS (Redundant single-action targets removed)
      * =========================================================================
      */
 
     IpcHandler {
         target: "launcher"
-        function open(): void {
-            launcherOverlay.openLauncher()
-        }
-        function close(): void {
-            launcherOverlay.closeOverlay()
-        }
         function toggle(): void {
             launcherOverlay.toggleLauncher()
         }
@@ -442,12 +436,6 @@ ShellRoot {
 
     IpcHandler {
         target: "clipboard"
-        function open(): void {
-            launcherOverlay.openClipboard()
-        }
-        function close(): void {
-            launcherOverlay.closeOverlay()
-        }
         function toggle(): void {
             launcherOverlay.toggleClipboard()
         }
@@ -455,12 +443,6 @@ ShellRoot {
 
     IpcHandler {
         target: "todo"
-        function open(): void {
-            launcherOverlay.openTodo()
-        }
-        function close(): void {
-            launcherOverlay.closeOverlay()
-        }
         function toggle(): void {
             launcherOverlay.toggleTodo()
         }
@@ -468,12 +450,6 @@ ShellRoot {
 
     IpcHandler {
         target: "pass"
-        function open(): void {
-            launcherOverlay.openPass()
-        }
-        function close(): void {
-            launcherOverlay.closeOverlay()
-        }
         function toggle(): void {
             launcherOverlay.togglePass()
         }
