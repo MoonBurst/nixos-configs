@@ -23,9 +23,7 @@ Item {
     ListModel { id: passModel }
     ListModel { id: filteredModel }
 
-    onSearchQueryChanged: {
-        filterModel();
-    }
+    onSearchQueryChanged: filterModel()
 
     // Filters decrypted path keys on-the-fly as the user types
     function filterModel() {
@@ -38,30 +36,20 @@ Item {
             }
         }
         selectedIndex = 0;
-
-        // Update autocomplete variables
         filteredModelCount = filteredModel.count;
-        if (filteredModel.count > 0) {
-            firstMatchedKey = filteredModel.get(0).key;
-        } else {
-            firstMatchedKey = "";
-        }
+        firstMatchedKey = filteredModelCount > 0 ? filteredModel.get(0).key : "";
     }
 
     function selectNext() {
-        if (filteredModel.count > 0) {
-            selectedIndex = (selectedIndex + 1) % filteredModel.count;
-        }
+        if (filteredModelCount > 0) selectedIndex = (selectedIndex + 1) % filteredModelCount;
     }
 
     function selectPrev() {
-        if (filteredModel.count > 0) {
-            selectedIndex = (selectedIndex - 1 + filteredModel.count) % filteredModel.count;
-        }
+        if (filteredModelCount > 0) selectedIndex = (selectedIndex - 1 + filteredModelCount) % filteredModelCount;
     }
 
     function decryptAndCopySelected() {
-        if (selectedIndex >= 0 && selectedIndex < filteredModel.count) {
+        if (selectedIndex >= 0 && selectedIndex < filteredModelCount) {
             var item = filteredModel.get(selectedIndex);
             if (item) {
                 decryptProcess.keyPath = item.key;
@@ -76,29 +64,20 @@ Item {
         running: false
         property string keyPath: ""
         command: ["sh", "-c", "PASSWORD_STORE_DIR=$HOME/.local/share/pass pass show \"" + keyPath + "\" | head -n 1 | wl-copy"]
-        onExited: (exitCode) => {
-            if (exitCode === 0) {
-                console.log("[Pass] Password for '" + keyPath + "' successfully copied to clipboard.");
-            } else {
-                console.error("[Pass Error] Failed to decrypt password for '" + keyPath + "'");
-            }
-        }
     }
 
-    // Asynchronously indexes your custom ~/.local/share/pass directory recursively on startup
+    // Asynchronously indexes your custom ~/.local/share/pass directory recursively on startup (Streamlined path variable)
     Process {
         id: listKeysProcess
         running: true
-        command: ["sh", "-c", "interface_user=$(whoami); find /home/$interface_user/.local/share/pass/ -type f -name '*.gpg' | sed \"s|/home/$interface_user/.local/share/pass/||g\" | sed 's|.gpg$||g'"]
+        command: ["sh", "-c", "dir=$HOME/.local/share/pass; find $dir -type f -name '*.gpg' | sed \"s|$dir/||g\" | sed 's|.gpg$||g'"]
 
         stdout: SplitParser {
             onRead: data => {
                 var lines = data.trim().split("\n");
                 for (var i = 0; i < lines.length; i++) {
                     var line = lines[i].trim();
-                    if (line !== "") {
-                        passModel.append({ "key": line });
-                    }
+                    if (line !== "") passModel.append({ "key": line });
                 }
                 filterModel();
             }
@@ -125,15 +104,10 @@ Item {
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 15
-                anchors.rightMargin: 15
+                anchors.leftMargin: 15; anchors.rightMargin: 15
                 spacing: 12
 
-                Text {
-                    text: "🔑"
-                    font.pixelSize: 22
-                    Layout.alignment: Qt.AlignVCenter
-                }
+                Text { text: "🔑"; font.pixelSize: 22; Layout.alignment: Qt.AlignVCenter }
 
                 Text {
                     text: model.key
@@ -147,8 +121,7 @@ Item {
             }
 
             MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
+                anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                 onClicked: {
                     passComp.selectedIndex = index;
                     passComp.decryptAndCopySelected();
@@ -157,8 +130,6 @@ Item {
             }
         }
 
-        ScrollBar.vertical: ScrollBar {
-            policy: ScrollBar.AsNeeded
-        }
+        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
     }
 }
