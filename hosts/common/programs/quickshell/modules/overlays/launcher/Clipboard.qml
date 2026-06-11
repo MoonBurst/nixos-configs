@@ -15,12 +15,10 @@ Item {
 
     property string lastSeenTopId: ""
 
-    property
-    var allClipboardItems: []
+    property var allClipboardItems: []
 
     // Deduplicated thumbnail queue
-    property
-    var thumbnailQueue: []
+    property var thumbnailQueue: []
 
     property alias filteredClipboardItems: filteredClipboardModel
 
@@ -32,10 +30,8 @@ Item {
 
     Timer {
         id: filterTimer
-
         interval: 40
         repeat: false
-
         onTriggered: {
             refreshFilter(pendingQuery)
         }
@@ -43,10 +39,8 @@ Item {
 
     Timer {
         id: reloadDelayTimer
-
         interval: 50
         repeat: false
-
         onTriggered: {
             loadClipboard()
         }
@@ -54,11 +48,9 @@ Item {
 
     Timer {
         id: changePoller
-
         interval: 2000
         running: true
         repeat: true
-
         onTriggered: {
             if (!pollCheckWorker.running) {
                 pollCheckWorker.running = true
@@ -75,78 +67,49 @@ Item {
         filterTimer.restart()
     }
 
+    // Clear and reload clipboard context
     function loadClipboard() {
         allClipboardItems = []
         thumbnailQueue = []
-
         filteredClipboardModel.clear()
-
         clipboardLoader.running = true
     }
 
     function refreshFilter(query) {
         currentQuery = query || ""
-
-        let q =
-        currentQuery
-        .toLowerCase()
-        .trim()
-
-        const imageMode =
-        q.startsWith("image:")
+        let q = currentQuery.toLowerCase().trim()
+        const imageMode = q.startsWith("image:")
 
         if (imageMode) {
             q = q.substring(6).trim()
         }
 
         filteredClipboardModel.clear()
+        const showAll = q.length === 0
 
-        const showAll =
-        q.length === 0
+        for (let i = 0, c = allClipboardItems.length; i < c; ++i) {
+            const item = allClipboardItems[i]
 
-        for (
-            let i = 0,
-            c = allClipboardItems.length; i < c;
-        ++i
-        ) {
-            const item =
-            allClipboardItems[i]
-
-            if (
-                imageMode &&
-                !item.isImage
-            ) {
+            if (imageMode && !item.isImage) {
                 continue
             }
 
-            if (
-                showAll ||
-                item.searchText.includes(q) ||
-                (
-                    item.isImage &&
-                    q === "image"
-                )
-            ) {
+            if (showAll || item.searchText.includes(q) || (item.isImage && q === "image")) {
                 filteredClipboardModel.append(item)
             }
         }
 
-        selectedIndex = 0
-        updatePreview()
+        selectedIndex = 0;
+        updatePreview();
     }
 
     function loadPreviewText() {
-        if (
-            selectedIndex < 0 ||
-            selectedIndex >= filteredClipboardModel.count
-        ) {
+        if (selectedIndex < 0 || selectedIndex >= filteredClipboardModel.count) {
             previewText = ""
             return
         }
 
-        const item =
-        filteredClipboardModel.get(selectedIndex)
-
+        const item = filteredClipboardModel.get(selectedIndex)
         if (item.isImage) {
             previewText = ""
             return
@@ -157,33 +120,20 @@ Item {
             "-c",
             "cliphist decode " + item.id
         ]
-
         previewLoader.running = true
     }
 
     function updatePreview() {
-        if (
-            selectedIndex < 0 ||
-            selectedIndex >=
-            filteredClipboardModel.count
-        ) {
+        if (selectedIndex < 0 || selectedIndex >= filteredClipboardModel.count) {
             previewImage = ""
             previewText = ""
             return
         }
 
-        const item =
-        filteredClipboardModel.get(
-            selectedIndex
-        )
+        const item = filteredClipboardModel.get(selectedIndex)
 
-        if (
-            item.isImage &&
-            item.imagePath
-        ) {
-            previewImage =
-            "file://" + item.imagePath
-
+        if (item.isImage && item.imagePath) {
+            previewImage = "file://" + item.imagePath
             previewText = ""
         } else {
             previewImage = ""
@@ -191,6 +141,7 @@ Item {
         }
     }
 
+    // Exported function for central search field navigation (Up)
     function moveUp() {
         if (selectedIndex > 0) {
             --selectedIndex
@@ -198,158 +149,91 @@ Item {
         }
     }
 
+    // Exported function for central search field navigation (Down)
     function moveDown() {
-        if (
-            selectedIndex <
-            filteredClipboardModel.count - 1
-        ) {
+        if (selectedIndex < filteredClipboardModel.count - 1) {
             ++selectedIndex
             updatePreview()
         }
     }
 
     function copySelected() {
-        if (
-            selectedIndex < 0 ||
-            selectedIndex >=
-            filteredClipboardModel.count
-        ) {
+        if (selectedIndex < 0 || selectedIndex >= filteredClipboardModel.count) {
             return
         }
-
-        copyItem(
-            filteredClipboardModel.get(
-                selectedIndex
-            ).id
-        )
+        copyItem(filteredClipboardModel.get(selectedIndex).id)
     }
 
     function copyItem(clipId) {
-        if (!clipId) {
-            return
-        }
+        if (!clipId) return;
 
         copyProcess.command = [
             "sh",
             "-c",
-            "cliphist decode " +
-            clipId +
-            " | wl-copy"
+            "cliphist decode " + clipId + " | wl-copy"
         ]
-
         copyProcess.running = true
     }
 
     function deleteSelected() {
-        if (
-            selectedIndex < 0 ||
-            selectedIndex >=
-            filteredClipboardModel.count
-        ) {
+        if (selectedIndex < 0 || selectedIndex >= filteredClipboardModel.count) {
             return
         }
 
-        const item =
-        filteredClipboardModel.get(
-            selectedIndex
-        )
-
-        if (!item.rawLineText) {
-            return
-        }
+        const item = filteredClipboardModel.get(selectedIndex)
+        if (!item.rawLineText) return;
 
         deleteProcess.command = [
             "sh",
             "-c",
-            "printf '%s\\n' '" +
-            item.rawLineText.replace(
-                /'/g,
-                "'\\\\''"
-            ) +
-            "' | cliphist delete"
+            "printf '%s\\n' '" + item.rawLineText.replace(/'/g, "'\\\\''") + "' | cliphist delete"
         ]
-
         deleteProcess.running = true
     }
 
-    function addClipboardItem(
-        clipId,
-        clipText,
-        rawLine
-    ) {
-        const lower =
-        clipText.toLowerCase()
+    // Triggers a complete purge of your clipboard history and clears cached thumbnails in /tmp
+    function wipeHistory() {
+        wipeProcess.running = true
+    }
 
-        const isImage =
-        lower.includes("image") ||
-        lower.includes(".png") ||
-        lower.includes(".jpg") ||
-        lower.includes(".jpeg") ||
-        lower.includes(".gif") ||
-        lower.includes(".webp") ||
-        lower.includes("binary data")
-
-        // 1. Establish the dedicated storage subfolder path
+    function addClipboardItem(clipId, clipText, rawLine) {
+        const isImage = /image|\.png|\.jpg|\.jpeg|\.gif|\.webp|binary data/i.test(clipText);
         const thumbDir = "/tmp/clipboard_thumbnails"
-
-        // 2. Build the new clean path using the subfolder folder structure
-        const thumbPath =
-        isImage ?
-        thumbDir + "/quickshell_clip_thumb_" + clipId + ".png" :
-        ""
+        const thumbPath = isImage ? thumbDir + "/quickshell_clip_thumb_" + clipId + ".png" : ""
 
         if (isImage) {
-            // 3. Inject a safe directory generation check directly into your execution chain
+            // Decodes, resizes, and converts any image format to a valid, lightweight PNG (Standardized with stdin '-' specifier)
             thumbnailQueue.push(
-                "mkdir -p " + thumbDir + " && " +
-                "cliphist decode " +
-                clipId +
-                " | magick -thumbnail 100x100 png:" +
-                thumbPath +
-                " 2>/dev/null || " +
-                "cliphist decode " +
-                clipId +
-                " > " +
-                thumbPath +
-                " 2>/dev/null"
+                "cliphist decode " + clipId + " | magick - -thumbnail 100x100 png:" + thumbPath + " 2>/dev/null || " +
+                "cliphist decode " + clipId + " | convert - -thumbnail 100x100 png:" + thumbPath + " 2>/dev/null || " +
+                "cliphist decode " + clipId + " > " + thumbPath + " 2>/dev/null"
             )
         }
 
-
-
-
         allClipboardItems.push({
             id: clipId,
-
             text: clipText,
-
-            searchText: lower,
-
-            isImage,
-            imagePath: thumbPath,
-            rawLineText: rawLine
+            searchText: clipText.toLowerCase(),
+                               isImage,
+                               imagePath: thumbPath,
+                               rawLineText: rawLine
         })
     }
 
     function flushThumbnailQueue() {
-        if (
-            thumbnailQueue.length === 0
-        ) {
-            return
-        }
+        if (thumbnailQueue.length === 0) return;
 
+        // Directory creation folder is run exactly once here instead of 300 times in the row queue loop
         thumbnailWorker.command = [
             "sh",
             "-c",
-            thumbnailQueue.join(";")
+            "mkdir -p /tmp/clipboard_thumbnails;" + thumbnailQueue.join(";")
         ]
-
         thumbnailWorker.running = true
     }
 
     Process {
         id: pollCheckWorker
-
         command: [
             "sh",
             "-c",
@@ -358,17 +242,9 @@ Item {
 
         stdout: SplitParser {
             onRead: data => {
-                const cleanId =
-                data.trim()
-
-                if (
-                    cleanId &&
-                    cleanId !==
-                    root.lastSeenTopId
-                ) {
-                    root.lastSeenTopId =
-                    cleanId
-
+                const cleanId = data.trim()
+                if (cleanId && cleanId !== root.lastSeenTopId) {
+                    root.lastSeenTopId = cleanId
                     loadClipboard()
                 }
             }
@@ -377,7 +253,6 @@ Item {
 
     Process {
         id: clipboardLoader
-
         command: [
             "sh",
             "-c",
@@ -386,32 +261,14 @@ Item {
 
         stdout: SplitParser {
             onRead: data => {
-                const lines =
-                data.split("\n")
+                const lines = data.split("\n")
+                for (let i = 0, c = lines.length; i < c; ++i) {
+                    const line = lines[i].trim()
+                    if (!line) continue;
 
-                for (
-                    let i = 0,
-                     c = lines.length; i < c;
-                     ++i
-                ) {
-                    const line =
-                    lines[i].trim()
-
-                    if (!line) {
-                        continue
-                    }
-
-                    let sep =
-                    line.indexOf("\t")
-
-                    if (sep === -1) {
-                        sep =
-                        line.indexOf(" ")
-                    }
-
-                    if (sep === -1) {
-                        continue
-                    }
+                    // cliphist output standard is strictly tab-delimited (\t)
+                    let sep = line.indexOf("\t")
+                    if (sep === -1) continue;
 
                     addClipboardItem(
                         line.slice(0, sep).trim(),
@@ -430,13 +287,11 @@ Item {
 
     Process {
         id: previewLoader
-
         stdout: SplitParser {
             onRead: data => {
                 root.previewText += data
             }
         }
-
         onStarted: {
             root.previewText = ""
         }
@@ -448,7 +303,6 @@ Item {
 
     Process {
         id: copyProcess
-
         onExited: {
             root.clipboardCopied("done")
         }
@@ -456,8 +310,17 @@ Item {
 
     Process {
         id: deleteProcess
-
         onExited: {
+            reloadDelayTimer.start()
+        }
+    }
+
+    // Atomic wipe process (clears local db and /tmp cached thumbnails)
+    Process {
+        id: wipeProcess
+        running: false
+        command: ["sh", "-c", "cliphist wipe; rm -rf /tmp/clipboard_thumbnails/*"]
+        onExited: (exitCode) => {
             reloadDelayTimer.start()
         }
     }
