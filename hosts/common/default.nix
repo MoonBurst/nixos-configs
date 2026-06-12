@@ -16,6 +16,7 @@
     ./programs/brave.nix
     ./programs/librewolf.nix
     ./programs/audacious.nix
+    ./programs/nemo.nix
 
   #  ./programs/walker.nix
   ];

@@ -36,19 +36,20 @@ Singleton {
     signal undoRequested()
 
     readonly property var tools: [
-        { id: "select",    icon: "⤢", tip: "Move / resize selection (V)" },
-        { id: "rect",      icon: "▭", tip: "Rectangle (R)" },
-        { id: "ellipse",   icon: "◯", tip: "Ellipse (O)" },
-        { id: "arrow",     icon: "↗", tip: "Arrow (A)" },
-        { id: "line",      icon: "╱", tip: "Line (L)" },
-        { id: "pen",       icon: "✎", tip: "Freehand pen (P)" },
-        { id: "highlight", icon: "▬", tip: "Highlighter (H)" },
-        { id: "text",      icon: "T",      tip: "Text (T)" },
-        { id: "counter",   icon: "①", tip: "Numbered step (N)" },
-        { id: "pixelate",  icon: "▦", tip: "Pixelate / redact (X)" }
+        { id: "select",      icon: "⤢", tip: "Move / resize selection (V)" },
+        { id: "rect",        icon: "▭", tip: "Rectangle (R)" },
+        { id: "ellipse",     icon: "◯", tip: "Ellipse (O)" },
+        { id: "arrow",       icon: "↗", tip: "Arrow (A)" },
+        { id: "line",        icon: "╱", tip: "Line (L)" },
+        { id: "pen",         icon: "✎", tip: "Freehand pen (P)" },
+        { id: "highlight",   icon: "▬", tip: "Highlighter (H)" },
+        { id: "text",        icon: "T", tip: "Text (T)" },
+        { id: "counter",     icon: "①", tip: "Numbered step (N)" },
+        { id: "redact",      icon: "█", tip: "Redact / redact (X)" },
+        { id: "colorpicker", icon: "✛", tip: "Color Picker (I)" }
     ]
 
-    function isDrawTool() { return root.tool !== "select"; }
+    function isDrawTool() { return root.tool !== "select" && root.tool !== "colorpicker"; }
 
     function claimScreen(name) {
         if (root.activeScreen === "")

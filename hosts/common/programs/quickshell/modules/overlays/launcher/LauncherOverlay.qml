@@ -223,16 +223,11 @@ Rectangle {
     }
 
     // Exported helper wrappers for root shell IPC toggle targeting
-    function openLauncher() { toggleOverlayMode("apps"); }
     function toggleLauncher() { toggleOverlayMode("apps"); }
-    function openClipboard() { toggleOverlayMode("clipboard"); }
     function toggleClipboard() { toggleOverlayMode("clipboard"); }
-    function openTodo() { toggleOverlayMode("todo"); }
     function toggleTodo() { toggleOverlayMode("todo"); }
-    function openPass() { toggleOverlayMode("pass"); }
     function togglePass() { toggleOverlayMode("pass"); }
     function toggleEmail() { if (mode === "Email" && launcherWindow.visible) closeOverlay(); else toggleOverlayMode("Email"); }
-
     function openDictionary(word) {
         launcherRoot.mode = "dictionary"
         searchField.text = word || ""
@@ -298,7 +293,7 @@ Rectangle {
                 id: searchField
                 width: parent.width
                 leftPadding: 20
-                height: 52
+                height: 50
 
                 // Forcibly clear active focus only in "todo" and "email" modes (Keeps search bar visible for password queries)
                 focus: launcherRoot.mode !== "todo" && launcherRoot.mode.toLowerCase() !== "email"
@@ -760,7 +755,7 @@ Rectangle {
                 focus: true
 
                 width: parent.width
-                height: active ? parent.contentHeight : 0
+                height: active ? parent.contentHeight +70: 0
 
                 source: "Todo.qml"
 

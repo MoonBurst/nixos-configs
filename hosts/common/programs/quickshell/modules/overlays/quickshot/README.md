@@ -17,7 +17,7 @@ file — all from a single keystroke.
   - ▭ Rectangle &nbsp; ◯ Ellipse
   - ↗ Arrow &nbsp; ╱ Line &nbsp; ✎ Freehand pen
   - ▬ Highlighter (translucent) &nbsp; **T** Text
-  - ① Numbered steps &nbsp; ▦ Pixelate / redact
+  - ① Numbered steps &nbsp; ▦ Redact / redact
 - **8-colour palette** and four stroke widths.
 - **Undo / clear**, keyboard shortcuts for everything.
 - **Copy to clipboard** (via `wl-copy`) or **save** to
@@ -79,7 +79,7 @@ bindsym Print exec /path/to/quickshot/quickshot
 | `Ctrl+C` | Copy to clipboard |
 | `Ctrl+Z` | Undo last annotation |
 | `V` | Move / resize selection |
-| `R` `O` `A` `L` `P` `H` `T` `N` `X` | Rectangle, ellipse, arrow, line, pen, highlight, text, number, pixelate |
+| `R` `O` `A` `L` `P` `H` `T` `N` `X` | Rectangle, ellipse, arrow, line, pen, highlight, text, number, redact |
 
 ## Architecture
 
@@ -90,7 +90,7 @@ A flat Quickshell config directory; Quickshell auto-synthesises the `qmldir`.
 | `shell.qml` | Entry point — one `ScreenOverlay` per monitor via `Variants`. |
 | `ScreenOverlay.qml` | Per-monitor layershell overlay: frozen `ScreencopyView` backdrop, dim veil, region create/move/resize, keyboard handling, and the grab → crop → save/copy export pipeline. |
 | `AnnotationCanvas.qml` | Owns the annotation model + in-progress draft and the inline text editor; exposes the drawing-gesture API. |
-| `AnnotationShape.qml` | Renders a single annotation of any type (`QtQuick.Shapes` for vector tools, `ShaderEffectSource` for pixelate). |
+| `AnnotationShape.qml` | Renders a single annotation of any type (`QtQuick.Shapes` for vector tools, `ShaderEffectSource` for redact). |
 | `Toolbar.qml` | Tool palette, colour/stroke pickers, action buttons. |
 | `IconButton.qml`, `Handle.qml`, `ToolbarSeparator.qml` | Reusable UI primitives. |
 | `ShotState.qml` *(singleton)* | Shared tool/colour state + cross-monitor coordination. |

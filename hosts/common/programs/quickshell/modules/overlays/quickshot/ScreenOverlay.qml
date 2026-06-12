@@ -49,7 +49,7 @@ PanelWindow {
     readonly property bool showChrome: ready && !exporting && (creating || hasSelection)
     // Logical -> native pixel ratio, used to report/export at full resolution.
     readonly property real captureScale: shot.sourceSize.width > 0
-                                         ? shot.sourceSize.width / Math.max(1, width) : 1
+    ? shot.sourceSize.width / Math.max(1, width) : 1
 
     // Pending grab mode ("copy" | "save" | "selftest").
     property string _mode: ""
@@ -187,7 +187,7 @@ PanelWindow {
 
         // 5. Pre-selection hint.
         Rectangle {
-            visible: root.ready && root.active && !root.hasSelection && !root.creating
+            visible: root.ready && root.active && !root.hasSelection && !root.creating && ShotState.tool !== "colorpicker"
             anchors.centerIn: parent
             radius: 10
             color: Style.panel
@@ -208,7 +208,7 @@ PanelWindow {
         MouseArea {
             id: creator
             anchors.fill: parent
-            enabled: root.active && !root.hasSelection && root.ready
+            enabled: root.active && !root.hasSelection && root.ready && ShotState.tool !== "colorpicker"
             visible: enabled
             acceptedButtons: Qt.LeftButton
             cursorShape: Qt.CrossCursor
@@ -323,6 +323,117 @@ PanelWindow {
                     canvas.cancelEditing();
                     e.accepted = true;
                 }
+            }
+        }
+
+        // 8c. Color Picker Area (only active when the color picker tool is active)
+        MouseArea {
+            id: colorPickerArea
+            enabled: root.active && root.ready && ShotState.tool === "colorpicker"
+            visible: enabled
+            anchors.fill: parent
+            hoverEnabled: true
+            acceptedButtons: Qt.LeftButton
+            cursorShape: Qt.BlankCursor // Hide the traditional cursor to let magnifier align smoothly
+
+            property real mouseX: 0
+            property real mouseY: 0
+
+            onPositionChanged: function (mouse) {
+                mouseX = mouse.x;
+                mouseY = mouse.y;
+            }
+
+            onPressed: function (mouse) {
+                mouseX = mouse.x;
+                mouseY = mouse.y;
+                root.pickColor(mouse.x, mouse.y);
+            }
+        }
+
+        // 8d. Magnifier Loupe Bubble
+        Item {
+            id: magnifier
+            visible: colorPickerArea.enabled && colorPickerArea.containsMouse
+            x: colorPickerArea.mouseX - width / 2
+            y: colorPickerArea.mouseY - height / 2
+            width: 130
+            height: 130
+            z: 2000
+
+            Rectangle {
+                anchors.fill: parent
+                radius: width / 2
+                color: "transparent"
+                border.color: Style.selectionBorder
+                border.width: 3
+                clip: true
+
+                // Zoomed backdrop view (sharp 13x13 pixel grid representation)
+                ShaderEffectSource {
+                    id: zoomSource
+                    anchors.fill: parent
+                    sourceItem: captureRoot
+                    readonly property real srcW: 13
+                    readonly property real srcH: 13
+                    sourceRect: Qt.rect(
+                        colorPickerArea.mouseX - srcW / 2,
+                        colorPickerArea.mouseY - srcH / 2,
+                        srcW,
+                        srcH
+                    )
+                    textureSize: Qt.size(srcW, srcH)
+                    smooth: false // Disable bilinear smoothing for clear pixel boundary definition
+                }
+
+                // Grid layout
+                Canvas {
+                    anchors.fill: parent
+                    onPaint: {
+                        var ctx = getContext("2d");
+                        ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
+                        ctx.lineWidth = 1;
+                        var step = parent.width / 13;
+                        for (var i = 1; i < 13; i++) {
+                            ctx.beginPath();
+                            ctx.moveTo(i * step, 0);
+                            ctx.lineTo(i * step, parent.height);
+                            ctx.stroke();
+
+                            ctx.beginPath();
+                            ctx.moveTo(0, i * step);
+                            ctx.lineTo(parent.width, i * step);
+                            ctx.stroke();
+                        }
+                    }
+                }
+
+                // Central targeting marker (the exact pixel clicked)
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: parent.width / 13
+                    height: parent.height / 13
+                    color: "transparent"
+                    border.color: "white"
+                    border.width: 1.5
+
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.margins: 1
+                        color: "transparent"
+                        border.color: "black"
+                        border.width: 1
+                    }
+                }
+            }
+
+            Rectangle {
+                anchors.fill: parent
+                radius: width / 2
+                color: "transparent"
+                border.color: "black"
+                border.width: 1
+                anchors.margins: -1
             }
         }
 
@@ -460,7 +571,8 @@ PanelWindow {
         map[Qt.Key_H] = "highlight";
         map[Qt.Key_T] = "text";
         map[Qt.Key_N] = "counter";
-        map[Qt.Key_X] = "pixelate";
+        map[Qt.Key_X] = "redact";
+        map[Qt.Key_I] = "colorpicker";
         if (map[e.key] !== undefined) {
             ShotState.tool = map[e.key];
             e.accepted = true;
@@ -519,8 +631,8 @@ PanelWindow {
             return;
         }
         var path = (mode === "copy") ? ShotState.clipPath()
-                 : (mode === "save") ? ShotState.savePath()
-                 : "/tmp/quickshot-selftest.png";
+        : (mode === "save") ? ShotState.savePath()
+        : "/tmp/quickshot-selftest.png";
         var ok = result.saveToFile(path);
         if (ok && mode === "copy") {
             Quickshell.execDetached(["sh", "-c", "wl-copy --type image/png < " + ShotState.shQuote(path)]);
@@ -537,6 +649,123 @@ PanelWindow {
             "-i", withFile ? path : "image-x-generic",
             summary, path
         ]);
+    }
+
+    // ---- Color picking logic -------------------------------------------------
+    function pickColor(x, y) {
+        colorSamplerSource.grabToImage(function (result) {
+            if (!result) return;
+
+            var tempPath = "/tmp/quickshot_pixel.png";
+            result.saveToFile(tempPath);
+
+            // Append a unique micro-timestamp query parameter to bypass cache
+            var cacheBuster = "?t=" + new Date().getTime();
+            colorCanvas.sample("file://" + tempPath + cacheBuster, function (rgba) {
+                var r = rgba[0];
+                var g = rgba[1];
+                var b = rgba[2];
+
+                var hex = rgbToHex(r, g, b);
+                var rgbStr = "rgb(" + r + ", " + g + ", " + b + ")";
+
+                // Update selected annotation stroke color
+                ShotState.strokeColor = hex;
+                notifyColor(hex, rgbStr);
+
+                // Clean up temporary pixel image and return tool to selection mode
+                Quickshell.execDetached(["rm", "-f", tempPath]);
+                ShotState.tool = "select";
+            });
+        });
+    }
+
+    function rgbToHex(r, g, b) {
+        var toHex = function (c) {
+            var hex = c.toString(16);
+            return hex.length === 1 ? "0" + hex : hex;
+        };
+        return "#" + toHex(r) + toHex(g) + toHex(b);
+    }
+
+    function notifyColor(hex, rgbStr) {
+        // Create an SVG icon containing the chosen color on the fly
+        var cleanHex = hex.replace("#", "");
+        var iconPath = "/tmp/qs_color_icon_" + cleanHex + ".svg";
+        var svgContent = '<svg width="64" height="64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="' + hex + '" rx="8"/></svg>';
+
+        var title = "Color Picked";
+        var body = hex + "  •  " + rgbStr;
+
+        // Write it to clipboard, generate the SVG icon, and fire an urgent notify-send using that icon
+        var cmd = [
+            "sh", "-c",
+            "echo -n " + ShotState.shQuote(hex) + " | wl-copy && " +
+            "echo " + ShotState.shQuote(svgContent) + " > " + ShotState.shQuote(iconPath) + " && " +
+            "notify-send -a Quickshot -u critical -i " + ShotState.shQuote(iconPath) + " " + ShotState.shQuote(title) + " " + ShotState.shQuote(body)
+        ];
+
+        Quickshell.execDetached(cmd);
+    }
+
+    // ---- Color picking nodes -------------------------------------------------
+    Item {
+        id: colorSamplerItem
+        x: 0
+        y: 0
+        width: 1
+        height: 1
+        visible: true // Statically rendered inside the active window bounds
+        opacity: 0.01
+
+        ShaderEffectSource {
+            id: colorSamplerSource
+            anchors.fill: parent
+            sourceItem: captureRoot
+            live: true
+            smooth: false
+            // Statically bound to the current mouse coordinates in real-time
+            sourceRect: Qt.rect(colorPickerArea.mouseX, colorPickerArea.mouseY, 1, 1)
+        }
+    }
+
+    Canvas {
+        id: colorCanvas
+        x: 0
+        y: 0
+        width: 1
+        height: 1
+        visible: true // Statically rendered inside the active window bounds
+        opacity: 0.01
+
+        property var callback: null
+        property string currentUrl: ""
+        onImageLoaded: {
+            var ctx = getContext("2d");
+            ctx.drawImage(colorCanvas.currentUrl, 0, 0);
+            var imgData = ctx.getImageData(0, 0, 1, 1);
+            if (callback) {
+                callback(imgData.data);
+                callback = null;
+            }
+            unloadImage(colorCanvas.currentUrl); // Free memory cache
+        }
+        function sample(url, cb) {
+            callback = cb;
+            currentUrl = url;
+            if (isImageLoaded(url)) {
+                var ctx = getContext("2d");
+                ctx.drawImage(url, 0, 0);
+                var imgData = ctx.getImageData(0, 0, 1, 1);
+                if (callback) {
+                    callback(imgData.data);
+                    callback = null;
+                }
+                unloadImage(url); // Free memory cache
+            } else {
+                loadImage(url);
+            }
+        }
     }
 
     // ---- Self-test (headless validation) -------------------------------------
@@ -577,7 +806,7 @@ PanelWindow {
             { type: "pen",      points: [{x:400,y:300},{x:430,y:330},{x:460,y:300},{x:490,y:340}], color: "#ffffff", width: 4 },
             { type: "counter",  x1: 150, y1: 150, color: "#5e5ce6", number: 1, fontSize: 26 },
             { type: "text",     x1: 170, y1: 250, text: "Quickshot", color: "#ffd60a", fontSize: 28 },
-            { type: "pixelate", x1: 380, y1: 270, x2: 540, y2: 380 }
+            { type: "redact", x1: 380, y1: 270, x2: 540, y2: 380 }
         ];
 
         runSelfTestExport();

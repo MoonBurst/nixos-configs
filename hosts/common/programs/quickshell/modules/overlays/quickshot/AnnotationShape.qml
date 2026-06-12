@@ -9,13 +9,13 @@ Item {
     id: shape
 
     // The annotation record. Shape varies by `type`:
-    //   rect/ellipse/highlight/pixelate : x1,y1,x2,y2 (opposite corners)
+    //   rect/ellipse/highlight/redact : x1,y1,x2,y2 (opposite corners)
     //   arrow/line                      : x1,y1 -> x2,y2 (endpoints)
     //   pen                             : points[] of {x,y}
     //   text                            : x1,y1 anchor + text
     //   counter                         : x1,y1 centre + number
     property var ann
-    // The frozen ScreencopyView, sampled by the pixelate tool.
+    // The frozen ScreencopyView, sampled by the redact tool.
     property Item backdrop: null
 
     anchors.fill: parent
@@ -35,7 +35,7 @@ Item {
             case "highlight": return highlightComp;
             case "text": return textComp;
             case "counter": return counterComp;
-            case "pixelate": return pixelateComp;
+            case "redact": return redactComp;
             }
             return null;
         }
@@ -242,32 +242,27 @@ Item {
         }
     }
 
-    // ---- Pixelate / redact ---------------------------------------------------
+    // ---- Redact / redact ---------------------------------------------------
     Component {
-        id: pixelateComp
+        id: redactComp
         Item {
             anchors.fill: parent
             readonly property real nx: Math.min(shape.ann.x1, shape.ann.x2)
             readonly property real ny: Math.min(shape.ann.y1, shape.ann.y2)
-            readonly property real nw: Math.abs(shape.ann.x2 - shape.ann.x1)
-            readonly property real nh: Math.abs(shape.ann.y2 - shape.ann.y1)
+            readonly property real nw: Math.max(1, Math.abs(shape.ann.x2 - shape.ann.x1))
+            readonly property real nh: Math.max(1, Math.abs(shape.ann.y2 - shape.ann.y1))
 
-            ShaderEffectSource {
+            Rectangle {
                 x: parent.nx
                 y: parent.ny
-                width: Math.max(1, parent.nw)
-                height: Math.max(1, parent.nh)
+                width: parent.nw
+                height: parent.nh
+                color: "black"
                 visible: shape.backdrop !== null
-                sourceItem: shape.backdrop
-                sourceRect: Qt.rect(parent.nx, parent.ny, Math.max(1, parent.nw), Math.max(1, parent.nh))
-                // Force a tiny intermediate texture, then upscale with nearest
-                // filtering to produce blocky pixelation.
-                textureSize: Qt.size(Math.max(1, Math.round(parent.nw / 14)),
-                                     Math.max(1, Math.round(parent.nh / 14)))
-                smooth: false
             }
         }
     }
+
 
     // Convert an array of {x,y} into the list<point> PathPolyline expects.
     function polyline(points) {

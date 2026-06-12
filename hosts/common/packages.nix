@@ -57,14 +57,13 @@
     wlrctl                      # Wayland control
     wtype                       # Virtual keystroke tool
     fastfetch                   # System info
-    nemo                        # File manager (GTK)
     # --- System Libraries & Audio Engines ---
     gdk-pixbuf                  # Image library
     webp-pixbuf-loader          # WebP support for GTK
     rnnoise-plugin              # Mic noise suppression
     qt6Packages.qt6ct           # QT theming logic
     pass                        # Password manager
-
+    nemo
  #   swaylock-effects                    # Screen locker with blur and aesthetic effects
     satty                               # Modern screenshot annotation tool
     qview                               # Minimalist, fast image viewer

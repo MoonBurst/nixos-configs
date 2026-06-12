@@ -12,7 +12,7 @@ Item {
     property var annotations: []
     // The shape currently being dragged out, or null.
     property var draft: null
-    // The frozen ScreencopyView, handed to pixelate annotations for sampling.
+    // The frozen ScreencopyView, handed to redact annotations for sampling.
     property Item backdrop: null
     // The text annotation currently being typed, or null.
     property var editing: null
