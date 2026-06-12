@@ -12,7 +12,7 @@ Rectangle {
     property color folderTextColor: (typeof theme !== 'undefined') ? theme.base05 : "#f7f700"
     property color countTextColor: (typeof theme !== 'undefined') ? theme.base05 : "#ebdbb2"
     property int sidebarPadding: (typeof theme !== 'undefined') ? theme.globalPadding : 20
-    property int itemHeight: (typeof theme !== 'undefined' ? theme.defaultCardHeight : 140) - 50
+    property int itemHeight: (typeof theme !== 'undefined' ? theme.defaultCardHeight : 140) - 70
     property int fontSize: (typeof theme !== 'undefined') ? theme.globalFontSize : 20
     property string sidebarFontFamily: (typeof theme !== 'undefined') ? theme.fontFamily : "Fira Sans"
 

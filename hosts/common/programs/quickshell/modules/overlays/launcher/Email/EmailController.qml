@@ -6,7 +6,7 @@ QtObject {
     property string cacheFilePath: ""
     property var fullMailCacheList: []
     property var filteredMails: []
-    property var folderList: ["inbox", "starred", "all", "sent", "drafts", "trash", "spam"]
+    property var folderList: ["inbox", "starred", "steam", "all", "sent", "drafts", "trash", "spam"]
 
     property int currentFolderIndex: 0
     property int currentMailIndex: 0
@@ -44,7 +44,7 @@ QtObject {
     }
 
     function recalculateFolderStats() {
-        var counts = { "inbox": 0, "starred": 0, "all": 0, "sent": 0, "drafts": 0, "trash": 0, "spam": 0 };
+        var counts = { "inbox": 0, "starred": 0, "steam": 0, "all": 0, "sent": 0, "drafts": 0, "trash": 0, "spam": 0 };
         var seenStarredIds = {}, seenAllIds = {};
 
         // Modernized ES6 map/forEach replaces procedural variable definitions
@@ -62,7 +62,11 @@ QtObject {
                 counts["starred"]++; seenStarredIds[sig] = true;
             }
             if (folder !== "trash" && folder !== "spam" && !seenAllIds[sig]) {
-                counts["all"]++; seenAllIds[sig] = true;
+                // Only count in All Mail totals if it does not belong to a primary folder
+                if (folder === "all" && !isStarred) {
+                    counts["all"]++;
+                }
+                seenAllIds[sig] = true;
             }
             if (folder !== "starred" && folder !== "all" && counts[folder] !== undefined) {
                 if (folder === "inbox" ? isUnread : true) counts[folder]++;
@@ -103,7 +107,9 @@ QtObject {
                     belongsToFolder = isFolderSwitch ? (inboxUnread && mail.folder === "inbox")
                     : ((inboxUnread && mail.folder === "inbox") || (mail.folder === "inbox" && oldMailIds[compoundKey] === true));
                 } else if (targetFolder === "all") {
-                    belongsToFolder = (mail.folder !== "trash" && mail.folder !== "spam");
+                    var isStarred = (mail.flags || []).map(f => f.toLowerCase()).includes("flagged");
+                    // Exclude any Inbox, Steam, or Starred emails from showing up in the Archive tab
+                    belongsToFolder = (mail.folder === "all" && !isStarred);
                 } else if (targetFolder === "starred") {
                     var isStarred = (mail.flags || []).map(f => f.toLowerCase()).includes("flagged");
                     var senderPart = (mail.from ? (mail.from.addr || mail.from.name || "") : (mail.sender || "")).trim();

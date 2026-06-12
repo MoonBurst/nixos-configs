@@ -155,7 +155,16 @@ Item {
     // ============================================================================
     function getMaildirFolder(folderLabel) {
         var label = (folderLabel || "").toLowerCase();
-        var map = { "inbox": "INBOX", "starred": ".[Gmail].Starred", "all": ".[Gmail].All Mail", "drafts": ".[Gmail].Drafts", "sent": ".[Gmail].Sent Mail", "trash": ".[Gmail].Trash", "spam": ".[Gmail].Spam" };
+        var map = {
+            "inbox": "INBOX",
+            "starred": ".[Gmail].Starred",
+            "all": ".[Gmail].All Mail",
+            "steam": ".Steam",
+            "drafts": ".[Gmail].Drafts",
+            "sent": ".[Gmail].Sent Mail",
+            "trash": ".[Gmail].Trash",
+            "spam": ".[Gmail].Spam"
+        };
         return map[label] || "INBOX";
     }
 

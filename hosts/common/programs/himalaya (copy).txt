@@ -46,7 +46,6 @@ delimiter = "."
 [accounts.gmail.folder.aliases]
 inbox = "INBOX"
 all = ".[Gmail].All Mail"
-steam = ".Steam"
 drafts = ".[Gmail].Drafts"
 sent = ".[Gmail].Sent Mail"
 trash = ".[Gmail].Trash"
@@ -68,7 +67,7 @@ type = "tls"
 text-mime-header = "text/plain"
 
 [accounts.gmail.envelope.list]
-page-size = 100000
+page-size = 500
 """)
 
     os.makedirs(mbsync_dir, exist_ok=True)
@@ -94,7 +93,7 @@ Inbox {target_home}/.local/share/mail/gmail
 Channel gmail
 Far :gmail-remote:
 Near :gmail-local:
-Patterns "INBOX" "Steam" "[Gmail]/All Mail" "[Gmail]/Drafts" "[Gmail]/Trash" "[Gmail]/Sent Mail" "[Gmail]/Spam" "[Gmail]/Starred"
+Patterns "INBOX" "[Gmail]/All Mail" "[Gmail]/Drafts" "[Gmail]/Trash" "[Gmail]/Sent Mail" "[Gmail]/Spam" "[Gmail]/Starred"
 Create Near
 Sync All
 Expunge Both
@@ -355,7 +354,7 @@ def process_live_text_queue():
                 downloads_dir = f"{target_home}/Downloads"
 
                 folder_mapping = {
-                    "inbox": "INBOX", "starred": ".[Gmail].Starred", "all": ".[Gmail].All Mail", "steam": ".Steam",
+                    "inbox": "INBOX", "starred": ".[Gmail].Starred", "all": ".[Gmail].All Mail",
                     "drafts": ".[Gmail].Drafts", "sent": ".[Gmail].Sent Mail", "trash": ".[Gmail].Trash", "spam": ".[Gmail].Spam"
                 }
                 canonical_folder = folder_mapping.get(target_folder.lower(), target_folder)
@@ -379,8 +378,13 @@ def process_live_text_queue():
                 dest_folder = arg3
 
                 folder_mapping = {
-                    "inbox": "INBOX", "starred": ".[Gmail].Starred", "all": ".[Gmail].All Mail", "steam": ".Steam",
-                    "drafts": ".[Gmail].Drafts", "sent": ".[Gmail].Sent Mail", "trash": ".[Gmail].Trash", "spam": ".[Gmail].Spam"
+                    "inbox": "INBOX",
+                    "starred": ".[Gmail].Starred",
+                    "all": ".[Gmail].All Mail",
+                    "drafts": ".[Gmail].Drafts",
+                    "sent": ".[Gmail].Sent Mail",
+                    "trash": ".[Gmail].Trash",
+                    "spam": ".[Gmail].Spam"
                 }
                 canonical_source = folder_mapping.get(source_folder.lower(), source_folder)
                 canonical_dest = folder_mapping.get(dest_folder.lower(), dest_folder)
@@ -398,8 +402,6 @@ def process_live_text_queue():
         conn.close()
 
         if actions_taken:
-            print("[Queue Processor] Pushing local modifications to remote mail servers...", flush=True)
-            subprocess.run(["${pkgs.isync}/bin/mbsync", "-c", mbsync_file, "gmail"], env=env_copy)
             rebuild_local_ui_cache()
             return True
     except Exception as e: print(f"[Queue Processor Error]: {e}", flush=True)
@@ -420,20 +422,10 @@ def load_existing_bodies(cache_file_path):
 
 def rebuild_local_ui_cache():
     print("Rebuilding emails.json layout index cache vectors...", flush=True)
-
-    # Priority order maps the target directories to the local cache identifier.
-    # Inbox, Starred, Steam, and Trash take priority over the master "All Mail" list.
-    priority_folders = [
-        ("INBOX", "inbox"),
-        (".[Gmail].Starred", "starred"),
-        (".Steam", "steam"),
-        (".[Gmail].Trash", "trash"),
-        (".[Gmail].Drafts", "drafts"),
-        (".[Gmail].Sent Mail", "sent"),
-        (".[Gmail].Spam", "spam"),
-        (".[Gmail].All Mail", "all")
-    ]
-
+    folder_map = {
+      "INBOX": "inbox", ".[Gmail].All Mail": "all", ".[Gmail].Drafts": "drafts",
+      ".[Gmail].Sent Mail": "sent", ".[Gmail].Trash": "trash", ".[Gmail].Spam": "spam", ".[Gmail].Starred": "starred"
+    }
     existing_bodies = load_existing_bodies(cache_file)
     old_ids = set()
     if os.path.exists(cache_file):
@@ -444,8 +436,9 @@ def rebuild_local_ui_cache():
                     if m_id: old_ids.add(m_id)
         except Exception: pass
 
-    def fetch_folder_data(target_folder, qml_label):
-        cmd = ["${pkgs.himalaya}/bin/himalaya", "--config", himalaya_config, "--output", "json", "envelope", "list", "--folder", target_folder, "--page-size", "100000"]
+    def fetch_folder_data(target_folder):
+        qml_label = folder_map[target_folder]
+        cmd = ["${pkgs.himalaya}/bin/himalaya", "--config", himalaya_config, "--output", "json", "envelope", "list", "--folder", target_folder, "--page-size", "500"]
         res = subprocess.run(cmd, capture_output=True, text=True, env=env_copy)
         items = []
         if res.returncode == 0 and res.stdout.strip():
@@ -463,6 +456,7 @@ def rebuild_local_ui_cache():
                         if msg_unique_id in existing_bodies:
                             item["body_content"] = existing_bodies[msg_unique_id]
                         elif msg_id and idx < 15:
+                            # Reverted to robust plain-text read to prevent any JSON-nesting/clutter bugs on disk
                             read_cmd = ["${pkgs.himalaya}/bin/himalaya", "--config", himalaya_config, "message", "read", str(msg_id), "--folder", target_folder]
                             read_res = subprocess.run(read_cmd, capture_output=True, text=True, env=env_copy)
                             if read_res.returncode == 0:
@@ -476,6 +470,7 @@ def rebuild_local_ui_cache():
                         else:
                             item["body_content"] = ""
 
+                        # Filesystem-first visual attachment preview pre-fetch parser (restored)
                         if has_att and msg_id:
                             print(f"[Cache Pre-fetch] Found attachments in message {msg_id}. Pre-downloading previews...", flush=True)
                             preview_dir = f"{target_home}/.cache/himalaya/previews/{msg_id}"
@@ -495,32 +490,21 @@ def rebuild_local_ui_cache():
             except Exception: pass
         return items
 
-    folder_results = {}
-    with ThreadPoolExecutor(max_workers=8) as executor:
-        futures = {executor.submit(fetch_folder_data, target_folder, qml_label): target_folder for target_folder, qml_label in priority_folders}
-        for future in futures:
-            target_folder = futures[future]
-            try:
-                folder_results[target_folder] = future.result()
-            except Exception:
-                folder_results[target_folder] = []
-
     master_list = []
     seen_signatures = set()
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        results = executor.map(fetch_folder_data, folder_map.keys())
+        for folder_items in results:
+            for item in folder_items:
+                subject = (item.get("subject") or "").strip()
+                date = (item.get("date") or "").strip()
+                t_from = item.get("from") or {}
+                sender = (t_from.get("addr") or t_from.get("name") or item.get("sender") or "").strip()
 
-    # Process collected folders strictly in the priority order.
-    # An email found in primary folders will block duplicates from being saved inside "all" (All Mail).
-    for target_folder, qml_label in priority_folders:
-        for item in folder_results.get(target_folder, []):
-            subject = (item.get("subject") or "").strip()
-            date = (item.get("date") or "").strip()
-            t_from = item.get("from") or {}
-            sender = (t_from.get("addr") or t_from.get("name") or item.get("sender") or "").strip()
-
-            sig = f"{subject}|{date}|{sender}"
-            if sig not in seen_signatures:
-                seen_signatures.add(sig)
-                master_list.append(item)
+                sig = f"{subject}|{date}|{sender}"
+                if sig not in seen_signatures:
+                    seen_signatures.add(sig)
+                    master_list.append(item)
 
     if old_ids and len(old_ids) > 0:
         new_emails = [item for item in master_list if (item.get("message-id") or item.get("id")) not in old_ids and item.get("folder") == "inbox"]
@@ -564,7 +548,6 @@ def run_gentle_backfill():
 
             dup_folder = "INBOX"
             if folder_label == "starred": dup_folder = ".[Gmail].Starred"
-            elif folder_label == "steam": dup_folder = ".Steam"
             elif folder_label == "all": dup_folder = ".[Gmail].All Mail"
             elif folder_label == "drafts": dup_folder = ".[Gmail].Drafts"
             elif folder_label == "sent": dup_folder = ".[Gmail].Sent Mail"
@@ -578,6 +561,7 @@ def run_gentle_backfill():
                 if split_idx == -1: split_idx = clean_body.find("\r\n\r\n")
                 if split_idx != -1: clean_body = clean_body[split_idx:].strip()
 
+                # Filesystem-first visual attachment preview backfill parser (restored)
                 if has_att and target_id:
                     print(f"[Background Backfill] Found attachments in message {target_id}. Pre-downloading previews...", flush=True)
                     preview_dir = f"{target_home}/.cache/himalaya/previews/{target_id}"
