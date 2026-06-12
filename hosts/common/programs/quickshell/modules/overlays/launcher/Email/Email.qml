@@ -357,9 +357,68 @@ Item {
                 width: rootWindow.previewColumnWidth; height: parent.height; activeMailObject: mailController.selectedMail; activeMailBodyText: mailController.activeMailBody; focus: false
                 onContactRequested: (email) => contactModalOverlay.openContactPrompt(email)
 
-                // Direct attachments download request hook
                 onDownloadAttachmentsRequested: (msgId, folderLabel) => {
                     rootWindow.writeToQueue("DOWNLOAD_ATTACHMENTS", msgId, getMaildirFolder(folderLabel), "");
+                }
+
+                // Intercept the spam block signal and perform a cascade block of all past emails from that sender
+                onMarkSpamRequested: (msgId, folderLabel) => {
+                    var targetMail = mailController.fullMailCacheList.find(item => item.id.toString() === msgId && item.folder.toLowerCase() === folderLabel.toLowerCase());
+                    if (!targetMail) return;
+
+                    var spammerAddr = "";
+                    if (targetMail.from && targetMail.from.addr) {
+                        spammerAddr = targetMail.from.addr.trim().toLowerCase();
+                    } else if (targetMail.sender) {
+                        spammerAddr = targetMail.sender.trim().toLowerCase();
+                    }
+
+                    // Fallback to moving just the single email if no sender address is resolved
+                    if (spammerAddr === "") {
+                        rootWindow.writeToQueue("MOVE", msgId, getMaildirFolder(folderLabel), "spam");
+                        mailController.fullMailCacheList = mailController.fullMailCacheList.filter(item => !(item.id.toString() === msgId && item.folder.toLowerCase() === folderLabel.toLowerCase()));
+                        mailController.recalculateFolderStats();
+                        mailController.filterEmailsByActiveFolder();
+                        return;
+                    }
+
+                    console.log("[Cascade Spam] Commencing cascade spam block for sender: " + spammerAddr);
+
+                    // Scan entire cache list. Move any email matching this sender to the spam folder queue.
+                    var remainingMails = [];
+                    mailController.fullMailCacheList.forEach(item => {
+                        var itemSender = "";
+                        if (item.from && item.from.addr) {
+                            itemSender = item.from.addr.trim().toLowerCase();
+                        } else if (item.sender) {
+                            itemSender = item.sender.trim().toLowerCase();
+                        }
+
+                        if (itemSender === spammerAddr && item.folder.toLowerCase() !== "spam" && item.folder.toLowerCase() !== "trash") {
+                            var sourceFolderArg = getMaildirFolder(item.folder);
+                            rootWindow.writeToQueue("MOVE", item.id.toString(), sourceFolderArg, "spam");
+                        } else {
+                            remainingMails.push(item);
+                        }
+                    });
+
+                    // Snappily update UI display state
+                    mailController.fullMailCacheList = remainingMails;
+                    mailController.recalculateFolderStats();
+                    mailController.filterEmailsByActiveFolder();
+                }
+
+                // Intercept the not spam request signal, move the single email back to the inbox, and remove it from local spam folder display
+                onRestoreSpamRequested: (msgId, folderLabel) => {
+                    var canonicalSource = getMaildirFolder(folderLabel);
+                    rootWindow.writeToQueue("MOVE", msgId, canonicalSource, "inbox");
+                    console.log("[Queue] Restoring spam message " + msgId + " back to Inbox.");
+
+                    mailController.fullMailCacheList = mailController.fullMailCacheList.filter(item => {
+                        return !(item.id.toString() === msgId && item.folder.toLowerCase() === folderLabel.toLowerCase());
+                    });
+                    mailController.recalculateFolderStats();
+                    mailController.filterEmailsByActiveFolder();
                 }
             }
         }

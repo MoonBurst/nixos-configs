@@ -29,26 +29,36 @@ Rectangle {
     property string activeMailBodyText: ""
     property bool hasAttachments: activeMailObject ? !!(activeMailObject["has-attachment"] || activeMailObject.has_attachment || (activeMailObject.attachments && activeMailObject.attachments.length > 0)) : false
 
+    // Automated Unsubscribe URL Scanner
+    property string unsubscribeUrl: findUnsubscribeUrl(activeMailBodyText)
+
     signal contactRequested(string email)
     signal downloadAttachmentsRequested(string msgId, string folderLabel)
+    signal markSpamRequested(string msgId, string folderLabel)
+    signal restoreSpamRequested(string msgId, string folderLabel) // <-- Added Not Spam Signal
 
     color: previewBgColor
     border.color: outerBorderColor
     border.width: outerBorderThickness
     radius: (typeof theme !== 'undefined' && theme.defaultCardRadius) ? theme.defaultCardRadius : 10
 
+    // Scans plain text or raw HTML inside the email body for unsubscribe link structures
+    function findUnsubscribeUrl(rawText) {
+        if (!rawText) return "";
+        var urlRegex = /(https?:\/\/[^\s"'<>\(\)]*unsubscribe[^\s"'<>\(\)]*|https?:\/\/[^\s"'<>\(\)]*opt-?out[^\s"'<>\(\)]*)/gi;
+        var match = rawText.match(urlRegex);
+        return match ? match[0] : "";
+    }
+
     // Consolidated BBCode, HTML Sanitizer, & Plain-Text Link compiler
     function formatBody(rawText) {
         if (!rawText) return "";
 
-        // 1. Escape raw HTML brackets first to prevent QML StyledText parser crashes
-        // (common with headers like <user@domain.com>).
         var escaped = rawText
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;");
 
-        // 2. Safely translate BBCode markup to valid tags after escaping
         var formatted = escaped
         .replace(/\[b\](.*?)\[\/b\]/gi, "<b>$1</b>")
         .replace(/\[i\](.*?)\[\/i\]/gi, "<i>$1</i>")
@@ -57,22 +67,16 @@ Rectangle {
         .replace(/\[url\](.*?)\[\/url\]/gi, '<a href="$1">$1</a>')
         .replace(/\[img\](.*?)\[\/img\]/gi, '<img src="$1" />');
 
-        // 3. Convert raw HTTP/HTTPS URLs to clickthroughable anchors.
-        // Utilizes a safe group-matching regex compatible with older Qt5 engines (No lookbehinds).
         var urlRegex = /(<a [^>]+>.*?<\/a>)|(https?:\/\/[^\s<]+)/g;
         formatted = formatted.replace(urlRegex, function(match, group1, group2) {
             if (group1) {
-                // If it's already matched inside an HTML anchor tag, leave it alone
                 return group1;
             } else {
-                // Otherwise, safely wrap the plain-text URL in an HTML anchor tag
                 return '<a href="' + group2 + '">' + group2 + '</a>';
             }
         });
 
-        // 4. Translate raw line breaks to HTML breaks so QML doesn't collapse them
         formatted = formatted.replace(/\r\n/g, "<br>").replace(/\n/g, "<br>");
-
         return formatted;
     }
 
@@ -102,7 +106,9 @@ Rectangle {
                 Text {
                     text: activeMailObject ? "From: " + (activeMailObject.from ? (activeMailObject.from.name || activeMailObject.from.addr) : "Unknown") : ""
                     font.family: previewComp.previewFontFamily; font.pixelSize: previewComp.metaSize; color: previewComp.bodyTextColor
-                    elide: Text.ElideRight; width: parent.width - 330
+                    elide: Text.ElideRight
+                    // Dynamically subtracts visible button widths (including standard 125px Spam/Not Spam space)
+                    width: parent.width - (previewComp.hasAttachments ? 155 : 0) - (previewComp.unsubscribeUrl !== "" ? 135 : 0) - (previewComp.activeMailObject ? 125 : 0) - 145
                 }
 
                 Rectangle {
@@ -113,6 +119,56 @@ Rectangle {
                     MouseArea {
                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                         onClicked: if (activeMailObject) previewComp.downloadAttachmentsRequested(activeMailObject.id.toString(), activeMailObject.folder)
+                    }
+                }
+
+                // Interactive Unsubscribe Shortcut Link
+                Rectangle {
+                    width: 120; height: 26; color: "#cc241d"; radius: 4; border.color: "#fb4934"; border.width: 1
+                    visible: previewComp.unsubscribeUrl !== ""; anchors.verticalCenter: parent.verticalCenter
+
+                    Text { text: "🚫 Unsubscribe"; font.family: previewComp.previewFontFamily; font.pixelSize: previewComp.metaSize - 4; font.bold: true; color: "#fbf1c7"; anchors.centerIn: parent }
+                    MouseArea {
+                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (previewComp.unsubscribeUrl !== "") {
+                                Qt.openUrlExternally(previewComp.unsubscribeUrl)
+                            }
+                        }
+                    }
+                }
+
+                // Report Spam Button (Hidden if we are already inside the Spam folder)
+                Rectangle {
+                    width: 110; height: 26; color: "#d79921"; radius: 4; border.color: "#fabd2f"; border.width: 1
+                    visible: previewComp.activeMailObject ? previewComp.activeMailObject.folder.toLowerCase() !== "spam" : false
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    Text { text: "⚠️ Mark Spam"; font.family: previewComp.previewFontFamily; font.pixelSize: previewComp.metaSize - 4; font.bold: true; color: "#1d2021"; anchors.centerIn: parent }
+                    MouseArea {
+                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (activeMailObject) {
+                                previewComp.markSpamRequested(activeMailObject.id.toString(), activeMailObject.folder);
+                            }
+                        }
+                    }
+                }
+
+                // Not Spam Recovery Button (Visible ONLY inside the Spam folder)
+                Rectangle {
+                    width: 110; height: 26; color: "#b8bb26"; radius: 4; border.color: "#b8bb26"; border.width: 1
+                    visible: previewComp.activeMailObject ? previewComp.activeMailObject.folder.toLowerCase() === "spam" : false
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    Text { text: "✅ Not Spam"; font.family: previewComp.previewFontFamily; font.pixelSize: previewComp.metaSize - 4; font.bold: true; color: "#282828"; anchors.centerIn: parent }
+                    MouseArea {
+                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (activeMailObject) {
+                                previewComp.restoreSpamRequested(activeMailObject.id.toString(), activeMailObject.folder);
+                            }
+                        }
                     }
                 }
 
@@ -162,7 +218,6 @@ Rectangle {
                     delegate: Column {
                         width: parent.width; spacing: 8
 
-                        // Robust Image Check: Matches mime type OR standard file extension
                         property bool isImage: {
                             if (!modelData) return false;
                             var mime = (modelData.mime || "").toLowerCase();
@@ -211,7 +266,7 @@ Rectangle {
                                     xhr.onreadystatechange = function() {
                                         if (xhr.readyState === XMLHttpRequest.DONE) {
                                             previewText.text = xhr.responseText;
-                                            xhr = null; // Forces immediate garbage-collection dereferencing of the file handle
+                                            xhr = null;
                                         }
                                     }
                                     xhr.send();
