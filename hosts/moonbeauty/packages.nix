@@ -47,7 +47,6 @@ in
     sherlock-launcher                   # Minimalist application runner/launcher
     (pkgs.callPackage ../../packages/sherlock-clipboard.nix {}) # Custom clipboard manager
     btrfs-assistant                     # GUI for managing Btrfs filesystems and Snapper snapshots
-    hyprpicker                          # Color picker for Wayland/Hyprland
 
     # --- Development & Productivity ---
     kdePackages.kate                    # Powerful multi-document text editor

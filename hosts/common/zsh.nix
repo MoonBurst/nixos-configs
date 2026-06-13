@@ -14,7 +14,6 @@
       nix-switch = "sudo nixos-rebuild switch --flake ~/nix";
       wallpaper = "/home/moonburst/nix/hosts/common/scripts/wallpaper.sh";
       grab = "scripts/alias_scripts/search.sh";
-      color = "hyprpicker --format=rgb --autocopy --render-inactive";
       remove-orphans = "scripts/alias_scripts/remove-orphans.sh";
       scan = "$HOME/scripts/alias_scripts/virusscan.sh";
       windows = "sudo virsh start win11";

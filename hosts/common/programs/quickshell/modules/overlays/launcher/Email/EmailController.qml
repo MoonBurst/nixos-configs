@@ -69,7 +69,7 @@ QtObject {
                 seenAllIds[sig] = true;
             }
             if (folder !== "starred" && folder !== "all" && counts[folder] !== undefined) {
-                if (folder === "inbox" ? isUnread : true) counts[folder]++;
+                counts[folder]++;
             }
         });
         controller.folderCountMap = counts;
@@ -100,12 +100,8 @@ QtObject {
                 var belongsToFolder = (mail.folder === targetFolder);
 
                 if (targetFolder === "inbox") {
-                    var inboxUnread = !(mail.flags || []).map(f => f.toLowerCase()).includes("seen");
-                    var senderPart = (mail.from ? (mail.from.addr || mail.from.name || "") : (mail.sender || "")).trim();
-                    var compoundKey = (mail.subject || "").trim() + "|" + (mail.date || "").trim() + "|" + senderPart;
-
-                    belongsToFolder = isFolderSwitch ? (inboxUnread && mail.folder === "inbox")
-                    : ((inboxUnread && mail.folder === "inbox") || (mail.folder === "inbox" && oldMailIds[compoundKey] === true));
+                    // Inbox now displays both read and unread messages inside the Inbox folder
+                    belongsToFolder = (mail.folder === "inbox");
                 } else if (targetFolder === "all") {
                     var isStarred = (mail.flags || []).map(f => f.toLowerCase()).includes("flagged");
                     // Exclude any Inbox, Steam, or Starred emails from showing up in the Archive tab

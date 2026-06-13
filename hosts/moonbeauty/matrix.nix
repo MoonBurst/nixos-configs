@@ -5,6 +5,9 @@ let
   then args.inputs.nixpkgs-unstable.legacyPackages.${pkgs.stdenv.hostPlatform.system}
     else pkgs;
 
+  # Toggle this to true to enable detailed logging across services
+  enableVerboseLogging = false;
+
   registrationPath = "/run/discord-registration.yaml";
   bridgeConfigPath = "/var/lib/mautrix-discord/bridge-config.yaml";
   puppetSecretPath = config.sops.secrets.matrix_double_puppet_secret.path;
@@ -111,7 +114,9 @@ in
         allow_registration = true;
         registration_token_file = config.sops.secrets.matrix_registration_secret.path;
         login_shared_secret_file = puppetSecretPath;
-        url_preview_enabled = true;
+
+        # Updated URL preview syntax for Conduwuit
+        url_preview = true;
         url_preview_ip_range_blacklist = [ "127.0.0.0/8" "10.0.0.0/8" "172.16.0.0/12" "192.168.0.0/16" "::1/128" ];
       };
       appservice.config_files = [ registrationPath ];
@@ -124,7 +129,7 @@ in
     Group = "continuwuity";
     StateDirectory = "continuwuity";
     ReadWritePaths = [ "/var/lib/continuwuity" ];
-    LogLevelMax = "err";
+    LogLevelMax = lib.mkIf (!enableVerboseLogging) "err";
   };
 
   services.mautrix-discord = {
@@ -142,7 +147,7 @@ in
     serviceConfig = {
       ExecStart = lib.mkForce "${pkgs.mautrix-discord}/bin/mautrix-discord --config=${bridgeConfigPath}";
       SupplementaryGroups = [ "continuwuity" "postgres" ];
-      LogLevelMax = "err";
+      LogLevelMax = lib.mkIf (!enableVerboseLogging) "err";
     };
   };
 
@@ -152,8 +157,8 @@ in
     ensureDatabases = [ "mautrix-discord" ];
     ensureUsers = [{ name = "mautrix-discord"; ensureDBOwnership = true; }];
     settings = {
-      log_checkpoints = false;
-      log_min_messages = "error";
+      log_checkpoints = enableVerboseLogging;
+      log_min_messages = if enableVerboseLogging then "warning" else "error";
     };
   };
 
@@ -167,7 +172,7 @@ in
 
       extraConfig = ''
         client_max_body_size 30M;
-        access_log off;
+        ${if enableVerboseLogging then "" else "access_log off;"}
       '';
       locations = {
         "= /.well-known/matrix/server".extraConfig = ''

@@ -423,10 +423,12 @@ def rebuild_local_ui_cache():
 
     # Priority order maps the target directories to the local cache identifier.
     # Inbox, Starred, Steam, and Trash take priority over the master "All Mail" list.
+    # Moving ".Steam" to the absolute top of the folder list ensures that all Steam emails
+    # are strictly cataloged in the Steam tab, even if a copy resides in the Inbox.
     priority_folders = [
-        ("INBOX", "inbox"),
-        (".[Gmail].Starred", "starred"),
         (".Steam", "steam"),
+        (".[Gmail].Starred", "starred"),
+        ("INBOX", "inbox"),
         (".[Gmail].Trash", "trash"),
         (".[Gmail].Drafts", "drafts"),
         (".[Gmail].Sent Mail", "sent"),
