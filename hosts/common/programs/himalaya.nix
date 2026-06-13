@@ -7,6 +7,13 @@ let
 import os, sys, json, subprocess, time, glob, configparser, sqlite3, getpass, re, shutil, mimetypes, socket, email.utils
 from concurrent.futures import ThreadPoolExecutor
 
+# Simple global print wrapper to silence verbose info logs and only output warnings/errors
+_original_print = print
+def print(*args, **kwargs):
+    msg = " ".join(map(str, args))
+    if any(keyword in msg.lower() for keyword in ["error", "warning", "fail", "except"]):
+        _original_print(*args, **kwargs)
+
 # Resolve usernames and directories dynamically
 real_user = getpass.getuser()
 target_home = f"/home/{real_user}"
