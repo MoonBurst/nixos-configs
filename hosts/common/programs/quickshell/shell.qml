@@ -19,6 +19,7 @@ import "./modules/bar/sound" as SoundModule
 import "./modules/bar/music" as MusicCapsule
 import "./modules/bar/alarm" as AlarmCapsule
 import "./modules/bar/borg" as BorgCapsule
+import "./modules/bar/notify" as NotifyCapsule // Corrected path to match your folder directory on disk
 import "./modules/bar/weather" as WeatherCapsule
 import "./modules/bar/calendar" as CalendarCapsule
 import "modules/lockscreen"
@@ -42,6 +43,64 @@ ShellRoot {
     var primaryScreen: Quickshell.screens.find(s => s.name === "DP-1")
 
     property bool debugNotifications: true
+
+    // Master bridge properties to synchronize visual states across multi-window scopes (DP-1 / DP-2)
+    property bool showHistoryMode: false
+    property bool notificationsEnabled: true
+
+    // Real-time unread/backlog notification counter (ONLY increments when paused/muted)
+    property int unreadCount: 0
+
+    // Master Backlog Deferral Queue: Holds notification pointers while muted
+    property var deferredNotificationsQueue: []
+
+    // Background Queue Flusher: Initiates the pacing timer when unmuted to show cards one-at-a-time
+    onNotificationsEnabledChanged: {
+        if (notificationsEnabled && deferredNotificationsQueue.length > 0) {
+            console.log("DND disabled: Initiating paced backlog flusher for", deferredNotificationsQueue.length, "held notification(s)...");
+            backlogFlusherTimer.start(); // Start the pacing timer
+        } else if (!notificationsEnabled) {
+            // Stop any active flusher if muted again
+            backlogFlusherTimer.stop();
+        }
+    }
+
+    // Reset master unread counts when showHistoryMode changes to clear indicators
+    onShowHistoryModeChanged: {
+        if (showHistoryMode) {
+            shell.unreadCount = 0;
+        }
+    }
+
+    // Paced Backlog Flusher Timer: Pops up one notification card every 800ms
+    Timer {
+        id: backlogFlusherTimer
+        interval: 800 // 800ms delay between popups
+        repeat: true
+        running: false
+        onTriggered: {
+            if (deferredNotificationsQueue.length > 0) {
+                // Pull the oldest deferred notification from the front of the queue
+                let mockNotif = deferredNotificationsQueue.shift();
+
+                // Decrement the backlog counter as it leaves the queue and pops up on DP-2
+                if (shell.unreadCount > 0) {
+                    shell.unreadCount--;
+                }
+
+                if (notificationOverlay) {
+                    notificationOverlay.handleNotification(mockNotif);
+                }
+            } else {
+                // Queue is completely empty, stop the timer
+                backlogFlusherTimer.stop();
+            }
+        }
+    }
+
+    property string globalPasswordBuffer: ""
+    property int passwordLength: 0
+    property var shellRootRef: this
 
     /*
      * =========================================================================
@@ -176,6 +235,21 @@ ShellRoot {
                 height: mainBarContainer.capsuleHeight
 
                 BorgCapsule.BorgCapsule {
+                    anchors.fill: parent
+                    barWindow: topBarWindow
+                }
+            }
+            Item {
+                id: notifyContainer
+
+                anchors.left: borgContainer.right
+                anchors.leftMargin: shell.theme.globalPadding / 2
+                anchors.verticalCenter: parent.verticalCenter
+
+                width: 200 // Expanded from 140 to 200 to prevent long "Notifications:" text from clipping
+                height: mainBarContainer.capsuleHeight
+
+                NotifyCapsule.NotifyCapsule {
                     anchors.fill: parent
                     barWindow: topBarWindow
                 }
@@ -371,10 +445,6 @@ ShellRoot {
      * =========================================================================
      */
 
-    property string globalPasswordBuffer: ""
-    property int passwordLength: 0
-    property var shellRootRef: this
-
     PamContext {
         id: lockPam
         config: "login"
@@ -415,6 +485,7 @@ ShellRoot {
     }
 
     IpcHandler {
+        id: lockscreenHandler
         target: "lockscreen"
         function lock(): void {
             sessionLock.locked = true;
@@ -464,6 +535,10 @@ ShellRoot {
 
     Notifications.NotificationOverlay {
         id: notificationOverlay
+        showHistoryMode: shell.showHistoryMode
+        notificationsEnabled: shell.notificationsEnabled
+        onShowHistoryModeChanged: shell.showHistoryMode = showHistoryMode
+        onNotificationsEnabledChanged: shell.notificationsEnabled = notificationsEnabled
     }
 
     /*
@@ -537,9 +612,76 @@ ShellRoot {
 
             /*
              * ================================================================
-             * NOTIFICATION CARD CREATION
+             * MASTER BACKLOG DEFERRAL ENGINE
              * ================================================================
              */
+
+            // If muted/paused, bypass active popup windows entirely, record directly to history, and append to backlog queue
+            if (!shell.notificationsEnabled) {
+                let resolvedIcon = (notificationOverlay && notificationOverlay.rulesLoader) ? notificationOverlay.rulesLoader.getCustomIcon(notification) : ""
+                let avatarVal = resolvedIcon ? resolvedIcon : "image://icon/" + (notification.desktopEntry || notification.appName || "").toLowerCase()
+
+                let resolvedStr = resolvedIcon ? String(resolvedIcon) : ""
+                let imageStr = notification.image ? String(notification.image) : ""
+
+                let previewVal = ""
+                let hints = notification.hints || {}
+                let hintImagePath = hints["image-path"] || hints["image_path"] || hints["image-uri"] || hints["image-uri"] || ""
+
+                if (hintImagePath === "") {
+                    let attachmentUrls = hints["attachment-urls"] || hints["attachment_urls"] || hints["attachment-url"] || hints["attachment-url"] || ""
+                    if (attachmentUrls !== "") {
+                        let strUrls = String(attachmentUrls);
+                        let firstUrl = notificationOverlay ? notificationOverlay.extractUrl(strUrls) : ""
+                        if (firstUrl !== "") {
+                            hintImagePath = firstUrl;
+                        }
+                    }
+                }
+
+                if (hintImagePath !== "") {
+                    let strHint = String(hintImagePath);
+                    if (strHint.startsWith("/") || strHint.startsWith("file://") || strHint.startsWith("http")) {
+                        previewVal = strHint.startsWith("/") ? "file://" + strHint : strHint;
+                    }
+                }
+
+                if (previewVal === "" && notificationOverlay) {
+                    let bodyImageUrl = notificationOverlay.extractImageUrl(notification.body || "")
+                    if (bodyImageUrl !== "") {
+                        previewVal = bodyImageUrl
+                    }
+                }
+
+                if (previewVal === "") {
+                    if (notification.image && resolvedStr !== imageStr) {
+                        previewVal = notification.image;
+                    }
+                }
+
+                // Create a completely self-contained, stable mock notification object
+                let mockNotif = {
+                    "isMock": true,
+                    "isDeDuplicated": true, // Flag to prevent closeNotificationTrack from creating duplicate history list entries
+                    "id": notification.id,
+                    "appName": notification.desktopEntry || notification.appName || "",
+                    "appIcon": notification.appIcon || "",
+                    "summary": notification.summary || "",
+                    "body": notification.body || "",
+                    "icon": avatarVal,     // Store the stable, resolved avatar filepath
+                    "image": previewVal,   // Store the stable, resolved preview filepath/URL
+                    "urgency": notification.urgency || 1,
+                    "hints": notification.hints || ({})
+                }
+
+                if (notificationOverlay) {
+                    notificationOverlay.recordHistoryDirect(notification)
+                }
+                shell.deferredNotificationsQueue.push(mockNotif)
+                shell.unreadCount++ // Increment the master backlog count
+                notification.dismiss()
+                return
+            }
 
             let topScope = notificationServer.parent
 

@@ -7,11 +7,25 @@ import Quickshell.Wayland
 Rectangle {
     id: musicBox
 
+    // ==========================================
+    // GLOBAL STATE PROPERTIES
+    // ==========================================
     property var barWindow: null
     property string trackStr: "No Track"
     property string tooltipTitle: "No Title Playing"
     property string tooltipArtist: "No Artist Data"
     property string trackCountStr: "Track 0 of 0"
+
+    // Expose the internal IPC process to child components loaded via Loader
+    property var mpdIpc: mpdIpc
+
+    property string currentFile: ""
+    property int currentVolume: 0
+    property int elapsedSeconds: 0
+    property int totalSeconds: 0
+    property int currentTrackIdx: 0
+    property int totalTracks: 0
+    property string playbackState: "stop"
 
     property bool popupActive: false
     property bool confirmDeleteMode: false
@@ -23,27 +37,54 @@ Rectangle {
     color: shell.theme.base00
     border.color: shell.theme.base05
 
+    // ==========================================
+    // SOCKET IPC CONNECTION
+    // ==========================================
+
+    /**
+     * Handles the persistent TCP socket connection to MPD.
+     * Parses streaming stdout messages line-by-line to update properties.
+     */
     Process {
-        id: musicProc
+        id: mpdIpc
         running: true
-        command: ["sh", "-c", "TITLE=$(audtool current-song-tuple-data title 2>/dev/null); ARTIST=$(audtool current-song-tuple-data artist 2>/dev/null); POS=$(audtool playlist-position 2>/dev/null); LEN=$(audtool playlist-length 2>/dev/null); echo \"$TITLE|$ARTIST|$POS|$LEN\""]
+        command: ["nc", "localhost", "6600"]
         stdout: SplitParser {
-            onRead: data => {
-                if (data && data.trim() !== "") {
-                    var parts = data.trim().split("|");
-                    var rawTitle = parts[0] ? parts[0].trim() : "No Track";
-                    var rawArtist = parts[1] ? parts[1].trim() : "Unknown Artist";
-                    var currentPos = parts[2] ? parts[2].trim() : "0";
-                    var totalLen = parts[3] ? parts[3].trim() : "0";
+            onRead: line => {
+                if (!line) return;
+                line = line.trim();
 
-                    if (rawTitle === "") {
-                        rawTitle = "No Track";
+                if (line.startsWith("volume: ")) {
+                    var vol = parseInt(line.substring(8), 10);
+                    if (!isNaN(vol)) musicBox.currentVolume = vol;
+                } else if (line.startsWith("state: ")) {
+                    musicBox.playbackState = line.substring(7).trim();
+                } else if (line.startsWith("song: ")) {
+                    musicBox.currentTrackIdx = parseInt(line.substring(6), 10) + 1;
+                } else if (line.startsWith("playlistlength: ")) {
+                    musicBox.totalTracks = parseInt(line.substring(16), 10);
+                } else if (line.startsWith("time: ")) {
+                    var times = line.substring(6).split(":");
+                    musicBox.elapsedSeconds = parseInt(times[0], 10) || 0;
+                    musicBox.totalSeconds = parseInt(times[1], 10) || 0;
+                } else if (line.startsWith("Title: ")) {
+                    musicBox.tooltipTitle = line.substring(7).trim();
+                } else if (line.startsWith("Artist: ")) {
+                    musicBox.tooltipArtist = line.substring(8).trim();
+                } else if (line.startsWith("file: ")) {
+                    musicBox.currentFile = line.substring(6).trim();
+                } else if (line === "OK") {
+                    if (musicBox.playbackState === "stop") {
+                        musicBox.tooltipTitle = "No Title Playing";
+                        musicBox.tooltipArtist = "No Artist Data";
+                        musicBox.currentTrackIdx = 0;
+                        musicBox.totalTracks = 0;
+                        musicBox.currentFile = "";
+                        musicBox.elapsedSeconds = 0;
+                        musicBox.totalSeconds = 0;
                     }
-
-                    musicBox.tooltipTitle = rawTitle;
-                    musicBox.tooltipArtist = rawArtist;
-                    musicBox.trackStr = rawTitle;
-                    musicBox.trackCountStr = "Track " + currentPos + " of " + totalLen;
+                    musicBox.trackStr = musicBox.tooltipTitle !== "No Title Playing" ? musicBox.tooltipTitle : "No Track";
+                    musicBox.trackCountStr = "Track " + musicBox.currentTrackIdx + " of " + musicBox.totalTracks;
                 }
             }
         }
@@ -63,13 +104,18 @@ Rectangle {
         elide: Text.ElideRight
     }
 
+    /**
+     * Handles polling queries & self-healing connection maintenance.
+     * Fires every 1 second to request data or reconnect if MPD was restarted.
+     */
     Timer {
         id: updateTimer
-        interval: 2000; running: true; repeat: true
+        interval: 1000; running: true; repeat: true
         onTriggered: {
-            if (!musicBox.confirmDeleteMode) {
-                musicProc.running = false;
-                musicProc.running = true;
+            if (!mpdIpc.running) {
+                mpdIpc.running = true;
+            } else if (!musicBox.confirmDeleteMode) {
+                mpdIpc.write("status\ncurrentsong\n");
             }
         }
     }
@@ -79,9 +125,12 @@ Rectangle {
             musicBox.popupActive = !musicBox.popupActive
             if (!musicBox.popupActive) {
                 musicBox.confirmDeleteMode = false
+            } else {
+                mpdIpc.write("status\ncurrentsong\n");
             }
         }
     }
+
     PanelWindow {
         id: musicTooltipWindow
 
@@ -109,7 +158,7 @@ Rectangle {
         Item {
             id: cardContainer
             width: 400
-            height: 210
+            height: 270
 
             y: {
                 if (!musicBox.barWindow || typeof mainBarContainer === "undefined" || !mainBarContainer) return 100;

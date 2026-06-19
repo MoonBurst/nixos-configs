@@ -18,9 +18,7 @@ let
 
   term = "${targetTerminal}/bin/${targetTerminal.pname or targetTerminal.name or "ghostty"}";
   explorer = "${targetFileManager}/bin/${targetFileManager.pname or targetFileManager.name or "nemo"}";
-
   music = "${pkgs.audacious}/bin/audacious";
-  launchpad = "walker";
   scriptsDir = ../../scripts;
 in
 {
@@ -33,24 +31,17 @@ in
     "${super}+q" = "exec ${pkgs.bash}/bin/bash ${scriptsDir}/safekill.sh";
     "${super}+Shift+q" = "kill";
     "${super}+e" = "exec ${explorer}";
- #   "${super}+d" = "exec ${launchpad}";
-
-"${super}+d" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call launcher toggle";
-"${super}+k" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call clipboard toggle";
-"${super}+l" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call lockscreen lock";
-"${super}+o" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call todo toggle";
-#    "${super}+l" = "exec ${pkgs.swaylock-effects}/bin/swaylock -f --screenshots --clock --indicator --indicator-radius 120 --indicator-thickness 15 --effect-blur 20x20 --effect-vignette 0:1 --ring-color 1a1a1a --key-hl-color ffff33 --ring-ver-color ffff33 --inside-ver-color 00000000 --ring-wrong-color ff0000 --inside-wrong-color 00000000 --bs-hl-color ff0000 --inside-color 00000000 --separator-color 00000000 --line-color 00000000 --text-color ffff33 --text-ver-color ffff33 --text-wrong-color ff0000 --text-clear-color ffff33 --text-caps-lock-color ffff33 --grace 5 --fade-in 2";
+    "${super}+d" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call launcher toggle";
+    "${super}+k" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call clipboard toggle";
+    "${super}+l" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call lockscreen lock";
+    "${super}+o" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call todo toggle";
     "${super}+SHIFT+m" = "exec ${pkgs.evolution}/bin/evolution";
-#    "${super}+k" = "exec walker -m clipboard";
-#    "${super}+k" = ''exec sh -c "CLIPHIST_DB_PATH=/tmp/cliphist_db sherlock-clp list | sherlock | xargs -r ${pkgs.cliphist}/bin/cliphist decode | ${pkgs.wl-clipboard}/bin/wl-copy"'';
 
     # ░█▀▀░█░█░█▀▀░▀█▀░█▀▀░█▄█
     # ░▀▀█░░█░░▀▀█░░█░░█▀▀░█░█
     # ░▀▀▀░░▀░░▀▀▀░░▀░░▀▀▀░▀░▀
-    # **Notifications (Dunst)**
-   # "${super}+Escape" = "exec ${pkgs.dunst}/bin/dunstctl close";
-   # "${super}+h" = "exec ${pkgs.dunst}/bin/dunstctl history-pop";
-    #"${super}+Tab" = "exec ${pkgs.dunst}/bin/dunstctl action";
+    "${super}+h" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call global_notif toggleHistory";
+
 
         "${super}+Tab"     = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call global_notif jumpToLatest";
         "${super}+Escape" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call global_notif dismissLatest";
@@ -109,16 +100,21 @@ in
     "${super}+0" = "exec ${pkgs.bash}/bin/bash ${scriptsDir}/toggle_mic.sh";
     "${super}+minus" = "exec ${pkgs.bash}/bin/bash ${scriptsDir}/sound_sink_switcher.sh";
 
+# Volume Controls (Keeping global PipeWire system volume controls)
     "XF86AudioRaiseVolume" = "exec ${pkgs.wireplumber}/bin/wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+ --limit 0.70";
     "XF86AudioLowerVolume" = "exec ${pkgs.wireplumber}/bin/wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-";
-    "XF86AudioMute" = "exec ${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle";
-    "F10" = "exec ${pkgs.playerctl}/bin/playerctl --player audacious previous";
+    "XF86AudioMute"        = "exec ${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle";
+
+    # Music Portal Script
     "F11" = "exec bash /home/moonburst/nix/hosts/moonbeauty/programs/waybar/modules/music_portal.sh";
-    "XF86AudioMedia" = "exec ${pkgs.playerctl}/bin/playerctl play-pause";
-    "XF86AudioPlay" = "exec ${pkgs.playerctl}/bin/playerctl play-pause";
-    "XF86AudioStop" = "exec ${pkgs.playerctl}/bin/playerctl stop";
-    "XF86AudioPrev" = "exec ${pkgs.playerctl}/bin/playerctl previous";
-    "XF86AudioNext" = "exec ${pkgs.playerctl}/bin/playerctl next";
+
+    # MPD Media Key Controls
+    "F10"             = "exec ${pkgs.mpc}/bin/mpc prev";
+    "XF86AudioMedia"  = "exec ${pkgs.mpc}/bin/mpc toggle";
+    "XF86AudioPlay"   = "exec ${pkgs.mpc}/bin/mpc toggle";
+    "XF86AudioStop"   = "exec ${pkgs.mpc}/bin/mpc stop";
+    "XF86AudioPrev"   = "exec ${pkgs.mpc}/bin/mpc prev";
+    "XF86AudioNext"   = "exec ${pkgs.mpc}/bin/mpc next";
 
     # **Mouse Cursor Emulation**
     "${super}+Control+Left"   = "seat - cursor move -10 0";

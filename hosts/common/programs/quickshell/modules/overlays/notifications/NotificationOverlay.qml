@@ -20,10 +20,110 @@ Item {
     property int cardBorderWidth: shell.theme.globalBorderWidth || 3
     property int textSummarySize: shell.theme.globalFontSize || 20
     property int textBodySize: shell.theme.globalFontSize || 20
-    property int holdDurationMs: 5000
+    property int holdDurationMs: 3000
+
+    property bool showHistoryMode: false // Controls history drawer visibility
+    property bool notificationsEnabled: true // Holds the active/disabled DND state for your capsule
+
+    // Exposes the history model count to the master scope
+    property int historyCount: historyModel ? historyModel.count : 0
+
+    // Exposes the history list model to the global scope for status bar counters
+    property alias historyModel: historyDrawer.historyModel
 
     ListModel {
         id: activeNotificationsModel
+    }
+
+    // Direct History Commit: Formats and records incoming notifications directly to history while DND is active
+    function recordHistoryDirect(notification) {
+        if (!notification) return;
+
+        let appNameLower = (notification.desktopEntry || notification.appName || "").toLowerCase();
+        let summaryLower = (notification.summary || "").toLowerCase();
+        let bodyLower = (notification.body || "").toLowerCase();
+
+        let resolvedIcon = rulesLoader ? rulesLoader.getCustomIcon(notification) : "";
+        let avatarVal = resolvedIcon ? resolvedIcon : "image://icon/" + appNameLower;
+
+        // Compare underlying string locations to prevent avatar payloads from being treated as shared preview attachments
+        let resolvedStr = resolvedIcon ? String(resolvedIcon) : "";
+        let imageStr = notification.image ? String(notification.image) : "";
+
+        // Parse shared image/GIF link from metadata hints (only used for local direct uploads)
+        let previewVal = "";
+        let hints = notification.hints || {};
+        let hintImagePath = hints["image-path"] || hints["image_path"] || hints["image-uri"] || hints["image-uri"] || "";
+
+        if (hintImagePath === "") {
+            let attachmentUrls = hints["attachment-urls"] || hints["attachment_urls"] || hints["attachment-url"] || hints["attachment-url"] || "";
+            if (attachmentUrls !== "") {
+                let strUrls = String(attachmentUrls);
+                let firstUrl = root.extractUrl(strUrls);
+                if (firstUrl !== "") {
+                    hintImagePath = firstUrl;
+                }
+            }
+        }
+
+        if (hintImagePath !== "") {
+            let strHint = String(hintImagePath);
+            if (strHint.startsWith("/") || strHint.startsWith("file://") || strHint.startsWith("http")) {
+                previewVal = strHint.startsWith("/") ? "file://" + strHint : strHint;
+            }
+        }
+
+        // Fallback 1: Extract direct image URLs from body text directly (for direct PNG/JPG links)
+        if (previewVal === "") {
+            let bodyImageUrl = root.extractImageUrl(notification.body || "");
+            if (bodyImageUrl !== "") {
+                previewVal = bodyImageUrl;
+            }
+        }
+
+        // Fallback 2: Raw uploaded image payload (only if distinct from the user avatar)
+        if (previewVal === "") {
+            if (notification.image && notification.image !== notification.icon && notification.image !== resolvedIcon) {
+                previewVal = notification.image;
+            }
+        }
+
+        let historyEntry = {
+            "cardRef": null, // Safely pass null since no visual card was instantiated
+            "notifId": notification.id,
+            "summary": notification.summary || "",
+            "body": notification.body || "",
+            "appName": notification.desktopEntry || notification.appName || "",
+            "avatarSource": avatarVal,
+            "previewSource": previewVal
+        };
+
+        // Record history safely without blocking popup dismissals
+        if (historyDrawer) {
+            try {
+                historyDrawer.recordHistory(historyEntry);
+            } catch(e) {
+                console.warn("Failed to record history: " + e);
+            }
+        }
+    }
+
+    // ============================================================================
+    // DEDUPLICATED UTILITIES (Compiled once at startup instead of per-delegate)
+    // ============================================================================
+    readonly property var urlRegex: /(https?:\/\/[^\s<]+)/
+
+    function extractUrl(text) {
+        if (!text) return "";
+        var match = text.match(urlRegex);
+        return match ? match[0] : "";
+    }
+
+    // Scans notification body for standard image formats to show in history list
+    function extractImageUrl(text) {
+        if (!text) return "";
+        var match = text.match(/(https?:\/\/[^\s<]+\.(?:png|jpg|jpeg|gif|svg|webp)(?:\?[^\s<]+)?)/i);
+        return match ? match[0] : "";
     }
 
     // ============================================================================
@@ -37,6 +137,14 @@ Item {
 
     Local.NotificationRules {
         id: rulesLoader
+    }
+
+    // Instantiate the history drawer cleanly as a decoupled sibling
+    Local.NotificationHistory {
+        id: historyDrawer
+        showHistoryMode: root.showHistoryMode
+        rulesLoader: root.rulesLoader
+        rootItem: root // Passes parent reference to allow warning-free property modifications
     }
 
     NotificationServer {
@@ -90,6 +198,11 @@ Item {
     // STATE SELECTION ENGINE
     // ============================================================================
     function handleNotification(notification) {
+        // MASTER DND FILTER: Block active screen popups completely if DND is active
+        if (!root.notificationsEnabled) {
+            return;
+        }
+
         if (notification) {
             notification.tracked = true;
         }
@@ -116,14 +229,68 @@ Item {
             }
         }
 
+        // Determine icon path and resolve immediately while the C++ pointer is valid
+        let resolvedIcon = rulesLoader ? rulesLoader.getCustomIcon(notification) : "";
+
+        let avatarVal = "";
+        if (resolvedIcon) {
+            avatarVal = resolvedIcon; // User's avatar object or string
+        } else {
+            avatarVal = "image://icon/" + (notification.desktopEntry || notification.appName || "").toLowerCase();
+        }
+
+        // Compare underlying string locations to prevent avatar payloads from being treated as shared preview attachments
+        let resolvedStr = resolvedIcon ? String(resolvedIcon) : "";
+        let imageStr = notification.image ? String(notification.image) : "";
+
+        // Parse shared image/GIF link from metadata hints (only used for local direct uploads)
+        let previewVal = "";
+        let hints = notification.hints || {};
+        let hintImagePath = hints["image-path"] || hints["image_path"] || hints["image-uri"] || hints["image-uri"] || "";
+
+        if (hintImagePath === "") {
+            let attachmentUrls = hints["attachment-urls"] || hints["attachment_urls"] || hints["attachment-url"] || hints["attachment-url"] || "";
+            if (attachmentUrls !== "") {
+                let strUrls = String(attachmentUrls);
+                let firstUrl = root.extractUrl(strUrls);
+                if (firstUrl !== "") {
+                    hintImagePath = firstUrl;
+                }
+            }
+        }
+
+        if (hintImagePath !== "") {
+            let strHint = String(hintImagePath);
+            if (strHint.startsWith("/") || strHint.startsWith("file://") || strHint.startsWith("http")) {
+                previewVal = strHint.startsWith("/") ? "file://" + strHint : strHint;
+            }
+        }
+
+        // Fallback 1: Extract direct image URLs from body text directly (for direct PNG/JPG links)
+        if (previewVal === "") {
+            let bodyImageUrl = root.extractImageUrl(notification.body || "");
+            if (bodyImageUrl !== "") {
+                previewVal = bodyImageUrl;
+            }
+        }
+
+        // Fallback 2: Raw uploaded image payload (only if distinct from the user avatar)
+        if (previewVal === "") {
+            if (notification.image && notification.image !== notification.icon && notification.image !== resolvedIcon) {
+                previewVal = notification.image;
+            }
+        }
+
         if (existingIndex !== -1) {
             let existingEntry = activeNotificationsModel.get(existingIndex);
             if (existingEntry && existingEntry.cardRef) {
                 existingEntry.cardRef.notification = notification;
-                // Update persistent structural handle links
                 existingEntry.cardRef.originalNotification = notification;
+                existingEntry.avatarSource = avatarVal;
+                existingEntry.previewSource = previewVal;
             }
         } else {
+            // Instantiates popupCard inside the designated canvasContent directly
             let popupCard = cardComponentTemplate.createObject(canvasContent, {
                 notification: notification,
                 rulesLoader: rulesLoader,
@@ -131,9 +298,6 @@ Item {
                 controller: notificationIPC
             });
 
-            // CRITICAL ARCHITECTURAL CONTEXT LOCK:
-            // Injects the raw notification handle directly as an instance variable onto the visual card node.
-            // This forces Quickshell's internal QML layout garbage collector to anchor the live C++ properties.
             if (popupCard) {
                 popupCard.notification = notification;
                 popupCard.originalNotification = notification;
@@ -144,9 +308,12 @@ Item {
                 "notifId": notification.id,
                 "summary": notification.summary || "",
                 "body": notification.body || "",
-                "appName": notification.desktopEntry || notification.appName || ""
+                "appName": notification.desktopEntry || notification.appName || "",
+                "avatarSource": avatarVal,
+                "previewSource": previewVal
             });
 
+            // Trigger sound effects and callbacks
             notificationIPC.playNotificationSound(notification);
             positionNotificationsDeck();
             rulesLoader.handleIncomingNotificationCues(notification);
@@ -183,6 +350,72 @@ Item {
 
         if (index === -1)
             return;
+
+        let expiredEntry = activeNotificationsModel.get(index);
+
+        // Check if this is a microphone toggle notification
+        let appNameLower = (expiredEntry.appName || "").toLowerCase();
+        let summaryLower = (expiredEntry.summary || "").toLowerCase();
+        let bodyLower = (expiredEntry.body || "").toLowerCase();
+
+        let avatarSourceLower = expiredEntry.avatarSource ? expiredEntry.avatarSource.toString().toLowerCase() : "";
+
+        let isMicNotif = appNameLower.includes("microphone") || appNameLower.includes("mic") ||
+        summaryLower.includes("microphone") || summaryLower.includes("mic") ||
+        bodyLower.includes("microphone") || bodyLower.includes("mic") ||
+        avatarSourceLower.includes("microphone") || avatarSourceLower.includes("mic");
+
+        // Clipboard managers filter (prevents Greenclip/CopyQ spam from entering history)
+        let isClipboardNotif = appNameLower.includes("greenclip") || appNameLower.includes("copyq") ||
+        appNameLower.includes("clipboard") || appNameLower.includes("clip") ||
+        summaryLower.includes("copied to clipboard") || bodyLower.includes("copied to clipboard") ||
+        summaryLower.includes("clipboard manager");
+
+        // De-duplication check: Detects if this was already recorded by the backlog direct commit
+        let isDeDuplicated = expiredEntry.cardRef && expiredEntry.cardRef.notification && expiredEntry.cardRef.notification.isDeDuplicated ? true : false;
+
+        // Only insert into history if it is NOT a microphone toggle alert, NOT a clipboard sync notification, and NOT a duplicate
+        if (!isMicNotif && !isClipboardNotif && !isDeDuplicated) {
+            // Prioritize the locally cached persistent avatar picture saved during the active popup phase
+            let serializedAvatar = (expiredEntry.cardRef && expiredEntry.cardRef.cachedAvatarPath !== "")
+            ? expiredEntry.cardRef.cachedAvatarPath
+            : (expiredEntry.avatarSource || "");
+
+            // ============================================================================
+            // AVATAR INHERIT ENGINE
+            // If this notification is missing an icon, search history for the most recent
+            // message from the exact same sender and inherit their avatar!
+            // ============================================================================
+            if (serializedAvatar === "" && expiredEntry.summary !== "") {
+                for (let i = 0; i < historyNotificationsModel.count; i++) {
+                    let past = historyNotificationsModel.get(i);
+                    if (past && past.summary === expiredEntry.summary && past.avatarSource && past.avatarSource !== "") {
+                        serializedAvatar = past.avatarSource;
+                        break;
+                    }
+                }
+            }
+
+            // Repackage entry with local persistent filepath
+            let historyEntry = {
+                "cardRef": expiredEntry.cardRef,
+                "notifId": expiredEntry.notifId,
+                "summary": expiredEntry.summary,
+                "body": expiredEntry.body,
+                "appName": expiredEntry.appName,
+                "avatarSource": serializedAvatar,
+                "previewSource": expiredEntry.previewSource
+            };
+
+            // Record history safely without blocking popup dismissals
+            if (historyDrawer) {
+                try {
+                    historyDrawer.recordHistory(historyEntry);
+                } catch(e) {
+                    console.warn("Failed to record history: " + e);
+                }
+            }
+        }
 
         activeNotificationsModel.remove(index);
         positionNotificationsDeck();

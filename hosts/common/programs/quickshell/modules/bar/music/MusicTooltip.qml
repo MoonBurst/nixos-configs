@@ -7,6 +7,23 @@ Item {
     id: tooltipContainer
     anchors.fill: parent
 
+    // ==========================================
+    // HELPERS & ACTIONS
+    // ==========================================
+
+    /**
+     * Handles formatting raw track duration seconds into a standard MM:SS string.
+     * @param {int} secs - Total seconds to be formatted.
+     * @returns {string} Formatted string (e.g., "3:45").
+     */
+    function formatTime(secs) {
+        if (!secs || isNaN(secs) || secs < 0) return "0:00";
+        var m = Math.floor(secs / 60);
+        var s = Math.floor(secs % 60);
+        return m + ":" + (s < 10 ? "0" : "") + s;
+    }
+
+
     Shortcut {
         sequence: "Escape"
         enabled: true
@@ -16,37 +33,30 @@ Item {
         }
     }
 
-    Process { id: playPauseProc; command: ["audtool", "playback-playpause"] }
-    Process { id: prevProc; command: ["audtool", "playlist-reverse"] }
-    Process { id: nextProc; command: ["audtool", "playlist-advance"] }
 
+    // ==========================================
+    // DISK FILE DELETION ACTIONS
+    // ==========================================
     Process {
         id: deleteSongProc
-        // Using "sh -c" allows Quickshell to correctly pipe commands and execute multi-statement Python code
         command: [
             "sh", "-c",
             "python3 -c \"\n" +
-            "import subprocess, os, urllib.parse\n" +
+            "import os, subprocess\n" +
             "try:\n" +
-            "    raw_path = subprocess.check_output(['audtool', 'current-song-filename']).decode('utf-8').strip()\n" +
-            "    if raw_path.startswith('file://'):\n" +
-            "        path = urllib.parse.unquote(raw_path[7:])\n" +
-            "    else:\n" +
-            "        path = raw_path\n" +
-            "    if os.path.exists(path):\n" +
-            "        pos = subprocess.check_output(['audtool', 'playlist-position']).decode('utf-8').strip()\n" +
-            "        os.remove(path)\n" +
-            "        subprocess.run(['audtool', 'playlist-advance'])\n" +
-            "        subprocess.run(['audtool', 'playlist-delete', pos])\n" +
-            "except Exception as e:\n" +
+            "    rel_path = '" + musicBox.currentFile + "'\n" +
+            "    music_dir = os.path.expanduser('~/Music')\n" +
+            "    abs_path = os.path.join(music_dir, rel_path)\n" +
+            "    if os.path.exists(abs_path):\n" +
+            "        os.remove(abs_path)\n" +
+            "except Exception:\n" +
             "    pass\n" +
             "\""
         ]
         onRunningChanged: {
             if (!running && musicBox.confirmDeleteMode) {
                 musicBox.confirmDeleteMode = false
-                musicProc.running = false
-                musicProc.running = true
+                musicBox.mpdIpc.write("next\nstatus\ncurrentsong\n");
             }
         }
     }
@@ -61,8 +71,9 @@ Item {
         Column {
             anchors.fill: parent
             anchors.margins: shell.theme.globalPadding
-            spacing: 14
+            spacing: 12
 
+            // Track details block
             Rectangle {
                 width: parent.width
                 height: 90
@@ -108,6 +119,147 @@ Item {
                 }
             }
 
+            // Seek / Track Position Slider
+            Row {
+                width: parent.width
+                spacing: 8
+
+                Text {
+                    id: currentTimeText
+                    text: formatTime(musicBox.elapsedSeconds)
+                    font.family: shell.theme.fontFamily ?? "monospace"
+                    font.pixelSize: 12
+                    color: musicBox.border.color
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
+                Slider {
+                    id: seekSlider
+                    width: parent.width - currentTimeText.width - totalTimeText.width - 16
+                    anchors.verticalCenter: parent.verticalCenter
+                    from: 0
+                    to: musicBox.totalSeconds > 0 ? musicBox.totalSeconds : 100
+
+                    // handles 2-way binding without breaking when dragged
+                    Binding on value {
+                        value: musicBox.elapsedSeconds
+                        when: !seekSlider.pressed
+                    }
+
+                    background: Rectangle {
+                        x: seekSlider.leftPadding
+                        y: seekSlider.topPadding + seekSlider.availableHeight / 2 - height / 2
+                        implicitWidth: 200
+                        implicitHeight: 4
+                        width: seekSlider.availableWidth
+                        height: implicitHeight
+                        radius: 2
+                        color: shell.theme.base03 ?? "#333333"
+
+                        Rectangle {
+                            width: seekSlider.visualPosition * parent.width
+                            height: parent.height
+                            color: musicBox.border.color
+                            radius: 2
+                        }
+                    }
+
+                    handle: Rectangle {
+                        x: seekSlider.leftPadding + seekSlider.visualPosition * (seekSlider.availableWidth - width)
+                        y: seekSlider.topPadding + seekSlider.availableHeight / 2 - height / 2
+                        implicitWidth: 12
+                        implicitHeight: 12
+                        radius: 6
+                        color: musicBox.border.color
+                    }
+
+                    onMoved: {
+                        var idx = musicBox.currentTrackIdx - 1;
+                        if (idx >= 0) {
+                            musicBox.mpdIpc.write("seek " + idx + " " + Math.round(value) + "\nstatus\n");
+                        }
+                    }
+                }
+
+                Text {
+                    id: totalTimeText
+                    text: formatTime(musicBox.totalSeconds)
+                    font.family: shell.theme.fontFamily ?? "monospace"
+                    font.pixelSize: 12
+                    color: musicBox.border.color
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+
+            // Volume Control Slider
+            Row {
+                width: parent.width
+                spacing: 8
+
+                Text {
+                    text: "🔊"
+                    font.pixelSize: 14
+                    color: musicBox.border.color
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
+                Slider {
+                    id: volSlider
+                    width: parent.width - 64
+                    anchors.verticalCenter: parent.verticalCenter
+                    from: 0
+                    to: 100
+                    value: musicBox.currentVolume
+
+                    // 2-way binding without breaking when dragged
+                    Binding on value {
+                        value: musicBox.currentVolume
+                        when: !volSlider.pressed
+                    }
+
+                    background: Rectangle {
+                        x: volSlider.leftPadding
+                        y: volSlider.topPadding + volSlider.availableHeight / 2 - height / 2
+                        implicitWidth: 200
+                        implicitHeight: 4
+                        width: volSlider.availableWidth
+                        height: implicitHeight
+                        radius: 2
+                        color: shell.theme.base03 ?? "#333333"
+
+                        Rectangle {
+                            width: volSlider.visualPosition * parent.width
+                            height: parent.height
+                            color: musicBox.border.color
+                            radius: 2
+                        }
+                    }
+
+                    handle: Rectangle {
+                        x: volSlider.leftPadding + volSlider.visualPosition * (volSlider.availableWidth - width)
+                        y: volSlider.topPadding + volSlider.availableHeight / 2 - height / 2
+                        implicitWidth: 12
+                        implicitHeight: 12
+                        radius: 6
+                        color: musicBox.border.color
+                    }
+
+                    onMoved: {
+                        // Using "setvol" to set absolute volume level directly
+                        musicBox.mpdIpc.write("setvol " + Math.round(value) + "\nstatus\n");
+                    }
+                }
+
+                Text {
+                    text: Math.round(volSlider.value) + "%"
+                    font.family: shell.theme.fontFamily ?? "monospace"
+                    font.pixelSize: 11
+                    color: musicBox.border.color
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+
+            // Media control buttons
             Row {
                 anchors.horizontalCenter: parent.horizontalCenter
                 spacing: 24
@@ -116,34 +268,78 @@ Item {
                     spacing: 12
                     visible: !musicBox.confirmDeleteMode
 
-                    Repeater {
-                        model: [
-                            { icon: "⏮", proc: prevProc },
-                            { icon: "⏯", proc: playPauseProc },
-                            { icon: "⏭", proc: nextProc }
-                        ]
+                    // Previous Track Button
+                    Rectangle {
+                        width: 55
+                        height: 40
+                        radius: shell.theme.defaultCardRadius ?? 4
+                        border.width: shell.theme.globalBorderWidth ?? 2
+                        color: "transparent"
+                        border.color: musicBox.border.color
 
-                        delegate: Rectangle {
-                            width: 55
-                            height: 40
-                            radius: shell.theme.defaultCardRadius ?? 4
-                            border.width: shell.theme.globalBorderWidth ?? 2
-                            color: "transparent"
-                            border.color: musicBox.border.color
+                        Text {
+                            anchors.centerIn: parent
+                            text: "⏮"
+                            font.pixelSize: 20
+                            color: parent.border.color
+                        }
 
-                            Text {
-                                anchors.centerIn: parent
-                                text: modelData.icon
-                                font.pixelSize: 20
-                                color: parent.border.color
-                            }
+                        TapHandler {
+                            onTapped: musicBox.mpdIpc.write("previous\nstatus\ncurrentsong\n")
+                        }
+                    }
 
-                            TapHandler {
-                                onTapped: modelData.proc.running = true
+                    // Play / Pause Button
+                    Rectangle {
+                        width: 55
+                        height: 40
+                        radius: shell.theme.defaultCardRadius ?? 4
+                        border.width: shell.theme.globalBorderWidth ?? 2
+                        color: "transparent"
+                        border.color: musicBox.border.color
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: musicBox.playbackState === "play" ? "⏸" : "⏯"
+                            font.pixelSize: 20
+                            color: parent.border.color
+                        }
+
+                        TapHandler {
+                            onTapped: {
+                                if (musicBox.playbackState === "play") {
+                                    musicBox.mpdIpc.write("pause 1\nstatus\n");
+                                } else if (musicBox.playbackState === "pause") {
+                                    musicBox.mpdIpc.write("pause 0\nstatus\n");
+                                } else {
+                                    musicBox.mpdIpc.write("play\nstatus\n");
+                                }
                             }
                         }
                     }
 
+                    // Next Track Button
+                    Rectangle {
+                        width: 55
+                        height: 40
+                        radius: shell.theme.defaultCardRadius ?? 4
+                        border.width: shell.theme.globalBorderWidth ?? 2
+                        color: "transparent"
+                        border.color: musicBox.border.color
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "⏭"
+                            font.pixelSize: 20
+                            color: parent.border.color
+                        }
+
+                        TapHandler {
+                            onTapped: musicBox.mpdIpc.write("next\nstatus\ncurrentsong\n")
+                        }
+                    }
+
+                    // Directory Folder Opener
                     Rectangle {
                         width: 55
                         height: 40
@@ -163,10 +359,9 @@ Item {
                             onTapped: {
                                 Quickshell.execDetached([
                                     "sh", "-c",
-                                    "path=$(audtool current-song-filename | sed 's|^file://||'); " +
-                                    "clean_path=$(python3 -c \"import urllib.parse, sys; print(urllib.parse.unquote(sys.argv[1]))\" \"$path\"); " +
-                                    "[ -d \"$clean_path\" ] || clean_path=$(dirname \"$clean_path\"); " +
-                                    "if [ -e \"$clean_path\" ]; then nohup nemo \"$clean_path\" >/dev/null 2>&1 & fi"
+                                    "abs_path=\"$HOME/Music/" + musicBox.currentFile + "\"; " +
+                                    "dir_path=$(dirname \"$abs_path\"); " +
+                                    "if [ -d \"$dir_path\" ]; then nohup nemo \"$dir_path\" >/dev/null 2>&1 & fi"
                                 ])
                                 musicBox.popupActive = false
                             }

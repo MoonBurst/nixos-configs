@@ -15,10 +15,9 @@
   #  ./programs/waybar/default.nix
     ./programs/brave.nix
     ./programs/librewolf.nix
-    ./programs/audacious.nix
+#    ./programs/audacious.nix
     ./programs/nemo.nix
-
-  #  ./programs/walker.nix
+    ./programs/mpd.nix
   ];
 
   home-manager.users.moonburst = {

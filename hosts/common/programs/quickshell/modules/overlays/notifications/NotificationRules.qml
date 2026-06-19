@@ -16,7 +16,8 @@ Item {
         { name: "luster_dawn",   summary: "Luster Dawn",   color: "#e041de", sound: true  }
     ]
 
-    property string resourcePath: (typeof shellWindow !== "undefined" ? shellWindow.projectRootPath : "/home/moonburst/nix/hosts/common/programs/quickshell") + "/resources"
+    // FIXED: Uses native Quickshell.configDir directly to prevent "undefined/resources/" path resolution errors
+    property string resourcePath: Quickshell.configDir + "/resources"
 
     Process {
         id: soundPlaybackEngine
@@ -56,7 +57,6 @@ Item {
     }
 
     /*
-     * FIXED: Changed the data type handler to return variant properties.
      * Extracts Quickshell's native 'image' or 'icon' ImageSource object values as-is.
      * This passes the active layout memory blocks straight to QML without string decoration crashes.
      */
@@ -83,7 +83,14 @@ Item {
             activeAppCardRegistry["microphone"] = null;
         }
 
-        // 1. Prioritize Quickshell's native ImageSource channels directly (Captures Discord/Vesktop user avatars)
+        // 1. Prioritize character profile keyword matching rules!
+        // This ensures custom profiles (Apogee, Luster Dawn, etc.) always override generic avatars/icons
+        let profile = findActiveProfile(notification);
+        if (profile) {
+            return "file://" + resourcePath + "/" + profile.name + "/" + profile.name + ".png";
+        }
+
+        // 2. Fall back to Quickshell's native ImageSource channels directly (Captures Discord/Vesktop user avatars)
         if (notification.image) {
             return notification.image;
         }
@@ -91,40 +98,13 @@ Item {
             return notification.icon;
         }
 
-        // 2. Fall back to manual string filepath lookups if no object token exists
+        // 3. Fall back to standard system icon theme lookup or manual string filepaths
         if (notification.appIcon && notification.appIcon.length > 0) {
             let iconName = notification.appIcon;
             if (iconName.startsWith("/") || iconName.startsWith("file://")) {
                 return iconName.startsWith("file://") ? iconName : "file://" + iconName;
             }
-
-            let lowerApp = iconName.toLowerCase();
-            let appNameLower = notification.appName ? notification.appName.toLowerCase() : "";
-
-            if (lowerApp === "vesktop" || lowerApp === "discord" || appNameLower === "vesktop" || appNameLower === "discord") {
-                return "file:///home/moonburst/.local/share/icons/Numix/48/apps/discord.png";
-            }
-            if (lowerApp === "google-chrome" || lowerApp === "chrome" || appNameLower === "google-chrome") {
-                return "file:///home/moonburst/.local/share/icons/Numix/48/apps/google-chrome.png";
-            }
-            if (lowerApp === "steam" || appNameLower === "steam") {
-                return "file:///home/moonburst/.local/share/icons/Numix/48/apps/steam.png";
-            }
-            if (lowerApp === "system-file-manager" || lowerApp === "nautilus" || lowerApp === "thunar") {
-                return "file:///home/moonburst/.local/share/icons/Numix/48/apps/system-file-manager.png";
-            }
-            if (iconName.includes("microphone")) {
-                let formattedName = iconName.startsWith("notification-") ? iconName : "notification-" + iconName;
-                return "file:///home/moonburst/.local/share/icons/Numix/48/notifications/" + formattedName + ".svg";
-            }
-
-            return "file:///home/moonburst/.local/share/icons/Numix/48/apps/" + iconName + ".png";
-        }
-
-        // 3. Fall back to character profile keyword matching rules
-        let profile = findActiveProfile(notification);
-        if (profile) {
-            return "file://" + resourcePath + "/" + profile.name + "/" + profile.name + ".png";
+            return "image://icon/" + iconName;
         }
 
         return "";

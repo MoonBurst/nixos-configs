@@ -1,15 +1,11 @@
-# --- packages.nix ---
-{ pkgs, config, lib, nixpkgs-unstable, ... }:
+{ pkgs, config, lib, nixpkgs-unstable, inputs, ... }:
 
 let
   unstable = import nixpkgs-unstable {
-   system = pkgs.stdenv.hostPlatform.system;
+    system = pkgs.stdenv.hostPlatform.system;
     config.allowUnfree = true;
   };
 
-
-
-  # 1. Pull the script out into a reusable variable
   matrixApp = pkgs.writeShellScriptBin "matrix" ''
     exec ${pkgs.brave}/bin/brave \
       --app=https://moonburst.net \
@@ -24,39 +20,37 @@ let
 in
 {
   home.packages = with pkgs; [
+  inputs.horizon.packages.${pkgs.system}.horizon-electron
+
+
     # --- Unstable Packages ---
-    unstable.dolphin-emu                # GameCube/Wii emulator
-    unstable.archipelago                # Multi-game randomizer
-    unstable.poptracker                 # Tracker for randomizers
+    unstable.dolphin-emu
+    unstable.archipelago
+    unstable.poptracker
     unstable.quickshell
 
     # --- Communication & Social ---
-    jami                                # Peer-to-peer video calling and chat
-    nicotine-plus                       # Graphical client for the Soulseek file-sharing network
-    evolution                           # Professional email and calendar suite
+    jami
+    nicotine-plus
+    evolution
     mission-center
-
-    # --- Detached Cinny Instance ---
-    matrixApp                           # 2. Add the variable to packages here
+    matrixApp
 
     # --- Media & Graphics ---
-    audacious                           # Lightweight, "Winamp-style" audio player
-    krita                               # Professional digital painting and illustration tool
+    audacious
+    krita
 
     # --- System & Utilities ---
-    sherlock-launcher                   # Minimalist application runner/launcher
-    (pkgs.callPackage ../../packages/sherlock-clipboard.nix {}) # Custom clipboard manager
-    btrfs-assistant                     # GUI for managing Btrfs filesystems and Snapper snapshots
+    btrfs-assistant
 
     # --- Development & Productivity ---
-    kdePackages.kate                    # Powerful multi-document text editor
-    protonup-qt                         # Tool to manage GE-Proton versions for Steam/Gaming
+    kdePackages.kate
+    protonup-qt
 
     # --- 3D Printing & CAD ---
-    cura-appimage                       # Popular 3D printer slicer (AppImage version)
-    orca-slicer                         # High-performance slicer based on Bambu/PrusaSlicer
-    openscad                            # Programmatic 3D CAD modeler
-
+    cura-appimage
+    orca-slicer
+    openscad
   ];
 
   # --- Desktop Entry for Launcher ---
@@ -64,7 +58,7 @@ in
     matrix-brave = {
       name = "Matrix (Brave)";
       genericName = "Matrix Client";
-      exec = "${matrixApp}/bin/matrix"; # 3. Reference the absolute store path here
+      exec = "${matrixApp}/bin/matrix";
       icon = "matrix";
       terminal = false;
       categories = [ "Network" "Chat" ];

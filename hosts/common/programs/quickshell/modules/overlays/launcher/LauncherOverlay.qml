@@ -508,6 +508,7 @@ Rectangle {
                 height: active ? parent.contentHeight : 0
                 sourceComponent: Component {
                     ListView {
+                        id: appsListView
                         clip: true
                         cacheBuffer: 800
                         spacing: 20
@@ -529,7 +530,11 @@ Rectangle {
                                 Image {
                                     width: 32; height: 32
                                     anchors.verticalCenter: parent.verticalCenter
-                                    source: icon ? "image://icon/" + icon : ""
+                                    source: {
+                                        if (!icon) return "";
+                                        var s = String(icon);
+                                        return (s.startsWith("/") || s.startsWith("file://")) ? s : "image://icon/" + s;
+                                    }
                                     fillMode: Image.PreserveAspectFit
                                     smooth: false
                                 }
@@ -791,7 +796,7 @@ Rectangle {
     }
 
     /*
-    *EMAIL LOADER
+     * EMAIL LOADER
      */
     Item {
         width: parent.width

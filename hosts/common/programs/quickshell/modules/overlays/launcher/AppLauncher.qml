@@ -8,12 +8,9 @@ Item {
     property string currentQuery: ""
     property string pendingQuery: ""
 
-    property
-    var allApps: []
-    property
-    var knownExecs: ({})
-    property
-    var pendingApps: []
+    property var allApps: []
+    property var knownExecs: ({})
+    property var pendingApps: []
 
     property alias filteredApps: filteredAppsModel
 
@@ -50,11 +47,7 @@ Item {
     function refreshFilter(query) {
         currentQuery = query || ""
 
-        const q =
-        currentQuery
-        .toLowerCase()
-        .trim()
-
+        const q = currentQuery.toLowerCase().trim()
         const showAll = q.length === 0
 
         filteredAppsModel.clear()
@@ -77,10 +70,11 @@ Item {
             return
         }
 
+        // Run via a detached subshell so programs survive when Quickshell reloads
         launcher.command = [
             "sh",
             "-c",
-            command
+            "nohup setsid " + command + " >/dev/null 2>&1 &"
         ]
 
         launcher.running = true
@@ -91,8 +85,7 @@ Item {
             return
         }
 
-        const key =
-        exec.toLowerCase()
+        const key = exec.toLowerCase()
 
         if (knownExecs[key]) {
             return
@@ -100,13 +93,18 @@ Item {
 
         knownExecs[key] = true
 
+        // If the desktop entry points to the mismatching icon string, translate it to what's on disk
+        let finalIcon = (icon === "horizon-electron") ? "fchat-horizon" : icon
+
+        if (finalIcon.startsWith("/")) {
+            finalIcon = "file://" + finalIcon
+        }
+
         pendingApps.push({
             name,
             exec,
-            icon,
-
+            icon: finalIcon,
             searchName: name.toLowerCase(),
-
                          searchExec: exec.toLowerCase()
         })
     }
@@ -128,12 +126,18 @@ Item {
             "-c",
             `
             (
-                find \
-                /run/current-system/sw/share/applications \
-                "$HOME/.local/share/applications" \
-                /usr/share/applications \
-                -type f \
-                -name '*.desktop' 2>/dev/null |
+                {
+                    echo "$XDG_DATA_DIRS" | tr ':' '\\n'
+                    echo "$HOME/.nix-profile/share"
+                    echo "$HOME/.local/share/state/nix/profile/share"
+                    echo "/etc/profiles/per-user/$USER/share"
+                    echo "/run/current-system/sw/share"
+                    echo "$HOME/.local/share"
+                    echo "/usr/share"
+                } | while read -r dir; do
+                [ -n "$dir" ] && [ -d "$dir/applications" ] || continue
+                find -L "$dir/applications" -type f -name '*.desktop' 2>/dev/null
+                done |
 
                 sort -u |
 
@@ -170,73 +174,50 @@ Item {
 
                     echo "__BINARIES__"
 
-                    tr ':' '\\n' <<< "$PATH" |
+                    echo "$PATH" | tr ':' '\\n' | while read -r dir; do
+                    [ -d "$dir" ] || continue
 
-                    while read -r dir; do
-                        [ -d "$dir" ] || continue
+                    find -L "$dir" \
+                    -maxdepth 1 \
+                    -executable 2>/dev/null
+                    done |
 
-                        find -L "$dir" \
-                        -maxdepth 1 \
-                        -executable 2>/dev/null
-                        done |
+                    sort -u |
 
-                        sort -u |
+                    while read -r file; do
+                        [ -d "$file" ] && continue
 
-                        while read -r file; do
-                            [ -d "$file" ] && continue
+                        bin=$(basename "$file")
 
-                            bin=$(basename "$file")
-
-                            printf "%s|%s|application-x-executable\\n" \
-                            "$bin" \
-                            "$bin"
-                            done
+                        printf "%s|%s|application-x-executable\\n" \
+                        "$bin" \
+                        "$bin"
+                        done
             )
             `
         ]
 
         stdout: SplitParser {
             onRead: data => {
-                const lines =
-                data.split("\n")
+                const lines = data.split("\n")
 
-                for (
-                    let i = 0,
-                     c = lines.length; i < c;
-                     ++i
-                ) {
-                    const line =
-                    lines[i].trim()
+                for (let i = 0, c = lines.length; i < c; ++i) {
+                    const line = lines[i].trim()
 
-                    if (
-                        !line ||
-                        line === "__BINARIES__"
-                    ) {
+                    if (!line || line === "__BINARIES__") {
                         continue
                     }
 
-                    const first =
-                    line.indexOf("|")
+                    const first = line.indexOf("|")
+                    const second = line.indexOf("|", first + 1)
 
-                    const second =
-                    line.indexOf(
-                        "|",
-                        first + 1
-                    )
-
-                    if (
-                        first === -1 ||
-                        second === -1
-                    ) {
+                    if (first === -1 || second === -1) {
                         continue
                     }
 
                     addApp(
                         line.slice(0, first),
-                           line.slice(
-                               first + 1,
-                               second
-                           ),
+                           line.slice(first + 1, second),
                            line.slice(second + 1)
                     )
                 }

@@ -11,14 +11,9 @@ Item {
     property var serverInstance: null
 
     // ============================================================================
-    // HELPER FUNCTIONS
+    // HELPER FUNCTIONS (Optimal models/bindings extraction)
     // ============================================================================
     function getNewest() {
-        if (!notifModel || notifModel.count === 0) return null;
-        return notifModel.get(0);
-    }
-
-    function getOldest() {
         if (!notifModel || notifModel.count === 0) return null;
         return notifModel.get(notifModel.count - 1);
     }
@@ -48,7 +43,6 @@ Item {
         if (!card)
             return;
         card.isManualDismiss = true;
-        rootItem.closeNotificationTrack(card);
 
         if (card.startExitAnimation) {
             card.startExitAnimation();
@@ -58,9 +52,15 @@ Item {
     }
 
     function dismissLatest() {
-        let entry = getNewest();
-        if (!entry) return;
+        console.log("[IPC DEBUG] dismissLatest triggered. Total active cards in queue:", notifModel.count);
 
+        let entry = getNewest();
+        if (!entry) {
+            console.log("[IPC DEBUG] No active notification cards found to dismiss.");
+            return;
+        }
+
+        console.log("[IPC DEBUG] Manual dismiss targeting oldest (front-most) card -> Index:", (notifModel.count - 1), "Summary:", entry.summary);
         let visualCard = entry.cardRef || entry;
         dismiss(visualCard);
     }
@@ -70,9 +70,12 @@ Item {
     // ============================================================================
     function playNotificationSound(notification) {
         if (!notification) return;
+
+        // Optimized string matching via local cached lookups
+        // FIXED: Uses native Quickshell.configDir to prevent "undefined/resources/" loading warnings
         let summaryLower = (notification.summary || "").toLowerCase();
         let bodyLower = (notification.body || "").toLowerCase();
-        let baseResource = shell.projectRootPath + "/resources/";
+        let baseResource = Quickshell.configDir + "/resources/";
         let trackPath = "";
 
         if (summaryLower.includes("luster dawn") || bodyLower.includes("luster dawn")) {
@@ -119,7 +122,7 @@ Item {
 
             console.log("Dynamic target resolution rule processing for app: " + primaryTarget);
 
-            // FIX: Loop through targets to guarantee 'focus parent; focus child' appends to EVERY option cleanly
+            // Loop through targets to guarantee 'focus parent; focus child' appends to EVERY option cleanly
             let targets = [primaryTarget, secondaryTarget, baseNameClean];
             let commandParts = [];
 
@@ -216,6 +219,10 @@ Item {
 
         function jumpToLatest(): void {
             ipc.jumpToLatestInternal();
+        }
+
+        function toggleHistory(): void {
+            rootItem.showHistoryMode = !rootItem.showHistoryMode;
         }
     }
 }

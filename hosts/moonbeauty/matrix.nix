@@ -114,8 +114,6 @@ in
         allow_registration = true;
         registration_token_file = config.sops.secrets.matrix_registration_secret.path;
         login_shared_secret_file = puppetSecretPath;
-
-        # Updated URL preview syntax for Conduwuit
         url_preview = true;
         url_preview_ip_range_blacklist = [ "127.0.0.0/8" "10.0.0.0/8" "172.16.0.0/12" "192.168.0.0/16" "::1/128" ];
       };
@@ -235,13 +233,13 @@ in
     };
   };
 
-  systemd.services.cloudflared-tunnel = {
+systemd.services.cloudflared-tunnel = {
     wantedBy = [ "multi-user.target" ];
     serviceConfig = {
       EnvironmentFile = config.sops.secrets.cloudflare_token.path;
 
       ExecStart = lib.mkForce ''
-        ${unstablePkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate run \
+        ${unstablePkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate --loglevel warn run \
           --protocol quic \
           --http2-origin \
           --origin-server-name moonburst.net
