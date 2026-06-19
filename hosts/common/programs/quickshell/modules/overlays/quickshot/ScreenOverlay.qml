@@ -51,7 +51,7 @@ PanelWindow {
     readonly property real captureScale: shot.sourceSize.width > 0
     ? shot.sourceSize.width / Math.max(1, width) : 1
 
-    // Pending grab mode ("copy" | "save" | "selftest").
+    // Pending grab mode ("copy" | "save" | "ocr" | "selftest").
     property string _mode: ""
 
     // Route global key shortcuts to whichever overlay owns the selection.
@@ -60,6 +60,27 @@ PanelWindow {
         function onCopyRequested() { if (root.isOwner) root.exportRegion("copy"); }
         function onSaveRequested() { if (root.isOwner) root.exportRegion("save"); }
         function onUndoRequested() { if (root.isOwner) canvas.undo(); }
+        function onOcrRequested() { if (root.isOwner) root.exportRegion("ocr"); }
+        function onToolChanged() {
+            if (ShotState.tool === "colorpicker" && root.active && root.ready) {
+                // Grab the fully-rendered screen frame once on tool activation to bypass startup race conditions
+                captureRoot.grabToImage(function (result) {
+                    if (result) {
+                        var path = "/tmp/quickshot-backdrop.png";
+                        result.saveToFile(path);
+                        backdropImage.source = "file://" + path + "?t=" + new Date().getTime();
+                    }
+                });
+            }
+        }
+    }
+
+    // Flat file backing texture for the color picker magnifier
+    Image {
+        id: backdropImage
+        visible: false
+        cache: false
+        onStatusChanged: if (status === Image.Ready) magnifierCanvas.requestPaint()
     }
 
     Item {
@@ -342,6 +363,7 @@ PanelWindow {
             onPositionChanged: function (mouse) {
                 mouseX = mouse.x;
                 mouseY = mouse.y;
+                magnifierCanvas.requestPaint(); // Synchronize the circular magnifier repaint loop
             }
 
             onPressed: function (mouse) {
@@ -361,70 +383,89 @@ PanelWindow {
             height: 130
             z: 2000
 
+            // Circular vector viewport rendering the cropped image source and grid lines
+            Canvas {
+                id: magnifierCanvas
+                anchors.fill: parent
+
+                onPaint: {
+                    var ctx = getContext("2d");
+                    ctx.reset();
+
+                    var w = width;
+                    var h = height;
+
+                    // 1. Clip coordinates to a perfect circle inside the border bounds
+                    ctx.beginPath();
+                    ctx.arc(w / 2, h / 2, w / 2 - 2, 0, 2 * Math.PI);
+                    ctx.clip();
+
+                    // 2. Disable bilinear image smoothing for blocky pixel grids
+                    ctx.imageSmoothingEnabled = false;
+
+                    // 3. Draw the zoomed flat image safely inside the circle using high-DPI scaled offsets
+                    if (backdropImage.status === Image.Ready) {
+                        var scale = root.captureScale;
+                        var sx = (colorPickerArea.mouseX - 6.5) * scale;
+                        var sy = (colorPickerArea.mouseY - 6.5) * scale;
+                        var sw = 13 * scale;
+                        var sh = 13 * scale;
+
+                        ctx.drawImage(
+                            backdropImage,
+                            sx,
+                            sy,
+                            sw,
+                            sh,
+                            0,
+                            0,
+                            w,
+                            h
+                        );
+                    } else {
+                        // Fallback background color if image is loading
+                        ctx.fillStyle = "#151515";
+                        ctx.fillRect(0, 0, w, h);
+                    }
+
+                    // 4. Draw grid mesh lines
+                    ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
+                    ctx.lineWidth = 1;
+                    var step = w / 13;
+                    for (var i = 1; i < 13; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(i * step, 0);
+                        ctx.lineTo(i * step, h);
+                        ctx.stroke();
+
+                        ctx.beginPath();
+                        ctx.moveTo(0, i * step);
+                        ctx.lineTo(w, i * step);
+                        ctx.stroke();
+                    }
+
+                    // 5. Draw the central targeting square marker (clicked pixel focus)
+                    var centerSize = w / 13;
+                    var cx = (w - centerSize) / 2;
+                    var cy = (h - centerSize) / 2;
+
+                    ctx.strokeStyle = "white";
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeRect(cx, cy, centerSize, centerSize);
+
+                    ctx.strokeStyle = "black";
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(cx + 1, cy + 1, centerSize - 2, centerSize - 2);
+                }
+            }
+
+            // Outer circular frame borders layered on top of the circular canvas
             Rectangle {
                 anchors.fill: parent
                 radius: width / 2
                 color: "transparent"
                 border.color: Style.selectionBorder
                 border.width: 3
-                clip: true
-
-                // Zoomed backdrop view (sharp 13x13 pixel grid representation)
-                ShaderEffectSource {
-                    id: zoomSource
-                    anchors.fill: parent
-                    sourceItem: captureRoot
-                    readonly property real srcW: 13
-                    readonly property real srcH: 13
-                    sourceRect: Qt.rect(
-                        colorPickerArea.mouseX - srcW / 2,
-                        colorPickerArea.mouseY - srcH / 2,
-                        srcW,
-                        srcH
-                    )
-                    textureSize: Qt.size(srcW, srcH)
-                    smooth: false // Disable bilinear smoothing for clear pixel boundary definition
-                }
-
-                // Grid layout
-                Canvas {
-                    anchors.fill: parent
-                    onPaint: {
-                        var ctx = getContext("2d");
-                        ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
-                        ctx.lineWidth = 1;
-                        var step = parent.width / 13;
-                        for (var i = 1; i < 13; i++) {
-                            ctx.beginPath();
-                            ctx.moveTo(i * step, 0);
-                            ctx.lineTo(i * step, parent.height);
-                            ctx.stroke();
-
-                            ctx.beginPath();
-                            ctx.moveTo(0, i * step);
-                            ctx.lineTo(parent.width, i * step);
-                            ctx.stroke();
-                        }
-                    }
-                }
-
-                // Central targeting marker (the exact pixel clicked)
-                Rectangle {
-                    anchors.centerIn: parent
-                    width: parent.width / 13
-                    height: parent.height / 13
-                    color: "transparent"
-                    border.color: "white"
-                    border.width: 1.5
-
-                    Rectangle {
-                        anchors.fill: parent
-                        anchors.margins: 1
-                        color: "transparent"
-                        border.color: "black"
-                        border.width: 1
-                    }
-                }
             }
 
             Rectangle {
@@ -478,6 +519,7 @@ PanelWindow {
             onClearAll: canvas.clearAll()
             onCopy: root.exportRegion("copy")
             onSave: root.exportRegion("save")
+            onOcr: root.exportRegion("ocr")
             onCancel: root.cancel()
         }
     }
@@ -559,6 +601,7 @@ PanelWindow {
             if (e.key === Qt.Key_S) { ShotState.saveRequested(); e.accepted = true; }
             else if (e.key === Qt.Key_C) { ShotState.copyRequested(); e.accepted = true; }
             else if (e.key === Qt.Key_Z) { ShotState.undoRequested(); e.accepted = true; }
+            else if (e.key === Qt.Key_F) { ShotState.ocrRequested(); e.accepted = true; }
             return;
         }
         var map = {};
@@ -632,13 +675,38 @@ PanelWindow {
         }
         var path = (mode === "copy") ? ShotState.clipPath()
         : (mode === "save") ? ShotState.savePath()
+        : (mode === "ocr") ? "/tmp/quickshot-ocr.png"
         : "/tmp/quickshot-selftest.png";
+
         var ok = result.saveToFile(path);
         if (ok && mode === "copy") {
             Quickshell.execDetached(["sh", "-c", "wl-copy --type image/png < " + ShotState.shQuote(path)]);
             notify("Copied to clipboard", path, false);
         } else if (ok && mode === "save") {
             notify("Screenshot saved", path, true);
+        } else if (ok && mode === "ocr") {
+            var ocrCmd = [
+                "sh", "-c",
+                "if ! command -v tesseract >/dev/null 2>&1; then " +
+                "  notify-send -a Quickshot \"OCR Error\" \"Tesseract is not installed.\"; " +
+                "  rm -f " + ShotState.shQuote(path) + "; " +
+                "  exit 1; " +
+                "fi; " +
+                "if ! command -v wl-copy >/dev/null 2>&1; then " +
+                "  notify-send -a Quickshot \"OCR Error\" \"wl-copy is not installed.\"; " +
+                "  rm -f " + ShotState.shQuote(path) + "; " +
+                "  exit 1; " +
+                "fi; " +
+                "text=$(tesseract " + ShotState.shQuote(path) + " stdout 2>/dev/null | tr -d '\\f' | sed '/./,$!d'); " +
+                "if [ -n \"$text\" ]; then " +
+                "  printf \"%s\" \"$text\" | wl-copy; " +
+                "  notify-send -a Quickshot \"Text Copied\" \"$text\"; " +
+                "else " +
+                "  notify-send -a Quickshot \"OCR Failed\" \"No text found in the selected region.\"; " +
+                "fi; " +
+                "rm -f " + ShotState.shQuote(path)
+            ];
+            Quickshell.execDetached(ocrCmd);
         }
         Qt.quit();
     }

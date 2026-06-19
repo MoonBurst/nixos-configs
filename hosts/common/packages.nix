@@ -86,5 +86,6 @@
     unifont_upper  # Ultimate SMP coverage
 #waybar
 vesktop
+tesseract
   ];
 }

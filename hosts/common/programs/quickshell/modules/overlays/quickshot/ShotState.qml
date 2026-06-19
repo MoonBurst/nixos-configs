@@ -34,6 +34,7 @@ Singleton {
     signal copyRequested()
     signal saveRequested()
     signal undoRequested()
+    signal ocrRequested()
 
     readonly property var tools: [
         { id: "select",      icon: "⤢", tip: "Move / resize selection (V)" },
@@ -66,6 +67,11 @@ Singleton {
         return (h && h.length > 0) ? h : "/tmp";
     }
 
+    // Single-quote a path for safe use inside `sh -c`.
+    function shQuote(p) {
+        return "'" + String(p).replace(/'/g, "'\\''") + "'";
+    }
+
     function saveDir() {
         return home() + "/Screenshots";
     }
@@ -80,10 +86,5 @@ Singleton {
 
     function clipPath() {
         return "/tmp/quickshot-clip.png";
-    }
-
-    // Single-quote a path for safe use inside `sh -c`.
-    function shQuote(p) {
-        return "'" + String(p).replace(/'/g, "'\\''") + "'";
     }
 }

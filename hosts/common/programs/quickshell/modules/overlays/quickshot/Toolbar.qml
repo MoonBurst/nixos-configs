@@ -11,6 +11,7 @@ Rectangle {
     signal clearAll()
     signal copy()
     signal save()
+    signal ocr()
     signal cancel()
 
     radius: Style.toolbarRadius
@@ -114,6 +115,7 @@ Rectangle {
         // ---- Actions ---------------------------------------------------------
         IconButton { glyph: "⟲"; tip: "Undo (Ctrl+Z)"; onClicked: bar.undo() }
         IconButton { glyph: "✕"; tip: "Clear annotations"; onClicked: bar.clearAll() }
+        IconButton { glyph: "🔤"; tip: "Extract text (OCR) (Ctrl+F)"; onClicked: bar.ocr() }
         IconButton {
             glyph: "⧉"; tip: "Copy to clipboard (Enter)"
             tint: Style.accent; checked: true; onClicked: bar.copy()
