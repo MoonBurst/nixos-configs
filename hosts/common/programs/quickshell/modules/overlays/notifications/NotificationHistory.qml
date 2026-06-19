@@ -131,13 +131,12 @@ Item {
 
         onVisibleChanged: {
             if (visible) {
-                historyWindow.forceActiveFocus(); // Grab exclusive focus immediately
                 if (typeof historyListView !== "undefined" && historyListView) {
                     // Deferred execution pass snaps and centers the layout correctly on launch
                     Qt.callLater(function() {
                         historyListView.currentIndex = 0;
                         historyListView.positionViewAtIndex(0, ListView.Beginning);
-                        historyListView.forceActiveFocus(); // Focus list natively at focus-holder level
+                        historyListView.forceActiveFocus(); // Focus list directly here safely
                     });
                 }
             }
@@ -231,6 +230,11 @@ Item {
                     highlightFollowsCurrentItem: true
                     verticalLayoutDirection: ListView.BottomToTop
 
+                    // INSTANT KEYBOARD SCROLLING & SNAPPING
+                    highlightMoveDuration: 0      // Snaps focused highlight position instantly with zero animation delay
+                    highlightResizeDuration: 0    // Snaps focused highlight size instantly with zero animation delay
+                    boundsBehavior: Flickable.StopAtBounds // Disables elastic rubber-banding bounce animations at list edges
+
                     onActiveFocusChanged: {
                         if (!activeFocus && historyEngine.showHistoryMode) {
                             historyListView.forceActiveFocus();
@@ -244,16 +248,16 @@ Item {
                             }
                             event.accepted = true;
                         } else if (event.key === Qt.Key_Up) {
-                            // Move selection up (older items) by 2 index positions per press for accelerated scrolling
-                            let targetUp = currentIndex + 2;
+                            // Move selection up (older items) by exactly 1 index position (one-at-a-time)
+                            let targetUp = currentIndex + 1;
                             if (targetUp >= count) {
                                 targetUp = count - 1;
                             }
                             currentIndex = targetUp;
                             event.accepted = true;
                         } else if (event.key === Qt.Key_Down) {
-                            // Move selection down (newer items) by 2 index positions per press for accelerated scrolling
-                            let targetDown = currentIndex - 2;
+                            // Move selection down (newer items) by exactly 1 index position (one-at-a-time)
+                            let targetDown = currentIndex - 1;
                             if (targetDown < 0) {
                                 targetDown = 0;
                             }
@@ -337,6 +341,14 @@ Item {
                             }
                         }
 
+                        // Helper function to extract a URL from the body text
+                        function extractUrl(text) {
+                            if (!text) return "";
+                            var regex = /(https?:\/\/[^\s<]+)/g;
+                            var match = text.match(regex);
+                            return match ? match[0] : "";
+                        }
+
                         // Non-blocking native shell command executor to bypass CORS sandboxing
                         Process {
                             id: asyncScraper
@@ -377,14 +389,14 @@ Item {
                         function fetchAsyncPreviewNative(url) {
                             if (!url) return;
 
-                            var cleanUrl = String(url).trim();
-
                             // 1. If it's already a direct file format, map immediately
                             // Word boundary matching ensures trailing CDN tokens are preserved
-                            if (cleanUrl.match(/\.(?:png|jpg|jpeg|gif|svg|webp)\b/i)) {
-                                delegateRoot.asyncPreviewSource = cleanUrl;
+                            if (url.match(/\.(?:png|jpg|jpeg|gif|svg|webp)\b/i)) {
+                                delegateRoot.asyncPreviewSource = url;
                                 return;
                             }
+
+                            var cleanUrl = url.trim();
 
                             // Run an optimized native background scraper using standard CLI tools
                             // Bypasses sandbox blocks and supports full query parameters on output
@@ -507,7 +519,8 @@ Item {
                                     border.color: shell.theme.base03 || "#45475a"
                                     visible: extractedUrl !== "" && !delegateRoot.hasRightPreview
 
-                                    property string extractedUrl: delegateRoot.extractUrl(body ? body : "")
+                                    // FIXED: Pointed to the root historyEngine scope to resolve the TypeError
+                                    property string extractedUrl: historyEngine.extractUrl(body ? body : "")
 
                                     Row {
                                         anchors.fill: parent

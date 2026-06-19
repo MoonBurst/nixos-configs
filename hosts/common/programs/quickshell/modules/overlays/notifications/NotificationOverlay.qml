@@ -28,8 +28,8 @@ Item {
     // Exposes the history model count to the master scope
     property int historyCount: historyModel ? historyModel.count : 0
 
-    // Exposes the history list model to the global scope for status bar counters
-    property alias historyModel: historyDrawer.historyModel
+    // Dynamically bound at runtime to prevent compile-time alias target resolution failures
+    property var historyModel: null
 
     ListModel {
         id: activeNotificationsModel
@@ -145,6 +145,10 @@ Item {
         showHistoryMode: root.showHistoryMode
         rulesLoader: root.rulesLoader
         rootItem: root // Passes parent reference to allow warning-free property modifications
+
+        Component.onCompleted: {
+            root.historyModel = historyDrawer.historyModel; // Dynamically binds the model on completed safely
+        }
     }
 
     NotificationServer {
@@ -229,55 +233,52 @@ Item {
             }
         }
 
-        // Determine icon path and resolve immediately while the C++ pointer is valid
-        let resolvedIcon = rulesLoader ? rulesLoader.getCustomIcon(notification) : "";
-
-        let avatarVal = "";
-        if (resolvedIcon) {
-            avatarVal = resolvedIcon; // User's avatar object or string
-        } else {
-            avatarVal = "image://icon/" + (notification.desktopEntry || notification.appName || "").toLowerCase();
-        }
-
-        // Compare underlying string locations to prevent avatar payloads from being treated as shared preview attachments
-        let resolvedStr = resolvedIcon ? String(resolvedIcon) : "";
-        let imageStr = notification.image ? String(notification.image) : "";
-
-        // Parse shared image/GIF link from metadata hints (only used for local direct uploads)
+        let resolvedIcon = "";
         let previewVal = "";
-        let hints = notification.hints || {};
-        let hintImagePath = hints["image-path"] || hints["image_path"] || hints["image-uri"] || hints["image-uri"] || "";
+        let avatarVal = "";
 
-        if (hintImagePath === "") {
-            let attachmentUrls = hints["attachment-urls"] || hints["attachment_urls"] || hints["attachment-url"] || hints["attachment-url"] || "";
-            if (attachmentUrls !== "") {
-                let strUrls = String(attachmentUrls);
-                let firstUrl = root.extractUrl(strUrls);
-                if (firstUrl !== "") {
-                    hintImagePath = firstUrl;
+        if (notification.isMock) {
+            // Read pre-resolved filepaths directly from your background-buffered mock object
+            avatarVal = notification.icon;
+            previewVal = notification.image;
+        } else {
+            // Determine icon path and resolve immediately while the C++ pointer is valid
+            resolvedIcon = rulesLoader ? rulesLoader.getCustomIcon(notification) : "";
+
+            if (resolvedIcon) {
+                avatarVal = resolvedIcon; // User's avatar object or string
+            } else {
+                avatarVal = "image://icon/" + (notification.desktopEntry || notification.appName || "").toLowerCase();
+            }
+
+            // Compare underlying string locations to prevent avatar payloads from being treated as shared preview attachments
+            let resolvedStr = resolvedIcon ? String(resolvedIcon) : "";
+            let imageStr = notification.image ? String(notification.image) : "";
+
+            // Parse shared image/GIF link from metadata hints (only used for local direct uploads)
+            let hints = notification.hints || {};
+            let hintImagePath = hints["image-path"] || hints["image_path"] || hints["image-uri"] || hints["image-uri"] || "";
+
+            if (hintImagePath !== "") {
+                let strHint = String(hintImagePath);
+                if (strHint.startsWith("/") || strHint.startsWith("file://") || strHint.startsWith("http")) {
+                    previewVal = strHint.startsWith("/") ? "file://" + strHint : strHint;
                 }
             }
-        }
 
-        if (hintImagePath !== "") {
-            let strHint = String(hintImagePath);
-            if (strHint.startsWith("/") || strHint.startsWith("file://") || strHint.startsWith("http")) {
-                previewVal = strHint.startsWith("/") ? "file://" + strHint : strHint;
+            // Fallback 1: Extract direct image URLs from body text directly (for direct PNG/JPG links)
+            if (previewVal === "") {
+                let bodyImageUrl = root.extractImageUrl(notification.body || "");
+                if (bodyImageUrl !== "") {
+                    previewVal = bodyImageUrl;
+                }
             }
-        }
 
-        // Fallback 1: Extract direct image URLs from body text directly (for direct PNG/JPG links)
-        if (previewVal === "") {
-            let bodyImageUrl = root.extractImageUrl(notification.body || "");
-            if (bodyImageUrl !== "") {
-                previewVal = bodyImageUrl;
-            }
-        }
-
-        // Fallback 2: Raw uploaded image payload (only if distinct from the user avatar)
-        if (previewVal === "") {
-            if (notification.image && notification.image !== notification.icon && notification.image !== resolvedIcon) {
-                previewVal = notification.image;
+            // Fallback 2: Raw uploaded image payload (only if distinct from the user avatar)
+            if (previewVal === "") {
+                if (notification.image && notification.image !== notification.icon && notification.image !== resolvedIcon) {
+                    previewVal = notification.image;
+                }
             }
         }
 

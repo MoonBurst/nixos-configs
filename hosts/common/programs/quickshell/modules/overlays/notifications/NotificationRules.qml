@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import Quickshell.Io
 
 Item {
@@ -16,8 +17,8 @@ Item {
         { name: "luster_dawn",   summary: "Luster Dawn",   color: "#e041de", sound: true  }
     ]
 
-    // FIXED: Uses native Quickshell.configDir directly to prevent "undefined/resources/" path resolution errors
-    property string resourcePath: Quickshell.configDir + "/resources"
+    // FIXED: Uses Quickshell.shellDir to resolve deprecation warnings in newer runtimes
+    property string resourcePath: Quickshell.shellDir + "/resources"
 
     Process {
         id: soundPlaybackEngine
@@ -41,6 +42,7 @@ Item {
         return null;
     }
 
+    // Determine the border outline color natively using global theme tokens
     function getIsUrgent(notification) {
         if (!notification) return false;
         let urgency = notification.urgency;

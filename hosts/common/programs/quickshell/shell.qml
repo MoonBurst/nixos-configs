@@ -19,7 +19,7 @@ import "./modules/bar/sound" as SoundModule
 import "./modules/bar/music" as MusicCapsule
 import "./modules/bar/alarm" as AlarmCapsule
 import "./modules/bar/borg" as BorgCapsule
-import "./modules/bar/notify" as NotifyCapsule // Corrected path to match your folder directory on disk
+import "./modules/bar/notify" as NotifyCapsule
 import "./modules/bar/weather" as WeatherCapsule
 import "./modules/bar/calendar" as CalendarCapsule
 import "modules/lockscreen"
@@ -688,9 +688,13 @@ ShellRoot {
             if (topScope && topScope.cardComponentTemplate) {
 
                 // Pass the notification object straight into the template's initial properties
+                // FIXED: Injects required 'rulesLoader', 'rootItem', and 'controller' bindings standardly
                 let popupCard = topScope.cardComponentTemplate.createObject(
                     topScope, {
-                        notification: notification
+                        notification: notification,
+                        rulesLoader: topScope.rulesLoader,
+                        rootItem: topScope,
+                        controller: topScope.notificationIPC
                     }
                 )
 

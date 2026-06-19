@@ -2,17 +2,14 @@ import QtQuick
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
-import "."
-as LauncherModule
+import "." as LauncherModule
 
 Rectangle {
     id: launcherRoot
 
     // Core Window and Theme Context References
-    property
-    var shell
-    property
-    var launcherWindow
+    property var shell
+    property var launcherWindow
     property string currentDefinition: ""
     property string mode: "apps"
 
@@ -29,10 +26,8 @@ Rectangle {
     // Global Controller Alias to eliminate deep JavaScript scope resolution costs
     readonly property var ctrl: LauncherModule.LauncherController
 
-
     // Centralized active controller tracking
-    property
-    var activeController: null
+    property var activeController: null
 
     // Native C++ level compilation binding pathways
     Binding {
@@ -171,7 +166,6 @@ Rectangle {
                 return
             }
 
-
             if (launcherRoot.ctrl.mathEngine.runCalculator(trimmed)) {
                 launcherRoot.mode = "math"
                 return
@@ -181,8 +175,6 @@ Rectangle {
             launcherRoot.ctrl.appLauncher.refreshFilter(trimmed)
         }
     }
-
-
 
     /*
      * WINDOW STATE CONTROL ACTIONS (MODULATED FOR COMPOSITOR DRIVEN FOCUS GRABS)
@@ -354,7 +346,6 @@ Rectangle {
                 Keys.onDownPressed: launcherRoot.navigateActiveList(false)
                 Keys.onUpPressed: launcherRoot.navigateActiveList(true)
 
-
                 Keys.onPressed: function(event) {
                     // BACKSPACE INTERCEPT: If the search box is completely empty, pressing Backspace exits any active sub-mode back to Apps
                     if (event.key === Qt.Key_Backspace && searchField.text === "") {
@@ -447,13 +438,17 @@ Rectangle {
                     clip: true
                     cacheBuffer: 800
                     spacing: 20
-
                     focus: true
 
                     model: ctrl.unicodeSearch.filteredUnicodeItems
                     currentIndex: ctrl.unicodeSearch.selectedIndex
 
                     onCurrentIndexChanged: ctrl.unicodeSearch.selectedIndex = currentIndex
+
+                    // Instant navigation properties
+                    highlightMoveDuration: 0
+                    highlightResizeDuration: 0
+                    flickDeceleration: 10000
 
                     delegate: Rectangle {
                         width: unicodeListView.width
@@ -513,6 +508,11 @@ Rectangle {
                         cacheBuffer: 800
                         spacing: 20
                         model: ctrl.appLauncher.filteredApps
+
+                        // Instant navigation properties
+                        highlightMoveDuration: 0
+                        highlightResizeDuration: 0
+                        flickDeceleration: 10000
 
                         delegate: Rectangle {
                             width: ListView.view.width
@@ -589,6 +589,11 @@ Rectangle {
                             width: 540; height: parent.height; clip: true; cacheBuffer: 1200; spacing: 20
                             model: ctrl.clipboard.filteredClipboardItems
                             currentIndex: ctrl.clipboard.selectedIndex
+
+                            // Instant navigation properties
+                            highlightMoveDuration: 0
+                            highlightResizeDuration: 0
+                            flickDeceleration: 10000
 
                             delegate: Rectangle {
                                 readonly property int itemIndex: index
@@ -682,6 +687,11 @@ Rectangle {
                         model: ctrl.dictionary.definitionEntries
                         currentIndex: ctrl.dictionary.selectedIndex
 
+                        // Instant navigation properties
+                        highlightMoveDuration: 0
+                        highlightResizeDuration: 0
+                        flickDeceleration: 10000
+
                         delegate: Rectangle {
                             width: dictionaryListView.width
                             height: definitionText.implicitHeight + 40
@@ -710,7 +720,6 @@ Rectangle {
                     }
                 }
             }
-
 
             /*
              * MATH LOADER

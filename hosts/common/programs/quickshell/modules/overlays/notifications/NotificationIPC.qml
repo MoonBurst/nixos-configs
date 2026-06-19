@@ -72,10 +72,10 @@ Item {
         if (!notification) return;
 
         // Optimized string matching via local cached lookups
-        // FIXED: Uses native Quickshell.configDir to prevent "undefined/resources/" loading warnings
+        // FIXED: Uses native Quickshell.shellDir to prevent "undefined/resources/" loading warnings
         let summaryLower = (notification.summary || "").toLowerCase();
         let bodyLower = (notification.body || "").toLowerCase();
-        let baseResource = Quickshell.configDir + "/resources/";
+        let baseResource = Quickshell.shellDir + "/resources/";
         let trackPath = "";
 
         if (summaryLower.includes("luster dawn") || bodyLower.includes("luster dawn")) {
