@@ -358,7 +358,7 @@ Item {
                 onContactRequested: (email) => contactModalOverlay.openContactPrompt(email)
 
                 onDownloadAttachmentsRequested: (msgId, folderLabel) => {
-                    rootWindow.writeToQueue("DOWNLOAD_ATTACHMENTS", msgId, getMaildirFolder(folderLabel), "");
+                    rootWindow.writeToQueue("DOWNLOAD_ATTACHMENTS", msgId, getMaildirFolder(folderLabel), "/home/" + rootWindow.activeUser + "/Downloads");
                 }
 
                 // Intercept the spam block signal and perform a cascade block of all past emails from that sender

@@ -7,12 +7,11 @@ let
 import os, sys, json, subprocess, time, glob, configparser, sqlite3, getpass, re, shutil, mimetypes, socket, email.utils
 from concurrent.futures import ThreadPoolExecutor
 
-# Simple global print wrapper to silence verbose info logs and only output warnings/errors
+# Force all prints to immediately flush to systemd journal logs
 _original_print = print
 def print(*args, **kwargs):
-    msg = " ".join(map(str, args))
-    if any(keyword in msg.lower() for keyword in ["error", "warning", "fail", "except"]):
-        _original_print(*args, **kwargs)
+    kwargs.setdefault('flush', True)
+    _original_print(*args, **kwargs)
 
 # Resolve usernames and directories dynamically
 real_user = getpass.getuser()
@@ -25,7 +24,7 @@ try:
     with open("/run/secrets/gmail_address", "r") as s: gmail_address = s.read().strip()
     with open("/run/secrets/gmail_app_password", "r") as s: gmail_password = s.read().strip()
 except Exception as e:
-    print(f"[Secrets Error]: Failed to read runtime secrets: {e}", flush=True)
+    print(f"[Secrets Error]: Failed to read runtime secrets: {e}")
 
 cache_dir = f"{target_home}/.cache/himalaya"
 cache_file = os.path.join(cache_dir, "emails.json")
@@ -114,13 +113,13 @@ if gmail_password: env_copy["HIMALAYA_GMAIL_PASSWORD"] = gmail_password
 def send_notification(title, message):
     try:
         subprocess.run(["${pkgs.libnotify}/bin/notify-send", "-a", "Mail Client", "-i", "mail-message", title, message])
-    except Exception as e: print(f"[Notification Error]: {e}", flush=True)
+    except Exception as e: print(f"[Notification Error]: {e}")
 
 # Unified downloader and /tmp to Downloads folder movement router
-def download_and_route_attachments(msg_id, folder, destination_dir):
-    # GUARD: If the preview folder already exists and contains files, skip the network download
-    if os.path.exists(destination_dir) and os.listdir(destination_dir):
-        print(f"[Attachment Router] Previews already exist in {destination_dir}. Skipping download.", flush=True)
+def download_and_route_attachments(msg_id, folder, destination_dir, is_preview=False):
+    # GUARD: Only skip download if we are generating cached previews and they already exist
+    if is_preview and os.path.exists(destination_dir) and os.listdir(destination_dir):
+        print(f"[Attachment Router] Previews already exist in {destination_dir}. Skipping download.")
         class DummyResult:
             returncode = 0
             stdout = ""
@@ -134,15 +133,29 @@ def download_and_route_attachments(msg_id, folder, destination_dir):
     output_logs = res.stdout + "\n" + res.stderr
     downloaded_paths = re.findall(r'Downloading\s+"([^"]+)"', output_logs)
 
+    # WRITE DEBUG LOG TO TMP FOR DIAGNOSTICS
+    try:
+        with open("/tmp/himalaya_last_download.log", "w") as lf:
+            lf.write(f"DESTINATION: {destination_dir}\n")
+            lf.write(f"RAW STDOUT/STDERR:\n{output_logs}\n")
+            lf.write(f"PARSED PATHS: {downloaded_paths}\n")
+    except Exception as le:
+        print(f"[Debug Log Error] Failed to write file: {le}")
+
     for src_path in downloaded_paths:
-        if os.path.exists(src_path):
-            filename = os.path.basename(src_path)
+        # Resolve paths relative to the destination_dir if they are not absolute
+        actual_src = src_path if os.path.isabs(src_path) else os.path.join(destination_dir, src_path)
+        if os.path.exists(actual_src):
+            filename = os.path.basename(actual_src)
             dest_path = os.path.join(destination_dir, filename)
-            try:
-                shutil.move(src_path, dest_path)
-                print(f"[Attachment Router] Routed attachment: {src_path} -> {dest_path}", flush=True)
-            except Exception as me:
-                print(f"[Attachment Router Error] Failed to route attachment: {me}", flush=True)
+            if os.path.abspath(actual_src) != os.path.abspath(dest_path):
+                try:
+                    shutil.move(actual_src, dest_path)
+                    print(f"[Attachment Router] Routed attachment: {actual_src} -> {dest_path}")
+                except Exception as me:
+                    print(f"[Attachment Router Error] Failed to route attachment: {me}")
+        else:
+            print(f"[Attachment Router Warning] Resolved path does not exist: {actual_src}")
     return res
 
 def get_sqlite_db_path():
@@ -182,7 +195,7 @@ def find_duplicate_items(cache_file_path, target_id, target_folder_clean):
                     item_sender = (i_from.get("addr") or i_from.get("name") or item.get("sender") or "").strip()
                     if (item.get("subject") or "").strip() == target_sub and (item.get("date") or "").strip() == target_date and item_sender == target_sender:
                         duplicates.append((item_id, item_folder))
-    except Exception as e: print(f"[Queue Processor] Error finding duplicates: {e}", flush=True)
+    except Exception as e: print(f"[Queue Processor] Error finding duplicates: {e}")
     return duplicates
 
 def run_himalaya(args, folder):
@@ -205,7 +218,7 @@ def process_live_text_queue():
             conn.close()
             return False
 
-        print(f"[Queue Processor] Processing {len(rows)} pending action(s).", flush=True)
+        print(f"[Queue Processor] Processing {len(rows)} pending action(s).")
         actions_taken = False
         for row in rows:
             row_id, action, arg1, arg2, arg3 = row[0], row[1], row[2], row[3], row[4]
@@ -213,34 +226,34 @@ def process_live_text_queue():
             if action == "DELETE":
                 res = run_himalaya(["message", "delete", str(arg1)], arg2)
                 if res.returncode == 0:
-                    print(f"[Queue] Successfully deleted {arg1} from '{arg2}'", flush=True)
+                    print(f"[Queue] Successfully deleted {arg1} from '{arg2}'")
                     actions_taken = True
             elif action == "STAR":
                 res = run_himalaya(["flag", "add", str(arg1), "flagged"], arg2)
                 if res.returncode == 0:
-                    print(f"[Queue] Successfully starred {arg1} in '{arg2}'", flush=True)
+                    print(f"[Queue] Successfully starred {arg1} in '{arg2}'")
                     actions_taken = True
             elif action == "UNSTAR":
                 res = run_himalaya(["flag", "remove", str(arg1), "flagged"], arg2)
                 if res.returncode == 0:
-                    print(f"[Queue] Successfully unstarred {arg1} in '{arg2}'", flush=True)
+                    print(f"[Queue] Successfully unstarred {arg1} in '{arg2}'")
                     actions_taken = True
             elif action == "READ":
                 res = run_himalaya(["flag", "add", str(arg1), "seen"], arg2)
                 if res.returncode == 0:
-                    print(f"[Queue] Successfully marked READ {arg1} in '{arg2}'", flush=True)
+                    print(f"[Queue] Successfully marked READ {arg1} in '{arg2}'")
                     actions_taken = True
             elif action == "UNREAD":
                 res = run_himalaya(["flag", "remove", str(arg1), "seen"], arg2)
                 if res.returncode == 0:
-                    print(f"[Queue] Successfully marked UNREAD {arg1} in '{arg2}'", flush=True)
+                    print(f"[Queue] Successfully marked UNREAD {arg1} in '{arg2}'")
                     actions_taken = True
             elif action == "SEND":
                 # Highly simplified, bulletproof filename and body extraction regex
                 attachments = re.findall(r'filename="([^"]+)"', arg3)
                 clean_body = re.sub(r'<#part[\s\S]*?</#part>', "", arg3).strip()
 
-                print(f"[Queue Processor] Sending mail. Found attachments list: {attachments}", flush=True)
+                print(f"[Queue Processor] Sending mail. Found attachments list: {attachments}")
 
                 if attachments:
                     from email.mime.multipart import MIMEMultipart
@@ -272,11 +285,11 @@ def process_live_text_queue():
                                 encoders.encode_base64(part)
                                 part.add_header("Content-Disposition", "attachment", filename=filename)
                                 msg.attach(part)
-                                print(f"[Queue Processor] Successfully attached file to RFC payload (MIME: {ctype}): {filepath}", flush=True)
+                                print(f"[Queue Processor] Successfully attached file to RFC payload (MIME: {ctype}): {filepath}")
                             except Exception as e:
-                                print(f"[Queue Error] Failed to attach {filepath}: {e}", flush=True)
+                                print(f"[Queue Error] Failed to attach {filepath}: {e}")
                         else:
-                            print(f"[Queue Warning] Attachment file not found: {filepath}", flush=True)
+                            print(f"[Queue Warning] Attachment file not found: {filepath}")
                     raw_rfc_message = msg.as_string()
                 else:
                     raw_rfc_message = f"From: {gmail_address}\nTo: {arg1}\nSubject: {arg2}\nMIME-Version: 1.0\nContent-Type: text/plain; charset=utf-8\nContent-Transfer-Encoding: 8bit\n\n{arg3}"
@@ -287,7 +300,7 @@ def process_live_text_queue():
                     actions_taken = True
                 else:
                     send_notification("Delivery Failure", f"Failed to send message to {arg1}")
-                    print(f"[Queue Error] Send failure: {res.stderr.strip()}", flush=True)
+                    print(f"[Queue Error] Send failure: {res.stderr.strip()}")
             elif action == "DRAFT":
                 # Construction and file-handling of offline-first drafts
                 # arg1: To (recipient), arg2: Subject, arg3: Body (content text)
@@ -304,10 +317,10 @@ def process_live_text_queue():
                 try:
                     with open(filepath, "w") as df:
                         df.write(raw_rfc_message)
-                    print(f"[Queue Processor] Draft successfully saved to Maildir: {filepath}", flush=True)
+                    print(f"[Queue Processor] Draft successfully saved to Maildir: {filepath}")
                     actions_taken = True
                 except Exception as e:
-                    print(f"[Queue Error] Failed to write draft to local storage: {e}", flush=True)
+                    print(f"[Queue Error] Failed to write draft to local storage: {e}")
             elif action == "CONTACT":
                 contacts_file = f"{target_home}/Documents/Contacts"
                 try:
@@ -316,9 +329,9 @@ def process_live_text_queue():
                     with open(contacts_file, "a") as cf: cf.write(f"\n{contact_entry}")
                     send_notification("Contact Saved", f"Successfully added {contact_entry} to contacts list.")
                     actions_taken = True
-                except Exception as e: print(f"[Queue Error] Failed to write contact: {e}", flush=True)
+                except Exception as e: print(f"[Queue Error] Failed to write contact: {e}")
             elif action == "FETCH_BODY":
-                print(f"[Queue Processor] Lazy Fetching message details for message {arg1}...", flush=True)
+                print(f"[Queue Processor] Lazy Fetching message details for message {arg1}...")
                 res = subprocess.run(["${pkgs.himalaya}/bin/himalaya", "--config", himalaya_config, "message", "read", str(arg1), "--folder", arg2], capture_output=True, text=True, env=env_copy)
                 if res.returncode == 0:
                     clean_body = res.stdout.strip()
@@ -328,7 +341,7 @@ def process_live_text_queue():
 
                     # Trigger file-system first visual preview extraction
                     preview_dir = f"{target_home}/.cache/himalaya/previews/{arg1}"
-                    download_and_route_attachments(arg1, arg2, preview_dir)
+                    download_and_route_attachments(arg1, arg2, preview_dir, is_preview=True)
                     local_files = os.listdir(preview_dir) if os.path.exists(preview_dir) else []
                     attachments = [
                         {
@@ -353,8 +366,8 @@ def process_live_text_queue():
                                     item["attachments"] = attachments
                                     break
                             with open(cache_file, "w") as f: json.dump(data, f, indent=2)
-                        except Exception as ce: print(f"[Queue Error] Cache write back error: {ce}", flush=True)
-                else: print(f"[Queue Error] Failed to fetch body for {arg1}: {res.stderr.strip()}", flush=True)
+                        except Exception as ce: print(f"[Queue Error] Cache write back error: {ce}")
+                else: print(f"[Queue Error] Failed to fetch body for {arg1}: {res.stderr.strip()}")
 
             elif action == "DOWNLOAD_ATTACHMENTS":
                 target_id = arg1
@@ -367,18 +380,18 @@ def process_live_text_queue():
                 }
                 canonical_folder = folder_mapping.get(target_folder.lower(), target_folder)
 
-                print(f"[Queue Processor] Extracting all attachments for message {target_id} from folder '{canonical_folder}' to ~/Downloads...", flush=True)
-                res = download_and_route_attachments(target_id, canonical_folder, downloads_dir)
+                print(f"[Queue Processor] Extracting all attachments for message {target_id} from folder '{canonical_folder}' to ~/Downloads...")
+                res = download_and_route_attachments(target_id, canonical_folder, downloads_dir, is_preview=False)
 
                 if res.returncode == 0:
-                    print(f"[Queue Processor] Successfully extracted attachments for {target_id} to {downloads_dir}.", flush=True)
+                    print(f"[Queue Processor] Successfully extracted attachments for {target_id} to {downloads_dir}.")
                     send_notification("Attachments Downloaded", f"Successfully saved all extracted files to ~/Downloads")
                     try:
                         subprocess.run(["${pkgs.xdg-utils}/bin/xdg-open", downloads_dir])
                     except Exception as oe:
-                        print(f"[Queue Processor Error] Failed to automatically open downloads folder: {oe}", flush=True)
+                        print(f"[Queue Processor Error] Failed to automatically open downloads folder: {oe}")
                 else:
-                    print(f"[Queue Processor Error] Failed to extract attachments: {res.stderr.strip()}", flush=True)
+                    print(f"[Queue Processor Error] Failed to extract attachments: {res.stderr.strip()}")
 
             elif action == "MOVE":
                 target_id = arg1
@@ -392,24 +405,24 @@ def process_live_text_queue():
                 canonical_source = folder_mapping.get(source_folder.lower(), source_folder)
                 canonical_dest = folder_mapping.get(dest_folder.lower(), dest_folder)
 
-                print(f"[Queue Processor] Moving message {target_id} from folder '{canonical_source}' to '{canonical_dest}'...", flush=True)
+                print(f"[Queue Processor] Moving message {target_id} from folder '{canonical_source}' to '{canonical_dest}'...")
                 res = run_himalaya(["message", "move", canonical_dest, str(target_id)], canonical_source)
                 if res.returncode == 0:
-                    print(f"[Queue Processor] Successfully moved message {target_id} to '{canonical_dest}'.", flush=True)
+                    print(f"[Queue Processor] Successfully moved message {target_id} to '{canonical_dest}'.")
                     actions_taken = True
                 else:
-                    print(f"[Queue Processor Error] Failed to move message: {res.stderr.strip()}", flush=True)
+                    print(f"[Queue Processor Error] Failed to move message: {res.stderr.strip()}")
 
             cursor.execute("DELETE FROM queue WHERE id = ?", (row_id,))
         conn.commit()
         conn.close()
 
         if actions_taken:
-            print("[Queue Processor] Pushing local modifications to remote mail servers...", flush=True)
+            print("[Queue Processor] Pushing local modifications to remote mail servers...")
             subprocess.run(["${pkgs.isync}/bin/mbsync", "-c", mbsync_file, "gmail"], env=env_copy)
             rebuild_local_ui_cache()
             return True
-    except Exception as e: print(f"[Queue Processor Error]: {e}", flush=True)
+    except Exception as e: print(f"[Queue Processor Error]: {e}")
     return False
 
 def load_existing_bodies(cache_file_path):
@@ -426,7 +439,7 @@ def load_existing_bodies(cache_file_path):
     return bodies
 
 def rebuild_local_ui_cache():
-    print("Rebuilding emails.json layout index cache vectors...", flush=True)
+    print("Rebuilding emails.json layout index cache vectors...")
 
     # Priority order maps the target directories to the local cache identifier.
     # Inbox, Starred, Steam, and Trash take priority over the master "All Mail" list.
@@ -486,9 +499,9 @@ def rebuild_local_ui_cache():
                             item["body_content"] = ""
 
                         if has_att and msg_id:
-                            print(f"[Cache Pre-fetch] Found attachments in message {msg_id}. Pre-downloading previews...", flush=True)
+                            print(f"[Cache Pre-fetch] Found attachments in message {msg_id}. Pre-downloading previews...")
                             preview_dir = f"{target_home}/.cache/himalaya/previews/{msg_id}"
-                            download_and_route_attachments(msg_id, target_folder, preview_dir)
+                            download_and_route_attachments(msg_id, target_folder, preview_dir, is_preview=True)
                             local_files = os.listdir(preview_dir) if os.path.exists(preview_dir) else []
                             item["attachments"] = [
                                 {
@@ -542,7 +555,7 @@ def rebuild_local_ui_cache():
     os.makedirs(cache_dir, exist_ok=True)
     with open(cache_file + ".tmp", "w") as f: json.dump(master_list, f, indent=2)
     os.replace(cache_file + ".tmp", cache_file)
-    print("[Live Queue Engine] Front-end UI cache synchronization pass finalized.", flush=True)
+    print("[Live Queue Engine] Front-end UI cache synchronization pass finalized.")
 
 def run_gentle_backfill():
     global last_backfill
@@ -563,7 +576,7 @@ def run_gentle_backfill():
 
         if not uncached_items: return
 
-        print(f"[Background Backfill] Gentle-loading {len(uncached_items)} older message bodies...", flush=True)
+        print(f"[Background Backfill] Gentle-loading {len(uncached_items)} older message bodies...")
         cache_updated = False
 
         for item in uncached_items:
@@ -588,9 +601,9 @@ def run_gentle_backfill():
                 if split_idx != -1: clean_body = clean_body[split_idx:].strip()
 
                 if has_att and target_id:
-                    print(f"[Background Backfill] Found attachments in message {target_id}. Pre-downloading previews...", flush=True)
+                    print(f"[Background Backfill] Found attachments in message {target_id}. Pre-downloading previews...")
                     preview_dir = f"{target_home}/.cache/himalaya/previews/{target_id}"
-                    download_and_route_attachments(target_id, dup_folder, preview_dir)
+                    download_and_route_attachments(target_id, dup_folder, preview_dir, is_preview=True)
                     local_files = os.listdir(preview_dir) if os.path.exists(preview_dir) else []
                     attachments = [
                         {
@@ -610,8 +623,8 @@ def run_gentle_backfill():
         if cache_updated:
             with open(cache_file + ".tmp", "w") as f: json.dump(data, f, indent=2)
             os.replace(cache_file + ".tmp", cache_file)
-            print("[Background Backfill] Successfully cached batch. Visual database updated.", flush=True)
-    except Exception as e: print(f"[Background Backfill Error]: {e}", flush=True)
+            print("[Background Backfill] Successfully cached batch. Visual database updated.")
+    except Exception as e: print(f"[Background Backfill Error]: {e}")
 
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "--daemon":
     print("[Live Queue Engine] Instantiating high-performance reactive loop...", flush=True)
