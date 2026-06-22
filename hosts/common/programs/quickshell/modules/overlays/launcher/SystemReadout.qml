@@ -24,25 +24,27 @@ Rectangle {
     // Internal states parsed from timers and processes
     property string timeStr: "--:--:--"
     property string dateStr: "---, --- --"
-    property real totalVramGiB: 24.0 // Configures automatically; falls back to 24G
+    property real totalVramGiB: 24.0 // Default initialized to 24G; updates dynamically on load
     property string diskFreeStr: "--G"
     property real diskFreeValue: 1.0 // Starts fully free; empties as storage fills
-
-    // Modular Data Providers
-    BatteryEngine { id: batteryEngine }
+    property bool hasGPU: false      // Automatically detected on startup
+    property bool hasBattery: false  // Automatically detected on startup
+    property string batteryName: ""
+    property string batteryPercent: "0%"
+    property string batteryStatus: "Unknown"
 
     // Invisible Data Engines
     CpuCapsule { id: cpuData; visible: false; barWindow: systemReadoutPanel.barWindow }
     GpuCapsule { id: gpuData; visible: false; barWindow: systemReadoutPanel.barWindow }
     RamCapsule { id: ramData; visible: false; barWindow: systemReadoutPanel.barWindow }
 
-    // Startup process to determine your exact total VRAM (Nvidia/AMD)
+    // Startup process to determine your exact total VRAM using AWK to prevent 'bc missing' errors
     Process {
         id: totalVramProc
         running: true
         command: [
             "sh", "-c",
-            "if command -v nvidia-smi >/dev/null 2>&1; then total=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null | head -n 1); if [ ! -z \"$total\" ]; then echo \"$total\" | awk '{printf \"%.1f\", $1/1024}'; exit; fi; fi; card_dir=$(ls -d /sys/class/drm/card*/device 2>/dev/null | head -n 1); if [ ! -z \"$card_dir\" ]; then bytes=$(cat \"$card_dir/mem_info_vram_total\" 2>/dev/null || echo '0'); if [ \"$bytes\" -gt 0 ]; then echo \"scale=1; $bytes/1073741824\" | awk '{printf \"%.1f\", $1}'; exit; fi; fi; echo '24.0'"
+            "if command -v nvidia-smi >/dev/null 2>&1; then total=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null | head -n 1); if [ ! -z \"$total\" ]; then echo \"$total\" | awk '{printf \"%.1f\", $1/1024}'; exit; fi; fi; card_dir=$(ls -d /sys/class/drm/card*/device 2>/dev/null | head -n 1); if [ ! -z \"$card_dir\" ]; then bytes=$(cat \"$card_dir/mem_info_vram_total\" 2>/dev/null || echo '0'); if [ \"$bytes\" -gt 0 ]; then echo \"$bytes\" | awk '{printf \"%.1f\", $1}'; exit; fi; fi; echo '24.0'"
         ]
     }
 
@@ -52,6 +54,18 @@ Rectangle {
             var val = parseFloat(data.trim());
             if (!isNaN(val) && val > 0.0) {
                 systemReadoutPanel.totalVramGiB = val;
+            }
+        }
+    }
+
+    // Process to check if a dedicated GPU exists (using SplitParser to ensure reliable stream capture)
+    Process {
+        id: gpuDetectProc
+        running: true
+        command: ["sh", "-c", "if command -v nvidia-smi >/dev/null 2>&1; then echo 'true'; elif ls /sys/class/drm/card*/device/mem_info_vram_total >/dev/null 2>&1; then echo 'true'; else echo 'false'; fi"]
+        stdout: SplitParser {
+            onRead: data => {
+                systemReadoutPanel.hasGPU = (data.trim() === "true");
             }
         }
     }
@@ -80,6 +94,46 @@ Rectangle {
         }
     }
 
+    // Startup process to detect battery directory
+    Process {
+        id: batteryDetectProc
+        running: true
+        command: ["sh", "-c", "ls /sys/class/power_supply/ 2>/dev/null | grep -E '^BAT|^sb' | head -n 1"]
+    }
+
+    Connections {
+        target: batteryDetectProc.stdout
+        function onRead(data) {
+            var name = data.trim();
+            if (name !== "") {
+                systemReadoutPanel.batteryName = name;
+                systemReadoutPanel.hasBattery = true;
+                batteryPollProc.running = true;
+            }
+        }
+    }
+
+    // Polling process for active battery status
+    Process {
+        id: batteryPollProc
+        running: false
+        command: [
+            "sh", "-c",
+            "dir=/sys/class/power_supply/" + systemReadoutPanel.batteryName + "; if [ -d \"$dir\" ]; then echo \"$(cat \"$dir/capacity\")%:$(cat \"$dir/status\")\"; fi"
+        ]
+        stdout: SplitParser {
+            onRead: data => {
+                var trimmed = data.trim();
+                if (!trimmed) return;
+                var parts = trimmed.split(":");
+                if (parts.length === 2) {
+                    systemReadoutPanel.batteryPercent = parts[0];
+                    systemReadoutPanel.batteryStatus = parts[1];
+                }
+            }
+        }
+    }
+
     // Helper formulas to safely extract numeric progress levels (0.0 to 1.0)
     readonly property real cpuValue: {
         var val = parseFloat(cpuData.cpuUsageStr);
@@ -90,6 +144,8 @@ Rectangle {
         var val = parseFloat(gpuData.gpuUsageRaw);
         return isNaN(val) ? 0.0 : Math.min(1.0, Math.max(0.0, val / 100.0));
     }
+
+    readonly property real batteryValue: parseFloat(batteryPercent) / 100.0
 
     // Free RAM/VRAM ratios (Starts at 1.0, empties to 0.0 as usage increases)
     readonly property real ramFreeValue: {
@@ -103,7 +159,7 @@ Rectangle {
         return Math.min(1.0, Math.max(0.0, free / systemReadoutPanel.totalVramGiB));
     }
 
-    // Standard Color Engine (for RAM/VRAM/Disk)
+    // Standard Color Engine (for RAM/VRAM/Disk/Battery)
     function getMetricColor(ratio) {
         var pct = ratio * 100;
         if (pct <= 50) return shell.theme.base0C; // Green (#04f100)
@@ -126,14 +182,6 @@ Rectangle {
         return shell.theme.base0C; // Green
     }
 
-    // Battery Color Engine (Inverted: Red when empty, Green when full)
-    function getBatteryColor(ratio) {
-        var pct = ratio * 100;
-        if (pct <= 15) return shell.theme.base08; // Red (< 15% charge)
-        if (pct <= 50) return shell.theme.base09; // Orange (< 50% charge)
-        return shell.theme.base0C;                 // Green
-    }
-
     // Realtime Clock
     Timer {
         id: panelClockTimer
@@ -148,8 +196,9 @@ Rectangle {
         }
     }
 
-    // Periodic Storage Poller (Updates safely every 10 seconds, starting immediately on load)
+    // Periodic Storage & Battery Poller (Updates safely every 10 seconds)
     Timer {
+        id: slowMetricsTimer
         interval: 10000
         running: systemReadoutPanel.barWindow ? systemReadoutPanel.barWindow.visible : false
         repeat: true
@@ -157,6 +206,10 @@ Rectangle {
         onTriggered: {
             diskProc.running = false;
             diskProc.running = true;
+            if (systemReadoutPanel.hasBattery) {
+                batteryPollProc.running = false;
+                batteryPollProc.running = true;
+            }
         }
     }
 
@@ -214,18 +267,20 @@ Rectangle {
                 fillValue: systemReadoutPanel.cpuValue
             }
 
-            // 2. GPU Block (Standard Fills, Temp Aware)
+            // 2. GPU Block (Standard Fills, Temp Aware - Visible only if discrete GPU is present)
             SystemCapsule {
                 shell: systemReadoutPanel.shell
+                visible: systemReadoutPanel.hasGPU
                 label: "GPU"
                 valueText: gpuData.gpuUsageRaw + "% (" + gpuData.gpuTempRaw + "°C)"
                 valColor: systemReadoutPanel.getTempAndUsageColor(systemReadoutPanel.gpuValue, gpuData.gpuTempRaw)
                 fillValue: systemReadoutPanel.gpuValue
             }
 
-            // 3. VRAM Block (Empties as video memory is consumed)
+            // 3. VRAM Block (Empties as consumed - Visible only if discrete GPU is present)
             SystemCapsule {
                 shell: systemReadoutPanel.shell
+                visible: systemReadoutPanel.hasGPU
                 label: "VRAM"
                 valueText: {
                     var freeVram = parseFloat(gpuData.gpuVramFreeRaw);
@@ -244,23 +299,32 @@ Rectangle {
                 fillValue: systemReadoutPanel.ramFreeValue
             }
 
-            // 5. Battery Block (Empties as memory is consumed, visible only if active)
-            SystemCapsule {
-                shell: systemReadoutPanel.shell
-                visible: batteryEngine.hasBattery
-                label: "BATTERY"
-                valueText: batteryEngine.percent + " (" + batteryEngine.power + " " + batteryEngine.shortStatus + ")"
-                valColor: systemReadoutPanel.getBatteryColor(batteryEngine.value)
-                fillValue: batteryEngine.value
-            }
-
-            // 6. Disk Block (Empties as space fills)
+            // 5. Disk Block (Empties as space fills)
             SystemCapsule {
                 shell: systemReadoutPanel.shell
                 label: "DISK"
                 valueText: systemReadoutPanel.diskFreeStr + " Reserves"
                 valColor: systemReadoutPanel.getMetricColor(1.0 - systemReadoutPanel.diskFreeValue)
                 fillValue: systemReadoutPanel.diskFreeValue
+            }
+
+            // 6. Battery Block (Empties as battery drains - Visible only if battery hardware is present)
+            SystemCapsule {
+                shell: systemReadoutPanel.shell
+                visible: systemReadoutPanel.hasBattery
+                label: "BATTERY"
+                valueText: {
+                    var status = systemReadoutPanel.batteryStatus;
+                    var shortStatus = status;
+                    if (status === "Charging") shortStatus = "Charging";
+                    else if (status === "Discharging") shortStatus = "Draw";
+                    else if (status === "Full") shortStatus = "Full";
+                    else if (status === "Not charging") shortStatus = "Idle";
+
+                    return systemReadoutPanel.batteryPercent + " (" + systemReadoutPanel.batteryPower + " " + shortStatus + ")";
+                }
+                valColor: systemReadoutPanel.getBatteryColor(systemReadoutPanel.batteryValue)
+                fillValue: systemReadoutPanel.batteryValue
             }
         }
     }
