@@ -31,6 +31,7 @@ Rectangle {
     property string batteryName: ""
     property string batteryPercent: "0%"
     property string batteryStatus: "Unknown"
+    property string batteryPower: "0.0W" // Declared to prevent 'undefined' string concatenation
 
     // Pure QML/JS GPU Detector (Hides GPU/VRAM if VRAM reserves are under 3.0 GB)
     readonly property bool hasGPU: {
@@ -116,22 +117,23 @@ Rectangle {
         }
     }
 
-    // Polling process for active battery status
+    // Polling process for active battery status (returns capacity, charging status, and wattage draw via AWK)
     Process {
         id: batteryPollProc
         running: false
         command: [
             "sh", "-c",
-            "dir=/sys/class/power_supply/" + systemReadoutPanel.batteryName + "; if [ -d \"$dir\" ]; then echo \"$(cat \"$dir/capacity\")%:$(cat \"$dir/status\")\"; fi"
+            "dir=/sys/class/power_supply/" + systemReadoutPanel.batteryName + "; if [ -d \"$dir\" ]; then cap=$(cat \"$dir/capacity\" 2>/dev/null || echo '0'); stat=$(cat \"$dir/status\" 2>/dev/null || echo 'Unknown'); watt='0.0'; if [ -f \"$dir/power_now\" ]; then p_now=$(cat \"$dir/power_now\" 2>/dev/null || echo '0'); watt=$(awk -v p=\"$p_now\" 'BEGIN {printf \"%.1f\", p/1000000}'); elif [ -f \"$dir/voltage_now\" ] && [ -f \"$dir/current_now\" ]; then v_now=$(cat \"$dir/voltage_now\" 2>/dev/null || echo '0'); c_now=$(cat \"$dir/current_now\" 2>/dev/null || echo '0'); watt=$(awk -v v=\"$v_now\" -v c=\"$c_now\" 'BEGIN {printf \"%.1f\", (v*c)/1000000000000}'); fi; echo \"$cap:$stat:${watt}W\"; fi"
         ]
         stdout: SplitParser {
             onRead: data => {
                 var trimmed = data.trim();
                 if (!trimmed) return;
                 var parts = trimmed.split(":");
-                if (parts.length === 2) {
-                    systemReadoutPanel.batteryPercent = parts[0];
+                if (parts.length === 3) {
+                    systemReadoutPanel.batteryPercent = parts[0] + "%";
                     systemReadoutPanel.batteryStatus = parts[1];
+                    systemReadoutPanel.batteryPower = parts[2];
                 }
             }
         }
@@ -183,6 +185,14 @@ Rectangle {
 
         // Normal status
         return shell.theme.base0C; // Green
+    }
+
+    // Battery Color Engine (Inverted: Red when empty, Green when full)
+    function getBatteryColor(ratio) {
+        var pct = ratio * 100;
+        if (pct <= 15) return shell.theme.base08; // Red (< 15% charge)
+        if (pct <= 50) return shell.theme.base09; // Orange (< 50% charge)
+        return shell.theme.base0C;                 // Green
     }
 
     // Realtime Clock
