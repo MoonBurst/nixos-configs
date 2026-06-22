@@ -26,7 +26,10 @@ in
   system.autoUpgrade = {
     enable = true;
     flake = "path:/home/${targetUser}/nix#${config.networking.hostName}";
-    flags = [ "--update-input" "nixpkgs" ];
+    flags = [
+      "--update-input" "nixpkgs"
+      "--update-input" "nixpkgs-unstable"
+    ];
     dates = "weekly";
     randomizedDelaySec = "30min";
     allowReboot = false;

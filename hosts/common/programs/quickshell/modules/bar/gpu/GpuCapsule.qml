@@ -29,7 +29,7 @@ Rectangle {
     color: shell.theme.base00
     border.color: shell.theme.base05
 
-    // Metric Data Collector (AMD/Nvidia Cross-Vendor Core)
+    // Metric Data Collector (AMD/Nvidia)
     Process {
         id: gpuStatsProc
         running: true

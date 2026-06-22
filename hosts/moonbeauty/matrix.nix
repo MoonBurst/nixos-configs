@@ -2,8 +2,13 @@
 
 let
   unstablePkgs = if args ? inputs.nixpkgs-unstable
-  then args.inputs.nixpkgs-unstable.legacyPackages.${pkgs.stdenv.hostPlatform.system}
-    else pkgs;
+  then import args.inputs.nixpkgs-unstable {
+    system = pkgs.stdenv.hostPlatform.system;
+    config = {
+      permittedInsecurePackages = [ "olm-3.2.16" ];
+    };
+  }
+  else pkgs;
 
   # Toggle this to true to enable detailed logging across services
   enableVerboseLogging = false;
@@ -132,6 +137,7 @@ in
 
   services.mautrix-discord = {
     enable = true;
+    package = unstablePkgs.mautrix-discord;
     registerToSynapse = false;
     environmentFile = discordEnvPath;
     settings = {
@@ -143,7 +149,7 @@ in
   systemd.services.mautrix-discord = {
     after = [ "postgresql.service" ];
     serviceConfig = {
-      ExecStart = lib.mkForce "${pkgs.mautrix-discord}/bin/mautrix-discord --config=${bridgeConfigPath}";
+      ExecStart = lib.mkForce "${unstablePkgs.mautrix-discord}/bin/mautrix-discord --config=${bridgeConfigPath}";
       SupplementaryGroups = [ "continuwuity" "postgres" ];
       LogLevelMax = lib.mkIf (!enableVerboseLogging) "err";
     };
@@ -233,7 +239,7 @@ in
     };
   };
 
-systemd.services.cloudflared-tunnel = {
+  systemd.services.cloudflared-tunnel = {
     wantedBy = [ "multi-user.target" ];
     serviceConfig = {
       EnvironmentFile = config.sops.secrets.cloudflare_token.path;
@@ -249,7 +255,6 @@ systemd.services.cloudflared-tunnel = {
       User = "continuwuity";
     };
   };
-
 
   users.groups.continuwuity = {};
   users.users.continuwuity = {

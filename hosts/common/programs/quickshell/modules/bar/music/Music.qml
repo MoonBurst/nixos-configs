@@ -38,41 +38,126 @@ Rectangle {
     border.color: shell.theme.base05
 
     // ==========================================
+    // DISPLAY HELPER
+    // ==========================================
+
+    /**
+     * Updates trackStr and trackCountStr immediately when state or tags change.
+     * Ensures we fallback to just the file name (no path) if Title tag is missing.
+     */
+    function updateTrackString() {
+        if (musicBox.playbackState === "stop") {
+            musicBox.trackStr = "No Track";
+            musicBox.trackCountStr = "Track 0 of 0";
+            return;
+        }
+
+        var displayTitle = musicBox.tooltipTitle;
+        if (!displayTitle || displayTitle === "No Title Playing") {
+            var rawFile = musicBox.currentFile;
+            displayTitle = rawFile ? rawFile.substring(rawFile.lastIndexOf("/") + 1) : "";
+        }
+
+        musicBox.trackStr = displayTitle ? displayTitle : "No Track";
+        musicBox.trackCountStr = "Track " + musicBox.currentTrackIdx + " of " + musicBox.totalTracks;
+    }
+
+    // ==========================================
     // SOCKET IPC CONNECTION
     // ==========================================
 
     /**
-     * Handles the persistent TCP socket connection to MPD.
-     * Parses streaming stdout messages line-by-line to update properties.
+     * Handles the background polling socket loop.
+     * Periodically queries MPD and streams raw output directly inline to SplitParser.
      */
     Process {
         id: mpdIpc
         running: true
-        command: ["nc", "localhost", "6600"]
+
+        command: [
+            "python3", "-u", "-c",
+            "import socket, sys, time\n" +
+            "while True:\n" +
+            "    try:\n" +
+            "        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n" +
+            "        s.connect(('127.0.0.1', 6600))\n" +
+            "        s.recv(1024)\n" +
+            "        s.sendall(b'''status\ncurrentsong\n''')\n" +
+            "        res = b''\n" +
+            "        while True:\n" +
+            "            chunk = s.recv(4096)\n" +
+            "            if not chunk: break\n" +
+            "            res += chunk\n" +
+            "            norm = res.replace(b'''\\r\\n''', b'''\\n''')\n" +
+            "            if norm.endswith(b'''\\nOK\\n''') or norm == b'''OK\\n''':\n" +
+            "                break\n" +
+            "        s.close()\n" +
+            "        sys.stdout.write(res.decode('utf-8', errors='ignore'))\n" +
+            "        sys.stdout.flush()\n" +
+            "    except Exception:\n" +
+            "        pass\n" +
+            "    time.sleep(1)"
+        ]
+
+        /**
+         * Custom write wrapper function.
+         * Runs a fast, short-lived socket writer to bypass standard stream limitations.
+         * Keeps full compatibility with existing tooltip components.
+         */
+        function write(data) {
+            Quickshell.execDetached([
+                "python3", "-c",
+                "import socket\n" +
+                "try:\n" +
+                "    s = socket.socket()\n" +
+                "    s.connect(('127.0.0.1', 6600))\n" +
+                "    s.recv(1024)\n" +
+                "    s.sendall('''" + data + "'''.encode())\n" +
+                "except Exception: pass"
+            ]);
+        }
+
+        /**
+         * Inline parser bound to the standard output of the process.
+         * Performs case-insensitive checks on prefixes to handle varied tag definitions.
+         */
         stdout: SplitParser {
             onRead: line => {
                 if (!line) return;
                 line = line.trim();
+                var lowerLine = line.toLowerCase();
 
-                if (line.startsWith("volume: ")) {
+                if (lowerLine.startsWith("volume: ")) {
                     var vol = parseInt(line.substring(8), 10);
                     if (!isNaN(vol)) musicBox.currentVolume = vol;
-                } else if (line.startsWith("state: ")) {
+                } else if (lowerLine.startsWith("state: ")) {
                     musicBox.playbackState = line.substring(7).trim();
-                } else if (line.startsWith("song: ")) {
+                    musicBox.updateTrackString();
+                } else if (lowerLine.startsWith("song: ")) {
                     musicBox.currentTrackIdx = parseInt(line.substring(6), 10) + 1;
-                } else if (line.startsWith("playlistlength: ")) {
+                    musicBox.updateTrackString();
+                } else if (lowerLine.startsWith("playlistlength: ")) {
                     musicBox.totalTracks = parseInt(line.substring(16), 10);
-                } else if (line.startsWith("time: ")) {
+                    musicBox.updateTrackString();
+                } else if (lowerLine.startsWith("time: ")) {
                     var times = line.substring(6).split(":");
                     musicBox.elapsedSeconds = parseInt(times[0], 10) || 0;
-                    musicBox.totalSeconds = parseInt(times[1], 10) || 0;
-                } else if (line.startsWith("Title: ")) {
-                    musicBox.tooltipTitle = line.substring(7).trim();
-                } else if (line.startsWith("Artist: ")) {
-                    musicBox.tooltipArtist = line.substring(8).trim();
-                } else if (line.startsWith("file: ")) {
+                    var parsedTotal = parseInt(times[1], 10) || 0;
+                    if (parsedTotal > 0) musicBox.totalSeconds = parsedTotal;
+                } else if (lowerLine.startsWith("duration: ")) {
+                    var dur = parseFloat(line.substring(10));
+                    if (!isNaN(dur)) musicBox.totalSeconds = Math.round(dur);
+                } else if (lowerLine.startsWith("file: ")) {
                     musicBox.currentFile = line.substring(6).trim();
+                    // Reset metadata fields to avoid retaining stale info from previous tracks
+                    musicBox.tooltipTitle = "";
+                    musicBox.tooltipArtist = "";
+                    musicBox.updateTrackString();
+                } else if (lowerLine.startsWith("title: ")) {
+                    musicBox.tooltipTitle = line.substring(7).trim();
+                    musicBox.updateTrackString();
+                } else if (lowerLine.startsWith("artist: ")) {
+                    musicBox.tooltipArtist = line.substring(8).trim();
                 } else if (line === "OK") {
                     if (musicBox.playbackState === "stop") {
                         musicBox.tooltipTitle = "No Title Playing";
@@ -82,9 +167,18 @@ Rectangle {
                         musicBox.currentFile = "";
                         musicBox.elapsedSeconds = 0;
                         musicBox.totalSeconds = 0;
+                        musicBox.updateTrackString();
+                    } else {
+                        // Apply fallbacks (extracting filename only) when parsing is complete
+                        if (!musicBox.tooltipTitle && musicBox.currentFile) {
+                            var rawFile = musicBox.currentFile;
+                            musicBox.tooltipTitle = rawFile.substring(rawFile.lastIndexOf("/") + 1);
+                        }
+                        if (!musicBox.tooltipArtist) {
+                            musicBox.tooltipArtist = "Unknown Artist";
+                        }
+                        musicBox.updateTrackString();
                     }
-                    musicBox.trackStr = musicBox.tooltipTitle !== "No Title Playing" ? musicBox.tooltipTitle : "No Track";
-                    musicBox.trackCountStr = "Track " + musicBox.currentTrackIdx + " of " + musicBox.totalTracks;
                 }
             }
         }
@@ -105,8 +199,8 @@ Rectangle {
     }
 
     /**
-     * Handles polling queries & self-healing connection maintenance.
-     * Fires every 1 second to request data or reconnect if MPD was restarted.
+     * Self-healing connection maintenance.
+     * Restarts the process if MPD or Python encounters an issue.
      */
     Timer {
         id: updateTimer
@@ -114,8 +208,6 @@ Rectangle {
         onTriggered: {
             if (!mpdIpc.running) {
                 mpdIpc.running = true;
-            } else if (!musicBox.confirmDeleteMode) {
-                mpdIpc.write("status\ncurrentsong\n");
             }
         }
     }

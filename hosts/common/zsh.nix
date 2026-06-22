@@ -32,7 +32,6 @@
       music = "mpv --shuffle --af='dynaudnorm=f=250:g=15:c=1' ~/Music";
       search = "nix search nixpkgs";
       restore_from_git = "cd ~/nix && git fetch origin && git reset --hard origin/main && sudo nixos-rebuild switch --flake .";
-      # Changed: 'open' now uses the system's 'dumb' xdg-open directly
       open = "xdg-open";
     };
 
@@ -45,10 +44,14 @@
       zstyle ':completion:*:ssh:*' users ' '
       zstyle ':completion:*:*:ssh:*:*' tag-order hosts
 
-      nupdate() {
+nupdate() {
         local HOSTNAME=$(hostname)
         local FLAKE_PATH="$HOME/nix"
         if [ -d "$FLAKE_PATH" ]; then
+          echo "Updating flake inputs in $FLAKE_PATH..."
+          nix flake update --flake "$FLAKE_PATH"
+
+          echo "Rebuilding and switching NixOS configuration..."
           sudo nixos-rebuild switch --flake "$FLAKE_PATH"#"$HOSTNAME" --log-format bar-with-logs --quiet --option warn-dirty false
         fi
       }
