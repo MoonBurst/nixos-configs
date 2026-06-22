@@ -1,3 +1,4 @@
+// modules/overlays/notifications/NotificationOverlay.qml
 import QtQuick
 import QtQuick.Controls 2
 import Quickshell
@@ -11,19 +12,27 @@ Item {
     id: root
     anchors.fill: parent
 
+    // Sync properties bound by shell.qml
+    property bool showHistoryMode: false
+    property bool notificationsEnabled: true
+
     // ============================================================================
     // CONFIGURATION CONSTANTS (STYLIX BRIDGED)
     // ============================================================================
     property int overlaysHeightBaseline: 350
     property int cardWidth: shell.theme.defaultCardWidth || 400
     property int cardHeight: shell.theme.defaultCardHeight || 140
-    property int cardBorderWidth: shell.theme.globalBorderWidth || 3
-    property int textSummarySize: shell.theme.globalFontSize || 20
-    property int textBodySize: shell.theme.globalFontSize || 20
-    property int holdDurationMs: 3000
+    property int defaultCardRadius: 10
+    property int globalBorderWidth: 3
+    property int globalPadding: 20
 
-    property bool showHistoryMode: false // Controls history drawer visibility
-    property bool notificationsEnabled: true // Holds the active/disabled DND state for your capsule
+    // CUSTOM BORDER COLOR SLOTS MAP TO LAUNCHER PANELS
+    property color outerBorderColor: base03
+    property color innerBorderColor: base05
+
+    // Invisible Data Engines
+    property var rulesLoader: null
+    property var rootItem: null
 
     // Exposes the history model count to the master scope
     property int historyCount: historyModel ? historyModel.count : 0
@@ -166,7 +175,7 @@ Item {
     }
 
     /*
-     * SINGLE LAYER-SHELL WINDOW CANVAS CONTAINER
+     * SINGLE LAYER-SHELL WINDOW CANVAS CONTAINER (Checks for DP-2, desktop primary DP-1, laptop eDP, or defaults to first connected)
      */
     PanelWindow {
         id: mainDisplayCanvas
@@ -176,9 +185,10 @@ Item {
         anchors.bottom: true
         anchors.left: false
 
-        screen: Quickshell.screens.find(
-            s => s.name === "DP-2"
-        )
+        screen: Quickshell.screens.find(s => s.name === "DP-2")
+        || Quickshell.screens.find(s => s.name === "DP-1")
+        || Quickshell.screens.find(s => s.name.startsWith("eDP"))
+        || Quickshell.screens[0]
 
         implicitWidth: root.cardWidth + 100
         color: "transparent"
