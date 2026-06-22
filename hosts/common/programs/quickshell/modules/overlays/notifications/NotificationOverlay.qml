@@ -27,8 +27,8 @@ Item {
     property int globalPadding: 20
 
     // CUSTOM BORDER COLOR SLOTS MAP TO LAUNCHER PANELS
-    property color outerBorderColor: base03
-    property color innerBorderColor: base05
+    property color outerBorderColor: shell.theme.base03
+    property color innerBorderColor: shell.theme.base05
 
     // Invisible Data Engines
     property var rulesLoader: null
