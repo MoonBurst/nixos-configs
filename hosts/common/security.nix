@@ -65,11 +65,11 @@
     startAgent = false;
     extraConfig = ''
       Host moonbeauty
-        HostName 100.x.y.z     # <--- Replace with your Desktop's Tailscale IP
+        HostName 100.126.102.63
         User moonburst
 
       Host lunarchild
-        HostName 100.x.y.z     # <--- Replace with your Laptop's Tailscale IP
+        HostName 100.81.66.61
         User moonburst
     '';
   };
