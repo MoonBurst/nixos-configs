@@ -185,10 +185,12 @@ Item {
         anchors.bottom: true
         anchors.left: false
 
+        // Startup-safe dynamic monitor assignment (Falls back to 'null' instead of 'undefined' during initialization)
         screen: Quickshell.screens.find(s => s.name === "DP-2")
         || Quickshell.screens.find(s => s.name === "DP-1")
         || Quickshell.screens.find(s => s.name.startsWith("eDP"))
-        || Quickshell.screens[0]
+        || (Quickshell.screens.length > 0 ? Quickshell.screens[0] : null)
+        || null
 
         implicitWidth: root.cardWidth + 100
         color: "transparent"
