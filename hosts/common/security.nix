@@ -1,4 +1,4 @@
-# --- main.nix (or sops.nix) ---
+# --- security.nix ---
 { config, pkgs, inputs, lib, ... }: {
   imports = [
     inputs.sops-nix.nixosModules.sops
@@ -24,7 +24,7 @@
       weather_city.owner = "moonburst";
       gmail_app_password.owner = "moonburst";
       gmail_address.owner = "moonburst";
-      };
+    };
   };
 
   systemd.tmpfiles.rules = [
@@ -45,16 +45,31 @@
     };
   };
 
+  # --- Tailscale Private Network (Global Remote Access) ---
+  services.tailscale.enable = true;
+  networking.firewall.trustedInterfaces = [ "tailscale0" ];
+
+  # --- Local Network Autodiscovery (mDNS Fallback) ---
+  services.avahi = {
+    enable = true;
+    nssmdns4 = true;
+    publish = {
+      enable = true;
+      addresses = true;
+      workstation = true;
+    };
+  };
+
   # --- SSH Client Configuration ---
   programs.ssh = {
     startAgent = false;
     extraConfig = ''
       Host moonbeauty
-        HostName moonbeauty
+        HostName 100.x.y.z     # <--- Replace with your Desktop's Tailscale IP
         User moonburst
 
       Host lunarchild
-        HostName lunarchild
+        HostName 100.x.y.z     # <--- Replace with your Laptop's Tailscale IP
         User moonburst
     '';
   };

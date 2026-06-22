@@ -1,6 +1,5 @@
-{ config, pkgs, ... }:
-
-{
+# --- users.nix ---
+{ config, pkgs, ... }: {
   # --- Main User Account ---
   users.users.moonburst = {
     hashedPasswordFile = "/run/secrets-for-users/moonburst_password";

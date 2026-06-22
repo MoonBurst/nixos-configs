@@ -245,11 +245,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1781858554,
-        "narHash": "sha256-ViONsH5+RMo9pEagm5tUDiNhUNc8qIQNXjvOPAmVm04=",
+        "lastModified": 1782055893,
+        "narHash": "sha256-HKIrLXNWcjky5Dv7qihzFLVM5ieUqhzqVDtiumlB1/8=",
         "owner": "Fchat-Horizon",
         "repo": "Horizon",
-        "rev": "839ff0f5ff3c3b5bfbf9fc15c2b179b848c80b57",
+        "rev": "4bb091d99bbfcfde219ffc366cec0c7850de14c0",
         "type": "github"
       },
       "original": {
@@ -377,11 +377,11 @@
         "nixpkgs": "nixpkgs_3"
       },
       "locked": {
-        "lastModified": 1782002703,
-        "narHash": "sha256-6EVflEa97cLSz3BOSqvy1bxk1zsNBFYlkwqxN54wcsU=",
+        "lastModified": 1782090313,
+        "narHash": "sha256-u8gFcPNUlBDSGfW86SWmclW2T2jkATYxZAt2P7MtThc=",
         "owner": "nix-community",
         "repo": "NUR",
-        "rev": "f73a6d5aa2a92165bcd26b7b44c9e83407c6eafd",
+        "rev": "8e69f02501d984e62f1e28b5d25ad5e4002c09b6",
         "type": "github"
       },
       "original": {
