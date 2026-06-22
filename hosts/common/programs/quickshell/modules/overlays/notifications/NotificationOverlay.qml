@@ -22,13 +22,19 @@ Item {
     property int overlaysHeightBaseline: 350
     property int cardWidth: shell.theme.defaultCardWidth || 400
     property int cardHeight: shell.theme.defaultCardHeight || 140
-    property int defaultCardRadius: 10
-    property int globalBorderWidth: 3
-    property int globalPadding: 20
+    property int defaultCardRadius: shell.theme.defaultCardRadius || 10
+    property int globalBorderWidth: shell.theme.globalBorderWidth || 3
+    property int globalPadding: shell.theme.globalPadding || 20
+
+    // Properties expected by NotificationCard.qml
+    property int cardBorderWidth: shell.theme.globalBorderWidth || 3
+    property int textSummarySize: shell.theme.globalFontSize || 20
+    property int textBodySize: shell.theme.globalFontSize || 20
+    property int holdDurationMs: 5000
 
     // CUSTOM BORDER COLOR SLOTS MAP TO LAUNCHER PANELS
-    property color outerBorderColor: shell.theme.base03
-    property color innerBorderColor: shell.theme.base05
+    property color outerBorderColor:  shell.theme.base03
+    property color innerBorderColor:  shell.theme.base05
 
     // Invisible Data Engines
     property var rulesLoader: null

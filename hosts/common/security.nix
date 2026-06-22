@@ -73,7 +73,7 @@
         User moonburst
     '';
   };
-
+services.wayvnc.enable = true;
   security.pam.services.greetd.enableGnomeKeyring = true;
   security.pam.services.swaylock = {};
   services.gnome.gcr-ssh-agent.enable = false;
