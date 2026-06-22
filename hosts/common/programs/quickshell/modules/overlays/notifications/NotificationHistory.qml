@@ -1,3 +1,4 @@
+// modules/overlays/notifications/NotificationHistory.qml
 import QtQuick
 import QtQuick.Controls 2
 import Quickshell
@@ -107,7 +108,7 @@ Item {
     }
 
     /*
-     * HISTORICAL NOTIFICATION LIST DRAWER WINDOW (Moved to DP-1)
+     * HISTORICAL NOTIFICATION LIST DRAWER WINDOW (Checks for DP-1, falls back to laptop eDP, or defaults to first available)
      */
     PanelWindow {
         id: historyWindow
@@ -117,9 +118,9 @@ Item {
         anchors.left: true
         anchors.right: true
 
-        screen: Quickshell.screens.find(
-            s => s.name === "DP-1"
-        )
+        screen: Quickshell.screens.find(s => s.name === "DP-1")
+        || Quickshell.screens.find(s => s.name.startsWith("eDP"))
+        || Quickshell.screens[0]
 
         visible: historyEngine.showHistoryMode
         color: "transparent"
