@@ -27,7 +27,6 @@ Rectangle {
     property real totalVramGiB: 24.0 // Default initialized to 24G; updates dynamically on load
     property string diskFreeStr: "--G"
     property real diskFreeValue: 1.0 // Starts fully free; empties as storage fills
-    property bool hasGPU: false      // Automatically detected on startup
     property bool hasBattery: false  // Automatically detected on startup
     property string batteryName: ""
     property string batteryPercent: "0%"
