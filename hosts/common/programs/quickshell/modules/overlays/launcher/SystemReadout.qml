@@ -64,18 +64,6 @@ Rectangle {
         }
     }
 
-    // Process to check if a dedicated GPU exists
-    Process {
-        id: gpuDetectProc
-        running: true
-        command: ["sh", "-c", "if command -v nvidia-smi >/dev/null 2>&1; then echo 'true'; elif ls /sys/class/drm/card*/device/mem_info_vram_total >/dev/null 2>&1; then if cat /sys/class/drm/card*/device/mem_info_vram_total 2>/dev/null | awk '{if (\\$1 > 3221225472) exit 0; else exit 1}'; then echo 'true'; else echo 'false'; fi; else echo 'false'; fi"]
-        stdout: SplitParser {
-            onRead: data => {
-                systemReadoutPanel.hasGPU = (data.trim() === "true");
-            }
-        }
-    }
-
     // Process to check root storage usage via world-readable /nix/store subvolume path
     Process {
         id: diskProc
