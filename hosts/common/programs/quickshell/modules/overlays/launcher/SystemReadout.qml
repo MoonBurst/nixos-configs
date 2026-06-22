@@ -33,6 +33,12 @@ Rectangle {
     property string batteryPercent: "0%"
     property string batteryStatus: "Unknown"
 
+    // Pure QML/JS GPU Detector (Hides GPU/VRAM if VRAM reserves are under 3.0 GB)
+    readonly property bool hasGPU: {
+        var freeVram = parseFloat(gpuData.gpuVramFreeRaw);
+        return !isNaN(freeVram) && freeVram > 3.0;
+    }
+
     // Invisible Data Engines
     CpuCapsule { id: cpuData; visible: false; barWindow: systemReadoutPanel.barWindow }
     GpuCapsule { id: gpuData; visible: false; barWindow: systemReadoutPanel.barWindow }
@@ -58,11 +64,11 @@ Rectangle {
         }
     }
 
-    // Process to check if a dedicated GPU exists (using SplitParser to ensure reliable stream capture)
+    // Process to check if a dedicated GPU exists
     Process {
         id: gpuDetectProc
         running: true
-        command: ["sh", "-c", "if command -v nvidia-smi >/dev/null 2>&1; then echo 'true'; elif ls /sys/class/drm/card*/device/mem_info_vram_total >/dev/null 2>&1; then echo 'true'; else echo 'false'; fi"]
+        command: ["sh", "-c", "if command -v nvidia-smi >/dev/null 2>&1; then echo 'true'; elif ls /sys/class/drm/card*/device/mem_info_vram_total >/dev/null 2>&1; then if cat /sys/class/drm/card*/device/mem_info_vram_total 2>/dev/null | awk '{if (\\$1 > 3221225472) exit 0; else exit 1}'; then echo 'true'; else echo 'false'; fi; else echo 'false'; fi"]
         stdout: SplitParser {
             onRead: data => {
                 systemReadoutPanel.hasGPU = (data.trim() === "true");
@@ -94,21 +100,19 @@ Rectangle {
         }
     }
 
-    // Startup process to detect battery directory
+    // Startup process to detect battery directory (using SplitParser to ensure reliable stream capture)
     Process {
         id: batteryDetectProc
         running: true
         command: ["sh", "-c", "ls /sys/class/power_supply/ 2>/dev/null | grep -E '^BAT|^sb' | head -n 1"]
-    }
-
-    Connections {
-        target: batteryDetectProc.stdout
-        function onRead(data) {
-            var name = data.trim();
-            if (name !== "") {
-                systemReadoutPanel.batteryName = name;
-                systemReadoutPanel.hasBattery = true;
-                batteryPollProc.running = true;
+        stdout: SplitParser {
+            onRead: data => {
+                var name = data.trim();
+                if (name !== "") {
+                    systemReadoutPanel.batteryName = name;
+                    systemReadoutPanel.hasBattery = true;
+                    batteryPollProc.running = true;
+                }
             }
         }
     }
