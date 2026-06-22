@@ -1,3 +1,4 @@
+# --- theme.nix ---
 { pkgs, lib, inputs, config, ... }:
 
 let
@@ -93,6 +94,5 @@ in
           function getGlobalTextColor(notification) { return base05 }
       }
     '';
-
   };
 }
