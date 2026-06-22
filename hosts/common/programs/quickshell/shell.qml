@@ -39,8 +39,10 @@ ShellRoot {
 
     property alias theme: globalTheme
 
-    readonly property
-    var primaryScreen: Quickshell.screens.find(s => s.name === "DP-1")
+    // Dynamic display auto-detection (Checks for DP-1, falls back to laptop eDP-1, or defaults to first available)
+    readonly property var primaryScreen: Quickshell.screens.find(s => s.name === "DP-1")
+    || Quickshell.screens.find(s => s.name.startsWith("eDP"))
+    || Quickshell.screens[0]
 
     property bool debugNotifications: true
 
