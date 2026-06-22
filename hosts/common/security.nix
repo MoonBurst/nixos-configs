@@ -73,7 +73,15 @@
         User moonburst
     '';
   };
-services.wayvnc.enable = true;
+systemd.user.services.wayvnc = {
+  description = "Wayvnc VNC server for wlroots";
+  wantedBy = [ "graphical-session.target" ];
+  partOf = [ "graphical-session.target" ];
+  serviceConfig = {
+    ExecStart = "${pkgs.wayvnc}/bin/wayvnc";
+    Restart = "on-failure";
+  };
+};
   security.pam.services.greetd.enableGnomeKeyring = true;
   security.pam.services.swaylock = {};
   services.gnome.gcr-ssh-agent.enable = false;
