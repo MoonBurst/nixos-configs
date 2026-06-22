@@ -31,7 +31,7 @@ Rectangle {
     property string batteryName: ""
     property string batteryPercent: "0%"
     property string batteryStatus: "Unknown"
-    property string batteryPower: "0.0W" // Declared to prevent 'undefined' string concatenation
+    property string batteryPower: "0.0W" // Declared to prevent 'undefined' string outputs
 
     // Pure QML/JS GPU Detector (Hides GPU/VRAM if VRAM reserves are under 3.0 GB)
     readonly property bool hasGPU: {
