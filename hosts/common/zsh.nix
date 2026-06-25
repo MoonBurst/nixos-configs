@@ -45,17 +45,17 @@
       zstyle ':completion:*:*:ssh:*:*' tag-order hosts
 
 nupdate() {
-        local HOSTNAME=$(hostname)
-        local FLAKE_PATH="$HOME/nix"
-        if [ -d "$FLAKE_PATH" ]; then
-          echo "Updating flake inputs in $FLAKE_PATH..."
-          nix flake update --flake "$FLAKE_PATH"
+  local HOSTNAME=$(hostname)
+  local FLAKE_PATH="$HOME/nix"
 
-          echo "Rebuilding and switching NixOS configuration..."
-          sudo nixos-rebuild switch --flake "$FLAKE_PATH"#"$HOSTNAME" --log-format bar-with-logs --quiet --option warn-dirty false
-        fi
-      }
-
+  if [ -d "$FLAKE_PATH" ]; then
+    echo "Rebuilding and switching NixOS configuration..."
+    sudo nixos-rebuild switch --flake "$FLAKE_PATH#$HOSTNAME" --log-format bar-with-logs --quiet --option warn-dirty false
+  else
+    echo "Error: Flake path '$FLAKE_PATH' does not exist."
+    return 1
+  fi
+}
       quarter() {
         local filename="$1"
         magick "$filename" -crop 50%x50% +adjoin "''${filename%.*}_%d.''${filename##*.}"
