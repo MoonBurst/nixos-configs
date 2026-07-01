@@ -119,7 +119,7 @@ def send_notification(title, message):
 def download_and_route_attachments(msg_id, folder, destination_dir, is_preview=False):
     # GUARD: Only skip download if we are generating cached previews and they already exist
     if is_preview and os.path.exists(destination_dir) and os.listdir(destination_dir):
-        print(f"[Attachment Router] Previews already exist in {destination_dir}. Skipping download.")
+        # Silenced noisy print stating that previews already exist
         class DummyResult:
             returncode = 0
             stdout = ""
@@ -499,7 +499,7 @@ def rebuild_local_ui_cache():
                             item["body_content"] = ""
 
                         if has_att and msg_id:
-                            print(f"[Cache Pre-fetch] Found attachments in message {msg_id}. Pre-downloading previews...")
+                            # Silenced the "[Cache Pre-fetch] Found attachments..." print
                             preview_dir = f"{target_home}/.cache/himalaya/previews/{msg_id}"
                             download_and_route_attachments(msg_id, target_folder, preview_dir, is_preview=True)
                             local_files = os.listdir(preview_dir) if os.path.exists(preview_dir) else []
@@ -601,7 +601,7 @@ def run_gentle_backfill():
                 if split_idx != -1: clean_body = clean_body[split_idx:].strip()
 
                 if has_att and target_id:
-                    print(f"[Background Backfill] Found attachments in message {target_id}. Pre-downloading previews...")
+                    # Silenced the "[Background Backfill] Found attachments..." print
                     preview_dir = f"{target_home}/.cache/himalaya/previews/{target_id}"
                     download_and_route_attachments(target_id, dup_folder, preview_dir, is_preview=True)
                     local_files = os.listdir(preview_dir) if os.path.exists(preview_dir) else []

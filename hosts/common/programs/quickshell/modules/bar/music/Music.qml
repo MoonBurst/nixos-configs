@@ -141,9 +141,12 @@ Rectangle {
                     musicBox.updateTrackString();
                 } else if (lowerLine.startsWith("time: ")) {
                     var times = line.substring(6).split(":");
-                    musicBox.elapsedSeconds = parseInt(times[0], 10) || 0;
-                    var parsedTotal = parseInt(times[1], 10) || 0;
-                    if (parsedTotal > 0) musicBox.totalSeconds = parsedTotal;
+                    // Only parse if we have both elapsed and total fields to ignore "Time: 120" from currentsong
+                    if (times.length > 1) {
+                        musicBox.elapsedSeconds = parseInt(times[0], 10) || 0;
+                        var parsedTotal = parseInt(times[1], 10) || 0;
+                        if (parsedTotal > 0) musicBox.totalSeconds = parsedTotal;
+                    }
                 } else if (lowerLine.startsWith("duration: ")) {
                     var dur = parseFloat(line.substring(10));
                     if (!isNaN(dur)) musicBox.totalSeconds = Math.round(dur);

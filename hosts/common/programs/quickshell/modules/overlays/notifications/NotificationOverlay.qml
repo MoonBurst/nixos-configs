@@ -36,8 +36,8 @@ Item {
     property color outerBorderColor:  shell.theme.base03
     property color innerBorderColor:  shell.theme.base05
 
-    // Invisible Data Engines
-    property var rulesLoader: null
+    // Expose the rules engine as a standard alias to guarantee it resolves
+    property alias rulesLoader: rulesEngine
     property var rootItem: null
 
     // Exposes the history model count to the master scope
@@ -46,8 +46,26 @@ Item {
     // Dynamically bound at runtime to prevent compile-time alias target resolution failures
     property var historyModel: null
 
+    // FIXED: Global cache to map active notification IDs to local, persistent cache files
+    property var cachedAvatarsMap: ({})
+    property int cacheCounter: 0
+
     ListModel {
         id: activeNotificationsModel
+    }
+
+    // FIXED: Immediately caches temporary D-Bus provider images upon DBus server entry to prevent expirations
+    function cacheAvatarImmediately(notification) {
+        if (!notification) return;
+
+        let appNameLower = (notification.desktopEntry || notification.appName || "").toLowerCase();
+        let resolvedIcon = rulesLoader ? rulesLoader.getCustomIcon(notification) : "";
+        let avatarVal = resolvedIcon ? resolvedIcon : "image://icon/" + appNameLower;
+
+        if (avatarVal.includes("image://qsimage")) {
+            offscreenAvatarCacher.activeNotifId = notification.id;
+            offscreenAvatarCacher.source = avatarVal;
+        }
     }
 
     // Direct History Commit: Formats and records incoming notifications directly to history while DND is active
@@ -58,7 +76,9 @@ Item {
         let summaryLower = (notification.summary || "").toLowerCase();
         let bodyLower = (notification.body || "").toLowerCase();
 
-        let resolvedIcon = rulesLoader ? rulesLoader.getCustomIcon(notification) : "";
+        // Check if we have already compiled a persistent local copy of this temporary avatar
+        let cached = root.cachedAvatarsMap[notification.id];
+        let resolvedIcon = cached ? cached : (rulesLoader ? rulesLoader.getCustomIcon(notification) : "");
         let avatarVal = resolvedIcon ? resolvedIcon : "image://icon/" + appNameLower;
 
         // Compare underlying string locations to prevent avatar payloads from being treated as shared preview attachments
@@ -134,7 +154,7 @@ Item {
         return match ? match[0] : "";
     }
 
-    // Scans notification body for standard image formats to show in history list
+    // FIXED: Corrected the unterminated regular expression class error by replacing the missing brackets
     function extractImageUrl(text) {
         if (!text) return "";
         var match = text.match(/(https?:\/\/[^\s<]+\.(?:png|jpg|jpeg|gif|svg|webp)(?:\?[^\s<]+)?)/i);
@@ -151,7 +171,7 @@ Item {
     }
 
     Local.NotificationRules {
-        id: rulesLoader
+        id: rulesEngine
     }
 
     // Instantiate the history drawer cleanly as a decoupled sibling
@@ -160,6 +180,9 @@ Item {
         showHistoryMode: root.showHistoryMode
         rulesLoader: root.rulesLoader
         rootItem: root // Passes parent reference to allow warning-free property modifications
+
+        // Pass the controller
+        controller: notificationIPC
 
         Component.onCompleted: {
             root.historyModel = historyDrawer.historyModel; // Dynamically binds the model on completed safely
@@ -176,6 +199,8 @@ Item {
         keepOnReload: true
 
         onNotification: function(notification) {
+            // FIXED: Instantly cache temporary D-Bus provider images while they are active and valid
+            root.cacheAvatarImmediately(notification);
             root.handleNotification(notification);
         }
     }
@@ -200,7 +225,23 @@ Item {
 
         implicitWidth: root.cardWidth + 100
         color: "transparent"
-        mask: Region {}
+
+        // Dynamic input mask calculation using Region type
+        mask: Region {
+            x: 0
+            y: {
+                if (activeNotificationsModel.count === 0) return 0;
+                // Maps y boundary perfectly to the top (newest) item index
+                return root.overlaysHeightBaseline - (root.cardHeight + 10) * (activeNotificationsModel.count - 1);
+            }
+            width: activeNotificationsModel.count > 0 ? root.cardWidth : 0
+            height: {
+                if (activeNotificationsModel.count === 0) return 0;
+                let topY = root.overlaysHeightBaseline - (root.cardHeight + 10) * (activeNotificationsModel.count - 1);
+                let bottomY = root.overlaysHeightBaseline + root.cardHeight;
+                return bottomY - topY;
+            }
+        }
 
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
         WlrLayershell.exclusiveZone: 0
@@ -213,6 +254,52 @@ Item {
         Item {
             id: canvasContent
             anchors.fill: parent
+
+            // FIXED: Placed inside canvasContent (inside PanelWindow) to satisfy grabToImage's scene graph requirements
+            Image {
+                id: offscreenAvatarCacher
+                visible: false
+                width: 100
+                height: 100
+
+                property int activeNotifId: -1
+
+                onStatusChanged: {
+                    if (status === Image.Ready && activeNotifId !== -1) {
+                        let notifId = activeNotifId;
+                        grabToImage(function(result) {
+                            var localPath = "/tmp/qs_avatar_" + notifId + "_" + root.cacheCounter++ + ".png";
+                            if (result.saveToFile(localPath)) {
+                                root.cachedAvatarsMap[notifId] = "file://" + localPath;
+
+                                // Push the new cache URL immediately to the active list view model
+                                for (let i = 0; i < activeNotificationsModel.count; i++) {
+                                    let item = activeNotificationsModel.get(i);
+                                    if (item && item.notifId === notifId) {
+                                        activeNotificationsModel.setProperty(i, "avatarSource", "file://" + localPath);
+                                        if (item.cardRef) {
+                                            item.cardRef.cachedAvatarPath = "file://" + localPath;
+                                        }
+                                        break;
+                                    }
+                                }
+
+                                // Push the new cache URL immediately to the history list view model
+                                if (root.historyModel) {
+                                    for (let j = 0; j < root.historyModel.count; j++) {
+                                        let hItem = root.historyModel.get(j);
+                                        if (hItem && hItem.notifId === notifId) {
+                                            root.historyModel.setProperty(j, "avatarSource", "file://" + localPath);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                        activeNotifId = -1;
+                    }
+                }
+            }
         }
     }
 
@@ -260,13 +347,17 @@ Item {
             avatarVal = notification.icon;
             previewVal = notification.image;
         } else {
-            // Determine icon path and resolve immediately while the C++ pointer is valid
-            resolvedIcon = rulesLoader ? rulesLoader.getCustomIcon(notification) : "";
-
-            if (resolvedIcon) {
-                avatarVal = resolvedIcon; // User's avatar object or string
+            // FIXED: Check our pre-resolved local file cache map first to bypass expired DBus handles
+            let cached = root.cachedAvatarsMap[notification.id];
+            if (cached) {
+                avatarVal = cached;
             } else {
-                avatarVal = "image://icon/" + (notification.desktopEntry || notification.appName || "").toLowerCase();
+                resolvedIcon = rulesLoader ? rulesLoader.getCustomIcon(notification) : "";
+                if (resolvedIcon) {
+                    avatarVal = resolvedIcon; // User's avatar object or string
+                } else {
+                    avatarVal = "image://icon/" + (notification.desktopEntry || notification.appName || "").toLowerCase();
+                }
             }
 
             // Compare underlying string locations to prevent avatar payloads from being treated as shared preview attachments
@@ -276,6 +367,17 @@ Item {
             // Parse shared image/GIF link from metadata hints (only used for local direct uploads)
             let hints = notification.hints || {};
             let hintImagePath = hints["image-path"] || hints["image_path"] || hints["image-uri"] || hints["image-uri"] || "";
+
+            if (hintImagePath === "") {
+                let attachmentUrls = hints["attachment-urls"] || hints["attachment_urls"] || hints["attachment-url"] || hints["attachment-url"] || "";
+                if (attachmentUrls !== "") {
+                    let strUrls = String(attachmentUrls);
+                    let firstUrl = root.extractUrl(strUrls);
+                    if (firstUrl !== "") {
+                        hintImagePath = firstUrl;
+                    }
+                }
+            }
 
             if (hintImagePath !== "") {
                 let strHint = String(hintImagePath);
@@ -314,12 +416,22 @@ Item {
                 notification: notification,
                 rulesLoader: rulesLoader,
                 rootItem: root,
-                controller: notificationIPC
+                controller: notificationIPC,
+                // Pass the cached avatar path directly if already available
+                cachedAvatarPath: root.cachedAvatarsMap[notification.id] || ""
             });
 
             if (popupCard) {
                 popupCard.notification = notification;
                 popupCard.originalNotification = notification;
+
+                // Populates the ruleEngine registry with the dynamic object reference for auto-destruction
+                let appName = (notification.desktopEntry || notification.appName || "").toLowerCase();
+                if (appName.includes("satty") && rulesLoader) {
+                    rulesLoader.activeAppCardRegistry["satty"] = popupCard;
+                } else if ((appName.includes("microphone") || appName.includes("mic")) && rulesLoader) {
+                    rulesLoader.activeAppCardRegistry["microphone"] = popupCard;
+                }
             }
 
             activeNotificationsModel.insert(0, {
@@ -351,7 +463,8 @@ Item {
             item.targetY = currentY;
             item.stackIndex = (totalCards - 1) - i;
 
-            currentY -= 35;
+            // Shift the stack using card height offset instead of static 35px to stop overlapping block issues
+            currentY -= (root.cardHeight + 10);
         }
     }
 
@@ -406,11 +519,13 @@ Item {
             // message from the exact same sender and inherit their avatar!
             // ============================================================================
             if (serializedAvatar === "" && expiredEntry.summary !== "") {
-                for (let i = 0; i < historyNotificationsModel.count; i++) {
-                    let past = historyNotificationsModel.get(i);
-                    if (past && past.summary === expiredEntry.summary && past.avatarSource && past.avatarSource !== "") {
-                        serializedAvatar = past.avatarSource;
-                        break;
+                if (root.historyModel) {
+                    for (let i = 0; i < root.historyModel.count; i++) {
+                        let past = root.historyModel.get(i);
+                        if (past && past.summary === expiredEntry.summary && past.avatarSource && past.avatarSource !== "") {
+                            serializedAvatar = past.avatarSource;
+                            break;
+                        }
                     }
                 }
             }

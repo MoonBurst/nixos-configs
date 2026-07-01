@@ -51,7 +51,7 @@
   i18n.defaultLocale = "en_US.UTF-8";
   i18n.extraLocales = [ "en_US.UTF-8/UTF-8" ];
   nixpkgs.config.allowUnfree = true;
-  nixpkgs.config.permittedInsecurePackages = [ "olm-3.2.16" ];
+  nixpkgs.config.permittedInsecurePackages = [ "olm-3.2.16" "pnpm-10.29.2" ];
 
   nix.settings = {
     experimental-features = [ "nix-command" "flakes" ];

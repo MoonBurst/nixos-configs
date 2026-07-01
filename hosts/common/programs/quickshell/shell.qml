@@ -33,6 +33,9 @@ ShellRoot {
      * =========================================================================
      */
 
+    // Master debug toggle (Set to false to turn off console logging)
+    property bool debug: true
+
     Theme {
         id: globalTheme
     }
@@ -44,7 +47,7 @@ ShellRoot {
     || Quickshell.screens.find(s => s.name.startsWith("eDP"))
     || Quickshell.screens[0]
 
-    property bool debugNotifications: true
+    property bool debugNotifications: shell.debug
 
     // Master bridge properties to synchronize visual states across multi-window scopes (DP-1 / DP-2)
     property bool showHistoryMode: false
@@ -59,7 +62,7 @@ ShellRoot {
     // Background Queue Flusher: Initiates the pacing timer when unmuted to show cards one-at-a-time
     onNotificationsEnabledChanged: {
         if (notificationsEnabled && deferredNotificationsQueue.length > 0) {
-            console.log("DND disabled: Initiating paced backlog flusher for", deferredNotificationsQueue.length, "held notification(s)...");
+            if (shell.debug) console.log("DND disabled: Initiating paced backlog flusher for", deferredNotificationsQueue.length, "held notification(s)...");
             backlogFlusherTimer.start(); // Start the pacing timer
         } else if (!notificationsEnabled) {
             // Stop any active flusher if muted again

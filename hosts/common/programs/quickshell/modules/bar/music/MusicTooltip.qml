@@ -139,12 +139,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     from: 0
                     to: musicBox.totalSeconds > 0 ? musicBox.totalSeconds : 100
-
-                    // handles 2-way binding without breaking when dragged
-                    Binding on value {
-                        value: musicBox.elapsedSeconds
-                        when: !seekSlider.pressed
-                    }
+                    value: musicBox.elapsedSeconds
 
                     background: Rectangle {
                         x: seekSlider.leftPadding
@@ -179,6 +174,13 @@ Item {
                             musicBox.mpdIpc.write("seek " + idx + " " + Math.round(value) + "\nstatus\n");
                         }
                     }
+                }
+
+                Binding {
+                    target: seekSlider
+                    property: "value"
+                    value: musicBox.elapsedSeconds
+                    when: !seekSlider.pressed
                 }
 
                 Text {

@@ -12,13 +12,18 @@ Rectangle {
     property var barWindow: null
     property string micDisplayText: "Mic: --"
 
+    // NEW: Clean state property to track the mute status
+    property bool muted: false
+
     width: 140
     height: parent.height
     radius: shell.theme.defaultCardRadius
     border.width: shell.theme.globalBorderWidth
 
     color: shell.theme.base00
-    border.color: shell.theme.base05
+
+    // NEW: Safe, null-protected binding that won't break during startup loading
+    border.color: (shell.theme && shell.theme.base05) ? (micBox.muted ? shell.theme.base08 : shell.theme.base05) : "transparent"
 
     Process { id: micMuteCmd; command: ["/bin/sh", "-c", "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"] }
 
@@ -34,6 +39,9 @@ Rectangle {
                 if (!data) return;
                 var raw = data.trim();
                 var isMuted = raw.indexOf("[MUTED]") !== -1;
+
+                // NEW: Safely update the root state property
+                micBox.muted = isMuted;
 
                 var mNum = "0%";
                 if (!isMuted) {

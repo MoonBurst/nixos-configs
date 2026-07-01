@@ -1,3 +1,4 @@
+// modules/overlays/notifications/NotificationIPC.qml
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -97,22 +98,24 @@ Item {
     // ============================================================================
     // ACTIVATE INTERFACE (UNIVERSAL APPLICATION JUMP ENGINE)
     // ============================================================================
-    function activate(card, summary, body, appName) {
+    // FIXED: Added optional directNotificationObject parameter to handle historical activations natively
+    function activate(card, summary, body, appName, directNotificationObject) {
         console.log("ACTIVATE ENTERED");
-        if (!card) {
-            console.log("Missing valid layout card references");
-            return;
-        }
 
         let summaryStr = summary || "";
         let bodyStr = body || "";
         let appNameStr = appName || "";
 
         // Resolve original notification object properties to scrape desktop hints
-        let liveNotif = card.originalNotification || card.notification;
-        let desktopHint = (liveNotif && liveNotif.hints) ? (liveNotif.hints["desktop-entry"] || "") : "";
+        let liveNotif = null;
+        if (card) {
+            liveNotif = card.originalNotification || card.notification;
+            highlight(card);
+        } else if (directNotificationObject) {
+            liveNotif = directNotificationObject;
+        }
 
-        highlight(card);
+        let desktopHint = (liveNotif && liveNotif.hints) ? (liveNotif.hints["desktop-entry"] || "") : "";
 
         // 1. DYNAMIC GLOBAL WINDOW STEERING LAYER
         if (appNameStr.length > 0 || desktopHint.length > 0) {

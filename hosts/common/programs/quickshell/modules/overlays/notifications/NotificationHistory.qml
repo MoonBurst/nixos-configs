@@ -11,7 +11,12 @@ Item {
 
     property bool showHistoryMode: false
     property var rulesLoader: null
-    property var rootItem: null // Captures the parent overlay element for safe variable modifications
+    property var rootItem: null
+
+    property var controller: null
+
+    // FIXED: Private JavaScript registry to store raw C++ QObjects securely without triggering ListModel role conflicts
+    property var liveNotificationsMap: ({})
 
     // Expose the history model cleanly to parent bindings
     property alias historyModel: historyNotificationsModel
@@ -89,16 +94,19 @@ Item {
                 }
             }
 
+            // FIXED: Store the C++ QObject reference in our private JS map instead of the ListModel
+            if (notification) {
+                liveNotificationsMap[expiredEntry.notifId] = notification;
+            }
+
             historyNotificationsModel.insert(0, {
-                // Return a non-null placeholder object to avoid role mismatch warnings
-                "notificationObject": notification ? notification : ({}),
-                                             "notifId": expiredEntry.notifId,
-                                             "summary": expiredEntry.summary,
-                                             "body": expiredEntry.body,
-                                             "appName": expiredEntry.appName,
-                                             "timestamp": new Date().toLocaleTimeString(Qt.locale(), "hh:mm AP"),
+                "notifId": expiredEntry.notifId,
+                "summary": expiredEntry.summary,
+                "body": expiredEntry.body,
+                "appName": expiredEntry.appName,
+                "timestamp": new Date().toLocaleTimeString(Qt.locale(), "hh:mm AP"),
                                              "avatarSource": avatarVal,
-                                             "previewSource": expiredEntry.previewSource || "" // Isolated uploaded image/GIF preview
+                                             "previewSource": expiredEntry.previewSource || ""
             });
 
             while (historyNotificationsModel.count > 50) {
@@ -210,6 +218,7 @@ Item {
                             anchors.fill: parent
                             onClicked: {
                                 historyNotificationsModel.clear();
+                                historyEngine.liveNotificationsMap = {}; // Clear memory mapped QObjects
                                 if (typeof historyListView !== "undefined" && historyListView) {
                                     historyListView.forceActiveFocus();
                                 }
@@ -266,6 +275,10 @@ Item {
                             event.accepted = true;
                         } else if (event.key === Qt.Key_Delete) {
                             if (currentIndex !== -1 && currentIndex < count) {
+                                let targetItem = historyNotificationsModel.get(currentIndex);
+                                if (targetItem) {
+                                    delete historyEngine.liveNotificationsMap[targetItem.notifId];
+                                }
                                 historyNotificationsModel.remove(currentIndex);
                             }
                             event.accepted = true;
@@ -278,27 +291,17 @@ Item {
                                         Qt.openUrlExternally(url);
                                     }
 
-                                    if (item.notificationObject) {
-                                        try {
-                                            if (item.notificationObject.actions) {
-                                                let actionsList = item.notificationObject.actions;
-                                                for (let i = 0; i < actionsList.count; i++) {
-                                                    let action = actionsList.get(i);
-                                                    if (action && (action.id === "default" || action.id === "")) {
-                                                        action.trigger();
-                                                        break;
-                                                    }
-                                                }
-                                            }
-                                        } catch(e) {}
+                                    // FIXED: Safely retrieve the notification QObject from the JavaScript mapping dictionary
+                                    let activeNotifObject = historyEngine.liveNotificationsMap[item.notifId] || null;
 
-                                        try {
-                                            if (typeof item.notificationObject.activated === "function") {
-                                                item.notificationObject.activated();
-                                            } else if (typeof item.notificationObject.activate === "function") {
-                                                item.notificationObject.activate();
-                                            }
-                                        } catch(e) {}
+                                    if (historyEngine.controller) {
+                                        historyEngine.controller.activate(
+                                            null,
+                                            item.summary,
+                                            item.body,
+                                            item.appName,
+                                            activeNotifObject
+                                        );
                                     }
                                 }
                             }
@@ -438,6 +441,10 @@ Item {
                                 onEntered: deleteItemBtn.opacity = 1.0
                                 onExited: deleteItemBtn.opacity = 0.6
                                 onClicked: {
+                                    let item = historyNotificationsModel.get(index);
+                                    if (item) {
+                                        delete historyEngine.liveNotificationsMap[item.notifId];
+                                    }
                                     historyNotificationsModel.remove(index);
                                     historyListView.forceActiveFocus();
                                 }
