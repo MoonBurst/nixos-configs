@@ -11,11 +11,6 @@ Item {
     // HELPERS & ACTIONS
     // ==========================================
 
-    /**
-     * Handles formatting raw track duration seconds into a standard MM:SS string.
-     * @param {int} secs - Total seconds to be formatted.
-     * @returns {string} Formatted string (e.g., "3:45").
-     */
     function formatTime(secs) {
         if (!secs || isNaN(secs) || secs < 0) return "0:00";
         var m = Math.floor(secs / 60);
@@ -92,7 +87,7 @@ Item {
                         font.family: shell.theme.fontFamily ?? "monospace"
                         font.pixelSize: 18
                         font.bold: true
-                        color: musicBox.border.color
+                        color: shell.theme.base05
                         horizontalAlignment: Text.AlignHCenter
                         elide: Text.ElideRight
                     }
@@ -102,7 +97,7 @@ Item {
                         text: musicBox.tooltipArtist
                         font.family: shell.theme.fontFamily ?? "monospace"
                         font.pixelSize: 20
-                        color: musicBox.border.color
+                        color: shell.theme.base05
                         opacity: 0.8
                         horizontalAlignment: Text.AlignHCenter
                         elide: Text.ElideRight
@@ -113,7 +108,7 @@ Item {
                         text: musicBox.trackCountStr
                         font.family: shell.theme.fontFamily ?? "monospace"
                         font.pixelSize: 20
-                        color: shell.theme.base05 ?? musicBox.border.color
+                        color: shell.theme.base05
                         horizontalAlignment: Text.AlignHCenter
                     }
                 }
@@ -129,7 +124,7 @@ Item {
                     text: formatTime(musicBox.elapsedSeconds)
                     font.family: shell.theme.fontFamily ?? "monospace"
                     font.pixelSize: 12
-                    color: musicBox.border.color
+                    color: shell.theme.base05
                     anchors.verticalCenter: parent.verticalCenter
                 }
 
@@ -154,7 +149,7 @@ Item {
                         Rectangle {
                             width: seekSlider.visualPosition * parent.width
                             height: parent.height
-                            color: musicBox.border.color
+                            color: shell.theme.base05
                             radius: 2
                         }
                     }
@@ -165,7 +160,7 @@ Item {
                         implicitWidth: 12
                         implicitHeight: 12
                         radius: 6
-                        color: musicBox.border.color
+                        color: shell.theme.base05
                     }
 
                     onMoved: {
@@ -188,7 +183,7 @@ Item {
                     text: formatTime(musicBox.totalSeconds)
                     font.family: shell.theme.fontFamily ?? "monospace"
                     font.pixelSize: 12
-                    color: musicBox.border.color
+                    color: shell.theme.base05
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
@@ -201,7 +196,7 @@ Item {
                 Text {
                     text: "🔊"
                     font.pixelSize: 14
-                    color: musicBox.border.color
+                    color: shell.theme.base05
                     anchors.verticalCenter: parent.verticalCenter
                 }
 
@@ -232,7 +227,7 @@ Item {
                         Rectangle {
                             width: volSlider.visualPosition * parent.width
                             height: parent.height
-                            color: musicBox.border.color
+                            color: shell.theme.base05
                             radius: 2
                         }
                     }
@@ -243,7 +238,7 @@ Item {
                         implicitWidth: 12
                         implicitHeight: 12
                         radius: 6
-                        color: musicBox.border.color
+                        color: shell.theme.base05
                     }
 
                     onMoved: {
@@ -256,7 +251,7 @@ Item {
                     text: Math.round(volSlider.value) + "%"
                     font.family: shell.theme.fontFamily ?? "monospace"
                     font.pixelSize: 11
-                    color: musicBox.border.color
+                    color: shell.theme.base05
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
@@ -277,7 +272,7 @@ Item {
                         radius: shell.theme.defaultCardRadius ?? 4
                         border.width: shell.theme.globalBorderWidth ?? 2
                         color: "transparent"
-                        border.color: musicBox.border.color
+                        border.color: shell.theme.base05
 
                         Text {
                             anchors.centerIn: parent
@@ -298,7 +293,7 @@ Item {
                         radius: shell.theme.defaultCardRadius ?? 4
                         border.width: shell.theme.globalBorderWidth ?? 2
                         color: "transparent"
-                        border.color: musicBox.border.color
+                        border.color: shell.theme.base05
 
                         Text {
                             anchors.centerIn: parent
@@ -327,7 +322,7 @@ Item {
                         radius: shell.theme.defaultCardRadius ?? 4
                         border.width: shell.theme.globalBorderWidth ?? 2
                         color: "transparent"
-                        border.color: musicBox.border.color
+                        border.color: shell.theme.base05
 
                         Text {
                             anchors.centerIn: parent
@@ -348,7 +343,7 @@ Item {
                         radius: shell.theme.defaultCardRadius ?? 4
                         border.width: shell.theme.globalBorderWidth ?? 2
                         color: "transparent"
-                        border.color: musicBox.border.color
+                        border.color: shell.theme.base05
 
                         Text {
                             anchors.centerIn: parent
@@ -379,7 +374,7 @@ Item {
                     border.width: shell.theme.globalBorderWidth ?? 2
 
                     color: musicBox.confirmDeleteMode ? "#ff5555" : "transparent"
-                    border.color: musicBox.confirmDeleteMode ? "#ffffff" : musicBox.border.color
+                    border.color: musicBox.confirmDeleteMode ? "#ffffff" : shell.theme.base05
 
                     Behavior on width { NumberAnimation { duration: 100 } }
 
@@ -414,7 +409,7 @@ Item {
                     radius: shell.theme.defaultCardRadius ?? 4
                     border.width: shell.theme.globalBorderWidth ?? 2
                     color: "transparent"
-                    border.color: musicBox.border.color
+                    border.color: shell.theme.base05
                     visible: musicBox.confirmDeleteMode
 
                     Text {

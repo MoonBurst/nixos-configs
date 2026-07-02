@@ -4,7 +4,10 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 
-Rectangle {
+// Import your custom style module relative to this widget's location
+import "../../style"
+
+Item {
     id: weatherCapsule
 
     property var barWindow: null
@@ -14,11 +17,12 @@ Rectangle {
 
     width: 140
     height: parent.height
-    radius: shell.theme.defaultCardRadius
-    border.width: shell.theme.globalBorderWidth
 
-    color: shell.theme.base00
-    border.color: shell.theme.base05
+    // Use your reusable LeftStyle component as the background
+    LeftStyle {
+        id: bg
+        anchors.fill: parent
+    }
 
     Process {
         id: weatherFetcher
@@ -99,6 +103,13 @@ Rectangle {
     Text {
         id: weatherText
         anchors.fill: parent
+
+        // Dynamically clear the slant margins using LeftStyle's properties
+        anchors.leftMargin: bg.leftPadding
+        anchors.rightMargin: bg.rightPadding
+        anchors.topMargin: shell.theme.globalPadding
+        anchors.bottomMargin: shell.theme.globalPadding
+
         color: shell.theme.base05
         text: weatherCapsule.weatherStr
         font.family: shell.theme.fontFamily
@@ -131,11 +142,10 @@ Rectangle {
         implicitHeight: 520
         color: "transparent"
 
-        WlrLayershell.margins.top:shell.theme.globalPadding + 55
+        WlrLayershell.margins.top: shell.theme.globalPadding + 55
 
         WlrLayershell.margins.left: {
             if (!weatherCapsule.barWindow) return 0;
-
 
             var leftOffsetAbsolute = shell.theme.globalPadding * 2;
 
@@ -153,6 +163,7 @@ Rectangle {
             return Math.round(centerPoint - (implicitWidth / 2));
         }
 
+        // Dropdown pop-up container (Kept standard/rectangular for proper rendering)
         Rectangle {
             anchors.fill: parent
             radius: shell.theme.defaultCardRadius

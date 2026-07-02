@@ -79,13 +79,15 @@ in
           // ============================================================================
           property int globalFontSize: ${toString config.stylix.fonts.sizes.popups}
           property int globalHeaderSize: ${toString config.stylix.fonts.sizes.popups}
-          property string fontFamily: "${config.stylix.fonts.sansSerif.name}"
+
+          property string fontFamily: "Fira Sans Condensed"
 
           property int defaultCardWidth: 420
           property int defaultCardHeight: 140
           property int defaultCardRadius: 10
           property int globalBorderWidth: 3
           property int globalPadding: 20
+          property int slantWidth: 20
 
           // CUSTOM BORDER COLOR SLOTS MAP TO LAUNCHER PANELS
           property color outerBorderColor: base03

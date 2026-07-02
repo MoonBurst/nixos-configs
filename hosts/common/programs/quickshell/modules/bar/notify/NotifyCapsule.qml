@@ -2,7 +2,10 @@ import QtQuick
 import QtQuick.Controls
 import Quickshell
 
-Rectangle {
+// Import your custom style module relative to this widget's location
+import "../../style"
+
+Item {
     id: notifyBox
 
     // Compatibility properties to align with your status bar layout engine
@@ -15,21 +18,25 @@ Rectangle {
 
     width: parent ? parent.width : 200
     height: parent.height
-    radius: shell.theme.defaultCardRadius
-    border.width: shell.theme.globalBorderWidth
 
-    // Capsule background color always remains standard base00 (never changes on active history)
-    color: shell.theme.base00
+    // Use your reusable LeftStyle component as the background
+    LeftStyle {
+        id: bg
+        anchors.fill: parent
 
-    // State-based outline border transitions (ONLY changes on paused/unpaused, never on active history)
-    border.color: {
-        if (notifyBox.isLocked) return shell.theme.base03; // Same color as currently when locked
-        if (notifyBox.isDisabled) return shell.theme.base08; // Red outline when paused
-        return shell.theme.base05; // base05 outline when unpaused
+        // Standard background color remains static base00
+        color: shell.theme.base00
+
+        // Dynamic, state-based border outline transitions
+        borderColor: {
+            if (notifyBox.isLocked) return shell.theme.base03;  // Same color as currently when locked
+            if (notifyBox.isDisabled) return shell.theme.base08; // Red outline when paused
+            return shell.theme.base05;                           // base05 outline when unpaused
+        }
+
+        Behavior on color { ColorAnimation { duration: 120 } }
+        Behavior on borderColor { ColorAnimation { duration: 120 } }
     }
-
-    Behavior on color { ColorAnimation { duration: 120 } }
-    Behavior on border.color { ColorAnimation { duration: 120 } }
 
     MouseArea {
         id: mouseArea

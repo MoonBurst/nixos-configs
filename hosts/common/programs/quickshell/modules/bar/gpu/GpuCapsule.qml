@@ -5,7 +5,10 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 
-Rectangle {
+// Import your custom style module relative to this widget's location
+import "../../style"
+
+Item {
     id: gpuBox
 
     property int tooltipWidth: 300
@@ -19,15 +22,17 @@ Rectangle {
     property string topGpuProcessesText: "Loading GPU processes..."
     property string textAccumulatorBuffer: ""
 
-    // Unified Layout Constraints
-    Binding { target: gpuBox; property: "Layout.preferredWidth"; value: gpuText.implicitWidth + 30 }
-    Binding { target: gpuBox; property: "width"; value: gpuText.implicitWidth + 30 }
+    // Use your reusable RightStyle component as the background
+    RightStyle {
+        id: bg
+        anchors.fill: parent
+    }
+
+    // Unified Layout Constraints (Dynamically calculates slant clearance)
+    Binding { target: gpuBox; property: "Layout.preferredWidth"; value: gpuText.implicitWidth + bg.leftPadding + bg.rightPadding }
+    Binding { target: gpuBox; property: "width"; value: gpuText.implicitWidth + bg.leftPadding + bg.rightPadding }
 
     height: parent.height
-    radius: shell.theme.defaultCardRadius
-    border.width: shell.theme.globalBorderWidth
-    color: shell.theme.base00
-    border.color: shell.theme.base05
 
     // Metric Data Collector (AMD/Nvidia)
     Process {
@@ -107,7 +112,7 @@ Rectangle {
         onHoveredChanged: if (hovered) { gpuBox.textAccumulatorBuffer = ""; gpuProcFetcher.running = true; }
     }
 
-    // Dynamic Panel Renderer
+    // Dynamic Panel Renderer (Kept standard/rectangular for proper list alignment)
     Loader {
         active: gpuHoverTracker.hovered
         sourceComponent: Component {

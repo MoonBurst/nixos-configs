@@ -158,6 +158,9 @@ ShellRoot {
 
             readonly property int capsuleHeight: height - (shell.theme.globalBorderWidth * 2) - 8
 
+            // Thin, crisp gap spacing designed for slanted layout profiles
+            readonly property int layoutSpacing: 5
+
             /*
              * ================================================================
              * LEFT SIDE
@@ -171,7 +174,7 @@ ShellRoot {
                 anchors.leftMargin: shell.theme.globalPadding
                 anchors.verticalCenter: parent.verticalCenter
 
-                width: 150
+                width: 120
                 height: mainBarContainer.capsuleHeight
 
                 CalendarCapsule.Calendar {
@@ -184,7 +187,7 @@ ShellRoot {
                 id: musicContainer
 
                 anchors.left: calendarContainer.right
-                anchors.leftMargin: shell.theme.globalPadding / 2
+                anchors.leftMargin: mainBarContainer.layoutSpacing
                 anchors.verticalCenter: parent.verticalCenter
 
                 width: 200
@@ -201,10 +204,10 @@ ShellRoot {
                 id: alarmContainer
 
                 anchors.left: musicContainer.right
-                anchors.leftMargin: shell.theme.globalPadding / 2
+                anchors.leftMargin: mainBarContainer.layoutSpacing
                 anchors.verticalCenter: parent.verticalCenter
 
-                width: 140
+                width: 130
                 height: mainBarContainer.capsuleHeight
 
                 AlarmCapsule.AlarmCapsule {
@@ -217,7 +220,7 @@ ShellRoot {
                 id: weatherContainer
 
                 anchors.left: alarmContainer.right
-                anchors.leftMargin: shell.theme.globalPadding / 2
+                anchors.leftMargin: mainBarContainer.layoutSpacing
                 anchors.verticalCenter: parent.verticalCenter
 
                 width: 100
@@ -233,10 +236,10 @@ ShellRoot {
                 id: borgContainer
 
                 anchors.left: weatherContainer.right
-                anchors.leftMargin: shell.theme.globalPadding / 2
+                anchors.leftMargin: mainBarContainer.layoutSpacing
                 anchors.verticalCenter: parent.verticalCenter
 
-                width: 140
+                width: 125
                 height: mainBarContainer.capsuleHeight
 
                 BorgCapsule.BorgCapsule {
@@ -244,14 +247,15 @@ ShellRoot {
                     barWindow: topBarWindow
                 }
             }
+
             Item {
                 id: notifyContainer
 
                 anchors.left: borgContainer.right
-                anchors.leftMargin: shell.theme.globalPadding / 2
+                anchors.leftMargin: mainBarContainer.layoutSpacing
                 anchors.verticalCenter: parent.verticalCenter
 
-                width: 200 // Expanded from 140 to 200 to prevent long "Notifications:" text from clipping
+                width: 180
                 height: mainBarContainer.capsuleHeight
 
                 NotifyCapsule.NotifyCapsule {
@@ -272,7 +276,7 @@ ShellRoot {
 
                 anchors.centerIn: parent
 
-                width: 150
+                width: 130
                 height: mainBarContainer.capsuleHeight
 
                 ClockCapsule.ClockCapsule {
@@ -281,14 +285,15 @@ ShellRoot {
                 }
             }
 
+            // Balanced width profiles for center flanking groups
             Item {
                 id: audioContainer
 
                 anchors.right: clockContainer.left
-                anchors.rightMargin: shell.theme.globalPadding / 2
+                anchors.rightMargin: mainBarContainer.layoutSpacing
                 anchors.verticalCenter: parent.verticalCenter
 
-                width: 140
+                width: 150 // Widened from 120
                 height: mainBarContainer.capsuleHeight
 
                 SoundModule.AudioCapsule {
@@ -301,10 +306,10 @@ ShellRoot {
                 id: micContainer
 
                 anchors.left: clockContainer.right
-                anchors.leftMargin: shell.theme.globalPadding / 2
+                anchors.leftMargin: mainBarContainer.layoutSpacing
                 anchors.verticalCenter: parent.verticalCenter
 
-                width: 140
+                width: 150 // Widened from 120
                 height: mainBarContainer.capsuleHeight
 
                 SoundModule.MicCapsule {
@@ -337,9 +342,9 @@ ShellRoot {
             Item {
                 id: ramContainer
                 anchors.right: trayContainer.left
-                anchors.rightMargin: shell.theme.globalPadding / 2
+                anchors.rightMargin: mainBarContainer.layoutSpacing
                 anchors.verticalCenter: parent.verticalCenter
-                width: 175
+                width: 155
                 height: mainBarContainer.capsuleHeight
                 RamCapsule.RamCapsule {
                     anchors.fill: parent
@@ -351,10 +356,10 @@ ShellRoot {
                 id: gpuContainer
 
                 anchors.right: ramContainer.left
-                anchors.rightMargin: shell.theme.globalPadding / 2
+                anchors.rightMargin: mainBarContainer.layoutSpacing
                 anchors.verticalCenter: parent.verticalCenter
 
-                width: 275
+                width: 295
                 height: mainBarContainer.capsuleHeight
 
                 GpuCapsule.GpuCapsule {
@@ -367,10 +372,10 @@ ShellRoot {
                 id: cpuContainer
 
                 anchors.right: gpuContainer.left
-                anchors.rightMargin: shell.theme.globalPadding / 2
+                anchors.rightMargin: mainBarContainer.layoutSpacing
                 anchors.verticalCenter: parent.verticalCenter
 
-                width: 175
+                width: 170 // Adjusted with layoutSpacing to avoid overlaps
                 height: mainBarContainer.capsuleHeight
 
                 CpuCapsule.CpuCapsule {
@@ -383,10 +388,10 @@ ShellRoot {
                 id: netContainer
 
                 anchors.right: cpuContainer.left
-                anchors.rightMargin: shell.theme.globalPadding / 2
+                anchors.rightMargin: mainBarContainer.layoutSpacing
                 anchors.verticalCenter: parent.verticalCenter
 
-                width: 280 // Expanded parent width to match NetCapsule.qml sizing
+                width: 260
                 height: mainBarContainer.capsuleHeight
 
                 NetCapsule.NetCapsule {

@@ -4,7 +4,10 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 
-Rectangle {
+// Import your custom style module relative to this widget's location
+import "../../style"
+
+Item {
     id: musicBox
 
     // ==========================================
@@ -32,19 +35,19 @@ Rectangle {
 
     width: 200
     height: parent ? parent.height : 40
-    radius: shell.theme.defaultCardRadius
-    border.width: shell.theme.globalBorderWidth
-    color: shell.theme.base00
-    border.color: shell.theme.base05
+
+    // Use your reusable LeftStyle component as the background
+    LeftStyle {
+        id: bg
+        anchors.fill: parent
+    }
 
     // ==========================================
     // DISPLAY HELPER
     // ==========================================
 
-    /**
-     * Updates trackStr and trackCountStr immediately when state or tags change.
-     * Ensures we fallback to just the file name (no path) if Title tag is missing.
-     */
+    // Updates trackStr and trackCountStr  when state or tags change.
+    // falls back to just the file name (no path) if Title tag is missing.
     function updateTrackString() {
         if (musicBox.playbackState === "stop") {
             musicBox.trackStr = "No Track";
@@ -66,10 +69,6 @@ Rectangle {
     // SOCKET IPC CONNECTION
     // ==========================================
 
-    /**
-     * Handles the background polling socket loop.
-     * Periodically queries MPD and streams raw output directly inline to SplitParser.
-     */
     Process {
         id: mpdIpc
         running: true
@@ -99,11 +98,6 @@ Rectangle {
             "    time.sleep(1)"
         ]
 
-        /**
-         * Custom write wrapper function.
-         * Runs a fast, short-lived socket writer to bypass standard stream limitations.
-         * Keeps full compatibility with existing tooltip components.
-         */
         function write(data) {
             Quickshell.execDetached([
                 "python3", "-c",
@@ -117,10 +111,7 @@ Rectangle {
             ]);
         }
 
-        /**
-         * Inline parser bound to the standard output of the process.
-         * Performs case-insensitive checks on prefixes to handle varied tag definitions.
-         */
+        //  case-insensitive checks on prefixes to handle varied tag definitions.
         stdout: SplitParser {
             onRead: line => {
                 if (!line) return;
@@ -172,7 +163,7 @@ Rectangle {
                         musicBox.totalSeconds = 0;
                         musicBox.updateTrackString();
                     } else {
-                        // Apply fallbacks (extracting filename only) when parsing is complete
+                        // fallbacks (filename) when parsing is complete
                         if (!musicBox.tooltipTitle && musicBox.currentFile) {
                             var rawFile = musicBox.currentFile;
                             musicBox.tooltipTitle = rawFile.substring(rawFile.lastIndexOf("/") + 1);
@@ -190,7 +181,13 @@ Rectangle {
     Text {
         id: musicText
         anchors.fill: parent
-        anchors.margins: shell.theme.globalPadding /4
+
+        // Dynamically clear the slant margins using LeftStyle's properties
+        anchors.leftMargin: bg.leftPadding
+        anchors.rightMargin: bg.rightPadding
+        anchors.topMargin: shell.theme.globalPadding / 4
+        anchors.bottomMargin: shell.theme.globalPadding / 4
+
         color: shell.theme.base05
         text: "🎵 " + musicBox.trackStr
         font.family: shell.theme.fontFamily
@@ -201,10 +198,7 @@ Rectangle {
         elide: Text.ElideRight
     }
 
-    /**
-     * Self-healing connection maintenance.
-     * Restarts the process if MPD or Python encounters an issue.
-     */
+    // Restarts the process if MPD or Python encounters an issue.
     Timer {
         id: updateTimer
         interval: 1000; running: true; repeat: true

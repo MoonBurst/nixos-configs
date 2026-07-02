@@ -46,7 +46,7 @@ Item {
     // Dynamically bound at runtime to prevent compile-time alias target resolution failures
     property var historyModel: null
 
-    // FIXED: Global cache to map active notification IDs to local, persistent cache files
+    // Global cache to map active notification IDs to local, persistent cache files
     property var cachedAvatarsMap: ({})
     property int cacheCounter: 0
 
@@ -54,7 +54,7 @@ Item {
         id: activeNotificationsModel
     }
 
-    // FIXED: Immediately caches temporary D-Bus provider images upon DBus server entry to prevent expirations
+    // Immediately caches temporary D-Bus provider images upon DBus server entry to prevent expirations
     function cacheAvatarImmediately(notification) {
         if (!notification) return;
 
@@ -123,6 +123,14 @@ Item {
             }
         }
 
+        // PREVENT DEAD HANDLES: Fallback to the stable app icon if the cached avatar fails before direct DND save
+        if (avatarVal.toString().startsWith("image://qsimage")) {
+            avatarVal = "image://icon/" + appNameLower;
+        }
+        if (previewVal.toString().startsWith("image://qsimage")) {
+            previewVal = "";
+        }
+
         let historyEntry = {
             "cardRef": null, // Safely pass null since no visual card was instantiated
             "notifId": notification.id,
@@ -154,7 +162,6 @@ Item {
         return match ? match[0] : "";
     }
 
-    // FIXED: Corrected the unterminated regular expression class error by replacing the missing brackets
     function extractImageUrl(text) {
         if (!text) return "";
         var match = text.match(/(https?:\/\/[^\s<]+\.(?:png|jpg|jpeg|gif|svg|webp)(?:\?[^\s<]+)?)/i);
@@ -199,7 +206,7 @@ Item {
         keepOnReload: true
 
         onNotification: function(notification) {
-            // FIXED: Instantly cache temporary D-Bus provider images while they are active and valid
+            // Instantly cache temporary D-Bus provider images while they are active and valid
             root.cacheAvatarImmediately(notification);
             root.handleNotification(notification);
         }
@@ -255,7 +262,7 @@ Item {
             id: canvasContent
             anchors.fill: parent
 
-            // FIXED: Placed inside canvasContent (inside PanelWindow) to satisfy grabToImage's scene graph requirements
+            // Placed inside canvasContent (inside PanelWindow) to satisfy grabToImage's scene graph requirements
             Image {
                 id: offscreenAvatarCacher
                 visible: false
@@ -347,7 +354,7 @@ Item {
             avatarVal = notification.icon;
             previewVal = notification.image;
         } else {
-            // FIXED: Check our pre-resolved local file cache map first to bypass expired DBus handles
+            // Check our pre-resolved local file cache map first to bypass expired DBus handles
             let cached = root.cachedAvatarsMap[notification.id];
             if (cached) {
                 avatarVal = cached;
@@ -530,6 +537,16 @@ Item {
                 }
             }
 
+            let serializedPreview = expiredEntry.previewSource || "";
+
+            // PREVENT DEAD HANDLES: Fallback to stable app icon or blank if the handles have been invalidated on close
+            if (serializedAvatar.toString().startsWith("image://qsimage")) {
+                serializedAvatar = "image://icon/" + appNameLower;
+            }
+            if (serializedPreview.toString().startsWith("image://qsimage")) {
+                serializedPreview = "";
+            }
+
             // Repackage entry with local persistent filepath
             let historyEntry = {
                 "cardRef": expiredEntry.cardRef,
@@ -538,7 +555,7 @@ Item {
                 "body": expiredEntry.body,
                 "appName": expiredEntry.appName,
                 "avatarSource": serializedAvatar,
-                "previewSource": expiredEntry.previewSource
+                "previewSource": serializedPreview
             };
 
             // Record history safely without blocking popup dismissals

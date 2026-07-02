@@ -3,7 +3,10 @@ import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 
-Rectangle {
+// Import your custom style module relative to this widget's location
+import "../../style"
+
+Item {
     id: micBox
 
     // ============================================================================
@@ -12,18 +15,22 @@ Rectangle {
     property var barWindow: null
     property string micDisplayText: "Mic: --"
 
-    // NEW: Clean state property to track the mute status
+    // Clean state property to track the mute status
     property bool muted: false
 
     width: 140
     height: parent.height
-    radius: shell.theme.defaultCardRadius
-    border.width: shell.theme.globalBorderWidth
 
-    color: shell.theme.base00
+    // Use your reusable RightStyle component as the background
+    RightStyle {
+        id: bg
+        anchors.fill: parent
 
-    // NEW: Safe, null-protected binding that won't break during startup loading
-    border.color: (shell.theme && shell.theme.base05) ? (micBox.muted ? shell.theme.base08 : shell.theme.base05) : "transparent"
+        color: shell.theme.base00
+
+        // Safe, null-protected binding that dynamically handles mute outline coloring
+        borderColor: (shell.theme && shell.theme.base05) ? (micBox.muted ? shell.theme.base08 : shell.theme.base05) : "transparent"
+    }
 
     Process { id: micMuteCmd; command: ["/bin/sh", "-c", "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"] }
 
@@ -40,7 +47,7 @@ Rectangle {
                 var raw = data.trim();
                 var isMuted = raw.indexOf("[MUTED]") !== -1;
 
-                // NEW: Safely update the root state property
+                // Safely update the root state property
                 micBox.muted = isMuted;
 
                 var mNum = "0%";
@@ -67,14 +74,22 @@ Rectangle {
     }
 
     Text {
-        id: micText;
-        anchors.centerIn: parent;
-        textFormat: Text.RichText;
-        text: micBox.micDisplayText;
-        font.family: shell.theme.fontFamily;
-        font.pixelSize: shell.theme.globalFontSize;
+        id: micText
+        anchors.fill: parent
+
+        // Dynamic margins clear the slanted edges when MUTED is displayed
+        anchors.leftMargin: bg.leftPadding
+        anchors.rightMargin: bg.rightPadding
+        anchors.topMargin: shell.theme.globalPadding
+        anchors.bottomMargin: shell.theme.globalPadding
+
+        textFormat: Text.RichText
+        text: micBox.micDisplayText
+        font.family: shell.theme.fontFamily
+        font.pixelSize: shell.theme.globalFontSize
         font.bold: true
-        color: shell.theme.base05
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
     }
 
     Timer { interval: 2000; running: true; repeat: true; onTriggered: micProc.running = true }

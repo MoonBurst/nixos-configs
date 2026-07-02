@@ -5,6 +5,9 @@ import Quickshell
 import Quickshell.Services.SystemTray
 import Quickshell.Wayland
 
+// Import your custom style module relative to this widget's location
+import "../../style"
+
 Item {
     id: trayRoot
 
@@ -16,15 +19,12 @@ Item {
     implicitWidth: trayBubbleWrapper.width
     height: parent.height
 
-    Rectangle {
+    // Use RightStyle for the expanding/collapsing container
+    RightStyle {
         id: trayBubbleWrapper
 
-        color: shell.theme.base00
-        radius: shell.theme.defaultCardRadius
-        border.color: shell.theme.base05
-        border.width: shell.theme.globalBorderWidth
-
-        width: trayLayoutRow.width + 16
+        // Dynamic width handles the tray items and automatically accounts for slants
+        width: trayLayoutRow.width + trayBubbleWrapper.leftPadding + trayBubbleWrapper.rightPadding
         height: parent.height
         anchors.verticalCenter: parent.verticalCenter
 
@@ -86,6 +86,7 @@ Item {
             }
         }
     }
+
     Component {
         id: trayItemDelegate
 

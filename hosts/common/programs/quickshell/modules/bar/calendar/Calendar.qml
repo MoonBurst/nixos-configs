@@ -3,15 +3,20 @@ import QtQuick.Controls 2
 import Quickshell
 import Quickshell.Wayland
 
-Rectangle {
+// Import your custom style module relative to this widget's location
+import "../../style"
+
+Item {
     id: calendarBox
 
     // Styling & Layout
     anchors.fill: parent
-    radius: shell.theme.defaultCardRadius
-    border.width: shell.theme.globalBorderWidth
-    color: shell.theme.base00
-    border.color: shell.theme.base05
+
+    // Use your reusable LeftStyle component as the background
+    LeftStyle {
+        id: bg
+        anchors.fill: parent
+    }
 
     // Global Widget Properties
     property var barWindow: null
@@ -39,7 +44,13 @@ Rectangle {
     Text {
         id: calendarText
         anchors.fill: parent
-        anchors.margins: shell.theme.globalPadding
+
+        // Dynamically clear the slant margins using LeftStyle's properties
+        anchors.leftMargin: bg.leftPadding
+        anchors.rightMargin: bg.rightPadding
+        anchors.topMargin: shell.theme.globalPadding
+        anchors.bottomMargin: shell.theme.globalPadding
+
         color: shell.theme.base05
         font.family: shell.theme.fontFamily
         font.pixelSize: shell.theme.globalFontSize
@@ -91,7 +102,7 @@ Rectangle {
             return shell.theme.globalPadding + mainBarContainer.capsuleHeight + 8;
         }
 
-        // Tooltip Window Content Wrapper
+        // Tooltip Window Content Wrapper (Kept standard/rectangular for proper formatting)
         Rectangle {
             anchors.fill: parent
             radius: shell.theme.defaultCardRadius

@@ -115,11 +115,29 @@ def send_notification(title, message):
         subprocess.run(["${pkgs.libnotify}/bin/notify-send", "-a", "Mail Client", "-i", "mail-message", title, message])
     except Exception as e: print(f"[Notification Error]: {e}")
 
+# Strips invalid UIDs from files that were locally moved into Trash/Spam folders by Himalaya
+def clean_untracked_uids():
+    target_folders = [".[Gmail].Trash", ".[Gmail].Spam"]
+    for folder in target_folders:
+        path = f"{target_home}/.local/share/mail/gmail/{folder}"
+        for sub in ["new", "cur"]:
+            sub_path = os.path.join(path, sub)
+            if os.path.exists(sub_path):
+                for f in os.listdir(sub_path):
+                    if ",U=" in f:
+                        src = os.path.join(sub_path, f)
+                        new_name = re.sub(r',U=\d+(?:,S=\d+)?', "", f)
+                        dest = os.path.join(sub_path, new_name)
+                        if src != dest:
+                            try:
+                                os.rename(src, dest)
+                            except Exception as e:
+                                print(f"[Sync Prep Error] Failed to rename {f}: {e}")
+
 # Unified downloader and /tmp to Downloads folder movement router
 def download_and_route_attachments(msg_id, folder, destination_dir, is_preview=False):
     # GUARD: Only skip download if we are generating cached previews and they already exist
     if is_preview and os.path.exists(destination_dir) and os.listdir(destination_dir):
-        # Silenced noisy print stating that previews already exist
         class DummyResult:
             returncode = 0
             stdout = ""
@@ -419,6 +437,7 @@ def process_live_text_queue():
 
         if actions_taken:
             print("[Queue Processor] Pushing local modifications to remote mail servers...")
+            clean_untracked_uids()
             subprocess.run(["${pkgs.isync}/bin/mbsync", "-c", mbsync_file, "gmail"], env=env_copy)
             rebuild_local_ui_cache()
             return True
@@ -499,7 +518,6 @@ def rebuild_local_ui_cache():
                             item["body_content"] = ""
 
                         if has_att and msg_id:
-                            # Silenced the "[Cache Pre-fetch] Found attachments..." print
                             preview_dir = f"{target_home}/.cache/himalaya/previews/{msg_id}"
                             download_and_route_attachments(msg_id, target_folder, preview_dir, is_preview=True)
                             local_files = os.listdir(preview_dir) if os.path.exists(preview_dir) else []
@@ -601,7 +619,6 @@ def run_gentle_backfill():
                 if split_idx != -1: clean_body = clean_body[split_idx:].strip()
 
                 if has_att and target_id:
-                    # Silenced the "[Background Backfill] Found attachments..." print
                     preview_dir = f"{target_home}/.cache/himalaya/previews/{target_id}"
                     download_and_route_attachments(target_id, dup_folder, preview_dir, is_preview=True)
                     local_files = os.listdir(preview_dir) if os.path.exists(preview_dir) else []
@@ -635,6 +652,7 @@ if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "--daemon":
         current_time = time.time()
         if current_time - last_sync > 300:
             print(f"Starting scheduled background mbsync sync pass...", flush=True)
+            clean_untracked_uids()
             subprocess.run(["${pkgs.isync}/bin/mbsync", "-c", mbsync_file, "gmail"], env=env_copy)
             rebuild_local_ui_cache()
             last_sync = current_time
@@ -642,6 +660,7 @@ if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "--daemon":
     sys.exit(0)
 
 if __name__ == "__main__":
+    clean_untracked_uids()
     subprocess.run(["${pkgs.isync}/bin/mbsync", "-c", mbsync_file, "gmail"], env=env_copy)
     rebuild_local_ui_cache()
   '';

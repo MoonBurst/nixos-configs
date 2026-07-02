@@ -3,22 +3,25 @@ import QtQuick.Controls 2
 import Quickshell
 import Quickshell.Io
 
-Rectangle {
+// Import your custom style module relative to this widget's location
+import "../../style"
+
+Item {
     id: netBox
 
-    // Layout frames and outlines natively scale to match your global design rule profiles
-    width: 300 // Expanded width to accommodate both throughput and latency meters cleanly
+    width: 300
     height: parent.height
-    radius: shell.theme.defaultCardRadius
-    border.width: shell.theme.globalBorderWidth
-
-    color: shell.theme.base00
-    border.color: shell.theme.base05
 
     property string downSpeedStr: "0B"
     property string upSpeedStr: "0B"
     property string pingStr: "??ms"
     property var barWindow: null
+
+    // Use your reusable RightStyle component as the background
+    RightStyle {
+        id: bg
+        anchors.fill: parent
+    }
 
     // Bandwidth Throughput Statistics Process
     Process {
@@ -71,7 +74,6 @@ Rectangle {
 
         stdout: SplitParser {
             onRead: data => {
-                // Regex matches and extracts round-trip time in milliseconds (e.g. "time=14.2 ms")
                 var match = data.match(/time=([0-9.]+)\s*ms/);
                 if (match && match.length >= 2) {
                     var ms = parseFloat(match[1]);
@@ -90,7 +92,13 @@ Rectangle {
     Text {
         id: netText
         anchors.fill: parent
-        anchors.margins: shell.theme.globalPadding
+
+        // Dynamically clear the slant margins using RightStyle's properties
+        anchors.leftMargin: bg.leftPadding
+        anchors.rightMargin: bg.rightPadding
+        anchors.topMargin: shell.theme.globalPadding
+        anchors.bottomMargin: shell.theme.globalPadding
+
         textFormat: Text.RichText
         font.family: shell.theme.fontFamily
         font.pixelSize: shell.theme.globalFontSize
@@ -102,8 +110,6 @@ Rectangle {
             const greenColor = shell.theme.base0C.toString();
             const yellowColor = shell.theme.base05.toString();
             const redColor = (typeof shell !== 'undefined' && shell.theme && shell.theme.base08) ? shell.theme.base08.toString() : "#fb4934";
-
-            // If the connection drops, color the "OFFLINE" warning in high-contrast red
             const pingColor = netBox.pingStr === "OFFLINE" ? redColor : yellowColor;
 
             return "<font color='" + greenColor + "'>NET:</font> " +
@@ -113,16 +119,13 @@ Rectangle {
         }
     }
 
-    // Centralized Timer handles both processes synchronously to save system resources
     Timer {
         interval: 1000; running: true; repeat: true; triggeredOnStart: true
         property int ticks: 0
         onTriggered: {
-            // Cycle throughput statistics every 1 second
             netStatsProc.running = false;
             netStatsProc.running = true;
 
-            // Cycle ping network latency every 5 seconds to prevent log bloat
             ticks++;
             if (ticks >= 5) {
                 ticks = 0;

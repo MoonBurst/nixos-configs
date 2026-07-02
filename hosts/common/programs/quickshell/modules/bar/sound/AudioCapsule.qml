@@ -3,7 +3,10 @@ import QtQuick.Controls 2
 import Quickshell
 import Quickshell.Io
 
-Rectangle {
+// Import your custom style module relative to this widget's location
+import "../../style"
+
+Item {
     id: audioBox
 
     property var barWindow: null
@@ -11,11 +14,12 @@ Rectangle {
 
     width: 140
     height: parent.height
-    radius: shell.theme.defaultCardRadius
-    border.width: shell.theme.globalBorderWidth
 
-    color: shell.theme.base00
-    border.color: shell.theme.base05
+    // Use your reusable LeftStyle component as the background
+    LeftStyle {
+        id: bg
+        anchors.fill: parent
+    }
 
     Process {
         id: audioFetcher
@@ -67,6 +71,13 @@ Rectangle {
     Text {
         id: audioText
         anchors.fill: parent
+
+        // Dynamically clear the slant margins using LeftStyle's properties
+        anchors.leftMargin: bg.leftPadding
+        anchors.rightMargin: bg.rightPadding
+        anchors.topMargin: shell.theme.globalPadding
+        anchors.bottomMargin: shell.theme.globalPadding
+
         text: audioBox.audioDisplayText
         font.family: shell.theme.fontFamily
         font.pixelSize: shell.theme.globalFontSize

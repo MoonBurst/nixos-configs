@@ -3,15 +3,20 @@ import QtQuick.Controls 2
 import Quickshell
 import Quickshell.Wayland
 
-Rectangle {
+// Import your custom style module relative to this widget's location
+import "../../style"
+
+Item {
     id: clockBox
 
-    // Sizing & Theme Styling Core Profiles
+    // Sizing & Layout
     anchors.fill: parent
-    radius: shell.theme.defaultCardRadius
-    border.width: shell.theme.globalBorderWidth
-    color: shell.theme.base00
-    border.color: shell.theme.base05
+
+    // Use your reusable CenterStyle component as the background
+    CenterStyle {
+        id: bg
+        anchors.fill: parent
+    }
 
     // Global Widget Window Tracking Properties
     property var barWindow: null
@@ -33,7 +38,13 @@ Rectangle {
     Text {
         id: clockText
         anchors.fill: parent
-        anchors.margins: shell.theme.globalPadding
+
+        // Dynamically clear the slant margins using CenterStyle's properties
+        anchors.leftMargin: bg.leftPadding
+        anchors.rightMargin: bg.rightPadding
+        anchors.topMargin: shell.theme.globalPadding
+        anchors.bottomMargin: shell.theme.globalPadding
+
         color: shell.theme.base05
         font.family: shell.theme.fontFamily
         font.pixelSize: shell.theme.globalFontSize
@@ -95,7 +106,7 @@ Rectangle {
             return targetLeftMargin;
         }
 
-        // Inside content card structural component instantiation
+        // Inside content card structural component instantiation (Kept standard/rectangular)
         ClockMatrixPopupView {
             anchors.fill: parent
         }

@@ -4,7 +4,10 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 
-Rectangle {
+// Import your custom style module relative to this widget's location
+import "../../style"
+
+Item {
     id: cpuBox
 
     property int tooltipWidth: 320
@@ -12,11 +15,12 @@ Rectangle {
 
     width: 175
     height: parent.height
-    radius: shell.theme.defaultCardRadius
-    border.width: shell.theme.globalBorderWidth
 
-    color: shell.theme.base00
-    border.color: shell.theme.base05
+    // Use your reusable RightStyle component as the background
+    RightStyle {
+        id: bg
+        anchors.fill: parent
+    }
 
     property string cpuUsageStr: "0%"
     property string cpuTempStr: "0°C"
@@ -57,7 +61,13 @@ Rectangle {
     Text {
         id: cpuText
         anchors.fill: parent
-        anchors.margins: shell.theme.globalPadding
+
+        // Dynamically clear the slant margins using RightStyle's properties
+        anchors.leftMargin: bg.leftPadding
+        anchors.rightMargin: bg.rightPadding
+        anchors.topMargin: shell.theme.globalPadding
+        anchors.bottomMargin: shell.theme.globalPadding
+
         textFormat: Text.RichText
         font.family: shell.theme.fontFamily
         font.pixelSize: shell.theme.globalFontSize
@@ -103,6 +113,7 @@ Rectangle {
         implicitHeight: cpuBox.tooltipHeight
         color: "transparent"
 
+        // Tooltip container (Kept standard/rectangular for proper alignment)
         Rectangle {
             anchors.fill: parent
             radius: shell.theme.defaultCardRadius

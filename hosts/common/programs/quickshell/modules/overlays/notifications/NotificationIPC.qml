@@ -53,15 +53,15 @@ Item {
     }
 
     function dismissLatest() {
-        console.log("[IPC DEBUG] dismissLatest triggered. Total active cards in queue:", notifModel.count);
+        if (shell.debug) console.log("[IPC DEBUG] dismissLatest triggered. Total active cards in queue:", notifModel.count);
 
         let entry = getNewest();
         if (!entry) {
-            console.log("[IPC DEBUG] No active notification cards found to dismiss.");
+            if (shell.debug) console.log("[IPC DEBUG] No active notification cards found to dismiss.");
             return;
         }
 
-        console.log("[IPC DEBUG] Manual dismiss targeting oldest (front-most) card -> Index:", (notifModel.count - 1), "Summary:", entry.summary);
+        if (shell.debug) console.log("[IPC DEBUG] Manual dismiss targeting oldest (front-most) card -> Index:", (notifModel.count - 1), "Summary:", entry.summary);
         let visualCard = entry.cardRef || entry;
         dismiss(visualCard);
     }
@@ -90,7 +90,7 @@ Item {
         }
 
         if (trackPath.length > 0) {
-            console.log("Playing notification audio cue:", trackPath);
+            if (shell.debug) console.log("Playing notification audio cue:", trackPath);
             Quickshell.execDetached(["mpv", "--no-video", "--volume=80", trackPath]);
         }
     }
@@ -100,7 +100,7 @@ Item {
     // ============================================================================
     // FIXED: Added optional directNotificationObject parameter to handle historical activations natively
     function activate(card, summary, body, appName, directNotificationObject) {
-        console.log("ACTIVATE ENTERED");
+        if (shell.debug) console.log("ACTIVATE ENTERED");
 
         let summaryStr = summary || "";
         let bodyStr = body || "";
@@ -121,9 +121,9 @@ Item {
         if (appNameStr.length > 0 || desktopHint.length > 0) {
             let primaryTarget = appNameStr || desktopHint;
             let secondaryTarget = desktopHint || appNameStr;
-            let baseNameClean = primaryTarget.replace(/-electron|-client/gi, "");
+            let baseNameClean = primaryTarget.replace(/-electron/g, "").replace(/-desktop/g, "").replace("vesktop", "discord"); // Fallbacks for common apps
 
-            console.log("Dynamic target resolution rule processing for app: " + primaryTarget);
+            if (shell.debug) console.log("Dynamic target resolution rule processing for app: " + primaryTarget);
 
             // Loop through targets to guarantee 'focus parent; focus child' appends to EVERY option cleanly
             let targets = [primaryTarget, secondaryTarget, baseNameClean];
@@ -138,7 +138,7 @@ Item {
             }
 
             let swayCommand = commandParts.join("; ");
-            console.log("Dispatching dynamic Sway selector command: swaymsg " + swayCommand);
+            if (shell.debug) console.log("Dispatching dynamic Sway selector command: swaymsg " + swayCommand);
             Quickshell.execDetached(["swaymsg", swayCommand]);
         }
 
@@ -159,14 +159,21 @@ Item {
             }
 
             if (targetAction && typeof targetAction.invoke === "function") {
-                console.log("SUCCESS: Scheduling native C++ action loop invocation over D-Bus -> " + targetAction.identifier);
+                if (shell.debug) console.log("SUCCESS: Scheduling native C++ action loop invocation over D-Bus -> " + targetAction.identifier);
 
                 let dbusTimer = Qt.createQmlObject(
                     'import QtQuick; Timer { interval: 120; repeat: false; }',
                     ipc
                 );
                 dbusTimer.triggered.connect(function() {
-                    targetAction.invoke();
+                    // Safe execution wrap: Prevents TypeErrors if the C++ object gets destroyed during the 120ms focus delay
+                    try {
+                        if (targetAction && typeof targetAction.invoke === "function") {
+                            targetAction.invoke();
+                        }
+                    } catch (e) {
+                        if (shell.debug) console.log("[IPC DEBUG] Delayed D-Bus invocation skipped: targetAction became invalid: " + e);
+                    }
                     dbusTimer.destroy();
                 });
                 dbusTimer.start();
@@ -174,15 +181,15 @@ Item {
             }
         }
 
-        console.log("Warning: Window focus complete, but no valid target action was available to execute.");
+        if (shell.debug) console.log("Warning: Window focus complete, but no valid target action was available to execute.");
     }
 
     function jumpToLatestInternal() {
-        console.log("jumpToLatest called");
+        if (shell.debug) console.log("jumpToLatest called");
 
         let entry = getNewest();
         if (!entry) {
-            console.log("No active notifications tracked inside ListModel memory profile.");
+            if (shell.debug) console.log("No active notifications tracked inside ListModel memory profile.");
             return;
         }
 
@@ -192,7 +199,7 @@ Item {
         let textAppName = entry.appName;
 
         if (!visualCard) {
-            console.log("Unable to trace active visual pointer component item target");
+            if (shell.debug) console.log("Unable to trace active visual pointer component item target");
             return;
         }
 
@@ -203,7 +210,7 @@ Item {
             ipc
         );
         delayedDismissTimer.triggered.connect(function() {
-            console.log("Executing delayed notification card visual clearance routine...");
+            if (shell.debug) console.log("Executing delayed notification card visual clearance routine...");
             ipc.dismiss(visualCard);
             delayedDismissTimer.destroy();
         });

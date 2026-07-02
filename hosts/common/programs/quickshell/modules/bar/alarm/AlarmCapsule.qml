@@ -5,7 +5,10 @@ import Quickshell.Wayland
 import Quickshell.Io
 import "." as AlarmInput
 
-Rectangle {
+// Import your custom style module relative to this widget's location
+import "../../style"
+
+Item {
     id: alarmBox
 
     property var barWindow: null
@@ -16,11 +19,11 @@ Rectangle {
 
     width: 140
     height: parent.height
-    radius: shell.theme.defaultCardRadius
-    border.width: shell.theme.globalBorderWidth
 
-    color: shell.theme.base00
-    border.color: shell.theme.base05
+    LeftStyle {
+        id: bg
+        anchors.fill: parent
+    }
 
     Process {
         id: alarmFetcher
@@ -165,6 +168,13 @@ Rectangle {
     Text {
         id: alarmText
         anchors.fill: parent
+
+        // Dynamically clear the slant margins using LeftStyle's properties
+        anchors.leftMargin: bg.leftPadding
+        anchors.rightMargin: bg.rightPadding
+        anchors.topMargin: shell.theme.globalPadding
+        anchors.bottomMargin: shell.theme.globalPadding
+
         text: alarmBox.alarmDisplayText
         font.family: shell.theme.fontFamily
         font.pixelSize: shell.theme.globalFontSize

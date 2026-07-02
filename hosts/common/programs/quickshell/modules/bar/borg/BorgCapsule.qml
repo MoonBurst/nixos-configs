@@ -3,20 +3,23 @@ import QtQuick.Controls 2
 import Quickshell
 import Quickshell.Io
 
-Rectangle {
+// Import your custom style module relative to this widget's location
+import "../../style"
+
+Item {
     id: borgBox
 
-    property
-    var barWindow: null
+    property var barWindow: null
     property string borgProgress: "Idle"
 
     width: 140
     height: parent.height
 
-    radius: shell.theme.defaultCardRadius
-    border.width: shell.theme.globalBorderWidth
-    color: shell.theme.base00
-    border.color: shell.theme.base05
+    // Use your reusable LeftStyle component as the background
+    LeftStyle {
+        id: bg
+        anchors.fill: parent
+    }
 
     /*
      * POLL BORG DATA PAYLOAD EVERY SECOND
@@ -75,7 +78,12 @@ Rectangle {
         id: borgText
 
         anchors.fill: parent
-        anchors.margins: shell.theme.globalPadding
+
+        // Dynamically clear the slant margins using LeftStyle's properties
+        anchors.leftMargin: bg.leftPadding
+        anchors.rightMargin: bg.rightPadding
+        anchors.topMargin: shell.theme.globalPadding
+        anchors.bottomMargin: shell.theme.globalPadding
 
         // Clear, adaptive text formatting to fit  panel width
         text: {
