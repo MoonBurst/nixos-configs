@@ -23,22 +23,18 @@ WlSessionLockSurface {
         Rectangle {
             id: secureOverlayBackground
             anchors.fill: parent
-            color: "#0a0a0f" // Solid black canvas safely masks DP-1, DP-2, and HDMI-A-2
+            color: "#0a0a0f"
 
             Loader {
                 id: interfaceLoader
                 anchors.centerIn: parent
-                active: (windowSurface.screen && windowSurface.screen.name === "DP-1")
+                active: (windowSurface.screen && (windowSurface.screen.name === "DP-1" || windowSurface.screen.name === "eDP-1"))
                 sourceComponent: mainUserInterfaceComponent
             }
         }
 
-        // =========================================================================
-        // GLOBAL MONITORS EVENT REFLECTOR BRIDGE
-        // =========================================================================
-
         Keys.onPressed: (event) => {
-            if (windowSurface.screen && windowSurface.screen.name !== "DP-1" && windowSurface.rootRef) {
+            if (windowSurface.screen && windowSurface.screen.name !== "DP-1" && windowSurface.screen.name !== "eDP-1" && windowSurface.rootRef) {
                 if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                     lockPam.active = true;
                 } else if (event.key === Qt.Key_Backspace) {
