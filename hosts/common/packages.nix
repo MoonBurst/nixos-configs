@@ -87,5 +87,6 @@
 #waybar
 vesktop
 tesseract
+kdePackages.kate
   ];
 }
