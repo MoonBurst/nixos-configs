@@ -31,7 +31,7 @@
       hupdate = "$HOME/update_horizon.sh";
       music = "mpv --shuffle --af='dynaudnorm=f=250:g=15:c=1' ~/Music";
       search = "nix search nixpkgs";
-      restore_from_git = "cd ~/nix && git fetch origin && git reset --hard origin/main && sudo nixos-rebuild switch --flake . && mkdir -p -m 700 ~/.local/share/gnupg && (sops -d pass-backup.enc | tar -xz -C ~/.local/share || echo 'Warning: Could not restore password store backup.')";
+      restore_from_git = "cd ~/nix && git fetch origin && git reset --hard origin/main && sudo nixos-rebuild switch --flake . && mkdir -p -m 700 ~/.local/share/gnupg && (sops -d --extract '[\"gpg_private_key\"]' secrets.yaml | gpg --import || echo 'Warning: Could not import GPG key.') && (sops -d pass-backup.enc | tar -xz -C ~/.local/share || echo 'Warning: Could not restore password store backup.')";
       open = "xdg-open";
     };
 
