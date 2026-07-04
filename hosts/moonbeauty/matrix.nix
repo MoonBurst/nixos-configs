@@ -115,8 +115,9 @@ in
         server_name = "moonburst.net";
         port = [ 6167 ];
         address = [ "127.0.0.1" ];
-        max_request_size = 10485760;
-        allow_registration = true;
+#        max_request_size = 10485760;
+   max_request_size = 800000000;
+   allow_registration = true;
         registration_token_file = config.sops.secrets.matrix_registration_secret.path;
         login_shared_secret_file = puppetSecretPath;
         url_preview = true;

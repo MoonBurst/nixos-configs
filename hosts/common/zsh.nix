@@ -44,18 +44,40 @@
       zstyle ':completion:*:ssh:*' users ' '
       zstyle ':completion:*:*:ssh:*:*' tag-order hosts
 
-nupdate() {
-  local HOSTNAME=$(hostname)
-  local FLAKE_PATH="$HOME/nix"
+      nupdate() {
+        local HOSTNAME=$(hostname)
+        local FLAKE_PATH="$HOME/nix"
 
-  if [ -d "$FLAKE_PATH" ]; then
-    echo "Rebuilding and switching NixOS configuration..."
-    sudo nixos-rebuild switch --flake "$FLAKE_PATH#$HOSTNAME" --log-format bar-with-logs --quiet --option warn-dirty false
-  else
-    echo "Error: Flake path '$FLAKE_PATH' does not exist."
-    return 1
-  fi
-}
+        if [ ! -d "$FLAKE_PATH" ]; then
+          echo "Error: Flake path '$FLAKE_PATH' does not exist."
+          return 1
+        fi
+
+        # --- Backup password store if it exists ---
+        local PASS_DIR="$HOME/.local/share/pass"
+        local AGE_KEY="$HOME/.config/sops/age/moon_keys.txt"
+
+        if [ -d "$PASS_DIR" ]; then
+          if [ -f "$AGE_KEY" ]; then
+            echo "Backing up password store securely..."
+            local TEMP_TAR="$HOME/pass-temp.tar.gz"
+
+            tar -czf "$TEMP_TAR" -C "$HOME/.local/share" pass && \
+            sops --encrypt --age $(age-keygen -y "$AGE_KEY") "$TEMP_TAR" > "$FLAKE_PATH/pass-backup.enc" && \
+            rm "$TEMP_TAR"
+            echo "Password store backup complete."
+          else
+            echo "Warning: Age key '$AGE_KEY' not found. Skipping password backup."
+          fi
+        else
+          echo "Warning: Password store '$PASS_DIR' not found. Skipping password backup."
+        fi
+
+        # --- Proceed with NixOS rebuild ---
+        echo "Rebuilding and switching NixOS configuration..."
+        sudo nixos-rebuild switch --flake "$FLAKE_PATH#$HOSTNAME" --log-format bar-with-logs --quiet --option warn-dirty false
+      }
+
       quarter() {
         local filename="$1"
         magick "$filename" -crop 50%x50% +adjoin "''${filename%.*}_%d.''${filename##*.}"

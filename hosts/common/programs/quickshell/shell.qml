@@ -479,7 +479,7 @@ ShellRoot {
 
     WlSessionLock {
         id: sessionLock
-        locked: true
+        locked: false
 
         onLockedChanged: {
             shellRootRef.globalPasswordBuffer = "";

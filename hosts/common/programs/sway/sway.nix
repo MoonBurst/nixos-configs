@@ -10,7 +10,7 @@
 
   wayland.windowManager.sway = {
     enable = true;
-    systemd.enable = true;
+    systemd.enable = true; # Automatically starts graphical-session.target (which triggers Quickshell)
 
     checkConfig = false;
 
@@ -25,16 +25,22 @@
 
       focus.followMouse = false;
 
+      # Compact, clean startup scripts
       startup = [
         {
-          command = (
-            let
-              colors = config.lib.stylix.colors.withHashtag;
-              wallpaperScript = "/home/moonburst/nix/hosts/common/scripts/wallpaper.sh";
-            in
-              "exec ${pkgs.bash}/bin/bash -c \"${pkgs.toybox}/bin/killall -q quickshell || true && ${pkgs.dbus}/bin/dbus-update-activation-environment --systemd DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_DATA_DIRS XDG_CONFIG_HOME && (${pkgs.bash}/bin/bash ${wallpaperScript} daemon &) && STYLIX_BASE00='${colors.base00}' STYLIX_BASE01='${colors.base01}' STYLIX_BASE03='${colors.base03}' STYLIX_BASE05='${colors.base05}' STYLIX_BASE08='${colors.base08}' NIXOS_SWAYMSG_PATH='${pkgs.sway}/bin/swaymsg' NIXOS_DBUSSEND_PATH='${pkgs.dbus}/bin/dbus-send' ${pkgs.quickshell}/bin/quickshell -p /home/moonburst/nix/hosts/common/programs/quickshell/shell.qml\""
-          );
-          always = true;
+          # Update the activation environment for Systemd/DBus on Wayland startup
+          command = "${pkgs.dbus}/bin/dbus-update-activation-environment --systemd DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_DATA_DIRS XDG_CONFIG_HOME";
+          always = false;
+        }
+        {
+          # Start the wallpaper script daemon
+          command = "${pkgs.bash}/bin/bash /home/moonburst/nix/hosts/common/scripts/wallpaper.sh daemon";
+          always = false;
+        }
+        {
+          # Locks the screen exactly once when you first log in to Sway, never on reloads
+          command = "quickshell ipc lockscreen lock";
+          always = false;
         }
       ];
     };
