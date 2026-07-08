@@ -455,6 +455,14 @@ ShellRoot {
      * =========================================================================
      */
 
+    property bool horizonLaunched: false
+
+    // Tells systemd to start the horizon service cleanly
+    Process {
+        id: horizonLauncher
+        command: ["systemctl", "--user", "start", "horizon"]
+    }
+
     PamContext {
         id: lockPam
         config: "quickshell"
@@ -470,6 +478,12 @@ ShellRoot {
                 sessionLock.locked = false;
                 shellRootRef.globalPasswordBuffer = "";
                 shellRootRef.passwordLength = 0;
+
+                // Safely launch Horizon via systemd after the keyring is decrypted
+                if (!horizonLaunched) {
+                    horizonLauncher.running = true; // Fixed from .start()
+                    horizonLaunched = true;
+                }
             } else if (!active && messageIsError) {
                 shellRootRef.globalPasswordBuffer = "";
                 shellRootRef.passwordLength = -1;
@@ -502,6 +516,7 @@ ShellRoot {
             sessionLock.locked = true;
         }
     }
+
 
     /*
      * =========================================================================

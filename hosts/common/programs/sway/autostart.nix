@@ -14,15 +14,15 @@ in
 #  { command = "${pkgs.brave}/bin/brave"; }
     { command = "${pkgs.vesktop}/bin/vesktop"; }
     { command = "${pkgs.corectrl}/bin/corectrl"; }
-
+# { command = "horizon-electron --password-store=gnome-libsecret"; }
     # **GPU Specific Launches**
     # OBS using the 6400 for encoding
 #  { command = "${gpu6400} ${pkgs.obs-studio}/bin/obs"; }
     # Steam using the 6400
-#    { command = "${gpu6400} ${pkgs.steam}/bin/steam -nochatui -silent"; }
+   { command = "${gpu6400} ${pkgs.steam}/bin/steam -nochatui -silent"; }
 
     # **Background Services**
-  { command = "eval $(${pkgs.gnome-keyring}/bin/gnome-keyring-daemon --start --components=secrets) && dbus-update-activation-environment --systemd --all && systemctl --user start quickshell"; }
+    { command = "eval $(${pkgs.gnome-keyring}/bin/gnome-keyring-daemon --start --components=secrets) && dbus-update-activation-environment --systemd --all && systemctl --user start quickshell && systemctl --user start obs"; }
     # **Clipboard Management (Cliphist)**
     { command = "${pkgs.wl-clipboard}/bin/wl-paste --type text --watch ${pkgs.cliphist}/bin/cliphist store -max-items 50"; }
     { command = "${pkgs.wl-clipboard}/bin/wl-paste --type image --watch ${pkgs.cliphist}/bin/cliphist store -max-items 10"; }

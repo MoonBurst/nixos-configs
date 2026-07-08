@@ -15,16 +15,15 @@
   systemd.user.services.obs = {
     description = "OBS Studio Headless/Auto-start Service";
     after = [ "graphical-session.target" "pipewire.service" ];
-    wantedBy = [ "graphical-session.target" ];
+    partOf = [ "graphical-session.target" ];
     unitConfig.StartLimitIntervalSec = 3;
 
     serviceConfig = {
-      # Replaced --nosafe with --disable-shutdown-check to bypass the safe mode dialog
-      ExecStart = "${pkgs.obs-studio}/bin/obs --disable-shutdown-check --startvirtualcam --minimize-to-tray";
-      StandardOutput = "null";
-      StandardError = "null";
-      Restart = "always";
+      ExecStart = "${pkgs.obs-studio}/bin/obs -d --startvirtualcam --minimize-to-tray";
+      # Clean restarts on actual crashes, staying stopped on clean logouts
+      Restart = "on-failure";
       RestartSec = 5;
+      TimeoutStopSec = 5;
     };
   };
 
