@@ -73,8 +73,11 @@
         User moonburst
     '';
   };
+security.pam.services.quickshell = {};
+services.gnome.gnome-keyring.enable = true;
+security.pam.services.greetd.enableGnomeKeyring = true;
+  services.xserver.displayManager.lightdm.enable = false;
 
-  security.pam.services.greetd.enableGnomeKeyring = true;
   security.pam.services.swaylock = {};
   services.gnome.gcr-ssh-agent.enable = false;
   programs.gnupg.agent = {

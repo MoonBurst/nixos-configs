@@ -5,6 +5,7 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
     nur.url = "github:nix-community/NUR";
+    fluxer.url = "github:Hy4Ri/fluxer-flake";
 
     stylix = {
       url = "github:danth/stylix/release-26.05";
@@ -27,10 +28,11 @@
     sops-nix.url = "github:Mic92/sops-nix";
     moon-numix.url = "github:moonburst/moon-numix-icons";
 
-    horizon = {
-      url = "github:Fchat-Horizon/Horizon";
-      inputs.nixpkgs.follows = "nixpkgs-unstable";
-    };
+horizon = {
+  url = "github:Fchat-Horizon/Horizon?ref=main";
+  inputs.nixpkgs.follows = "nixpkgs-unstable";
+};
+
 
 
   };

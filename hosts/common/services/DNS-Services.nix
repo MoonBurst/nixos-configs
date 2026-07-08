@@ -73,6 +73,7 @@ in
   # 1. Systemd Service Definition with Explicit Path Dependencies
   systemd.services.dns-optimizer = {
     description = "Measure and optimize DNS resolver latency";
+    after = [ "network.target" ]; # Corrected placement (unit-level)
     
     # This imports the required binary runtimes directly into the service environment
     path = [
@@ -88,7 +89,6 @@ in
     serviceConfig = {
       Type = "oneshot";
       ExecStart = "${dnsOptimizerScript}/bin/dns-optimizer";
-      After = [ "network.target" ];
     };
   };
 

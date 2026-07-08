@@ -1,11 +1,13 @@
-{ config, pkgs, inputs, lib, ... }: {
+{ config, pkgs, lib, inputs, ... }:
+
+{
   imports = [
-    ../common/default.nix
+    ../common/default.nix # Restores shared system settings, sops defaults, etc.
     ./moonbeauty-hardware.nix
     ./mounts.nix
-    ./services.nix
-    ./matrix.nix
     ./test.nix
+    ./website
+#    ./vm.nix
   ];
 
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
@@ -22,18 +24,6 @@
   programs.gamescope.capSysNice = true;
   hardware.steam-hardware.enable = true;
 
-  virtualisation.libvirtd.enable = true;
-  programs.virt-manager.enable = true;
-
-  systemd.tmpfiles.rules = [
-    "f /dev/shm/looking-glass 0660 moonburst qemu-libvirtd -"
-  ];
-
- services.udev.extraRules = ''
-    SUBSYSTEM=="kvmfr", GROUP="kvm", MODE="0660"
-  '';
-
-
   programs.nix-ld = {
     enable = true;
     libraries = with pkgs; [ stdenv.cc.cc.lib zlib ];
@@ -45,31 +35,25 @@
     package = pkgs.appimage-run.override { extraPkgs = p: [ p.libxshmfence ]; };
   };
 
-
- boot.kernel.sysctl = {
+  boot.kernel.sysctl = {
     "kernel.print_fatal_signals" = 0;
-  "net.core.rmem_max" = 7500000;
-  "net.core.wmem_max" = 7500000;
-};
-  boot.kernelParams = [ "clearcpuid=514" ];
-
-systemd.user.slices."steam-games" = {
-  sliceConfig = {
-    CPUAffinity = "2 3 4 5 6 7";
-    MemorySwapMax = 0; # Strictly forbids games from using zram
-    CPUWeight = 1000;   # High priority for gameplay
+    "net.core.rmem_max" = 7500000;
+    "net.core.wmem_max" = 7500000;
   };
-};
 
-systemd.user.slices."app-steam" = {
-  sliceConfig = {
-    CPUAffinity = "2 3 4 5 6 7";
+  systemd.user.slices."steam-games" = {
+    sliceConfig = {
+      CPUAffinity = "2 3 4 5 6 7";
+      MemorySwapMax = 0;
+      CPUWeight = 1000;
+    };
   };
-};
 
+  systemd.user.slices."app-steam" = {
+    sliceConfig = {
+      CPUAffinity = "2 3 4 5 6 7";
+    };
+  };
 
-
-
-
-system.stateVersion = "26.05";
+  system.stateVersion = "26.05";
 }

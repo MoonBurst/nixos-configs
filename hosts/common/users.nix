@@ -39,10 +39,4 @@
       exec sway
     fi
   '';
-
-  # Disable fallback display manager
-  services.xserver.displayManager.lightdm.enable = false;
-
-  # Force disable GNOME Keyring
-  services.gnome.gnome-keyring.enable = lib.mkForce false;
 }

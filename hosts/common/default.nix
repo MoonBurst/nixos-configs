@@ -11,11 +11,8 @@
     ./theme.nix
     ./users.nix
     ./zsh.nix
-  #  ./programs/dunst/dunst.nix
-  #  ./programs/waybar/default.nix
     ./programs/brave.nix
     ./programs/librewolf.nix
-#    ./programs/audacious.nix
     ./programs/nemo.nix
     ./programs/mpd.nix
   ];
@@ -25,9 +22,8 @@
       ./programs/sway/sway.nix
       ./programs/ghostty.nix
       ./programs/himalaya.nix
-      ];
+    ];
 
-   # xdg.configFile."qt5ct/qt5ct.conf".force = true;
     xdg.configFile."qt6ct/qt6ct.conf".force = true;
 
     home.sessionVariables = {
@@ -51,7 +47,11 @@
   i18n.defaultLocale = "en_US.UTF-8";
   i18n.extraLocales = [ "en_US.UTF-8/UTF-8" ];
   nixpkgs.config.allowUnfree = true;
-  nixpkgs.config.permittedInsecurePackages = [ "olm-3.2.16" "pnpm-10.29.2" ];
+  
+  # REMOVED: olm-3.2.16 is no longer permitted globally to keep your desktop secure
+  nixpkgs.config.permittedInsecurePackages = [ 
+    "pnpm-10.29.2" 
+  ];
 
   nix.settings = {
     experimental-features = [ "nix-command" "flakes" ];

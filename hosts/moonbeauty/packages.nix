@@ -20,7 +20,8 @@ let
 in
 {
   home.packages = with pkgs; [
-  inputs.horizon.packages.${pkgs.system}.horizon-electron
+ inputs.horizon.packages.${pkgs.system}.horizon-electron
+
 
 
     # --- Unstable Packages ---
@@ -51,7 +52,8 @@ in
     cura-appimage
     orca-slicer
     openscad
-  ];
+  ]; # <-- This single closing bracket now correctly terminates the entire block
+
 
   # --- Desktop Entry for Launcher ---
   xdg.desktopEntries = {

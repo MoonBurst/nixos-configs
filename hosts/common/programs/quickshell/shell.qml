@@ -457,7 +457,7 @@ ShellRoot {
 
     PamContext {
         id: lockPam
-        config: "login"
+        config: "quickshell"
 
         onResponseRequiredChanged: {
             if (responseRequired) {
@@ -477,9 +477,10 @@ ShellRoot {
         }
     }
 
+
     WlSessionLock {
         id: sessionLock
-        locked: false
+        locked: true
 
         onLockedChanged: {
             shellRootRef.globalPasswordBuffer = "";

@@ -11,7 +11,7 @@ in
     # **░▀▀▀░░▀░░▀░▀░▀░▀░░▀░░▀▀▀░▀░░**
 
     # **Applications**
-  { command = "${pkgs.brave}/bin/brave"; }
+#  { command = "${pkgs.brave}/bin/brave"; }
     { command = "${pkgs.vesktop}/bin/vesktop"; }
     { command = "${pkgs.corectrl}/bin/corectrl"; }
 
@@ -22,7 +22,7 @@ in
 #    { command = "${gpu6400} ${pkgs.steam}/bin/steam -nochatui -silent"; }
 
     # **Background Services**
-
+  { command = "eval $(${pkgs.gnome-keyring}/bin/gnome-keyring-daemon --start --components=secrets) && dbus-update-activation-environment --systemd --all && systemctl --user start quickshell"; }
     # **Clipboard Management (Cliphist)**
     { command = "${pkgs.wl-clipboard}/bin/wl-paste --type text --watch ${pkgs.cliphist}/bin/cliphist store -max-items 50"; }
     { command = "${pkgs.wl-clipboard}/bin/wl-paste --type image --watch ${pkgs.cliphist}/bin/cliphist store -max-items 10"; }

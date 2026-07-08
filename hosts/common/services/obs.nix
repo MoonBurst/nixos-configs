@@ -10,7 +10,7 @@
     ];
   };
 
-environment.systemPackages = [ pkgs.obs-cmd ];
+  environment.systemPackages = [ pkgs.obs-cmd ];
 
   systemd.user.services.obs = {
     description = "OBS Studio Headless/Auto-start Service";
@@ -19,11 +19,12 @@ environment.systemPackages = [ pkgs.obs-cmd ];
     unitConfig.StartLimitIntervalSec = 3;
 
     serviceConfig = {
-      ExecStart = "${pkgs.obs-studio}/bin/obs --nosafe  --startvirtualcam --minimize-to-tray";
-           StandardOutput = "null";
-    StandardError = "null";
-        Restart = "always";
-        RestartSec = 5;
+      # Replaced --nosafe with --disable-shutdown-check to bypass the safe mode dialog
+      ExecStart = "${pkgs.obs-studio}/bin/obs --disable-shutdown-check --startvirtualcam --minimize-to-tray";
+      StandardOutput = "null";
+      StandardError = "null";
+      Restart = "always";
+      RestartSec = 5;
     };
   };
 

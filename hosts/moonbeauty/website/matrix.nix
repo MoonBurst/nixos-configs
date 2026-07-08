@@ -10,7 +10,6 @@ let
   }
   else pkgs;
 
-  # Toggle this to true to enable detailed logging across services
   enableVerboseLogging = false;
 
   registrationPath = "/run/discord-registration.yaml";
@@ -18,16 +17,13 @@ let
   puppetSecretPath = config.sops.secrets.matrix_double_puppet_secret.path;
   discordEnvPath = config.sops.templates."discord-env".path;
 
-  sable-config = pkgs.writeText "config.json" (builtins.toJSON {
-    defaultHomeserver = 0;
-    homeserverList = [
-      "moonburst.net"
-    ];
-  });
+  homepage = import ../homepage.nix { inherit pkgs; };
 in
 
 {
-  nixpkgs.config.permittedInsecurePackages = [ "olm-3.2.16" ];
+  nixpkgs.config.permittedInsecurePackages = [
+    "olm-3.2.16"
+  ];
 
   environment.systemPackages = [
     unstablePkgs.cloudflared
@@ -110,14 +106,14 @@ in
 
   services.matrix-continuwuity = {
     enable = true;
+    package = unstablePkgs.matrix-continuwuity;
     settings = {
       global = {
         server_name = "moonburst.net";
         port = [ 6167 ];
         address = [ "127.0.0.1" ];
-#        max_request_size = 10485760;
-   max_request_size = 800000000;
-   allow_registration = true;
+        max_request_size = 800000000;
+        allow_registration = true;
         registration_token_file = config.sops.secrets.matrix_registration_secret.path;
         login_shared_secret_file = puppetSecretPath;
         url_preview = true;
@@ -156,41 +152,30 @@ in
     };
   };
 
-  services.postgresql = {
-    enable = true;
-    package = pkgs.postgresql_16;
-    ensureDatabases = [ "mautrix-discord" ];
-    ensureUsers = [{ name = "mautrix-discord"; ensureDBOwnership = true; }];
-    settings = {
-      log_checkpoints = enableVerboseLogging;
-      log_min_messages = if enableVerboseLogging then "warning" else "error";
-    };
-  };
+  services.nginx.virtualHosts."moonburst.net" = {
+    listen = [
+      { addr = "0.0.0.0"; port = 80; }
+      { addr = "[::]"; port = 80; }
+    ];
 
-  services.nginx = {
-    enable = true;
-    virtualHosts."moonburst.net" = {
-      listen = [
-        { addr = "0.0.0.0"; port = 80; }
-        { addr = "[::]"; port = 80; }
-      ];
+    extraConfig = ''
+      client_max_body_size 50M;
+      ${if enableVerboseLogging then "" else "access_log off;"}
+    '';
 
-      extraConfig = ''
-        client_max_body_size 30M;
-        ${if enableVerboseLogging then "" else "access_log off;"}
+    locations = {
+      "= /.well-known/matrix/server".extraConfig = ''
+        add_header Content-Type application/json;
+        add_header Access-Control-Allow-Origin *;
+        return 200 '{"m.server":"moonburst.net:443"}';
       '';
-      locations = {
-        "= /.well-known/matrix/server".extraConfig = ''
-          add_header Content-Type application/json;
-          add_header Access-Control-Allow-Origin *;
-          return 200 '{"m.server":"moonburst.net:443"}';
-        '';
-        "= /.well-known/matrix/client".extraConfig = ''
-          add_header Content-Type application/json;
-          add_header Access-Control-Allow-Origin *;
-          return 200 "{\"m.homeserver\":{\"base_url\":\"https://moonburst.net\"},\"org.matrix.msc4143.rtc_foci\":[{\"type\":\"livekit\",\"livekit_service_url\":\"https://matrix.org\"}]}";
-        '';
-     "/_matrix/media" = {
+      "= /.well-known/matrix/client".extraConfig = ''
+        add_header Content-Type application/json;
+        add_header Access-Control-Allow-Origin *;
+        return 200 "{\"m.homeserver\":{\"base_url\":\"https://moonburst.net\"},\"org.matrix.msc4143.rtc_foci\":[{\"type\":\"livekit\",\"livekit_service_url\":\"https://matrix.org\"}]}";
+      '';
+
+      "/_matrix/media" = {
         proxyPass = "http://127.0.0.1:6167";
         proxyWebsockets = true;
         extraConfig = ''
@@ -205,37 +190,60 @@ in
           proxy_send_timeout 600s;
         '';
       };
-        "/_matrix" = {
-          proxyPass = "http://127.0.0.1:6167";
-          proxyWebsockets = true;
-          extraConfig = ''
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto https;
-            proxy_pass_header Authorization;
-            proxy_pass_header Content-Type;
-            proxy_read_timeout 600s;
-            proxy_send_timeout 600s;
-          '';
-        };
-
-        "= /config.json".extraConfig = ''
-          alias ${sable-config};
-          add_header Content-Type application/json;
-          add_header Access-Control-Allow-Origin *;
+      "/_matrix" = {
+        proxyPass = "http://127.0.0.1:6167";
+        proxyWebsockets = true;
+        extraConfig = ''
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto https;
+          proxy_pass_header Authorization;
+          proxy_pass_header Content-Type;
+          proxy_read_timeout 600s;
+          proxy_send_timeout 600s;
         '';
+      };
 
-        "/" = {
-          extraConfig = ''
-            resolver 1.1.1.1;
-            set $sable_upstream app.sable.moe;
-            proxy_pass https://$sable_upstream;
-            proxy_set_header Host $sable_upstream;
-            proxy_ssl_server_name on;
-          '';
-          proxyWebsockets = true;
-        };
+      "/" = {
+        root = homepage;
+      };
+    };
+  };
+
+  services.nginx.virtualHosts."matrix.moonburst.net" = {
+    listen = [
+      { addr = "0.0.0.0"; port = 80; }
+      { addr = "[::]"; port = 80; }
+    ];
+
+    extraConfig = ''
+      client_max_body_size 30M;
+      ${if enableVerboseLogging then "" else "access_log off;"}
+    '';
+
+    locations = {
+      "= /config.json".extraConfig = ''
+        default_type application/json;
+        add_header Access-Control-Allow-Origin *;
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0";
+        return 200 '${builtins.toJSON {
+          defaultHomeserver = 0;
+          homeserverList = [
+            "moonburst.net"
+          ];
+        }}';
+      '';
+
+      "/" = {
+        extraConfig = ''
+          resolver 1.1.1.1;
+          set $sable_upstream app.sable.moe;
+          proxy_pass https://$sable_upstream;
+          proxy_set_header Host $sable_upstream;
+          proxy_ssl_server_name on;
+        '';
+        proxyWebsockets = true;
       };
     };
   };

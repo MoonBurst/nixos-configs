@@ -28,26 +28,41 @@ WlSessionLockSurface {
             Loader {
                 id: interfaceLoader
                 anchors.centerIn: parent
-                active: (windowSurface.screen && (windowSurface.screen.name === "DP-1" || windowSurface.screen.name === "eDP-1"))
+                // Safe evaluation with try-catch protects against screen disconnect crashes
+                active: {
+                    if (!windowSurface || !windowSurface.screen) return false;
+                    try {
+                        var screenName = windowSurface.screen.name;
+                        return screenName === "DP-1" || screenName === "eDP-1";
+                    } catch (err) {
+                        return false;
+                    }
+                }
                 sourceComponent: mainUserInterfaceComponent
             }
         }
 
         Keys.onPressed: (event) => {
-            if (windowSurface.screen && windowSurface.screen.name !== "DP-1" && windowSurface.screen.name !== "eDP-1" && windowSurface.rootRef) {
-                if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                    lockPam.active = true;
-                } else if (event.key === Qt.Key_Backspace) {
-                    var str = windowSurface.rootRef.globalPasswordBuffer;
-                    if (str.length > 0) {
-                        windowSurface.rootRef.globalPasswordBuffer = str.substring(0, str.length - 1);
+            if (!windowSurface || !windowSurface.screen || !windowSurface.rootRef) return;
+            try {
+                var screenName = windowSurface.screen.name;
+                if (screenName !== "DP-1" && screenName !== "eDP-1") {
+                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                        lockPam.active = true;
+                    } else if (event.key === Qt.Key_Backspace) {
+                        var str = windowSurface.rootRef.globalPasswordBuffer;
+                        if (str.length > 0) {
+                            windowSurface.rootRef.globalPasswordBuffer = str.substring(0, str.length - 1);
+                            windowSurface.rootRef.passwordLength = windowSurface.rootRef.globalPasswordBuffer.length;
+                        }
+                    } else if (event.text !== "") {
+                        windowSurface.rootRef.globalPasswordBuffer += event.text;
                         windowSurface.rootRef.passwordLength = windowSurface.rootRef.globalPasswordBuffer.length;
                     }
-                } else if (event.text !== "") {
-                    windowSurface.rootRef.globalPasswordBuffer += event.text;
-                    windowSurface.rootRef.passwordLength = windowSurface.rootRef.globalPasswordBuffer.length;
+                    event.accepted = true;
                 }
-                event.accepted = true;
+            } catch (err) {
+                // Ignore errors during screen teardown race conditions
             }
         }
     }
