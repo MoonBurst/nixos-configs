@@ -1,8 +1,8 @@
 { config, pkgs, ... }:
 
 {
+  # Sound subsystem architecture configuration
   security.rtkit.enable = true;
- systemd.user.services.pipewire-pulse.environment.PIPEWIRE_DEBUG = "1";
 
   services.pipewire = {
     enable = true;
@@ -13,32 +13,33 @@
     extraConfig.pipewire."99-input-routing" = {
       "context.modules" = [
         {
-          name = "libpipewire-module-loopback";
+          name = "libpipewire-module-echo-cancel";
           args = {
-            "node.description" = "OBS CLEANED (Virtual Mic)";
-            "capture.props" = {
-              "node.name" = "obs_cleaned_sink";
-              "media.class" = "Audio/Sink";
-              "audio.position" = [ "FL" "FR" ];
-            };
-            "playback.props" = {
-              "node.name" = "obs_cleaned_source";
+            "node.description" = "Clear Voice Microphone";
+            "source.props" = {
+              "node.name" = "clear_voice_source";
               "media.class" = "Audio/Source";
-              "audio.position" = [ "FL" "FR" ];
+              "audio.position" = [ "MONO" ];
+            };
+            "aec.args" = {
+              "webrtc.noise_suppression" = true;
+              "webrtc.gain_control" = true;
+              "webrtc.extended_filter" = true;
             };
           };
         }
       ];
     };
 
-    wireplumber.extraConfig."10-default-input" = {
+    wireplumber.extraConfig."99-force-clear-voice" = {
       "monitor.alsa.rules" = [
         {
-          matches = [ { "node.name" = "obs_cleaned_source"; } ];
+          matches = [
+            { "node.name" = "~.*" ; } #all streams use this
+          ];
           actions = {
             update-props = {
-              "priority.driver" = 2000;
-              "priority.session" = 2000;
+              "target.object" = "clear_voice_source";
             };
           };
         }
@@ -46,5 +47,8 @@
     };
   };
 
-  environment.systemPackages = with pkgs; [ pavucontrol ];
+  environment.systemPackages = [
+    pkgs.pavucontrol
+    pkgs.pipewire
+  ];
 }

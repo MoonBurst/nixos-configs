@@ -223,7 +223,7 @@ ShellRoot {
                 anchors.leftMargin: mainBarContainer.layoutSpacing
                 anchors.verticalCenter: parent.verticalCenter
 
-                width: 100
+                width: 130
                 height: mainBarContainer.capsuleHeight
 
                 WeatherCapsule.Weather {
@@ -494,7 +494,7 @@ ShellRoot {
 
     WlSessionLock {
         id: sessionLock
-        locked: true
+        locked: false
 
         onLockedChanged: {
             shellRootRef.globalPasswordBuffer = "";

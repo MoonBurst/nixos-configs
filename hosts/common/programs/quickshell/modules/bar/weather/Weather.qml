@@ -24,14 +24,16 @@ Item {
         anchors.fill: parent
     }
 
+    // Main weather display fetcher
     Process {
         id: weatherFetcher
         running: true
-        command: ["sh", "-c", "curl -s 'wttr.in/Houston?format=%t' | tr -d ' '"]
+        // Fetches Celsius and Fahrenheit dynamically and formats them cleanly as "C/F"
+        command: ["sh", "-c", "echo \"$(curl -s 'wttr.in/Houston?m&format=%t')/$(curl -s 'wttr.in/Houston?u&format=%t')\" | tr -d ' +'"]
         stdout: SplitParser {
             onRead: data => {
                 var clean = data.trim();
-                if (clean !== "" && clean.indexOf("<!DOCTYPE") === -1 && clean.indexOf("html") === -1) {
+                if (clean !== "" && clean.indexOf("<!DOCTYPE") === -1 && clean.indexOf("html") === -1 && clean !== "/") {
                     weatherCapsule.weatherStr = clean;
                 } else {
                     weatherFallbackProc.running = true;
@@ -40,6 +42,7 @@ Item {
         }
     }
 
+    // Detailed JSON forecast fetcher
     Process {
         id: forecastFetcher
         running: true
@@ -65,7 +68,7 @@ Item {
                     var displayHour = time % 12;
                     if (displayHour === 0) displayHour = 12;
                     tooltipString += (displayHour < 10 ? " " : "") + displayHour + ":00 " + ampm + ": ";
-                    tooltipString += hourData.tempF + "°F, ";
+                    tooltipString += hourData.tempF + "°F / " + hourData.tempC + "°C, ";
                     tooltipString += hourData.weatherDesc[0].value + "\n";
                 }
 
@@ -78,7 +81,7 @@ Item {
                     var displayHour = time % 12;
                     if (displayHour === 0) displayHour = 12;
                     tooltipString += (displayHour < 10 ? " " : "") + displayHour + ":00 " + ampm + ": ";
-                    tooltipString += hourData.tempF + "°F, ";
+                    tooltipString += hourData.tempF + "°F / " + hourData.tempC + "°C, ";
                     tooltipString += hourData.weatherDesc[0].value + "\n";
                 }
                 weatherCapsule.weatherTooltipText = tooltipString.trim();
@@ -86,14 +89,15 @@ Item {
         }
     }
 
+    // Unthrottled endpoint fallback
     Process {
         id: weatherFallbackProc
         running: false
-        command: ["sh", "-c", "curl -s 'https://wttr.in' | tr -d ' '"]
+        command: ["sh", "-c", "echo \"$(curl -s 'https://wttr.in/?m&format=%t')/$(curl -s 'https://wttr.in/?u&format=%t')\" | tr -d ' +'"]
         stdout: SplitParser {
             onRead: data => {
                 var clean = data.trim();
-                if (clean !== "" && clean.indexOf("<!DOCTYPE") === -1 && clean.indexOf("html") === -1) {
+                if (clean !== "" && clean.indexOf("<!DOCTYPE") === -1 && clean.indexOf("html") === -1 && clean !== "/") {
                     weatherCapsule.weatherStr = clean;
                 }
             }
@@ -104,7 +108,6 @@ Item {
         id: weatherText
         anchors.fill: parent
 
-        // Dynamically clear the slant margins using LeftStyle's properties
         anchors.leftMargin: bg.leftPadding
         anchors.rightMargin: bg.rightPadding
         anchors.topMargin: shell.theme.globalPadding
@@ -122,7 +125,7 @@ Item {
     HoverHandler { id: weatherHoverTracker }
 
     // ============================================================================
-    // THE WEATHER FORECAST POP-UP OVERLAY PANEL WINDOW (DEFINITIVELY PROMPT BOUND)
+    // THE WEATHER FORECAST POP-UP OVERLAY PANEL WINDOW (DYNAMICALY POSITIONED)
     // ============================================================================
     PanelWindow {
         id: fixedWeatherTooltipWindow
@@ -147,23 +150,22 @@ Item {
         WlrLayershell.margins.left: {
             if (!weatherCapsule.barWindow) return 0;
 
-            var leftOffsetAbsolute = shell.theme.globalPadding * 2;
-
-            // Add the physical width metrics of preceding elements built out to the left side
-            var musicWidth = 200; // width of musicContainer
-            var musicPadding = shell.theme.globalPadding; // anchors.leftMargin of alarmContainer
-            var alarmWidth = 140; // width of alarmContainer
-            var weatherPadding = shell.theme.globalPadding * 10; // anchors.leftMargin of weatherContainer
-
-            //  Accumulate up to the starting boundary point of the weather capsule card surface
-            var weatherStartAbsolute = leftOffsetAbsolute + musicWidth + musicPadding + alarmWidth + weatherPadding;
+            // DYNAMIC & REACTIVE TRACKING:
+            // Recursively reads the .x properties of every container up the tree.
+            // This forces QML to automatically re-align the window whenever the parent layout shifts.
+            var xOffset = weatherCapsule.x;
+            var p = weatherCapsule.parent;
+            while (p && p !== weatherCapsule.barWindow.contentItem) {
+                xOffset += p.x;
+                p = p.parent;
+            }
 
             // Center the tooltip dropdown panel precisely under the weather box width
-            var centerPoint = weatherStartAbsolute + (weatherCapsule.width / 2);
+            var centerPoint = xOffset + (weatherCapsule.width / 2);
             return Math.round(centerPoint - (implicitWidth / 2));
         }
 
-        // Dropdown pop-up container (Kept standard/rectangular for proper rendering)
+        // Dropdown pop-up container
         Rectangle {
             anchors.fill: parent
             radius: shell.theme.defaultCardRadius
@@ -203,6 +205,7 @@ Item {
         }
     }
 
+    // Refresh weather metrics every 30 minutes
     Timer {
         interval: 1800000; running: true; repeat: true
         onTriggered: {

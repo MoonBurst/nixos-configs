@@ -15,6 +15,8 @@
     ./programs/librewolf.nix
     ./programs/nemo.nix
     ./programs/mpd.nix
+    ./programs/ffmpeg.nix
+
   ];
 
   home-manager.users.moonburst = {
