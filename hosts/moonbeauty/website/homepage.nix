@@ -61,6 +61,20 @@ pkgs.writeTextDir "index.html" ''
         border-color: #c084fc;
         transform: translateY(-2px);
       }
+      .btn.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none;
+        background-color: #12131a;
+        border-color: #27272a;
+        color: #71717a;
+      }
+      .btn.disabled:hover {
+        transform: none;
+        background-color: #12131a;
+        border-color: #27272a;
+        color: #71717a;
+      }
     </style>
   </head>
   <body>
@@ -69,7 +83,7 @@ pkgs.writeTextDir "index.html" ''
       <p>Services Portal</p>
       <div class="link-group">
         <a class="btn" href="https://matrix.moonburst.net">Matrix Chat</a>
-        <a class="btn" href="https://login.moonburst.net">Login Portal</a>
+        <a class="btn disabled" href="#" aria-disabled="true">Login Portal (Out of Order)</a>
         <a class="btn" href="https://fluxer.moonburst.net">Fluxer</a>
       </div>
     </div>

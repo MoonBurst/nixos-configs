@@ -2,7 +2,7 @@
   imports = [
   #  ./sso.nix
     ./matrix.nix
-    # ./fluxer.nix # Uncomment this line if you wish to run the Fluxer service
+    ./fluxer.nix
   ];
 
   # Centralized PostgreSQL Service using Version 16
@@ -12,9 +12,9 @@
     enableTCPIP = true;
 
     # Consolidates databases required by your web modules
-    ensureDatabases = [ 
-      "mautrix-discord" 
-      "fluxer" 
+    ensureDatabases = [
+      "mautrix-discord"
+      "fluxer"
     ];
 
     # Consolidates database service accounts

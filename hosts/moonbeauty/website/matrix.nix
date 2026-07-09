@@ -160,6 +160,7 @@ in
 
     extraConfig = ''
       client_max_body_size 50M;
+      add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
       ${if enableVerboseLogging then "" else "access_log off;"}
     '';
 
@@ -173,6 +174,15 @@ in
         add_header Content-Type application/json;
         add_header Access-Control-Allow-Origin *;
         return 200 "{\"m.homeserver\":{\"base_url\":\"https://moonburst.net\"},\"org.matrix.msc4143.rtc_foci\":[{\"type\":\"livekit\",\"livekit_service_url\":\"https://matrix.org\"}]}";
+      '';
+
+      # RFC 9116 security.txt configuration
+      "= /.well-known/security.txt".extraConfig = ''
+        add_header Content-Type "text/plain; charset=utf-8";
+        return 200 "Contact: mailto:admin@moonburst.net\nExpires: 2026-12-31T23:59:59Z\nPreferred-Languages: en\n";
+      '';
+      "= /security.txt".extraConfig = ''
+        return 301 /.well-known/security.txt;
       '';
 
       "/_matrix/media" = {
@@ -219,6 +229,7 @@ in
 
     extraConfig = ''
       client_max_body_size 30M;
+      add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
       ${if enableVerboseLogging then "" else "access_log off;"}
     '';
 

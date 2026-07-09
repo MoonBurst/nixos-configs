@@ -34,7 +34,7 @@ ShellRoot {
      */
 
     // Master debug toggle (Set to false to turn off console logging)
-    property bool debug: true
+    property bool debug: false
 
     Theme {
         id: globalTheme
@@ -494,7 +494,7 @@ ShellRoot {
 
     WlSessionLock {
         id: sessionLock
-        locked: false
+        locked: true
 
         onLockedChanged: {
             shellRootRef.globalPasswordBuffer = "";
