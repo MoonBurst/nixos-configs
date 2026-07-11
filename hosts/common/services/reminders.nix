@@ -7,6 +7,7 @@ let
     { date = "05-25"; days = 2; msg = "Olive Herb's Birthday"; urgent = false; }
     { date = "05-25"; days = 2; msg = "Father's birthday"; urgent = false; }
     { date = "07-07"; days = 2; msg = "Genesis's Birthday"; urgent = true; }
+    { date = "07-11"; days = 2; msg = "Kelsey's Birthday"; urgent = true; }
     { date = "07-13"; days = 3; msg = "Sonata's Birthday"; urgent = true; }
     { date = "10-01"; days = 1; msg = "Rainbow-Dash Tumblr's Birthday"; urgent = false; }
     { date = "10-16"; days = 1; msg = "Radiant's Birthday"; urgent = false; }

@@ -61,8 +61,37 @@ in
       # A. Revert any previous local edits to docker-compose.yml to ensure a clean slate
       git checkout -- deploy/self-hosting/docker-compose.yml
 
-      # B. Remove any old override files to prevent array merging conflicts
-      rm -f deploy/self-hosting/docker-compose.override.yml
+      # B. Generate a fresh override file to inject the rate-limit and autoban bypasses
+      cat << 'EOF_OVERRIDE' > deploy/self-hosting/docker-compose.override.yml
+      version: '3'
+      services:
+        api:
+          environment:
+            - FLUXER_DISABLE_RATE_LIMITS=true
+            - FLUXER_ABUSE_THRESHOLD_DATACENTER=999999
+            - FLUXER_ABUSE_THRESHOLD_ANONYMOUS=999999
+            - FLUXER_ABUSE_THRESHOLD_MOBILE=999999
+            - FLUXER_ABUSE_THRESHOLD_RESIDENTIAL=999999
+            - FLUXER_ABUSE_TOKEN_DIVERSITY_DATACENTER=999999
+            - FLUXER_ABUSE_TOKEN_DIVERSITY_ANONYMOUS=999999
+            - FLUXER_ABUSE_TOKEN_DIVERSITY_MOBILE=999999
+            - FLUXER_ABUSE_TOKEN_DIVERSITY_RESIDENTIAL=999999
+        worker:
+          environment:
+            - FLUXER_DISABLE_RATE_LIMITS=true
+            - FLUXER_ABUSE_THRESHOLD_DATACENTER=999999
+            - FLUXER_ABUSE_THRESHOLD_ANONYMOUS=999999
+            - FLUXER_ABUSE_THRESHOLD_MOBILE=999999
+            - FLUXER_ABUSE_THRESHOLD_RESIDENTIAL=999999
+            - FLUXER_ABUSE_TOKEN_DIVERSITY_DATACENTER=999999
+            - FLUXER_ABUSE_TOKEN_DIVERSITY_ANONYMOUS=999999
+            - FLUXER_ABUSE_TOKEN_DIVERSITY_MOBILE=999999
+            - FLUXER_ABUSE_TOKEN_DIVERSITY_RESIDENTIAL=999999
+        gateway:
+          environment:
+            - FLUXER_DISABLE_RATE_LIMITS=true
+      EOF_OVERRIDE
+      chmod 644 deploy/self-hosting/docker-compose.override.yml
 
       # C. Patch Caddy ports directly in the base docker-compose.yml file
       sed -i 's/- "80:80"/- "127.0.0.1:8085:80"/g' deploy/self-hosting/docker-compose.yml
@@ -114,6 +143,7 @@ in
       FLUXER_CAPTCHA_ENABLED=false
       FLUXER_CAPTCHA_PROVIDER=none
       FLUXER_DISCOVERY_ENABLED=true
+      FLUXER_DISABLE_RATE_LIMITS=true
       EOF
       chmod 600 deploy/self-hosting/.env
     '';
@@ -147,7 +177,6 @@ in
     recommendedTlsSettings = true;
 
     # Global HTTP configuration mapping to append 'unsafe-eval' to the incoming CSP header.
-    # Group 1 captures up to 'script-src ', Group 2 captures the rest (preserving dynamic nonces).
     commonHttpConfig = ''
       map $upstream_http_content_security_policy $altered_csp {
           ~*^(.*script-src\s)(.*)$ "$1'unsafe-eval' $2";
@@ -156,8 +185,21 @@ in
     '';
 
     virtualHosts."${baseDomain}" = {
-      enableACME = true;
-      forceSSL = true;
+      # Disable Let's Encrypt / local SSL for this subdomain
+      # because SSL is terminated cleanly by Cloudflare's edge.
+      addSSL = false;
+      forceSSL = false;
+      enableACME = false;
+
+      extraConfig = ''
+        location = /sw.js {
+            return 404;
+        }
+        location = /service-worker.js {
+            return 404;
+        }
+      '';
+
       locations."/" = {
         proxyPass = "http://127.0.0.1:8085";
         proxyWebsockets = true;
@@ -169,11 +211,5 @@ in
         '';
       };
     };
-  };
-
-  # 6. SSL Configuration
-  security.acme = {
-    acceptTerms = true;
-    defaults.email = "admin@moonburst.net";
   };
 }

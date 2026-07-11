@@ -17,7 +17,7 @@ let
   puppetSecretPath = config.sops.secrets.matrix_double_puppet_secret.path;
   discordEnvPath = config.sops.templates."discord-env".path;
 
-  homepage = import ../homepage.nix { inherit pkgs; };
+  homepage = import ./homepage.nix { inherit pkgs; };
 in
 
 {
