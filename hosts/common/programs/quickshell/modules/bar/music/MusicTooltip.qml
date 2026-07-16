@@ -13,7 +13,7 @@ Item {
 
     implicitHeight: 420
     readonly property real tooltipSlantWidth: implicitHeight * tooltipBg.slantRatio
-    implicitWidth: 380 + (tooltipSlantWidth * 2)
+    implicitWidth: 408 + (tooltipSlantWidth * 2)
 
     // Force parent PanelWindow to expand to correct slanted dimensions
     Binding {

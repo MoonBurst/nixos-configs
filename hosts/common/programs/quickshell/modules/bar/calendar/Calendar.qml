@@ -14,7 +14,7 @@ Item {
     // Styling & Layout
     anchors.fill: parent
 
-    // --- SLANT CONFIGURATION ---
+    //Slant config
     property string slantLeft: "Left"
     property string slantRight: "Left"
     property int slantWidth: shell.theme.slantWidth
@@ -88,7 +88,7 @@ Item {
     // Click to toggle/pin the tooltip
     TapHandler {
         onTapped: {
-            calendarBox.pinTooltip = !calendarBox.pinTooltip
+         //   calendarBox.pinTooltip = !calendarBox.pinTooltip
         }
     }
 
