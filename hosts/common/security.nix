@@ -15,6 +15,7 @@
     secrets = {
       # --- System & User Secrets ---
       moonburst_password = { neededForUsers = true; };
+      git_token.owner = "moonburst";
       sops_key = { neededForUsers = true; };
       borg_passphrase = { };
       nextcloud_url = { };
@@ -25,7 +26,18 @@
       gmail_app_password.owner = "moonburst";
       gmail_address.owner = "moonburst";
     };
+
   };
+
+programs.git = {
+  enable = true;
+  config = {
+    credential = {
+      helper = "!f() { echo \"username=MoonBurst\"; echo \"password=$(cat /run/secrets/git_token)\"; }; f";
+    };
+  };
+};
+
 
   systemd.tmpfiles.rules = [
     "d /home/moonburst/.config/sops/age 0700 moonburst users - -"
