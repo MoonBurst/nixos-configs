@@ -7,9 +7,13 @@
     ./mounts.nix
     ./test.nix
     ./website
+   ./ffmpeg.nix
+   ./corectrl.nix
 #    ./vm.nix
   ];
-
+environment.sessionVariables = {
+WLR_DRM_DEVICES = "/dev/dri/card0";
+};
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
   networking.hostName = "moonbeauty";
   services.hardware.openrgb.enable = true;

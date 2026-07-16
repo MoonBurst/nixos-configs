@@ -1,14 +1,11 @@
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls 2
 import Quickshell
-
-// Import your custom style module relative to this widget's location
 import "../../style"
 
 Item {
     id: notifyBox
 
-    // Compatibility properties to align with your status bar layout engine
     property var barWindow: null
 
     // Resolve global states directly from the master shell root scope
@@ -19,23 +16,21 @@ Item {
     width: parent ? parent.width : 200
     height: parent.height
 
-    // Use your reusable LeftStyle component as the background
-    LeftStyle {
+    // Centralized SlantedBox Background
+    SlantedBox {
         id: bg
         anchors.fill: parent
+        slantLeft: "Left"
+        slantRight: "Left"
 
-        // Standard background color remains static base00
-        color: shell.theme.base00
-
-        // Dynamic, state-based border outline transitions
         borderColor: {
-            if (notifyBox.isLocked) return shell.theme.base03;  // Same color as currently when locked
-            if (notifyBox.isDisabled) return shell.theme.base08; // Red outline when paused
-            return shell.theme.base05;                           // base05 outline when unpaused
+            if (shell && shell.theme) {
+                if (notifyBox.isLocked) return shell.theme.base03;
+                if (notifyBox.isDisabled) return shell.theme.base08;
+                return shell.theme.base05;
+            }
+            return "yellow";
         }
-
-        Behavior on color { ColorAnimation { duration: 120 } }
-        Behavior on borderColor { ColorAnimation { duration: 120 } }
     }
 
     MouseArea {
@@ -70,23 +65,28 @@ Item {
             var labelColor = "";
             var countColor = "";
 
-            if (notifyBox.isLocked) {
-                labelColor = shell.theme.base04;
-                countColor = shell.theme.base04;
-            } else if (notifyBox.isDisabled) {
-                labelColor = shell.theme.base04; // Muted label when paused
-                countColor = shell.theme.base08; // Red count showing backlog when paused
+            if (shell && shell.theme) {
+                if (notifyBox.isLocked) {
+                    labelColor = shell.theme.base04;
+                    countColor = shell.theme.base04;
+                } else if (notifyBox.isDisabled) {
+                    labelColor = shell.theme.base04;
+                    countColor = shell.theme.base08;
+                } else {
+                    labelColor = shell.theme.base05;
+                    countColor = shell.theme.base05;
+                }
             } else {
-                labelColor = shell.theme.base05; // base05 normally
-                countColor = shell.theme.base05; // base05 normally
+                labelColor = "yellow";
+                countColor = "yellow";
             }
 
             return "<font color='" + labelColor + "'>Notifications:</font> <font color='" + countColor + "'>" + notifyBox.notifCount + "</font>";
         }
 
-        font.family: shell.theme.fontFamily
-        font.pixelSize: shell.theme.globalFontSize
+        font.family: (shell && shell.theme) ? (shell.theme.fontFamily || "monospace") : "monospace"
+        font.pixelSize: (shell && shell.theme) ? (shell.theme.globalFontSize || 14) : 14
         font.bold: true
-        color: shell.theme.base05
+        color: (shell && shell.theme) ? (shell.theme.base05 || "yellow") : "yellow"
     }
 }

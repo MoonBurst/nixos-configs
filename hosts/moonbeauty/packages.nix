@@ -43,7 +43,6 @@ in
 
     # --- System & Utilities ---
     btrfs-assistant
-
     # --- Development & Productivity ---
     kdePackages.kate
     protonup-qt
@@ -52,7 +51,7 @@ in
     cura-appimage
     orca-slicer
     openscad
-  ]; # <-- This single closing bracket now correctly terminates the entire block
+  ];
 
 
   # --- Desktop Entry for Launcher ---

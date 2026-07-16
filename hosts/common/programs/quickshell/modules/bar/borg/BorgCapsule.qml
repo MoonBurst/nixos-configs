@@ -2,8 +2,6 @@ import QtQuick
 import QtQuick.Controls 2
 import Quickshell
 import Quickshell.Io
-
-// Import your custom style module relative to this widget's location
 import "../../style"
 
 Item {
@@ -15,56 +13,40 @@ Item {
     width: 140
     height: parent.height
 
-    // Use your reusable LeftStyle component as the background
-    LeftStyle {
+    // Centralized SlantedBox Background
+    SlantedBox {
         id: bg
         anchors.fill: parent
+        slantLeft: "Left"
+        slantRight: "Left"
     }
 
-    /*
-     * POLL BORG DATA PAYLOAD EVERY SECOND
-     */
     Timer {
-        interval: 1000
-        running: true
-        repeat: true
-        onTriggered: {
-            borgPoller.running = true
-        }
+        interval: 1000; running: true; repeat: true
+        onTriggered: borgPoller.running = true
     }
 
     Process {
         id: borgPoller
-
         command: ["cat", "/dev/shm/borg-offsite-status.json"]
 
         stdout: SplitParser {
             onRead: data => {
                 const rawLine = data.trim()
-
                 if (!rawLine.length) {
                     borgBox.borgProgress = "Idle"
                     return
                 }
-
                 try {
                     const statusObj = JSON.parse(rawLine)
-
                     if (statusObj.status === "idle") {
                         borgBox.borgProgress = "Idle"
                     } else if (statusObj.status === "indexing") {
                         borgBox.borgProgress = "Idx..."
                     } else if (statusObj.status === "running") {
-                        // Strip trailing "D", spaces, and control characters
                         let cleanSize = statusObj.uploaded_size.replace(/[D\s]+$/, "").trim()
-
-                        // Drop the decimal places (e.g., "49.42 MB" -> "49 MB")
                         cleanSize = cleanSize.replace(/\.[0-9]+/, "")
-
-                        // Compress the unit spacing
                         cleanSize = cleanSize.replace(/[\s]*MB/, "M").replace(/[\s]*GB/, "G")
-
-                        // Output format: "0% (49M)"
                         borgBox.borgProgress = statusObj.percent + "% (" + cleanSize + ")"
                     }
                 } catch (e) {
@@ -76,30 +58,25 @@ Item {
 
     Text {
         id: borgText
-
         anchors.fill: parent
-
-        // Dynamically clear the slant margins using LeftStyle's properties
         anchors.leftMargin: bg.leftPadding
         anchors.rightMargin: bg.rightPadding
-        anchors.topMargin: shell.theme.globalPadding
-        anchors.bottomMargin: shell.theme.globalPadding
+        anchors.topMargin: (shell && shell.theme) ? (shell.theme.globalPadding || 12) : 12
+        anchors.bottomMargin: (shell && shell.theme) ? (shell.theme.globalPadding || 12) : 12
 
-        // Clear, adaptive text formatting to fit  panel width
         text: {
+            const fontColor = (shell && shell.theme) ? (shell.theme.base05 || "yellow").toString() : "yellow";
             if (borgBox.borgProgress === "Idx...") {
-                return "<font color='" + shell.theme.base05.toString() + "'>Indexing</font>";
+                return "<font color='" + fontColor + "'>Indexing</font>";
             } else if (borgBox.borgProgress === "Idle" || borgBox.borgProgress === "Sync...") {
-                return "<font color='" + shell.theme.base05.toString() + "'>Borg:</font> " +
-                "<font color='" + shell.theme.base05.toString() + "'>" + borgBox.borgProgress + "</font>";
+                return "<font color='" + fontColor + "'>Borg:</font> <font color='" + fontColor + "'>" + borgBox.borgProgress + "</font>";
             } else {
-                // Active backup phase: Show only data metrics like "0% (49M)"
-                return "<font color='" + shell.theme.base05.toString() + "'>" + borgBox.borgProgress + "</font>";
+                return "<font color='" + fontColor + "'>" + borgBox.borgProgress + "</font>";
             }
         }
 
-        font.family: shell.theme.fontFamily
-        font.pixelSize: shell.theme.globalFontSize
+        font.family: (shell && shell.theme) ? (shell.theme.fontFamily || "monospace") : "monospace"
+        font.pixelSize: (shell && shell.theme) ? (shell.theme.globalFontSize || 14) : 14
         font.bold: true
         textFormat: Text.RichText
         horizontalAlignment: Text.AlignHCenter

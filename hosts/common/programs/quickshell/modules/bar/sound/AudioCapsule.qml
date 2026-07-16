@@ -2,8 +2,6 @@ import QtQuick
 import QtQuick.Controls 2
 import Quickshell
 import Quickshell.Io
-
-// Import your custom style module relative to this widget's location
 import "../../style"
 
 Item {
@@ -15,10 +13,12 @@ Item {
     width: 140
     height: parent.height
 
-    // Use your reusable LeftStyle component as the background
-    LeftStyle {
+    // Centralized SlantedBox Background
+    SlantedBox {
         id: bg
         anchors.fill: parent
+        slantLeft: "Left"
+        slantRight: "Left"
     }
 
     Process {
@@ -39,8 +39,8 @@ Item {
                     vNum = Math.round(val * 100) + "%";
                 }
 
-                var textColor = isMuted ? shell.theme.base08.toString() : shell.theme.base05.toString();
-                var tagColor = shell.theme.base05.toString();
+                var textColor = isMuted ? ((shell && shell.theme) ? shell.theme.base08.toString() : "red") : ((shell && shell.theme) ? shell.theme.base05.toString() : "yellow");
+                var tagColor = (shell && shell.theme) ? shell.theme.base05.toString() : "yellow";
 
                 audioBox.audioDisplayText = "<font color='" + tagColor + "'>Audio:</font> <font color='" + textColor + "'>" + vNum + "</font>";
             }
@@ -72,15 +72,14 @@ Item {
         id: audioText
         anchors.fill: parent
 
-        // Dynamically clear the slant margins using LeftStyle's properties
         anchors.leftMargin: bg.leftPadding
         anchors.rightMargin: bg.rightPadding
-        anchors.topMargin: shell.theme.globalPadding
-        anchors.bottomMargin: shell.theme.globalPadding
+        anchors.topMargin: (shell && shell.theme) ? (shell.theme.globalPadding || 12) : 12
+        anchors.bottomMargin: (shell && shell.theme) ? (shell.theme.globalPadding || 12) : 12
 
         text: audioBox.audioDisplayText
-        font.family: shell.theme.fontFamily
-        font.pixelSize: shell.theme.globalFontSize
+        font.family: (shell && shell.theme) ? (shell.theme.fontFamily || "monospace") : "monospace"
+        font.pixelSize: (shell && shell.theme) ? (shell.theme.globalFontSize || 14) : 14
         font.bold: true
         textFormat: Text.RichText
         horizontalAlignment: Text.AlignHCenter
@@ -98,10 +97,8 @@ Item {
     Process { id: mixerOpenProcess; running: false; command: ["pavucontrol"] }
 
     Timer {
-        interval: 500
-        running: true
-        repeat: true
-        triggeredOnStart: true
+        id: audioPollerTimer
+        interval: 500; running: true; repeat: true; triggeredOnStart: true
         onTriggered: {
             audioFetcher.running = false;
             audioFetcher.running = true;

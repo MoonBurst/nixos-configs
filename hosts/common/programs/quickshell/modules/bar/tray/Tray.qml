@@ -1,11 +1,9 @@
 import QtQuick
-import QtQuick.Controls
-import QtQuick.Layouts
+import QtQuick.Controls 2
+import QtQuick.Layouts 1.15
 import Quickshell
 import Quickshell.Services.SystemTray
 import Quickshell.Wayland
-
-// Import your custom style module relative to this widget's location
 import "../../style"
 
 Item {
@@ -19,11 +17,12 @@ Item {
     implicitWidth: trayBubbleWrapper.width
     height: parent.height
 
-    // Use RightStyle for the expanding/collapsing container
-    RightStyle {
+    // Centralized SlantedBox Background
+    SlantedBox {
         id: trayBubbleWrapper
+        slantLeft: "Right"
+        slantRight: "Right"
 
-        // Dynamic width handles the tray items and automatically accounts for slants
         width: trayLayoutRow.width + trayBubbleWrapper.leftPadding + trayBubbleWrapper.rightPadding
         height: parent.height
         anchors.verticalCenter: parent.verticalCenter
@@ -46,8 +45,8 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: trayRoot.isExpanded ? "▶" : "◀"
-                    color: shell.theme.base05
-                    font.pixelSize: shell.theme.globalFontSize || 12
+                    color: (shell && shell.theme) ? (shell.theme.base05 || "yellow") : "yellow"
+                    font.pixelSize: (shell && shell.theme) ? (shell.theme.globalFontSize || 12) : 12
                 }
 
                 MouseArea {
@@ -62,7 +61,6 @@ Item {
                 }
             }
 
-            // RowLayout allows seamless runtime layout space collapsing
             RowLayout {
                 id: repeaterContainer
                 spacing: 10
@@ -71,8 +69,6 @@ Item {
                 visible: opacity > 0
                 opacity: trayRoot.isExpanded ? 1.0 : 0.0
                 clip: true
-
-                // Safe structural collapse replacement using attached Layout bounds
                 Layout.preferredWidth: trayRoot.isExpanded ? -1 : 0
 
                 Behavior on opacity {
@@ -114,9 +110,9 @@ Item {
                 WlrLayershell.layer: WlrLayer.Overlay
                 WlrLayershell.keyboardFocus: menuPopup.visible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
-                margins.top: shell.theme.globalPadding + 55
+                margins.top: (shell && shell.theme) ? (shell.theme.globalPadding + 55 || 67) : 67
                 margins.right: {
-                    if (!barWindow || !barWindow.contentItem) return shell.theme.globalPadding;
+                    if (!barWindow || !barWindow.contentItem) return (shell && shell.theme) ? (shell.theme.globalPadding || 12) : 12;
                     var globalIconPos = trayItem.mapToItem(barWindow.contentItem, 0, 0);
                     return barWindow.width - (globalIconPos.x + trayItem.width);
                 }
@@ -156,10 +152,10 @@ Item {
                     height: popupLayoutColumn.implicitHeight + 12
                     anchors.top: parent.top
                     anchors.right: parent.right
-                    color: shell.theme.base00
-                    border.color: shell.theme.base05
-                    border.width: shell.theme.globalBorderWidth
-                    radius: shell.theme.defaultCardRadius
+                    color: (shell && shell.theme) ? (shell.theme.base00 || "black") : "black"
+                    border.color: (shell && shell.theme) ? (shell.theme.base05 || "yellow") : "yellow"
+                    border.width: (shell && shell.theme) ? (shell.theme.globalBorderWidth || 3) : 3
+                    radius: (shell && shell.theme) ? (shell.theme.defaultCardRadius || 10) : 10
 
                     MouseArea {
                         anchors.fill: parent
@@ -179,16 +175,16 @@ Item {
                                 width: parent.width
                                 height: 38
                                 radius: 6
-                                color: itemMouseArea.containsMouse ? shell.theme.base0D : "transparent"
+                                color: itemMouseArea.containsMouse ? ((shell && shell.theme) ? (shell.theme.base0D || "blue") : "blue") : "transparent"
 
                                 Text {
                                     anchors.verticalCenter: parent.verticalCenter
                                     anchors.left: parent.left
-                                    anchors.leftMargin: shell.theme.globalPadding
+                                    anchors.leftMargin: (shell && shell.theme) ? (shell.theme.globalPadding || 12) : 12
                                     text: modelData.text || ""
-                                    color: shell.theme.base05
-                                    font.family: shell.theme.fontFamily
-                                    font.pixelSize: shell.theme.globalFontSize
+                                    color: (shell && shell.theme) ? (shell.theme.base05 || "yellow") : "yellow"
+                                    font.family: (shell && shell.theme) ? (shell.theme.fontFamily || "monospace") : "monospace"
+                                    font.pixelSize: (shell && shell.theme) ? (shell.theme.globalFontSize || 14) : 14
                                 }
 
                                 MouseArea {

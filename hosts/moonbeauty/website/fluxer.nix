@@ -15,6 +15,14 @@ in
     dockerCompat = true;       # Emulates the 'docker' command using podman
   };
 
+  # Configure Podman system-wide settings to remain quiet
+  virtualisation.containers.containersConf.settings = {
+    containers = {
+      events_logger = "none";
+      log_level = "warning"; # Silences info-level healthcheck execution logs in journalctl
+    };
+  };
+
   # Define sops-nix secrets mapping
   sops.secrets = {
     fluxer_postgres_password = { };
@@ -61,11 +69,13 @@ in
       # A. Revert any previous local edits to docker-compose.yml to ensure a clean slate
       git checkout -- deploy/self-hosting/docker-compose.yml
 
-      # B. Generate a fresh override file to inject the rate-limit and autoban bypasses
+      # B. Fresh override file to inject rate-limit bypasses (no health check overrides to prevent parser crashes)
       cat << 'EOF_OVERRIDE' > deploy/self-hosting/docker-compose.override.yml
       version: '3'
       services:
         api:
+          logging:
+            driver: "none"
           environment:
             - FLUXER_DISABLE_RATE_LIMITS=true
             - FLUXER_ABUSE_THRESHOLD_DATACENTER=999999
@@ -77,6 +87,8 @@ in
             - FLUXER_ABUSE_TOKEN_DIVERSITY_MOBILE=999999
             - FLUXER_ABUSE_TOKEN_DIVERSITY_RESIDENTIAL=999999
         worker:
+          logging:
+            driver: "none"
           environment:
             - FLUXER_DISABLE_RATE_LIMITS=true
             - FLUXER_ABUSE_THRESHOLD_DATACENTER=999999
@@ -88,8 +100,13 @@ in
             - FLUXER_ABUSE_TOKEN_DIVERSITY_MOBILE=999999
             - FLUXER_ABUSE_TOKEN_DIVERSITY_RESIDENTIAL=999999
         gateway:
+          logging:
+            driver: "none"
           environment:
             - FLUXER_DISABLE_RATE_LIMITS=true
+        livekit:
+          logging:
+            driver: "none"
       EOF_OVERRIDE
       chmod 644 deploy/self-hosting/docker-compose.override.yml
 
@@ -167,6 +184,9 @@ in
       ExecStart = "${pkgs.docker-compose}/bin/docker-compose up";
       ExecStop = "${pkgs.docker-compose}/bin/docker-compose down";
       Restart = "always";
+
+      # Removed 'StandardOutput/Error = null' overrides to prevent compose startup crashes.
+      # The container log dampening is handled securely at the compose override layer.
     };
   };
 
@@ -177,7 +197,10 @@ in
     recommendedTlsSettings = true;
 
     # Global HTTP configuration mapping to append 'unsafe-eval' to the incoming CSP header.
+    # Added 'log_not_found off;' globally to prevent Nginx from logging 404 bot scans.
     commonHttpConfig = ''
+      log_not_found off;
+
       map $upstream_http_content_security_policy $altered_csp {
           ~*^(.*script-src\s)(.*)$ "$1'unsafe-eval' $2";
           default $upstream_http_content_security_policy;

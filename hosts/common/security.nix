@@ -73,9 +73,10 @@
         User moonburst
     '';
   };
-security.pam.services.quickshell = {};
-services.gnome.gnome-keyring.enable = true;
-security.pam.services.greetd.enableGnomeKeyring = true;
+
+  security.pam.services.quickshell = {};
+  services.gnome.gnome-keyring.enable = true;
+  security.pam.services.greetd.enableGnomeKeyring = true;
   services.xserver.displayManager.lightdm.enable = false;
 
   security.pam.services.swaylock = {};
@@ -87,7 +88,7 @@ security.pam.services.greetd.enableGnomeKeyring = true;
   programs.fuse.userAllowOther = true;
   security.polkit.enable = true;
   security.rtkit.enable = true;
-
+  boot.tmp.useTmpfs = true;
   environment.systemPackages = with pkgs; [
     sops age pass authenticator cloudflared
   ];

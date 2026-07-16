@@ -4,26 +4,44 @@ import QtQuick.Layouts 1.15
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
-
-// Import your custom style module relative to this widget's location
 import "../../style"
 
 Item {
     id: ramBox
-
-    property int tooltipWidth: 415
-    property int tooltipHeight: 400
+    property int tooltipHeight: 420
     property var barWindow: null
+
+    // Slant config
+    property string slantLeft: "Right"
+    property string slantRight: "Right"
+    property int slantWidth: shell.theme.slantWidth
+
+    // Tooltip slant
+    readonly property real tooltipSlantWidth: (ramBox.height > 0)
+    ? (tooltipHeight * (slantWidth / ramBox.height))
+    : 15
+
+    // Standardized Tooltip Sizing
+    property int tooltipWidth: 380 + (tooltipSlantWidth * 2)
 
     property real totalGiB: 0.0
     property real availableGiB: 0.0
     property string topProcessesText: "Loading system processes..."
     property string textAccumulatorBuffer: ""
 
-    // Use your reusable RightStyle component as the background
-    RightStyle {
+    // Split the raw processes output into a clean array of lines
+    readonly property var processLinesArray: topProcessesText.split("\n").filter(line => line.trim() !== "")
+
+    // Toggle to pin the tooltip open for screenshots (Click the RAM capsule to toggle)
+    property bool pinTooltip: false
+
+    // Centralized SlantedBox Background
+    SlantedBox {
         id: bg
         anchors.fill: parent
+        slantLeft: ramBox.slantLeft
+        slantRight: ramBox.slantRight
+        slantWidth: ramBox.slantWidth
     }
 
     // Unified Layout Constraints
@@ -70,8 +88,6 @@ Item {
     Text {
         id: ramText
         anchors.fill: parent
-
-        // Dynamically clear the slant margins using RightStyle's properties
         anchors.leftMargin: bg.leftPadding
         anchors.rightMargin: bg.rightPadding
         anchors.topMargin: shell.theme.globalPadding
@@ -83,6 +99,11 @@ Item {
         font.bold: true
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
+
+        // Automatically scale text down to fit inside the boundaries
+        fontSizeMode: Text.Fit
+        minimumPixelSize: 8
+        elide: Text.ElideRight
 
         text: {
             const greenColor = shell.theme.base0C.toString();
@@ -107,9 +128,19 @@ Item {
         onHoveredChanged: if (hovered) { ramBox.textAccumulatorBuffer = ""; topProcFetcher.running = true; }
     }
 
-    // Dynamic Panel Renderer (Kept standard/rectangular for proper alignment)
+    // Click to toggle/pin the tooltip
+    TapHandler {
+        onTapped: {
+            ramBox.textAccumulatorBuffer = "";
+            topProcFetcher.running = true;
+        //    ramBox.pinTooltip = !ramBox.pinTooltip;
+        }
+    }
+
+    // Panel Window Pop-up Renderer
     Loader {
-        active: ramHoverTracker.hovered
+        active: ramHoverTracker.hovered || ramBox.pinTooltip
+
         sourceComponent: Component {
             PanelWindow {
                 screen: ramBox.barWindow ? ramBox.barWindow.screen : null
@@ -126,43 +157,53 @@ Item {
                 implicitHeight: ramBox.tooltipHeight
                 color: "transparent"
 
-                Rectangle {
+                // Tooltip background using SlantedBox
+                SlantedBox {
+                    id: tooltipBg
                     anchors.fill: parent
-                    radius: shell.theme.defaultCardRadius
-                    border.width: shell.theme.globalBorderWidth
-                    color: shell.theme.base00
-                    border.color: shell.theme.base05
+                    slantLeft: ramBox.slantLeft
+                    slantRight: ramBox.slantRight
+                    slantWidth: ramBox.tooltipSlantWidth
+                }
 
-                    Column {
-                        anchors.fill: parent
-                        anchors.margins: shell.theme.globalPadding
-                        spacing: 10
+                //  Text content layout
+                Item {
+                    anchors.fill: parent
+
+                    // Header
+                    Text {
+                        text: "TOP RAM CONSUMERS:"
+                        font.family: shell.theme.fontFamily
+                        font.pixelSize: shell.theme.globalFontSize
+                        font.bold: true
+                        color: shell.theme.base05
+
+                        y: 35
+                        x: ((tooltipBg.height - y) * tooltipBg.slantRatio) + 24
+                    }
+
+                    // Slanted Divider Line
+                    Rectangle {
+                        height: 2
+                        color: shell.theme.base02
+                        width: 310
+
+                        y: 65
+                        x: ((tooltipBg.height - y) * tooltipBg.slantRatio) + 24
+                    }
+
+                    // Monospace Process List
+                    Repeater {
+                        model: ramBox.processLinesArray.length
 
                         Text {
-                            text: "TOP RAM CONSUMERS:"
-                            font.family: shell.theme.fontFamily
+                            text: ramBox.processLinesArray[index]
+                            font.family: "monospace"
                             font.pixelSize: shell.theme.globalFontSize
-                            font.bold: true
                             color: shell.theme.base05
-                        }
 
-                        Rectangle { width: parent.width; height: 2; color: shell.theme.base02 }
-
-                        Flickable {
-                            width: parent.width; height: ramBox.tooltipHeight - 70
-                            contentWidth: processDisplayLines.paintedWidth
-                            contentHeight: parent.height
-                            clip: true
-
-                            Text {
-                                id: processDisplayLines
-                                textFormat: Text.RichText
-                                text: "<pre style='margin: 0; font-family: monospace;'>" + ramBox.topProcessesText + "</pre>"
-                                font.pixelSize: shell.theme.globalFontSize
-                                color: shell.theme.base05
-                                lineHeight: 1.15
-                                wrapMode: Text.NoWrap
-                            }
+                            y: 95 + (index * 28)
+                            x: ((tooltipBg.height - y) * tooltipBg.slantRatio) + 24
                         }
                     }
                 }
@@ -174,7 +215,10 @@ Item {
         interval: 2000; running: true; repeat: true; triggeredOnStart: true
         onTriggered: {
             ramStatsProc.running = true;
-            if (ramHoverTracker.hovered) { ramBox.textAccumulatorBuffer = ""; topProcFetcher.running = true; }
+            if (ramHoverTracker.hovered || ramBox.pinTooltip) {
+                ramBox.textAccumulatorBuffer = "";
+                topProcFetcher.running = true;
+            }
         }
     }
 }

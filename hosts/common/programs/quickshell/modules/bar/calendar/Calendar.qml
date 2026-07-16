@@ -1,9 +1,11 @@
 import QtQuick
 import QtQuick.Controls 2
+import QtQuick.Layouts 1.15
+import QtQuick.Shapes 1.15
+import QtQuick.Window
 import Quickshell
 import Quickshell.Wayland
-
-// Import your custom style module relative to this widget's location
+import Quickshell.Io
 import "../../style"
 
 Item {
@@ -12,21 +14,42 @@ Item {
     // Styling & Layout
     anchors.fill: parent
 
-    // Use your reusable LeftStyle component as the background
-    LeftStyle {
-        id: bg
-        anchors.fill: parent
-    }
+    // --- SLANT CONFIGURATION ---
+    property string slantLeft: "Left"
+    property string slantRight: "Left"
+    property int slantWidth: shell.theme.slantWidth
+
+    // Tooltip configuration
+    property int tooltipHeight: 420
+
+    // Tooltip slant
+    readonly property real tooltipSlantWidth: (calendarBox.height > 0)
+    ? (tooltipHeight * (slantWidth / calendarBox.height))
+    : 15
+
+    property int tooltipWidth: 410 + (tooltipSlantWidth * 2)
 
     // Global Widget Properties
     property var barWindow: null
-    property string dateStr: "01/01/2026"
+    property string dateStr: "01/01/0001"
 
     // Calendar State Tracking
     property var currentDate: new Date()
     property int currentMonth: currentDate.getMonth()
     property int currentYear: currentDate.getFullYear()
     property var daysOfWeek: [ "Su", "Mo", "Tu", "We", "Th", "Fr", "Sa" ]
+
+    // Toggle to pin the tooltip open for screenshots (Click the Calendar capsule to toggle)
+    property bool pinTooltip: false
+
+    // Centralized SlantedBox Background
+    SlantedBox {
+        id: bg
+        anchors.fill: parent
+        slantLeft: calendarBox.slantLeft
+        slantRight: calendarBox.slantRight
+        slantWidth: calendarBox.slantWidth
+    }
 
     // Main Bar Date Update Loop
     Timer {
@@ -44,10 +67,8 @@ Item {
     Text {
         id: calendarText
         anchors.fill: parent
-
-        // Dynamically clear the slant margins using LeftStyle's properties
-        anchors.leftMargin: bg.leftPadding
-        anchors.rightMargin: bg.rightPadding
+        anchors.leftMargin: calendarBox.leftPadding
+        anchors.rightMargin: calendarBox.rightPadding
         anchors.topMargin: shell.theme.globalPadding
         anchors.bottomMargin: shell.theme.globalPadding
 
@@ -64,142 +85,156 @@ Item {
         id: calendarHoverTracker
     }
 
-    // ============================================================================
-    // THE CALENDAR POPOVER PANEL WINDOW
-    // ============================================================================
-    PanelWindow {
-        id: calendarTooltipWindow
-
-        // Wayland Display Settings
-        screen: calendarBox.barWindow ? calendarBox.barWindow.screen : null
-        visible: calendarHoverTracker.hovered
-        WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.namespace: "quickshell-calendar-tooltip"
-        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-
-        // Sizing & Positioning Constraints
-        anchors.top: true
-        anchors.left: true
-        anchors.right: false
-        anchors.bottom: false
-        implicitWidth: 300
-        implicitHeight: 320
-        color: "transparent"
-
-        // Dynamic Relative Alignment Logic
-        WlrLayershell.margins.left: {
-            if (!calendarBox.barWindow) return 0;
-
-            var containerX = calendarContainer.x;
-            var calendarCenterAbsolute = containerX + (calendarContainer.width / 2);
-            var targetLeftMargin = Math.round(calendarCenterAbsolute - (implicitWidth / 2));
-
-            return Math.max(targetLeftMargin, shell.theme.globalPadding);
+    // Click to toggle/pin the tooltip
+    TapHandler {
+        onTapped: {
+            calendarBox.pinTooltip = !calendarBox.pinTooltip
         }
+    }
 
-        WlrLayershell.margins.top: {
-            if (!calendarBox.barWindow) return 0;
-            return shell.theme.globalPadding + mainBarContainer.capsuleHeight + 8;
-        }
+    // Dynamic Panel Renderer
+    Loader {
+        active: calendarHoverTracker.hovered || calendarBox.pinTooltip
 
-        // Tooltip Window Content Wrapper (Kept standard/rectangular for proper formatting)
-        Rectangle {
-            anchors.fill: parent
-            radius: shell.theme.defaultCardRadius
-            border.width: shell.theme.globalBorderWidth
-            color: shell.theme.base00
-            border.color: shell.theme.base05
+        sourceComponent: Component {
+            PanelWindow {
+                screen: calendarBox.barWindow ? calendarBox.barWindow.screen : null
+                WlrLayershell.layer: WlrLayer.Overlay
+                WlrLayershell.namespace: "quickshell-calendar-tooltip"
+                WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
-            Column {
-                anchors.fill: parent
-                anchors.margins: shell.theme.globalPadding
-                spacing: 12
+                anchors.top: true
+                anchors.left: true
+                anchors.right: false
+                anchors.bottom: false
 
-                // Header Component (Month & Year Title)
-                Text {
-                    width: parent.width
-                    text: calendarBox.currentDate.toLocaleDateString(Qt.locale(), "MMMM yyyy")
-                    color: shell.theme.base05
-                    font.family: shell.theme.fontFamily
-                    font.pixelSize: shell.theme.globalFontSize + 2
-                    font.bold: true
-                    horizontalAlignment: Text.AlignHCenter
+                implicitWidth: calendarBox.tooltipWidth
+                implicitHeight: calendarBox.tooltipHeight
+                color: "transparent"
+
+                WlrLayershell.margins.top: shell.theme.globalPadding + 55
+
+                // Centers dropdown aligned under the parent container
+                WlrLayershell.margins.left: {
+                    if (!calendarBox.barWindow || typeof calendarContainer === "undefined" || !calendarContainer) return 0;
+                    var containerX = calendarContainer.x;
+                    var calendarCenterAbsolute = containerX + (calendarContainer.width / 2);
+                    var targetLeftMargin = Math.round(calendarCenterAbsolute - (calendarBox.tooltipWidth / 2));
+
+                    return Math.max(targetLeftMargin, shell.theme.globalPadding);
                 }
 
-                // Days of the Week Row (Header Labels)
-                Grid {
-                    width: parent.width
-                    columns: 7
-                    spacing: 4
+                // Tooltip background using SlantedBox
+                SlantedBox {
+                    id: tooltipBg
+                    anchors.fill: parent
+                    slantLeft: calendarBox.slantLeft
+                    slantRight: calendarBox.slantRight
+                    slantWidth: calendarBox.tooltipSlantWidth
 
-                    Repeater {
-                        model: calendarBox.daysOfWeek
+                    readonly property color colorBase04: (shell && shell.theme) ? (shell.theme.base04 || "gray") : "gray"
+                    readonly property color colorBase02: (shell && shell.theme) ? (shell.theme.base02 || "#222222") : "#222222"
+                    readonly property string fontFamily: (shell && shell.theme) ? (shell.theme.fontFamily || "monospace") : "monospace"
+                    readonly property real slantRatio: (height > 0) ? (slantWidth / height) : 0.35
+                }
 
-                        Text {
-                            width: (parent.width - 24) / 7
-                            text: modelData
-                            color: shell.theme.base04
-                            font.family: shell.theme.fontFamily
-                            font.pixelSize: shell.theme.globalFontSize - 2
-                            font.bold: true
-                            horizontalAlignment: Text.AlignHCenter
+
+                Item {
+                    anchors.fill: parent
+
+                    // Month/Year Header
+                    Text {
+                        text: calendarBox.currentDate.toLocaleDateString(Qt.locale(), "MMMM yyyy")
+                        color: shell.theme.base05
+                        font.family: tooltipBg.fontFamily
+                        font.pixelSize: 22
+                        font.bold: true
+
+                        y: 30
+                        x: (y * tooltipBg.slantRatio) + 24
+                    }
+
+                    // Slanted Days of the Week Headers
+                    Row {
+                        y: 75
+                        x: (y * tooltipBg.slantRatio) + 24
+                        width: tooltipBg.width - calendarBox.tooltipSlantWidth - 48
+                        spacing: 0
+
+                        Repeater {
+                            model: calendarBox.daysOfWeek
+
+                            Text {
+                                width: parent.width / 7
+                                text: modelData
+                                color: tooltipBg.colorBase04
+                                font.family: tooltipBg.fontFamily
+                                font.pixelSize: 15
+                                font.bold: true
+                                horizontalAlignment: Text.AlignHCenter
+                            }
                         }
                     }
-                }
 
-                // Interactive Days Grid Matrix Area
-                Grid {
-                    id: daysGrid
-                    width: parent.width
-                    columns: 7
-                    spacing: 4
+                    // Tooltip Calendar
+                    Item {
+                        id: daysGridData
+                        readonly property int firstDayOffset: new Date(calendarBox.currentYear, calendarBox.currentMonth, 1).getDay()
+                        readonly property int daysInMonth: new Date(calendarBox.currentYear, calendarBox.currentMonth + 1, 0).getDate()
+                        readonly property int todayDate: new Date().getDate()
+                        readonly property int todayMonth: new Date().getMonth()
+                        readonly property int todayYear: new Date().getFullYear()
+                    }
 
-                    // Optimized Calendar Structural State Metrics
-                    readonly property int firstDayOffset: new Date(calendarBox.currentYear, calendarBox.currentMonth, 1).getDay()
-                    readonly property int daysInMonth: new Date(calendarBox.currentYear, calendarBox.currentMonth + 1, 0).getDate()
-                    readonly property int todayDate: new Date().getDate()
-                    readonly property int todayMonth: new Date().getMonth()
-                    readonly property int todayYear: new Date().getFullYear()
-
+                    // Slanted Matrix Weeks
                     Repeater {
-                        model: 42 // Max standard layout slots for a month matrix
+                        model: 6 // 6 weeks maximum matrix layout
 
-                        delegate: Item {
-                            // Layout Sizing Metrics
-                            width: (parent.width - 24) / 7
-                            height: width
+                        Row {
+                            id: weekRow
+                            readonly property int weekIndex: index
 
-                            // Positional Grid Flags
-                            readonly property int dayNumber: index - daysGrid.firstDayOffset + 1
-                            readonly property bool isValidDay: dayNumber > 0 && dayNumber <= daysGrid.daysInMonth
-                            readonly property bool isToday: isValidDay &&
-                            dayNumber === daysGrid.todayDate &&
-                            calendarBox.currentMonth === daysGrid.todayMonth &&
-                            calendarBox.currentYear === daysGrid.todayYear
+                            y: 110 + (index * 46) // Vertical row spacing
+                            x: (y * tooltipBg.slantRatio) + 24
+                            width: tooltipBg.width - calendarBox.tooltipSlantWidth - 48
+                            spacing: 0
 
-                            // Highlight System Bubble Container
-                            Rectangle {
-                                width: parent.width * 0.95
-                                height: parent.height * 0.95
-                                anchors.centerIn: parent
-                                visible: parent.isValidDay
+                            Repeater {
+                                model: 7 // 7 days per week row
 
-                                // Inherited System Styles
-                                radius: shell.theme.defaultCardRadius
-                                border.width: shell.theme.globalBorderWidth
-                                color: shell.theme.base00
-                                border.color: parent.isToday ? shell.theme.base05 : "transparent"
-                            }
+                                delegate: Item {
+                                    id: dayCellItem
+                                    width: parent.width / 7 // Scales each cell dynamically
+                                    height: 42
 
-                            // Day Number Typography Display
-                            Text {
-                                anchors.centerIn: parent
-                                text: parent.isValidDay ? parent.dayNumber : ""
-                                color: shell.theme.base05
-                                opacity: parent.isValidDay ? 1.0 : 0.0
-                                font.family: shell.theme.fontFamily
-                                font.pixelSize: shell.theme.globalFontSize
-                                font.bold: parent.isToday
+                                    readonly property int dayIndex: (weekRow.weekIndex * 7) + index
+                                    readonly property int dayNumber: dayIndex - daysGridData.firstDayOffset + 1
+                                    readonly property bool isValidDay: dayNumber > 0 && dayNumber <= daysGridData.daysInMonth
+                                    readonly property bool isToday: isValidDay &&
+                                    dayNumber === daysGridData.todayDate &&
+                                    calendarBox.currentMonth === daysGridData.todayMonth &&
+                                    calendarBox.currentYear === daysGridData.todayYear
+
+                                    // Day Cell Background
+                                    SlantedBox {
+                                        anchors.fill: parent
+                                        visible: dayCellItem.isValidDay
+                                        slantLeft: "Left"
+                                        slantRight: "Left"
+                                        slantWidth: parent.height * tooltipBg.slantRatio
+                                        borderColor: dayCellItem.isToday ? shell.theme.base05 : "transparent"
+                                        color: dayCellItem.isToday ? tooltipBg.colorBase02 : tooltipBg.color
+                                    }
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: dayCellItem.isValidDay ? dayCellItem.dayNumber : ""
+                                        color: shell.theme.base05
+                                        font.family: tooltipBg.fontFamily
+                                        font.pixelSize: shell.theme.globalFontSize
+                                        font.bold: dayCellItem.isToday
+                                    }
+                                }
                             }
                         }
                     }

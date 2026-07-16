@@ -4,16 +4,25 @@ import QtQuick.Layouts 1.15
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
-
-// Import your custom style module relative to this widget's location
 import "../../style"
 
 Item {
     id: gpuBox
 
-    property int tooltipWidth: 300
-    property int tooltipHeight: 450
+    // Standardized Tooltip Sizing
+    property int tooltipHeight: 420
     property var barWindow: null
+    //Slant config
+    property string slantLeft: "Right"
+    property string slantRight: "Right"
+    property int slantWidth: shell.theme.slantWidth
+
+    readonly property real tooltipSlantWidth: (gpuBox.height > 0)
+    ? (tooltipHeight * (slantWidth / gpuBox.height))
+    : 15
+
+    // Standardized Tooltip Sizing
+    property int tooltipWidth: 380 + (tooltipSlantWidth * 2)
 
     property string gpuUsageRaw: "0"
     property string gpuTempRaw: "0"
@@ -22,15 +31,22 @@ Item {
     property string topGpuProcessesText: "Loading GPU processes..."
     property string textAccumulatorBuffer: ""
 
-    // Use your reusable RightStyle component as the background
-    RightStyle {
+    readonly property var processLinesArray: topGpuProcessesText.split("\n").filter(line => line.trim() !== "")
+
+    // Toggle to pin the tooltip open for screenshots (Click the GPU capsule to toggle)
+    property bool pinTooltip: false
+
+    // Centralized SlantedBox Background
+    SlantedBox {
         id: bg
         anchors.fill: parent
+        slantLeft: gpuBox.slantLeft
+        slantRight: gpuBox.slantRight
+        slantWidth: gpuBox.slantWidth
     }
 
-    // Unified Layout Constraints (Dynamically calculates slant clearance)
-    Binding { target: gpuBox; property: "Layout.preferredWidth"; value: gpuText.implicitWidth + bg.leftPadding + bg.rightPadding }
-    Binding { target: gpuBox; property: "width"; value: gpuText.implicitWidth + bg.leftPadding + bg.rightPadding }
+    Binding { target: gpuBox; property: "Layout.preferredWidth"; value: gpuText.implicitWidth + gpuBox.leftPadding + gpuBox.rightPadding }
+    Binding { target: gpuBox; property: "width"; value: gpuText.implicitWidth + gpuBox.leftPadding + gpuBox.rightPadding }
 
     height: parent.height
 
@@ -55,13 +71,13 @@ Item {
         }
     }
 
-    // Client Process Scanner
+    // Process Scanner
     Process {
         id: gpuProcFetcher
         running: false
         command: [
             "sh", "-c",
-            "if command -v nvidia-smi >/dev/null 2>&1; then out=$(nvidia-smi --query-compute-apps=name,utilization.gpu --format=csv,noheader,nounits 2>/dev/null); if [ ! -z \"$out\" ]; then echo \"$out\" | awk -F', ' '{printf \"%-15s %4s%%\\n\", substr($1,1,15), $2}'; exit; fi; fi; card_dir=$(ls -d /sys/class/drm/card*/device 2>/dev/null | head -n 1); total_load=$(cat \"$card_dir/gpu_busy_percent\" 2>/dev/null || echo 0); out=$(ps -eo comm,rss --sort=-rss | awk -v total_gpu=\"$total_load\" 'NR>1 { mib=int($2/1024); if(mib>150 && $1!=\"sh\" && $1!=\"bash\" && $1!=\"systemd\") { proc[NR]=$1; mem[NR]=mib; sum+=mib } } END { if(sum==0) sum=1; for(i in proc) { share=(mem[i]/sum)*total_gpu; if(share>0.0 || mem[i]>500) printf \"%-15s %4.1f%%\\n\", substr(proc[i],1,15), share } }' | sort -rn -k2,2 | head -n 12); if [ ! -z \"$out\" ]; then echo \"$out\"; else echo 'No active engine clients'; fi"
+            "if command -v nvidia-smi >/dev/null 2>&1; then out=$(nvidia-smi --query-compute-apps=name,utilization.gpu --format=csv,noheader,nounits 2>/dev/null); if [ ! -z \"$out\" ]; then echo \"$out\" | awk -F', ' '{printf \"%-15s %4s%%\\n\", substr($1,1,15), $2}'; exit; fi; fi; card_dir=$(ls -d /sys/class/drm/card*/device 2>/dev/null | head -n 1); total_load=$(cat \"$card_dir/gpu_busy_percent\" 2>/dev/null || echo 0); out=$(ps -eo comm,rss --sort=-rss | awk -v total_gpu=\"$total_load\" 'NR>1 { mib=int($2/1024); if(mib>150 && $1!=\"sh\" && $1!=\"bash\" && $1!=\"systemd\") { proc[NR]=$1; mem[NR]=mib; sum+=mib } } END { if(sum==0) sum=1; for(i in proc) { share=(mem[i]/sum)*total_gpu; if(share>0.0 || mem[i]>500) printf \"%-15s %4.1f%%\\n\", substr(proc[i],1,15), share } }' | sort -rn -k2,2 | head -n 10); if [ ! -z \"$out\" ]; then echo \"$out\"; else echo 'No active engine clients'; fi"
         ]
         stdout: SplitParser {
             splitMarker: "\n"
@@ -75,11 +91,19 @@ Item {
     // Main Canvas Display Text
     Text {
         id: gpuText
-        anchors.centerIn: parent
+        anchors.fill: parent
+
+        anchors.leftMargin: gpuBox.leftPadding
+        anchors.rightMargin: gpuBox.rightPadding
+        anchors.topMargin: shell.theme.globalPadding
+        anchors.bottomMargin: shell.theme.globalPadding
+
         textFormat: Text.RichText
         font.family: shell.theme.fontFamily
         font.pixelSize: shell.theme.globalFontSize
         font.bold: true
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
 
         text: {
             const currentTemp = parseInt(gpuBox.gpuTempRaw) || 0;
@@ -112,9 +136,19 @@ Item {
         onHoveredChanged: if (hovered) { gpuBox.textAccumulatorBuffer = ""; gpuProcFetcher.running = true; }
     }
 
-    // Dynamic Panel Renderer (Kept standard/rectangular for proper list alignment)
+    // Click to toggle/pin the tooltip
+    TapHandler {
+        onTapped: {
+            gpuBox.textAccumulatorBuffer = "";
+            gpuProcFetcher.running = true;
+        //    gpuBox.pinTooltip = !gpuBox.pinTooltip;
+        }
+    }
+
+    // Panel Window Loader
     Loader {
-        active: gpuHoverTracker.hovered
+        active: gpuHoverTracker.hovered || gpuBox.pinTooltip
+
         sourceComponent: Component {
             PanelWindow {
                 screen: gpuBox.barWindow ? gpuBox.barWindow.screen : null
@@ -131,43 +165,54 @@ Item {
                 implicitHeight: gpuBox.tooltipHeight
                 color: "transparent"
 
-                Rectangle {
+                // Tooltip background using SlantedBox
+                SlantedBox {
+                    id: tooltipBg
                     anchors.fill: parent
-                    radius: shell.theme.defaultCardRadius
-                    border.width: shell.theme.globalBorderWidth
-                    color: shell.theme.base00
-                    border.color: shell.theme.base05
+                    slantLeft: gpuBox.slantLeft
+                    slantRight: gpuBox.slantRight
+                    slantWidth: gpuBox.tooltipSlantWidth
 
-                    Column {
-                        anchors.fill: parent
-                        anchors.margins: shell.theme.globalPadding
-                        spacing: 10
+                    // Local math handles staggering safely
+                    readonly property real slantRatio: (height > 0) ? (slantWidth / height) : 0.35
+                }
+
+                // --- SLANTED TEXT CONTENT LAYOUT ---
+                Item {
+                    anchors.fill: parent
 
                         Text {
-                            text: "ACTIVE GPU CLIENTS:"
-                            font.family: shell.theme.fontFamily
+                        text: "ACTIVE GPU CLIENTS:"
+                        font.family: tooltipBg.fontFamily
+                        font.pixelSize: shell.theme.globalFontSize
+                        font.bold: true
+                        color: shell.theme.base05
+
+                        y: 35
+                        x: ((tooltipBg.height - y) * tooltipBg.slantRatio) + 24
+                    }
+
+                    // Slanted Divider Line (Staggers right-to-left)
+                    Rectangle {
+                        height: 2
+                        color: shell.theme.base02
+                        width: 310
+
+                        y: 65
+                        x: ((tooltipBg.height - y) * tooltipBg.slantRatio) + 24
+                    }
+
+                    Repeater {
+                        model: gpuBox.processLinesArray.length
+
+                        Text {
+                            text: gpuBox.processLinesArray[index]
+                            font.family: "monospace"
                             font.pixelSize: shell.theme.globalFontSize
-                            font.bold: true
                             color: shell.theme.base05
-                        }
 
-                        Rectangle { width: parent.width; height: 2; color: shell.theme.base02 }
-
-                        Flickable {
-                            width: parent.width; height: gpuBox.tooltipHeight - 70
-                            contentWidth: processDisplayLines.paintedWidth
-                            contentHeight: parent.height
-                            clip: true
-
-                            Text {
-                                id: processDisplayLines
-                                textFormat: Text.RichText
-                                text: "<pre style='margin: 0; font-family: monospace;'>" + gpuBox.topGpuProcessesText + "</pre>"
-                                font.pixelSize: shell.theme.globalFontSize
-                                color: shell.theme.base05
-                                lineHeight: 1.15
-                                wrapMode: Text.NoWrap
-                            }
+                            y: 95 + (index * 28)
+                            x: ((tooltipBg.height - y) * tooltipBg.slantRatio) + 24
                         }
                     }
                 }
@@ -180,7 +225,7 @@ Item {
         onTriggered: {
             gpuStatsProc.running = false;
             gpuStatsProc.running = true;
-            if (gpuHoverTracker.hovered) { gpuBox.textAccumulatorBuffer = ""; gpuProcFetcher.running = true; }
+            if (gpuHoverTracker.hovered || gpuBox.pinTooltip) { gpuBox.textAccumulatorBuffer = ""; gpuProcFetcher.running = true; }
         }
     }
 }

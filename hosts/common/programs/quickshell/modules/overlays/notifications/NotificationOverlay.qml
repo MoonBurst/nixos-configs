@@ -5,13 +5,11 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Services.Notifications
 import Quickshell.Io
-
 import "." as Local
 
 Item {
     id: root
     anchors.fill: parent
-
     // Sync properties bound by shell.qml
     property bool showHistoryMode: false
     property bool notificationsEnabled: true

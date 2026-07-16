@@ -1,29 +1,47 @@
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls 2
+import QtQuick.Layouts 1.15
+import QtQuick.Shapes 1.15
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 import "." as AlarmInput
-
-// Import your custom style module relative to this widget's location
 import "../../style"
 
 Item {
     id: alarmBox
 
+    // Tooltip Sizing
+    property int tooltipHeight: 420
     property var barWindow: null
+
+    // Slant config
+    property string slantLeft: "Left"
+    property string slantRight: "Left"
+    property int slantWidth: shell.theme.slantWidth
+
+    // Tooltip slant
+    readonly property real tooltipSlantWidth: (alarmBox.height > 0)
+    ? (tooltipHeight * (slantWidth / alarmBox.height))
+    : 15
+
+    // Tooltip Sizing
+    property int tooltipWidth: 410 + (tooltipSlantWidth * 2)
     property string alarmDisplayText: "No Alarm"
     property string stateFile: "/tmp/waybar_alarm_state"
     property bool popupVisible: false
-    property int globalX: 0
+
+    // SlantedBox Background
+    SlantedBox {
+        id: bg
+        anchors.fill: parent
+        slantLeft: alarmBox.slantLeft
+        slantRight: alarmBox.slantRight
+        slantWidth: alarmBox.slantWidth
+    }
 
     width: 140
     height: parent.height
-
-    LeftStyle {
-        id: bg
-        anchors.fill: parent
-    }
 
     Process {
         id: alarmFetcher
@@ -55,33 +73,29 @@ Item {
         var currentEpoch = Math.floor(Date.now() / 1000);
         var now = new Date();
 
-        // ============================================================================
-        // 1. COUNTDOWN PRIORITY OVERRIDE (FIXED REGEX CAPTURE EXTRACTION)
-        // ============================================================================
+         //  Countdown priority override
         if (countdownRaw && countdownRaw.trim() !== "") {
             var rawTimer = countdownRaw.trim().toLowerCase();
             var match;
             var regex = /(\d+)([hms])/g;
 
             while ((match = regex.exec(rawTimer)) !== null) {
-                var num = parseInt(match[1], 10); // Extract group 1 (digits)
-                var unit = match[2];              // Extract group 2 (h/m/s character)
+                var num = parseInt(match[1], 10);
+                var unit = match[2];
 
                 if (unit === 'h') totalSeconds += num * 3600;
                 if (unit === 'm') totalSeconds += num * 60;
                 if (unit === 's') totalSeconds += num;
             }
 
-            // Fallback for plain integers (e.g. entering "5" defaults to 5 minutes)
+            // Fallback for plain integers
             if (totalSeconds === 0 && /^\d+$/.test(rawTimer)) {
                 totalSeconds = parseInt(rawTimer, 10) * 60;
             }
         }
 
-        // ============================================================================
-        // 2. SMART TIME PARSER (ONLY RUNS IF NO COUNTDOWN IS ACTIVE)
-        // ============================================================================
-        if (totalSeconds === 0 && timeOfDayRaw && timeOfDayRaw.trim() !== "") {
+            // Time Parser
+            if (totalSeconds === 0 && timeOfDayRaw && timeOfDayRaw.trim() !== "") {
             var timeStr = timeOfDayRaw.trim().toUpperCase().replace(/[:\s]/g, "");
             var cleanMatch = /^(\d{3,4})(AM|PM)?$/.exec(timeStr);
 
@@ -127,9 +141,6 @@ Item {
             }
         }
 
-        // ============================================================================
-        // 3. STATE WRITE ENGINE EXECUTION
-        // ============================================================================
         if (totalSeconds > 0) {
             var stateString = currentEpoch + " " + totalSeconds + " \"" + msg + "\"";
             alarmWriteEngine.command = ["sh", "-c", "echo '" + stateString + "' > /tmp/waybar_alarm_state"];
@@ -151,10 +162,6 @@ Item {
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onClicked: (mouse) => {
             if (mouse.button === Qt.LeftButton) {
-                if (alarmBox.barWindow !== null && alarmBox.barWindow.contentItem !== undefined) {
-                    var globalCoords = alarmBox.mapToItem(alarmBox.barWindow.contentItem, 0, 0);
-                    alarmBox.globalX = globalCoords.x;
-                }
                 alarmBox.popupVisible = !alarmBox.popupVisible;
             } else if (mouse.button === Qt.RightButton) {
                 alarmCancelEngine.running = false;
@@ -165,11 +172,12 @@ Item {
         }
     }
 
+    // Main Bar display text
     Text {
         id: alarmText
         anchors.fill: parent
 
-        // Dynamically clear the slant margins using LeftStyle's properties
+        // clear margins using SlantedBox paddings
         anchors.leftMargin: bg.leftPadding
         anchors.rightMargin: bg.rightPadding
         anchors.topMargin: shell.theme.globalPadding
@@ -184,6 +192,7 @@ Item {
         verticalAlignment: Text.AlignVCenter
     }
 
+    // Panel Renderer
     PanelWindow {
         id: inputPopup
         visible: alarmBox.popupVisible
@@ -197,12 +206,28 @@ Item {
         anchors.left: true
         anchors.right: false
         anchors.bottom: false
-
+        //  top position to match  other tooltips
         WlrLayershell.margins.top: shell.theme.globalPadding + 55
-        WlrLayershell.margins.left: alarmBox.globalX
 
-        implicitWidth: 300
-        implicitHeight: 250
+        // Centers the alarm pop-up under the top bar capsule
+        WlrLayershell.margins.left: {
+            if (!alarmBox.barWindow) return 0;
+
+            // loop to find the horizontal position of the Alarm capsule
+            var xOffset = alarmBox.x;
+            var p = alarmBox.parent;
+            while (p && p !== alarmBox.barWindow.contentItem) {
+                xOffset += p.x;
+                p = p.parent;
+            }
+
+            var centerPoint = xOffset + (alarmBox.width / 2);
+            var targetLeftMargin = Math.round(centerPoint - (alarmBox.tooltipWidth / 2));
+            return Math.max(targetLeftMargin, shell.theme.globalPadding);
+        }
+
+        implicitWidth: alarmBox.tooltipWidth
+        implicitHeight: alarmBox.tooltipHeight
         color: "transparent"
 
         onVisibleChanged: {
@@ -211,49 +236,52 @@ Item {
             }
         }
 
-        Rectangle {
-            id: popupRect
+        // Tooltip background using SlantedBox
+        SlantedBox {
+            id: tooltipBg
             anchors.fill: parent
-            radius: shell.theme.defaultCardRadius
-            border.width: shell.theme.globalBorderWidth
-            color: shell.theme.base01
-            border.color: shell.theme.base05
-
-            Column {
-                id: alarmCol
-                anchors.centerIn: parent
-                spacing: 12
-
-                Text {
-                    id: alarmTitle
-                    text: "Set Native System Alarm"
-                    font.family: shell.theme.fontFamily
-                    font.pixelSize: shell.theme.globalFontSize
-                    font.bold: true
-                    color: shell.theme.base05
-                    horizontalAlignment: Text.AlignHCenter
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-
-                AlarmInput.AlarmInputField {
-                    id: timeInput
-                    width: 220
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    onAccepted: alarmBox.confirmAndSaveAlarm(timeInput.countdownText, timeInput.targetTimeText)
-                    onRejected: alarmBox.cancelAndClosePopup()
-                }
-            }
+            slantLeft: alarmBox.slantLeft
+            slantRight: alarmBox.slantRight
+            slantWidth: alarmBox.tooltipSlantWidth
+            readonly property real slantRatio: (height > 0) ? (slantWidth / height) : 0.35
         }
-    }
 
-    Timer {
-        interval: 1000
-        running: true
-        repeat: true
-        triggeredOnStart: true
-        onTriggered: {
-            alarmFetcher.running = false
-            alarmFetcher.running = true
+        Item {
+            anchors.fill: parent
+
+            Text {
+                id: alarmTitle
+                text: "Set Native System Alarm"
+                font.family: shell.theme.fontFamily
+                font.pixelSize: 22
+                font.bold: true
+                color: shell.theme.base05
+
+                y: 35
+                x: (y * tooltipBg.slantRatio) + 24
+                width: tooltipBg.width - alarmBox.tooltipSlantWidth - 48
+            }
+
+            Rectangle {
+                height: 2
+                color: shell.theme.base02
+                width: tooltipBg.width - alarmBox.tooltipSlantWidth - 48
+
+                y: 70
+                x: (y * tooltipBg.slantRatio) + 24
+            }
+
+            AlarmInput.AlarmInputField {
+                id: timeInput
+
+                y: 95
+                x: (95 * tooltipBg.slantRatio) + 24
+                width: tooltipBg.width - alarmBox.tooltipSlantWidth - 48
+                slantRatio: tooltipBg.slantRatio
+
+                onAccepted: alarmBox.confirmAndSaveAlarm(timeInput.countdownText, timeInput.targetTimeText)
+                onRejected: alarmBox.cancelAndClosePopup()
+            }
         }
     }
 }

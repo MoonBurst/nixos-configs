@@ -1,13 +1,14 @@
 import QtQuick
 import QtQuick.Controls 2
+import QtQuick.Layouts 1.15
+import QtQuick.Shapes 1.15
 import Quickshell
 
-Rectangle {
+Item {
     id: root
 
     implicitWidth: 1480
     implicitHeight: 520
-    color: "transparent"
 
     SystemClock { id: popupTime; precision: SystemClock.Seconds }
 
@@ -34,38 +35,90 @@ Rectangle {
         return hh + ":" + mm + " " + ampm;
     }
 
-    // Outer Main Widget Card Profile Container
-    Rectangle {
+    // Outer Main Widget Card Profile Container (Drawn as a Widescreen Hexagon)
+    Item {
         id: mainCard
         anchors.fill: parent
-        radius: shell.theme.defaultCardRadius ?? 8
-        border.width: shell.theme.globalBorderWidth ?? 3
-        color: shell.theme.base00 ?? "black"
-        border.color: shell.theme.base05 ?? "yellow"
 
-        readonly property color themeColor: mainCard.border.color
+        readonly property real borderW: (shell && shell.theme) ? (shell.theme.globalBorderWidth || 3) : 3
+        readonly property real halfB: borderW / 2
+        readonly property color colorBase05: (shell && shell.theme) ? (shell.theme.base05 || "yellow") : "yellow"
+        readonly property color colorBase00: (shell && shell.theme) ? (shell.theme.base00 || "black") : "black"
+        readonly property color colorBase02: (shell && shell.theme) ? (shell.theme.base02 || "#222222") : "#222222"
+        readonly property string fontFamily: (shell && shell.theme) ? (shell.theme.fontFamily || "monospace") : "monospace"
+
+        // Hexagon pointed offset
+        readonly property real sw: 45
+
+        Shape {
+            anchors.fill: parent
+            layer.enabled: true
+            layer.samples: 4
+
+            ShapePath {
+                strokeColor: mainCard.colorBase05
+                strokeWidth: mainCard.borderW
+                fillColor: mainCard.colorBase00
+                joinStyle: ShapePath.MiterJoin
+
+                // 6-Point Horizontal Hexagon Path Loop
+                startX: mainCard.sw + mainCard.halfB
+                startY: mainCard.halfB
+                PathLine { x: mainCard.width - mainCard.sw - mainCard.halfB; y: mainCard.halfB }
+                PathLine { x: mainCard.width - mainCard.halfB; y: mainCard.height / 2 }
+                PathLine { x: mainCard.width - mainCard.sw - mainCard.halfB; y: mainCard.height - mainCard.halfB }
+                PathLine { x: mainCard.sw + mainCard.halfB; y: mainCard.height - mainCard.halfB }
+                PathLine { x: mainCard.halfB; y: mainCard.height / 2 }
+                PathLine { x: mainCard.sw + mainCard.halfB; y: mainCard.halfB }
+            }
+        }
 
         Column {
             anchors.fill: parent
-            anchors.margins: shell.theme.globalPadding
+            // Extra left/right margins to prevent inner contents from clipping on pointed sides
+            anchors.leftMargin: shell.theme.globalPadding + mainCard.sw
+            anchors.rightMargin: shell.theme.globalPadding + mainCard.sw
+            anchors.topMargin: shell.theme.globalPadding
+            anchors.bottomMargin: shell.theme.globalPadding
             spacing: 24
 
-            // Centered Header Title enclosed inside its own standalone system bubble
-            Rectangle {
+            // Centered Header Title enclosed inside its own slanted Hexagon Bubble
+            Item {
+                id: headerBlock
                 width: parent.width
                 height: 54
-                radius: shell.theme.defaultCardRadius ?? 8
-                border.width: shell.theme.globalBorderWidth ?? 3
-                color: "transparent"
-                border.color: mainCard.themeColor
+
+                readonly property real sw: 12
+
+                Shape {
+                    anchors.fill: parent
+                    layer.enabled: true
+                    layer.samples: 4
+
+                    ShapePath {
+                        strokeColor: mainCard.colorBase05
+                        strokeWidth: mainCard.borderW
+                        fillColor: "transparent"
+                        joinStyle: ShapePath.MiterJoin
+
+                        startX: headerBlock.sw + mainCard.halfB
+                        startY: mainCard.halfB
+                        PathLine { x: headerBlock.width - headerBlock.sw - mainCard.halfB; y: mainCard.halfB }
+                        PathLine { x: headerBlock.width - mainCard.halfB; y: headerBlock.height / 2 }
+                        PathLine { x: headerBlock.width - headerBlock.sw - mainCard.halfB; y: headerBlock.height - mainCard.halfB }
+                        PathLine { x: headerBlock.sw + mainCard.halfB; y: headerBlock.height - mainCard.halfB }
+                        PathLine { x: mainCard.halfB; y: headerBlock.height / 2 }
+                        PathLine { x: headerBlock.sw + mainCard.halfB; y: mainCard.halfB }
+                    }
+                }
 
                 Text {
                     anchors.centerIn: parent
                     text: "🌐 GLOBAL TIMEZONE METRIC MATRIX"
-                    font.family: shell.theme.fontFamily ?? "monospace"
+                    font.family: mainCard.fontFamily
                     font.pixelSize: 22
                     font.bold: true
-                    color: mainCard.themeColor
+                    color: mainCard.colorBase05
                 }
             }
 
@@ -77,7 +130,7 @@ Rectangle {
                 Repeater {
                     model: [
                         {
-                            title: "📂 AMERICAS",
+                            title: "AMERICAS",
                             zones: [
                                 { name: "Midway", code: "SST", offset: -11 },
                                 { name: "Hawaii", code: "HST", offset: -10 },
@@ -88,7 +141,7 @@ Rectangle {
                             ]
                         },
                         {
-                            title: "📂 ATLANTIC & WEST",
+                            title: "ATLANTIC & WEST",
                             zones: [
                                 { name: "Eastern", code: "EDT", offset: -4 },
                                 { name: "Atlantic", code: "AST", offset: -3 },
@@ -99,7 +152,7 @@ Rectangle {
                             ]
                         },
                         {
-                            title: "📂 EMEA & CENTRAL",
+                            title: "EMEA & CENTRAL",
                             zones: [
                                 { name: "London", code: "BST", offset: 1 },
                                 { name: "Central EU", code: "CEST", offset: 2 },
@@ -110,7 +163,7 @@ Rectangle {
                             ]
                         },
                         {
-                            title: "📂 ASIA PACIFIC",
+                            title: "ASIA PACIFIC",
                             zones: [
                                 { name: "Dhaka", code: "BST", offset: 6 },
                                 { name: "Bangkok", code: "ICT", offset: 7 },
@@ -122,21 +175,44 @@ Rectangle {
                         }
                     ]
 
-                    delegate: Rectangle {
+                    // Slanted Vertical Hexagon Category Delegate Blocks
+                    delegate: Item {
+                        id: categoryCard
                         width: (timezoneGridMatrix.width - (3 * timezoneGridMatrix.spacing)) / 4
-                        height: innerColumnLayout.height + 24
+                        height: innerColumnLayout.height + 40 // Height padding to clear the bottom hex point
 
-                        radius: shell.theme.defaultCardRadius ?? 8
-                        border.width: shell.theme.globalBorderWidth ?? 3
-                        color: "transparent"
-                        border.color: mainCard.themeColor
+                        readonly property real sw: 14
+
+                        Shape {
+                            anchors.fill: parent
+                            layer.enabled: true
+                            layer.samples: 4
+
+                            ShapePath {
+                                strokeColor: mainCard.colorBase05
+                                strokeWidth: mainCard.borderW
+                                fillColor: "transparent"
+                                joinStyle: ShapePath.MiterJoin
+
+                                startX: categoryCard.sw + mainCard.halfB
+                                startY: mainCard.halfB
+                                PathLine { x: categoryCard.width - categoryCard.sw - mainCard.halfB; y: mainCard.halfB }
+                                PathLine { x: categoryCard.width - mainCard.halfB; y: categoryCard.height / 2 }
+                                PathLine { x: categoryCard.width - categoryCard.sw - mainCard.halfB; y: categoryCard.height - mainCard.halfB }
+                                PathLine { x: categoryCard.sw + mainCard.halfB; y: categoryCard.height - mainCard.halfB }
+                                PathLine { x: mainCard.halfB; y: categoryCard.height / 2 }
+                                PathLine { x: categoryCard.sw + mainCard.halfB; y: mainCard.halfB }
+                            }
+                        }
 
                         Column {
                             id: innerColumnLayout
                             anchors.top: parent.top
                             anchors.left: parent.left
                             anchors.right: parent.right
-                            anchors.margins: shell.theme.globalPadding
+                            anchors.leftMargin: shell.theme.globalPadding + categoryCard.sw
+                            anchors.rightMargin: shell.theme.globalPadding + categoryCard.sw
+                            anchors.topMargin: shell.theme.globalPadding
                             spacing: 14
 
                             Text {
@@ -144,8 +220,8 @@ Rectangle {
                                 text: modelData.title
                                 font.bold: true
                                 font.pixelSize: 18
-                                font.family: shell.theme.fontFamily ?? "monospace"
-                                color: mainCard.themeColor
+                                font.family: mainCard.fontFamily
+                                color: mainCard.colorBase05
                                 horizontalAlignment: Text.AlignHCenter
                                 elide: Text.ElideRight
                             }
@@ -157,7 +233,6 @@ Rectangle {
                                     width: parent.width
                                     height: 34
 
-                                    // Dynamic flag checking if this exact row offset matches your system's offset
                                     readonly property bool isLocalZone: modelData.offset === root.systemOffset
 
                                     Text {
@@ -169,9 +244,9 @@ Rectangle {
                                         elide: Text.ElideRight
 
                                         font.pixelSize: 25
-                                        font.bold: parent.isLocalZone // DYNAMIC BOLDING
-                                        font.family: shell.theme.fontFamily ?? "monospace"
-                                        color: mainCard.themeColor
+                                        font.bold: parent.isLocalZone
+                                        font.family: mainCard.fontFamily
+                                        color: mainCard.colorBase05
                                     }
 
                                     Text {
@@ -181,9 +256,9 @@ Rectangle {
                                         anchors.verticalCenter: parent.verticalCenter
 
                                         font.pixelSize: 25
-                                        font.bold: parent.isLocalZone // DYNAMIC BOLDING
-                                        font.family: shell.theme.fontFamily ?? "monospace"
-                                        color: mainCard.themeColor
+                                        font.bold: parent.isLocalZone
+                                        font.family: mainCard.fontFamily
+                                        color: mainCard.colorBase05
                                     }
                                 }
                             }

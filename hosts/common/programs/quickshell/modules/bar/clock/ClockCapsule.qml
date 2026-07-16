@@ -12,10 +12,12 @@ Item {
     // Sizing & Layout
     anchors.fill: parent
 
-    // Use your reusable CenterStyle component as the background
-    CenterStyle {
+    // Centralized SlantedBox Background
+    SlantedBox {
         id: bg
         anchors.fill: parent
+        slantLeft: "Left"
+        slantRight: "Right"
     }
 
     // Global Widget Window Tracking Properties
@@ -24,6 +26,7 @@ Item {
 
     // Primary Bar Clock Update Loop (12-Hour Format with AM/PM)
     Timer {
+        id: clockPollerTimer
         interval: 1000
         running: true
         repeat: true
@@ -39,15 +42,15 @@ Item {
         id: clockText
         anchors.fill: parent
 
-        // Dynamically clear the slant margins using CenterStyle's properties
+        // Dynamically clear margins using SlantedBox paddings
         anchors.leftMargin: bg.leftPadding
         anchors.rightMargin: bg.rightPadding
-        anchors.topMargin: shell.theme.globalPadding
-        anchors.bottomMargin: shell.theme.globalPadding
+        anchors.topMargin: (shell && shell.theme) ? (shell.theme.globalPadding || 12) : 12
+        anchors.bottomMargin: (shell && shell.theme) ? (shell.theme.globalPadding || 12) : 12
 
-        color: shell.theme.base05
-        font.family: shell.theme.fontFamily
-        font.pixelSize: shell.theme.globalFontSize
+        color: (shell && shell.theme) ? (shell.theme.base05 || "yellow") : "yellow"
+        font.family: (shell && shell.theme) ? (shell.theme.fontFamily || "monospace") : "monospace"
+        font.pixelSize: (shell && shell.theme) ? (shell.theme.globalFontSize || 14) : 14
         font.bold: true
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
@@ -87,7 +90,7 @@ Item {
         // Drops popover right below top bar surface line
         WlrLayershell.margins.top: {
             if (!clockBox.barWindow || typeof mainBarContainer === "undefined" || !mainBarContainer) return 100;
-            return shell.theme.globalPadding + mainBarContainer.capsuleHeight + 8;
+            return ((shell && shell.theme) ? (shell.theme.globalPadding || 12) : 12) + mainBarContainer.capsuleHeight + 8;
         }
 
         // Centers matrix popover perfectly beneath active bar clock element
@@ -99,14 +102,14 @@ Item {
             var targetLeftMargin = Math.round(clockCenterAbsolute - (implicitWidth / 2));
 
             // Off-screen safety constraint boundary layout block
-            if (targetLeftMargin < shell.theme.globalPadding) {
-                return shell.theme.globalPadding;
+            if (targetLeftMargin < ((shell && shell.theme) ? (shell.theme.globalPadding || 12) : 12)) {
+                return (shell && shell.theme) ? (shell.theme.globalPadding || 12) : 12;
             }
 
             return targetLeftMargin;
         }
 
-        // Inside content card structural component instantiation (Kept standard/rectangular)
+        // Inside content card structural component instantiation (Centered widescreen layout)
         ClockMatrixPopupView {
             anchors.fill: parent
         }

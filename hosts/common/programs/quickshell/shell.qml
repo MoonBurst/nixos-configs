@@ -145,7 +145,6 @@ ShellRoot {
             id: mainBarContainer
 
             anchors.fill: parent
-            //   anchors.topMargin: shell.theme.globalPadding
             anchors.leftMargin: shell.theme.globalPadding / 2
             anchors.rightMargin: shell.theme.globalPadding / 2
 
@@ -293,7 +292,7 @@ ShellRoot {
                 anchors.rightMargin: mainBarContainer.layoutSpacing
                 anchors.verticalCenter: parent.verticalCenter
 
-                width: 150 // Widened from 120
+                width: 150
                 height: mainBarContainer.capsuleHeight
 
                 SoundModule.AudioCapsule {
@@ -309,7 +308,7 @@ ShellRoot {
                 anchors.leftMargin: mainBarContainer.layoutSpacing
                 anchors.verticalCenter: parent.verticalCenter
 
-                width: 150 // Widened from 120
+                width: 150
                 height: mainBarContainer.capsuleHeight
 
                 SoundModule.MicCapsule {
@@ -375,7 +374,7 @@ ShellRoot {
                 anchors.rightMargin: mainBarContainer.layoutSpacing
                 anchors.verticalCenter: parent.verticalCenter
 
-                width: 170 // Adjusted with layoutSpacing to avoid overlaps
+                width: 170
                 height: mainBarContainer.capsuleHeight
 
                 CpuCapsule.CpuCapsule {
@@ -481,7 +480,7 @@ ShellRoot {
 
                 // Safely launch Horizon via systemd after the keyring is decrypted
                 if (!horizonLaunched) {
-                    horizonLauncher.running = true; // Fixed from .start()
+                    horizonLauncher.running = true;
                     horizonLaunched = true;
                 }
             } else if (!active && messageIsError) {
@@ -494,7 +493,7 @@ ShellRoot {
 
     WlSessionLock {
         id: sessionLock
-        locked: true
+        locked: false
 
         onLockedChanged: {
             shellRootRef.globalPasswordBuffer = "";
@@ -520,7 +519,7 @@ ShellRoot {
 
     /*
      * =========================================================================
-     * GLOBAL LAUNCHER OVERLAY IPC TARGETS (Redundant single-action targets removed)
+     * GLOBAL LAUNCHER OVERLAY IPC TARGETS
      * =========================================================================
      */
 
@@ -600,7 +599,6 @@ ShellRoot {
                 console.log("SUMMARY:", notification.summary)
                 console.log("BODY:", notification.body)
 
-                // CORRECTED FOR QUICKSHELL NATIVE C++ IMPLEMENTATION
                 if (notification.actions && notification.actions.length > 0) {
                     for (let i = 0; i < notification.actions.length; ++i) {
                         const act = notification.actions[i]
@@ -611,8 +609,8 @@ ShellRoot {
 
                         console.log(
                             "ACTION:",
-                            act.identifier, // Reverted to Quickshell native 'identifier'
-                            act.text        // Quickshell native 'text'
+                            act.identifier,
+                            act.text
                         )
                     }
                 } else {
@@ -642,7 +640,7 @@ ShellRoot {
              * ================================================================
              */
 
-            // If muted/paused, bypass active popup windows entirely, record directly to history, and append to backlog queue
+            // If muted/paused, bypass active popup windows, record to history, append to backlog queue
             if (!shell.notificationsEnabled) {
                 let resolvedIcon = (notificationOverlay && notificationOverlay.rulesLoader) ? notificationOverlay.rulesLoader.getCustomIcon(notification) : ""
                 let avatarVal = resolvedIcon ? resolvedIcon : "image://icon/" + (notification.desktopEntry || notification.appName || "").toLowerCase()
@@ -685,7 +683,7 @@ ShellRoot {
                     }
                 }
 
-                // Create a completely self-contained, stable mock notification object
+                // Create mock notification object
                 let mockNotif = {
                     "isMock": true,
                     "isDeDuplicated": true, // Flag to prevent closeNotificationTrack from creating duplicate history list entries
@@ -694,8 +692,8 @@ ShellRoot {
                     "appIcon": notification.appIcon || "",
                     "summary": notification.summary || "",
                     "body": notification.body || "",
-                    "icon": avatarVal,     // Store the stable, resolved avatar filepath
-                    "image": previewVal,   // Store the stable, resolved preview filepath/URL
+                    "icon": avatarVal,     // Store the stable, avatar filepath
+                    "image": previewVal,   // Store the stable, preview filepath/URL
                     "urgency": notification.urgency || 1,
                     "hints": notification.hints || ({})
                 }
@@ -713,8 +711,7 @@ ShellRoot {
 
             if (topScope && topScope.cardComponentTemplate) {
 
-                // Pass the notification object straight into the template's initial properties
-                // FIXED: Injects required 'rulesLoader', 'rootItem', and 'controller' bindings standardly
+                // Pass the notification object  into the template's initial properties
                 let popupCard = topScope.cardComponentTemplate.createObject(
                     topScope, {
                         notification: notification,
@@ -725,7 +722,7 @@ ShellRoot {
                 )
 
                 if (topScope.activeNotifications) {
-                    // Push the clean raw component right into the array deck
+                    // Push the clean raw component into the array deck
                     topScope.activeNotifications.push(popupCard)
                 }
 
@@ -739,8 +736,6 @@ ShellRoot {
                     )
                 }
             }
-
-
         }
     }
 }

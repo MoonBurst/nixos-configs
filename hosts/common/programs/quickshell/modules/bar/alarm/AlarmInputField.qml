@@ -1,17 +1,24 @@
 import QtQuick
 import QtQuick.Controls 2
-import QtQuick.Layouts
-import Quickshell
+import QtQuick.Layouts 1.15
+import QtQuick.Shapes 1.15
+import "../../style"
 
-ColumnLayout {
-    id: alarmInputGroupRoot
-    spacing: 12
-    anchors.horizontalCenter: parent.horizontalCenter
+Item {
+    id: alarmInputFieldRoot
+
+    width: parent ? parent.width : 340
+    implicitHeight: 280
 
     property alias countdownText: countdownField.text
     property alias targetTimeText: targetTimeField.text
-
     property bool editingHours: true
+    property real slantRatio: 0.35
+
+    readonly property color colorBase05: (shell && shell.theme) ? (shell.theme.base05 || "yellow") : "yellow"
+    readonly property color colorBase00: (shell && shell.theme) ? (shell.theme.base00 || "black") : "black"
+    readonly property color colorBase03: (shell && shell.theme) ? (shell.theme.base03 || "#333333") : "#333333"
+    readonly property string fontFamily: (shell && shell.theme) ? (shell.theme.fontFamily || "monospace") : "monospace"
 
     signal accepted()
     signal rejected()
@@ -30,7 +37,7 @@ ColumnLayout {
         // Populate target time field
         targetTimeField.text = displayHours + ":" + currentMinutes;
 
-        alarmInputGroupRoot.editingHours = true;
+        alarmInputFieldRoot.editingHours = true;
         countdownField.forceActiveFocus();
     }
 
@@ -43,7 +50,7 @@ ColumnLayout {
         if (isNaN(h)) h = 12;
         if (isNaN(m)) m = 0;
 
-        if (alarmInputGroupRoot.editingHours) {
+        if (alarmInputFieldRoot.editingHours) {
             if (isUp) {
                 h = (h === 12) ? 1 : h + 1;
             } else {
@@ -60,8 +67,6 @@ ColumnLayout {
         var hStr = String(h);
         var mStr = String(m).padStart(2, '0');
         targetTimeField.text = hStr + ":" + mStr;
-
-        // Clear countdown field because user is now adjusting target time
         countdownField.text = "";
 
         updateTimeSelection();
@@ -71,55 +76,62 @@ ColumnLayout {
         var colonIdx = targetTimeField.text.indexOf(":");
         if (colonIdx === -1) return;
 
-        if (alarmInputGroupRoot.editingHours) {
+        if (alarmInputFieldRoot.editingHours) {
             targetTimeField.select(0, colonIdx);
         } else {
             targetTimeField.select(colonIdx + 1, targetTimeField.text.length);
         }
     }
 
-    // ============================================================================
-    // FIELD 1: COUNTDOWN
-    // ============================================================================
-    ColumnLayout {
-        spacing: 4
-        Layout.alignment: Qt.AlignHCenter
+        //countdown field
+        Item {
+        id: countdownBlock
+        y: 20
+        x: 175 * alarmInputFieldRoot.slantRatio
+        width: alarmInputFieldRoot.width - (175 * alarmInputFieldRoot.slantRatio)
+        height: 100
 
         Text {
+            anchors.horizontalCenter: parent.horizontalCenter
+            y: 0
             text: "countdown"
-            color: "yellow"
-            font.family: "monospace"
-            font.pixelSize: 20
+            color: alarmInputFieldRoot.colorBase05
+            font.family: alarmInputFieldRoot.fontFamily
+            font.pixelSize: 24
             font.bold: true
-            Layout.alignment: Qt.AlignHCenter
         }
 
         TextField {
             id: countdownField
+            anchors.horizontalCenter: parent.horizontalCenter
+            y: 40
 
-            Layout.preferredWidth: 180
-            Layout.preferredHeight: 40
-            font.family: "monospace"
-            font.pixelSize: 20
+            width: parent.width
+            height: 50
+            font.family: alarmInputFieldRoot.fontFamily
+            font.pixelSize: 22
             font.bold: true
 
-            color: "yellow"
-            selectionColor: "yellow"
-            selectedTextColor: "black"
+            color: alarmInputFieldRoot.colorBase05
+            selectionColor: alarmInputFieldRoot.colorBase05
+            selectedTextColor: alarmInputFieldRoot.colorBase00
             horizontalAlignment: Text.AlignHCenter
 
-            //  If the user types a countdown, clear the target clock field
+            // Padding prevents typed numbers from clipping on slanted edges
+            leftPadding: 28
+            rightPadding: 24
+
             onTextChanged: {
                 if (activeFocus && text.trim() !== "") {
                     targetTimeField.text = "";
                 }
             }
 
-            onAccepted: alarmInputGroupRoot.accepted()
+            onAccepted: alarmInputFieldRoot.accepted()
 
             Keys.onPressed: (event) => {
                 if (event.key === Qt.Key_Escape) {
-                    alarmInputGroupRoot.rejected();
+                    alarmInputFieldRoot.rejected();
                     event.accepted = true;
                 } else if (event.key === Qt.Key_Up) {
                     var cNum = parseInt(countdownField.text, 10);
@@ -134,86 +146,100 @@ ColumnLayout {
                 }
             }
 
-            background: Rectangle {
-                color: "black"
-                border.width: 2
-                border.color: parent.focus ? "yellow" : "#333333"
-                radius: 4
+            background: SlantedBox {
+                id: countdownBg
+                anchors.fill: parent
+                slantLeft: "Left"
+                slantRight: "Left"
+                slantWidth: countdownField.height * alarmInputFieldRoot.slantRatio
+                borderColor: countdownField.focus ? alarmInputFieldRoot.colorBase05 : alarmInputFieldRoot.colorBase03
+                color: alarmInputFieldRoot.colorBase00
+                borderWidth: 2
             }
         }
     }
 
-    // ============================================================================
-    // FIELD 2: WHAT TIME?
-    // ============================================================================
-    ColumnLayout {
-        spacing: 4
-        Layout.alignment: Qt.AlignHCenter
+        // What Time field
+        Item {
+        id: targetTimeBlock
+        y: 150
+        x: 275 * alarmInputFieldRoot.slantRatio
+        width: alarmInputFieldRoot.width - (150 * alarmInputFieldRoot.slantRatio)
+        height: 100
 
         Text {
+            anchors.horizontalCenter: parent.horizontalCenter
+            y: 0
             text: "what time?"
-            color: "yellow"
-            font.family: "monospace"
-            font.pixelSize: 20
+            color: alarmInputFieldRoot.colorBase05
+            font.family: alarmInputFieldRoot.fontFamily
+            font.pixelSize: 24
             font.bold: true
-            Layout.alignment: Qt.AlignHCenter
         }
 
         TextField {
             id: targetTimeField
+            anchors.horizontalCenter: parent.horizontalCenter
+            y: 40
 
-            Layout.preferredWidth: 180
-            Layout.preferredHeight: 38
-            font.family: "monospace"
-            font.pixelSize: 20
+            width: parent.width
+            height: 50
+            font.family: alarmInputFieldRoot.fontFamily
+            font.pixelSize: 22
             font.bold: true
 
-            color: "yellow"
-            selectionColor: "yellow"
-            selectedTextColor: "black"
+            color: alarmInputFieldRoot.colorBase05
+            selectionColor: alarmInputFieldRoot.colorBase05
+            selectedTextColor: alarmInputFieldRoot.colorBase00
             horizontalAlignment: Text.AlignHCenter
 
-            // If the user explicitly clicks/tabs here and types, wipe the countdown field
+            leftPadding: 28
+            rightPadding: 24
+
             onTextChanged: {
                 if (activeFocus && text.trim() !== "") {
                     countdownField.text = "";
                 }
             }
 
-            onAccepted: alarmInputGroupRoot.accepted()
+            onAccepted: alarmInputFieldRoot.accepted()
 
             onActiveFocusChanged: {
                 if (activeFocus) {
-                    alarmInputGroupRoot.updateTimeSelection();
+                    alarmInputFieldRoot.updateTimeSelection();
                 }
             }
 
             Keys.onPressed: (event) => {
                 if (event.key === Qt.Key_Escape) {
-                    alarmInputGroupRoot.rejected();
+                    alarmInputFieldRoot.rejected();
                     event.accepted = true;
                 } else if (event.key === Qt.Key_Left) {
-                    alarmInputGroupRoot.editingHours = true;
-                    alarmInputGroupRoot.updateTimeSelection();
+                    alarmInputFieldRoot.editingHours = true;
+                    alarmInputFieldRoot.updateTimeSelection();
                     event.accepted = true;
                 } else if (event.key === Qt.Key_Right) {
-                    alarmInputGroupRoot.editingHours = false;
-                    alarmInputGroupRoot.updateTimeSelection();
+                    alarmInputFieldRoot.editingHours = false;
+                    alarmInputFieldRoot.updateTimeSelection();
                     event.accepted = true;
                 } else if (event.key === Qt.Key_Up) {
-                    alarmInputGroupRoot.adjustTimeSegment(true);
+                    alarmInputFieldRoot.adjustTimeSegment(true);
                     event.accepted = true;
                 } else if (event.key === Qt.Key_Down) {
-                    alarmInputGroupRoot.adjustTimeSegment(false);
+                    alarmInputFieldRoot.adjustTimeSegment(false);
                     event.accepted = true;
                 }
             }
 
-            background: Rectangle {
-                color: "black"
-                border.width: 2
-                border.color: parent.focus ? "yellow" : "#333333"
-                radius: 4
+            background: SlantedBox {
+                id: targetTimeBg
+                anchors.fill: parent
+                slantLeft: "Left"
+                slantRight: "Left"
+                slantWidth: targetTimeField.height * alarmInputFieldRoot.slantRatio
+                borderColor: targetTimeField.focus ? alarmInputFieldRoot.colorBase05 : alarmInputFieldRoot.colorBase03
+                color: alarmInputFieldRoot.colorBase00
+                borderWidth: 2
             }
         }
     }

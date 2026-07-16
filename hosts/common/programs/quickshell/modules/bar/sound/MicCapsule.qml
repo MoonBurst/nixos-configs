@@ -1,35 +1,32 @@
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls 2
 import Quickshell
 import Quickshell.Io
-
-// Import your custom style module relative to this widget's location
 import "../../style"
 
 Item {
     id: micBox
 
-    // ============================================================================
-    // PROPERTIES & LAYOUT BINDINGS
-    // ============================================================================
     property var barWindow: null
     property string micDisplayText: "Mic: --"
-
-    // Clean state property to track the mute status
     property bool muted: false
 
     width: 140
     height: parent.height
 
-    // Use your reusable RightStyle component as the background
-    RightStyle {
+    // Centralized SlantedBox Background (Handles mute outlines dynamically)
+    SlantedBox {
         id: bg
         anchors.fill: parent
+        slantLeft: "Right"
+        slantRight: "Right"
 
-        color: shell.theme.base00
-
-        // Safe, null-protected binding that dynamically handles mute outline coloring
-        borderColor: (shell.theme && shell.theme.base05) ? (micBox.muted ? shell.theme.base08 : shell.theme.base05) : "transparent"
+        borderColor: {
+            if (shell && shell.theme) {
+                return micBox.muted ? (shell.theme.base08 || "red") : (shell.theme.base05 || "yellow");
+            }
+            return "yellow";
+        }
     }
 
     Process { id: micMuteCmd; command: ["/bin/sh", "-c", "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"] }
@@ -47,7 +44,6 @@ Item {
                 var raw = data.trim();
                 var isMuted = raw.indexOf("[MUTED]") !== -1;
 
-                // Safely update the root state property
                 micBox.muted = isMuted;
 
                 var mNum = "0%";
@@ -58,8 +54,8 @@ Item {
                     mNum = "MUTED";
                 }
 
-                var micLabelColor = shell.theme.base0C;
-                var micStatusColor = isMuted ? shell.theme.base08 : shell.theme.base05;
+                var micLabelColor = (shell && shell.theme) ? (shell.theme.base0C || "green").toString() : "green";
+                var micStatusColor = isMuted ? ((shell && shell.theme) ? shell.theme.base08.toString() : "red") : ((shell && shell.theme) ? shell.theme.base05.toString() : "yellow");
 
                 micBox.micDisplayText = "<font color='" + micLabelColor + "'>Mic:</font> <font color='" + micStatusColor + "'>" + mNum + "</font>";
             }
@@ -76,17 +72,15 @@ Item {
     Text {
         id: micText
         anchors.fill: parent
-
-        // Dynamic margins clear the slanted edges when MUTED is displayed
         anchors.leftMargin: bg.leftPadding
         anchors.rightMargin: bg.rightPadding
-        anchors.topMargin: shell.theme.globalPadding
-        anchors.bottomMargin: shell.theme.globalPadding
+        anchors.topMargin: (shell && shell.theme) ? (shell.theme.globalPadding || 12) : 12
+        anchors.bottomMargin: (shell && shell.theme) ? (shell.theme.globalPadding || 12) : 12
 
         textFormat: Text.RichText
         text: micBox.micDisplayText
-        font.family: shell.theme.fontFamily
-        font.pixelSize: shell.theme.globalFontSize
+        font.family: (shell && shell.theme) ? (shell.theme.fontFamily || "monospace") : "monospace"
+        font.pixelSize: (shell && shell.theme) ? (shell.theme.globalFontSize || 14) : 14
         font.bold: true
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter

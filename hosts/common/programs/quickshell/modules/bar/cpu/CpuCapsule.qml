@@ -1,33 +1,53 @@
 import QtQuick
 import QtQuick.Controls 2
+import QtQuick.Layouts 1.15
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
-
-// Import your custom style module relative to this widget's location
 import "../../style"
 
 Item {
     id: cpuBox
 
-    property int tooltipWidth: 320
-    property int tooltipHeight: 400
+    // Standardized Tooltip Sizing
+    property int tooltipHeight: 420
+    property var barWindow: null
 
-    width: 175
-    height: parent.height
+    // Slant config
 
-    // Use your reusable RightStyle component as the background
-    RightStyle {
-        id: bg
-        anchors.fill: parent
-    }
+    property string slantLeft: "Right"
+    property string slantRight: "Right"
+    property int slantWidth: shell.theme.slantWidth
+
+    // Tooltip slant
+    readonly property real tooltipSlantWidth: (cpuBox.height > 0)
+    ? (tooltipHeight * (slantWidth / cpuBox.height))
+    : 15
+
+    // Standardized Tooltip Sizing
+    property int tooltipWidth: 380 + (tooltipSlantWidth * 2)
 
     property string cpuUsageStr: "0%"
     property string cpuTempStr: "0°C"
     property string topProcessesText: "Loading CPU processes..."
     property string textAccumulatorBuffer: ""
-    property var barWindow: null
+    readonly property var processLinesArray: topProcessesText.split("\n").filter(line => line.trim() !== "")
 
+    // Toggle to pin the tooltip open for screenshots (Click the CPU capsule to toggle)
+    property bool pinTooltip: false
+
+    SlantedBox {
+        id: bg
+        anchors.fill: parent
+        slantLeft: cpuBox.slantLeft
+        slantRight: cpuBox.slantRight
+        slantWidth: cpuBox.slantWidth
+    }
+
+    width: 175
+    height: parent.height
+
+    // Metric Data Collector
     Process {
         id: cpuStatsProc
         running: true
@@ -43,6 +63,7 @@ Item {
         }
     }
 
+    // Client Process Scanner
     Process {
         id: topProcFetcher
         running: false
@@ -58,11 +79,10 @@ Item {
         }
     }
 
+    // Main Canvas Display Text
     Text {
         id: cpuText
         anchors.fill: parent
-
-        // Dynamically clear the slant margins using RightStyle's properties
         anchors.leftMargin: bg.leftPadding
         anchors.rightMargin: bg.rightPadding
         anchors.topMargin: shell.theme.globalPadding
@@ -74,6 +94,11 @@ Item {
         font.bold: true
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
+
+        // Automatically scale text down to fit inside the boundaries
+        fontSizeMode: Text.Fit
+        minimumPixelSize: 8
+        elide: Text.ElideRight
 
         text: {
             const greenColor = shell.theme.base0C.toString();
@@ -94,62 +119,84 @@ Item {
         }
     }
 
-    PanelWindow {
-        id: fixedTooltipWindow
-        screen: cpuBox.barWindow ? cpuBox.barWindow.screen : null
-        visible: cpuHoverTracker.hovered
+    // Click to toggle/pin the tooltip
+    TapHandler {
+        onTapped: {
+            cpuBox.textAccumulatorBuffer = "";
+            topProcFetcher.running = false;
+            topProcFetcher.running = true;
+       //     cpuBox.pinTooltip = !cpuBox.pinTooltip;
+        }
+    }
 
-        WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.namespace: "quickshell-cpu-tooltip"
-        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+    // Dynamic Panel Renderer
+    Loader {
+        active: cpuHoverTracker.hovered || cpuBox.pinTooltip
 
-        anchors.top: true
-        anchors.right: true
+        sourceComponent: Component {
+            PanelWindow {
+                screen: cpuBox.barWindow ? cpuBox.barWindow.screen : null
+                WlrLayershell.layer: WlrLayer.Overlay
+                WlrLayershell.namespace: "quickshell-cpu-tooltip"
+                WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+                anchors.top: true
+                anchors.right: true
 
-        WlrLayershell.margins.top: shell.theme.globalPadding + 55
-        WlrLayershell.margins.right: cpuBox.barWindow ? Math.max(10 + shell.theme.globalPadding, cpuBox.barWindow.width - cpuBox.mapToItem(null, 0, 0).x - (cpuBox.width / 2) - (cpuBox.tooltipWidth / 2)) : 10
+                WlrLayershell.margins.top: shell.theme.globalPadding + 55
+                WlrLayershell.margins.right: cpuBox.barWindow ? Math.max(10 + shell.theme.globalPadding, cpuBox.barWindow.width - cpuBox.mapToItem(null, 0, 0).x - (cpuBox.width / 2) - (cpuBox.tooltipWidth / 2)) : 10
 
-        implicitWidth: cpuBox.tooltipWidth
-        implicitHeight: cpuBox.tooltipHeight
-        color: "transparent"
+                implicitWidth: cpuBox.tooltipWidth
+                implicitHeight: cpuBox.tooltipHeight
+                color: "transparent"
 
-        // Tooltip container (Kept standard/rectangular for proper alignment)
-        Rectangle {
-            anchors.fill: parent
-            radius: shell.theme.defaultCardRadius
-            border.width: shell.theme.globalBorderWidth
-            color: shell.theme.base00
-            border.color: shell.theme.base05
+                // Tooltip background using SlantedBox
+                SlantedBox {
+                    id: tooltipBg
+                    anchors.fill: parent
+                    slantLeft: cpuBox.slantLeft
+                    slantRight: cpuBox.slantRight
+                    slantWidth: cpuBox.tooltipSlantWidth
 
-            Column {
-                anchors.fill: parent
-                anchors.margins: shell.theme.globalPadding
-                spacing: 10
-
-                Text {
-                    text: "ACTIVE CPU CLIENTS"
-                    font.family: shell.theme.fontFamily
-                    font.pixelSize: shell.theme.globalFontSize
-                    font.bold: true
-                    color: shell.theme.base05
+                    readonly property real slantRatio: (height > 0) ? (slantWidth / height) : 0.35
                 }
 
-                Rectangle { width: parent.width; height: 2; color: shell.theme.base02 }
+                Item {
+                    anchors.fill: parent
 
-                Flickable {
-                    width: parent.width; height: cpuBox.tooltipHeight - 70
-                    contentWidth: processDisplayLines.paintedWidth
-                    contentHeight: processDisplayLines.paintedHeight
-                    clip: true
-
+                    // Header (Staggers right-to-left based on reversed y math)
                     Text {
-                        id: processDisplayLines
-                        textFormat: Text.RichText
-                        text: "<pre style='margin: 0; font-family: monospace;'>" + cpuBox.topProcessesText + "</pre>"
+                        text: "ACTIVE CPU CLIENTS:"
+                        font.family: shell.theme.fontFamily
                         font.pixelSize: shell.theme.globalFontSize
+                        font.bold: true
                         color: shell.theme.base05
-                        lineHeight: 1.15
-                        wrapMode: Text.NoWrap
+
+                        y: 35
+                        x: ((tooltipBg.height - y) * tooltipBg.slantRatio) + 24
+                    }
+
+                    // Slanted Divider Line (Staggers right-to-left)
+                    Rectangle {
+                        height: 2
+                        color: shell.theme.base02
+                        width: 310
+
+                        y: 65
+                        x: ((tooltipBg.height - y) * tooltipBg.slantRatio) + 24
+                    }
+
+                    Repeater {
+                        model: cpuBox.processLinesArray.length
+
+                        Text {
+                            text: cpuBox.processLinesArray[index]
+                            font.family: "monospace"
+                            font.pixelSize: shell.theme.globalFontSize
+                            color: shell.theme.base05
+
+                            y: 95 + (index * 28)
+                            x: ((tooltipBg.height - y) * tooltipBg.slantRatio) + 24
+                        }
                     }
                 }
             }
@@ -161,7 +208,7 @@ Item {
         onTriggered: {
             cpuStatsProc.running = false;
             cpuStatsProc.running = true;
-            if (cpuHoverTracker.hovered) {
+            if (cpuHoverTracker.hovered || cpuBox.pinTooltip) {
                 cpuBox.textAccumulatorBuffer = "";
                 topProcFetcher.running = false;
                 topProcFetcher.running = true;

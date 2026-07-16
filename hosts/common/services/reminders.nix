@@ -2,6 +2,7 @@
 
 let
   myReminders = [
+    { date = "01-12"; days = 2; msg = "Conrad's Birthday"; urgent = false; }
     { date = "01-16"; days = 3; msg = "Luster's Birthday"; urgent = true; }
     { date = "05-24"; days = 2; msg = "Velvet's Birthday"; urgent = false; }
     { date = "05-25"; days = 2; msg = "Olive Herb's Birthday"; urgent = false; }
@@ -11,17 +12,18 @@ let
     { date = "07-13"; days = 3; msg = "Sonata's Birthday"; urgent = true; }
     { date = "10-01"; days = 1; msg = "Rainbow-Dash Tumblr's Birthday"; urgent = false; }
     { date = "10-16"; days = 1; msg = "Radiant's Birthday"; urgent = false; }
-    { date = "11-06"; days = 3; msg = "Chris's Birthday"; urgent = false; }
-    { date = "12-05"; days = 2; msg = "Silver's Birthday"; urgent = true; }
+    { date = "11-06"; days = 1; msg = "Chris's Birthday"; urgent = false; }
+    { date = "12-05"; days = 1; msg = "Silver's Birthday"; urgent = true; }
+    { date = "12-31"; days = 1; msg = "Parker's Birthday"; urgent = false; }
 
     { date = "01-01"; days = 3; msg = "New Year's Day"; urgent = false; }
     { date = "02-14"; days = 7; msg = "Valentine's Day"; urgent = false; }
     { date = "03-17"; days = 1; msg = "St. Patrick's Day"; urgent = false; }
     { date = "04-01"; days = 1; msg = "April Fool's Day"; urgent = false; }
     { date = "07-04"; days = 1; msg = "Independence Day"; urgent = false; }
-    { date = "10-31"; days = 7; msg = "Halloween"; urgent = false; }
-    { date = "12-25"; days = 7; msg = "Christmas Day"; urgent = false; }
-    { date = "12-31"; days = 3; msg = "New Year's Eve"; urgent = false; }
+    { date = "10-31"; days = 2; msg = "Halloween"; urgent = false; }
+    { date = "12-25"; days = 3; msg = "Christmas Day"; urgent = false; }
+    { date = "12-31"; days = 1; msg = "New Year's Eve"; urgent = false; }
   ];
 
   genChecks = lib.concatMapStringsSep "\n" (r:

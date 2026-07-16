@@ -1,10 +1,10 @@
 import QtQuick
 import QtQuick.Controls 2
+import QtQuick.Layouts 1.15
+import QtQuick.Shapes 1.15
 import Quickshell
-import Quickshell.Io
 import Quickshell.Wayland
-
-// Import your custom style module relative to this widget's location
+import Quickshell.Io
 import "../../style"
 
 Item {
@@ -33,21 +33,35 @@ Item {
     property bool popupActive: false
     property bool confirmDeleteMode: false
 
+    // Slant config
+    property string slantLeft: "Left"
+    property string slantRight: "Left"
+    property int slantWidth: shell.theme.slantWidth
+
+    // Centralized SlantedBox Background
+    SlantedBox {
+        id: bg
+        anchors.fill: parent
+        slantLeft: musicBox.slantLeft
+        slantRight: musicBox.slantRight
+        slantWidth: musicBox.slantWidth
+    }
+
     width: 200
     height: parent ? parent.height : 40
 
-    // Use your reusable LeftStyle component as the background
-    LeftStyle {
-        id: bg
-        anchors.fill: parent
-    }
+    // Calculated Helpers (Local background math)
+    readonly property real halfBorder: shell.theme.globalBorderWidth / 2
+    readonly property int leftPadding: slantLeft === "None" ? shell.theme.globalPadding : (slantWidth + 6)
+    readonly property int rightPadding: slantRight === "None" ? shell.theme.globalPadding : (slantWidth + 6)
 
-    // ==========================================
-    // DISPLAY HELPER
-    // ==========================================
+    // Points Math for Top Bar
+    property real x1: (slantLeft === "Right") ? (slantWidth + halfBorder) : halfBorder
+    property real x2: (slantLeft === "Left") ? (slantWidth + halfBorder) : halfBorder
+    property real x3: (slantRight === "Left") ? (width - slantWidth - halfBorder) : (width - halfBorder)
+    property real x4: (slantRight === "Right") ? (width - slantWidth - halfBorder) : (width - halfBorder)
 
-    // Updates trackStr and trackCountStr  when state or tags change.
-    // falls back to just the file name (no path) if Title tag is missing.
+   // Display Helper
     function updateTrackString() {
         if (musicBox.playbackState === "stop") {
             musicBox.trackStr = "No Track";
@@ -65,11 +79,8 @@ Item {
         musicBox.trackCountStr = "Track " + musicBox.currentTrackIdx + " of " + musicBox.totalTracks;
     }
 
-    // ==========================================
-    // SOCKET IPC CONNECTION
-    // ==========================================
-
-    Process {
+    // Socket IPC connection
+        Process {
         id: mpdIpc
         running: true
 
@@ -111,7 +122,6 @@ Item {
             ]);
         }
 
-        //  case-insensitive checks on prefixes to handle varied tag definitions.
         stdout: SplitParser {
             onRead: line => {
                 if (!line) return;
@@ -132,7 +142,6 @@ Item {
                     musicBox.updateTrackString();
                 } else if (lowerLine.startsWith("time: ")) {
                     var times = line.substring(6).split(":");
-                    // Only parse if we have both elapsed and total fields to ignore "Time: 120" from currentsong
                     if (times.length > 1) {
                         musicBox.elapsedSeconds = parseInt(times[0], 10) || 0;
                         var parsedTotal = parseInt(times[1], 10) || 0;
@@ -143,7 +152,6 @@ Item {
                     if (!isNaN(dur)) musicBox.totalSeconds = Math.round(dur);
                 } else if (lowerLine.startsWith("file: ")) {
                     musicBox.currentFile = line.substring(6).trim();
-                    // Reset metadata fields to avoid retaining stale info from previous tracks
                     musicBox.tooltipTitle = "";
                     musicBox.tooltipArtist = "";
                     musicBox.updateTrackString();
@@ -163,7 +171,6 @@ Item {
                         musicBox.totalSeconds = 0;
                         musicBox.updateTrackString();
                     } else {
-                        // fallbacks (filename) when parsing is complete
                         if (!musicBox.tooltipTitle && musicBox.currentFile) {
                             var rawFile = musicBox.currentFile;
                             musicBox.tooltipTitle = rawFile.substring(rawFile.lastIndexOf("/") + 1);
@@ -182,23 +189,25 @@ Item {
         id: musicText
         anchors.fill: parent
 
-        // Dynamically clear the slant margins using LeftStyle's properties
-        anchors.leftMargin: bg.leftPadding
-        anchors.rightMargin: bg.rightPadding
+        anchors.leftMargin: musicBox.leftPadding
+        anchors.rightMargin: musicBox.rightPadding
         anchors.topMargin: shell.theme.globalPadding / 4
         anchors.bottomMargin: shell.theme.globalPadding / 4
 
         color: shell.theme.base05
-        text: "🎵 " + musicBox.trackStr
+        text: musicBox.trackStr
         font.family: shell.theme.fontFamily
         font.pixelSize: shell.theme.globalFontSize - 2
         font.bold: true
         horizontalAlignment: Text.AlignLeft
         verticalAlignment: Text.AlignVCenter
+
+        // Auto-scale text down slightly if the title is very long
+        fontSizeMode: Text.Fit
+        minimumPixelSize: 8
         elide: Text.ElideRight
     }
 
-    // Restarts the process if MPD or Python encounters an issue.
     Timer {
         id: updateTimer
         interval: 1000; running: true; repeat: true
@@ -246,13 +255,12 @@ Item {
 
         Item {
             id: cardContainer
-            width: 400
-            height: 270
 
-            y: {
-                if (!musicBox.barWindow || typeof mainBarContainer === "undefined" || !mainBarContainer) return 100;
-                return shell.theme.globalPadding + mainBarContainer.capsuleHeight + 8;
-            }
+            // Dynamically scale the popup size based on the loaded tooltip's implicit calculations
+            width: contentLoader.item ? contentLoader.item.implicitWidth : 674
+            height: contentLoader.item ? contentLoader.item.implicitHeight : 420
+
+            y: shell.theme.globalPadding + 55
 
             x: {
                 if (!musicBox.barWindow) return 100;

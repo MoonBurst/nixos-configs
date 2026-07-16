@@ -5,7 +5,6 @@
   services.xserver.xkb = { layout = "us"; variant = ""; };
   services.dbus.enable = true;
   programs.dconf.enable = true;
-  services.gnome.gnome-keyring.enable = true;
 
   xdg.portal = {
     enable = true;
@@ -16,7 +15,7 @@
     ];
     config = {
       common = {
-        default = [ "gtk" ];
+       # default = [ "gtk" ];
       };
       sway = {
         default = [ "gtk" ];

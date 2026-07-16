@@ -2,7 +2,7 @@
   imports = [
   #  ./sso.nix
     ./matrix.nix
-    ./fluxer.nix
+   # ./fluxer.nix
   ];
 
   # Centralized PostgreSQL Service using Version 16

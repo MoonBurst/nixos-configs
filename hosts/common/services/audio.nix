@@ -1,7 +1,6 @@
 { config, pkgs, ... }:
 
 {
-  # Sound subsystem architecture configuration
   security.rtkit.enable = true;
 
   services.pipewire = {
@@ -25,21 +24,9 @@
               "webrtc.noise_suppression" = true;
               "webrtc.gain_control" = true;
               "webrtc.extended_filter" = true;
-            };
-          };
-        }
-      ];
-    };
-
-    wireplumber.extraConfig."99-force-clear-voice" = {
-      "monitor.alsa.rules" = [
-        {
-          matches = [
-            { "node.name" = "~.*" ; } #all streams use this
-          ];
-          actions = {
-            update-props = {
-              "target.object" = "clear_voice_source";
+              # This forces the internal WebRTC filter to hold the audio open
+              # longer and prevents rapid cutting out / gating artifacting
+              "webrtc.voice_detection" = true;
             };
           };
         }

@@ -2,14 +2,12 @@ import QtQuick
 import QtQuick.Controls 2
 import Quickshell
 import Quickshell.Io
-
-// Import your custom style module relative to this widget's location
 import "../../style"
 
 Item {
     id: netBox
 
-    width: 300
+    width: 260
     height: parent.height
 
     property string downSpeedStr: "0B"
@@ -17,10 +15,11 @@ Item {
     property string pingStr: "??ms"
     property var barWindow: null
 
-    // Use your reusable RightStyle component as the background
-    RightStyle {
+    SlantedBox {
         id: bg
         anchors.fill: parent
+        slantLeft: "Right"
+        slantRight: "Right"
     }
 
     // Bandwidth Throughput Statistics Process
@@ -93,23 +92,22 @@ Item {
         id: netText
         anchors.fill: parent
 
-        // Dynamically clear the slant margins using RightStyle's properties
         anchors.leftMargin: bg.leftPadding
         anchors.rightMargin: bg.rightPadding
-        anchors.topMargin: shell.theme.globalPadding
-        anchors.bottomMargin: shell.theme.globalPadding
+        anchors.topMargin: (shell && shell.theme) ? (shell.theme.globalPadding || 12) : 12
+        anchors.bottomMargin: (shell && shell.theme) ? (shell.theme.globalPadding || 12) : 12
 
         textFormat: Text.RichText
-        font.family: shell.theme.fontFamily
-        font.pixelSize: shell.theme.globalFontSize
+        font.family: (shell && shell.theme) ? (shell.theme.fontFamily || "monospace") : "monospace"
+        font.pixelSize: (shell && shell.theme) ? (shell.theme.globalFontSize || 14) : 14
         font.bold: true
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
 
         text: {
-            const greenColor = shell.theme.base0C.toString();
-            const yellowColor = shell.theme.base05.toString();
-            const redColor = (typeof shell !== 'undefined' && shell.theme && shell.theme.base08) ? shell.theme.base08.toString() : "#fb4934";
+            const greenColor = (shell && shell.theme) ? (shell.theme.base0C || "green").toString() : "green";
+            const yellowColor = (shell && shell.theme) ? (shell.theme.base05 || "yellow").toString() : "yellow";
+            const redColor = (shell && shell.theme && shell.theme.base08) ? shell.theme.base08.toString() : "#fb4934";
             const pingColor = netBox.pingStr === "OFFLINE" ? redColor : yellowColor;
 
             return "<font color='" + greenColor + "'>NET:</font> " +
