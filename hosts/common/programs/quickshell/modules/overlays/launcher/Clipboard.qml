@@ -16,9 +16,8 @@ Item {
     property string lastSeenTopId: ""
 
     property var allClipboardItems: []
-
-    // Deduplicated thumbnail queue
     property var thumbnailQueue: []
+    property var deleteQueue: [] // Queue to handle rapid deletions sequentially
 
     property alias filteredClipboardItems: filteredClipboardModel
 
@@ -38,21 +37,13 @@ Item {
     }
 
     Timer {
-        id: reloadDelayTimer
-        interval: 50
-        repeat: false
-        onTriggered: {
-            loadClipboard()
-        }
-    }
-
-    Timer {
         id: changePoller
         interval: 2000
         running: true
         repeat: true
         onTriggered: {
-            if (!pollCheckWorker.running) {
+            // Only poll if we aren't actively processing deletions to avoid race conditions
+            if (deleteQueue.length === 0 && !deleteProcess.running && !pollCheckWorker.running) {
                 pollCheckWorker.running = true
             }
         }
@@ -67,7 +58,7 @@ Item {
         filterTimer.restart()
     }
 
-    // Clear and reload clipboard context
+    // Clear and reload clipboard context from database
     function loadClipboard() {
         allClipboardItems = []
         thumbnailQueue = []
@@ -141,14 +132,12 @@ Item {
         }
     }
 
-
     function moveUp() {
         if (selectedIndex > 0) {
             --selectedIndex
             updatePreview()
         }
     }
-
 
     function moveDown() {
         if (selectedIndex < filteredClipboardModel.count - 1) {
@@ -175,24 +164,61 @@ Item {
         copyProcess.running = true
     }
 
+    // Optimistic Deletion: Update UI immediately, queue backend writes
     function deleteSelected() {
         if (selectedIndex < 0 || selectedIndex >= filteredClipboardModel.count) {
             return
         }
 
         const item = filteredClipboardModel.get(selectedIndex)
-        if (!item.rawLineText) return;
+        if (!item || !item.rawLineText) return;
 
+        const targetId = item.id
+        const rawLine = item.rawLineText
+
+        // 1. Remove from local memory immediately
+        let allIdx = -1
+        for (let i = 0; i < allClipboardItems.length; i++) {
+            if (allClipboardItems[i].id === targetId) {
+                allIdx = i
+                break
+            }
+        }
+        if (allIdx !== -1) {
+            allClipboardItems.splice(allIdx, 1)
+        }
+
+        // 2. Remove from active UI list
+        filteredClipboardModel.remove(selectedIndex)
+
+        // Adjust index and update preview
+        if (selectedIndex >= filteredClipboardModel.count) {
+            selectedIndex = Math.max(0, filteredClipboardModel.count - 1)
+        }
+        updatePreview()
+
+        // 3. Queue backend deletion
+        deleteQueue.push(rawLine)
+        processDeleteQueue()
+    }
+
+    function processDeleteQueue() {
+        if (deleteQueue.length === 0 || deleteProcess.running) return;
+
+        const nextRawText = deleteQueue.shift()
         deleteProcess.command = [
             "sh",
             "-c",
-            "printf '%s\\n' '" + item.rawLineText.replace(/'/g, "'\\\\''") + "' | cliphist delete"
+            "printf '%s\\n' '" + nextRawText.replace(/'/g, "'\\\\''") + "' | cliphist delete"
         ]
         deleteProcess.running = true
     }
 
-
     function wipeHistory() {
+        allClipboardItems = []
+        filteredClipboardModel.clear()
+        selectedIndex = 0
+        updatePreview()
         wipeProcess.running = true
     }
 
@@ -202,11 +228,12 @@ Item {
         const thumbPath = isImage ? thumbDir + "/quickshell_clip_thumb_" + clipId + ".png" : ""
 
         if (isImage) {
-            // Decodes, resizes, and converts any image format to a valid, lightweight PNG (Standardized with stdin '-' specifier)
+            // Optimised check: only decode/convert if the thumbnail file does NOT already exist
             thumbnailQueue.push(
+                "[ -f " + thumbPath + " ] || (" +
                 "cliphist decode " + clipId + " | magick - -thumbnail 100x100 png:" + thumbPath + " 2>/dev/null || " +
                 "cliphist decode " + clipId + " | convert - -thumbnail 100x100 png:" + thumbPath + " 2>/dev/null || " +
-                "cliphist decode " + clipId + " > " + thumbPath + " 2>/dev/null"
+                "cliphist decode " + clipId + " > " + thumbPath + " 2>/dev/null)"
             )
         }
 
@@ -265,7 +292,6 @@ Item {
                     const line = lines[i].trim()
                     if (!line) continue;
 
-                    // cliphist output standard is strictly tab-delimited (\t)
                     let sep = line.indexOf("\t")
                     if (sep === -1) continue;
 
@@ -310,18 +336,14 @@ Item {
     Process {
         id: deleteProcess
         onExited: {
-            reloadDelayTimer.start()
+            processDeleteQueue() // Check if there are more queued items to delete
         }
     }
 
-    // Atomic wipe process (clears local db and /tmp cached thumbnails)
     Process {
         id: wipeProcess
         running: false
         command: ["sh", "-c", "cliphist wipe; rm -rf /tmp/clipboard_thumbnails/*"]
-        onExited: (exitCode) => {
-            reloadDelayTimer.start()
-        }
     }
 
     Component.onCompleted: {
