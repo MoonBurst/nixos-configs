@@ -13,7 +13,6 @@ Item {
     width: 140
     height: parent.height
 
-    // Centralized SlantedBox Background
     SlantedBox {
         id: bg
         anchors.fill: parent

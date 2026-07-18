@@ -23,7 +23,6 @@ Item {
     property int tooltipRightOffset: 22       // Micro-adjust horizontal alignment (px)
     // =========================================================================
 
-    // Module slant configurations (Leans left)
     property string slantLeft: "Left"
     property string slantRight: "Left"
     property int slantWidth: shell.theme.slantWidth
@@ -40,7 +39,6 @@ Item {
     Layout.preferredWidth: 140
     height: parent ? parent.height : 40 // Safe guard against null-parent startup evaluations
 
-    // Centralized SlantedBox Background
     SlantedBox {
         id: bg
         anchors.fill: parent
@@ -182,7 +180,7 @@ Item {
                 topOffset: weatherCapsule.tooltipTopOffset
                 rightOffset: weatherCapsule.tooltipRightOffset
 
-                // Explicitly pass capsule slants to keep the window parallel
+                // pass capsule slants to keep the window parallel
                 slantLeft: weatherCapsule.slantLeft
                 slantRight: weatherCapsule.slantRight
 
@@ -197,7 +195,7 @@ Item {
                     x: weatherTooltip.slantX(y) + 24
                 }
 
-                // Slanted Divider Line (Staggers left-to-right)
+                //  Divider Line (Staggers left-to-right)
                 Rectangle {
                     height: 2
                     color: shell.theme.base02

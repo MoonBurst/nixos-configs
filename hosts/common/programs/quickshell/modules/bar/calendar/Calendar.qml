@@ -12,7 +12,6 @@ import "../../style"
 Item {
     id: calendarBox
 
-    // Styling & Layout (Sized dynamically inside your parent bar container)
     anchors.fill: parent
 
     // =========================================================================
@@ -25,16 +24,11 @@ Item {
     property int tooltipRightOffset: 22       // Micro-adjust horizontal alignment (px)
     // =========================================================================
 
-    // Module slant configurations (Leans left)
     property string slantLeft: "Left"
     property string slantRight: "Left"
     property int slantWidth: shell.theme.slantWidth
-
-    // Global Widget Properties
     property var barWindow: null
     property string dateStr: "01/01/0001"
-
-    // Calendar State Tracking
     property var currentDate: new Date()
     property int currentMonth: currentDate.getMonth()
     property int currentYear: currentDate.getFullYear()
@@ -88,7 +82,8 @@ Item {
 
     TapHandler {
         onTapped: {
-            // calendarBox.pinTooltip = !calendarBox.pinTooltip
+            //uncomment this to allow clicking to lock it on the screen
+             calendarBox.pinTooltip = !calendarBox.pinTooltip
         }
     }
 
@@ -115,7 +110,7 @@ Item {
                 topOffset: calendarBox.tooltipTopOffset
                 rightOffset: calendarBox.tooltipRightOffset
 
-                // Explicitly pass capsule slants to keep the window parallel
+                // pass capsule slants to keep the window parallel
                 slantLeft: calendarBox.slantLeft
                 slantRight: calendarBox.slantRight
 
@@ -141,7 +136,7 @@ Item {
                         x: calendarTooltip.slantX(y) + 24
                     }
 
-                    // Slanted Days of the Week Headers
+                    //Days of the Week Headers
                     Row {
                         y: 75
                         x: calendarTooltip.slantX(y) + 24
@@ -173,7 +168,7 @@ Item {
                         readonly property int todayYear: new Date().getFullYear()
                     }
 
-                    // Slanted Matrix Weeks
+                    // Matrix Weeks
                     Repeater {
                         model: 6 // 6 weeks maximum matrix layout
 

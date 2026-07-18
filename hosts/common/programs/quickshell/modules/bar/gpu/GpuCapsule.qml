@@ -36,7 +36,6 @@ Item {
 
     readonly property var processLinesArray: topGpuProcessesText.split("\n").filter(line => line.trim() !== "")
 
-    // Unified Layout Constraints
     width: gpuText.implicitWidth + leftPadding + rightPadding
     Layout.preferredWidth: width
     height: parent ? parent.height : 40 // Safe guard against null-parent startup evaluations
@@ -50,7 +49,7 @@ Item {
         slantWidth: gpuBox.slantWidth
     }
 
-    // Metric Data Collector (AMD/Nvidia)
+    // GPU Data Collector (AMD/Nvidia)
     Process {
         id: gpuStatsProc
         running: true
@@ -163,11 +162,11 @@ Item {
                 topOffset: gpuBox.tooltipTopOffset
                 rightOffset: gpuBox.tooltipRightOffset
 
-                // Explicitly pass capsule slants to keep the window parallel
+                //  pass capsule slants to keep the window parallel
                 slantLeft: gpuBox.slantLeft
                 slantRight: gpuBox.slantRight
 
-                // Slanted Text Content Layout inside the tooltip children scope
+                //  Text Content Layout inside the tooltip children scope
                 Text {
                     text: "ACTIVE GPU CLIENTS:"
                     font.family: shell.theme.fontFamily
@@ -178,7 +177,7 @@ Item {
                     x: gpuTooltip.slantX(y) + 24
                 }
 
-                // Slanted Divider Line (Staggers right-to-left)
+                // Divider Line (Staggers right-to-left)
                 Rectangle {
                     height: 2
                     color: shell.theme.base02

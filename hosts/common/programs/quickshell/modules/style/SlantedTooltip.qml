@@ -7,7 +7,6 @@ import "../../style"
 PanelWindow {
     id: tooltipWindow
 
-    // REQUIRED properties to bind the tooltip to your module
     required property Item moduleItem
     required property var barWindow
 
@@ -17,32 +16,27 @@ PanelWindow {
 
     // Geometry customizers
     property int tooltipHeight: 420
-    property int collapsedCoreWidth: 130 // Starting flat-width (sleeker unroll)
+    property int collapsedCoreWidth: 130 // Starting flat-width
     property int expandedCoreWidth: 430  // Final flat-width
     property int topOffset: 0
     property int rightOffset: 18
 
-    // Alignment Side Options: "Right" (aligns right, grows left) or "Left" (aligns left, grows right)
     property string alignSide: "Right"
 
     // Keyboard Focus Options (WlrLayershell.None, WlrLayershell.Exclusive, etc.)
     property int keyboardFocus: WlrLayershell.None
 
-    // Diagonal slant controls (Safely inherits from module, falls back to "Left" to match your theme)
+    // Diagonal slant controls
     property string slantLeft: (moduleItem && typeof moduleItem.slantLeft !== "undefined") ? moduleItem.slantLeft : "Left"
     property string slantRight: (moduleItem && typeof moduleItem.slantRight !== "undefined") ? moduleItem.slantRight : "Left"
     property int slantWidth: (shell && shell.theme) ? (shell.theme.slantWidth || 12) : 12
 
-    // This alias is now 100% valid and compiles without scope errors
     default property alias content: textWrapper.children
 
-        // Grouped attached properties (avoids QML compiler collisions and eliminates the white square)
         WlrLayershell.exclusiveZone: -1
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "quickshell-slanted-tooltip"
         WlrLayershell.keyboardFocus: tooltipWindow.visible ? tooltipWindow.keyboardFocus : WlrLayershell.None
-
-        // Grouped margin syntax (assigns to the margins property once, cleanly setting top, right, and left)
         WlrLayershell.margins {
             top: tooltipWindow.targetTopMargin
             right: tooltipWindow.calculatedRightMargin
@@ -58,7 +52,7 @@ PanelWindow {
         // Controls window visibility and handles graceful collapsing transitions before hiding
         visible: (tooltipActive || pin || animContainer.animHeight > 0) && isReady && targetTopMargin > 0
 
-        // Explicitly locked size bounds to prevent Wayland-side compositor stretching
+        //  locked size bounds to prevent Wayland-side compositor stretching
         width: tooltipWidth
         height: tooltipHeight
         color: "transparent"
@@ -72,7 +66,7 @@ PanelWindow {
         : 15
         readonly property int tooltipWidth: expandedCoreWidth + tooltipSlantWidth
 
-        // Helper function to calculate precise slant offsets at any given vertical coordinate
+        // calculate  slant offsets at any given vertical coordinate
         function slantX(y) {
             if (slantLeft === "Right") {
                 return (tooltipHeight - y) * (tooltipSlantWidth / tooltipHeight);
@@ -87,10 +81,10 @@ PanelWindow {
         ? moduleItem.mapToItem(null, moduleItem.width, moduleItem.height)
         : Qt.point(0, 0)
 
-        // Local target margin properties (prevents attached property lookup errors in the visibility binding)
+        //  target margin properties (prevents attached property lookup errors in the visibility binding)
         readonly property real targetTopMargin: isReady ? Math.round(mappedBottomRight.y) + topOffset : 0
 
-        // Automatically offsets window alignment based on whether the capsule leans left or right
+        //  offsets window alignment based on whether the capsule leans left or right
         readonly property real calculatedRightMargin: (isReady && alignSide === "Right")
         ? Math.round(barWindow.width - mappedBottomRight.x + rightOffset - (slantRight === "Left" ? tooltipSlantWidth : 0))
         : 0
@@ -110,7 +104,7 @@ PanelWindow {
             width: parent.width
             height: parent.height
 
-            // Control variables for the three-stage transition
+            // Control variables for the animation
             property real animHeight: 0
             property real visualCoreWidth: tooltipWindow.collapsedCoreWidth
             property real revealWidth: 0
@@ -136,21 +130,21 @@ PanelWindow {
                 Transition {
                     from: "collapsed"; to: "expanded"
                     SequentialAnimation {
-                        // Stage 1: Stretch straight down, keeping the visual core locked
+                        // Stretch straight down
                         NumberAnimation {
                             target: animContainer
                             property: "animHeight"
                             duration: 250
                             easing.type: Easing.OutCubic
                         }
-                        // Stage 2: Expand horizontally to the left
+                        // Expand horizontally to the left
                         NumberAnimation {
                             target: animContainer
                             property: "visualCoreWidth"
                             duration: 220
                             easing.type: Easing.OutCubic
                         }
-                        // Stage 3: Wipe/reveal text horizontally from left to right
+                        // Wipe/reveal text horizontally from left to right
                         ParallelAnimation {
                             NumberAnimation {
                                 target: animContainer
@@ -170,7 +164,7 @@ PanelWindow {
                 Transition {
                     from: "expanded"; to: "collapsed"
                     SequentialAnimation {
-                        // Stage 1 (Reverse): Wipe text out quickly
+                        // (Reverse): Wipe text out quickly
                         ParallelAnimation {
                             NumberAnimation {
                                 target: animContainer
@@ -185,14 +179,14 @@ PanelWindow {
                                 easing.type: Easing.InQuad
                             }
                         }
-                        // Stage 2 (Reverse): Collapse horizontally
+                        // (Reverse): Collapse horizontally
                         NumberAnimation {
                             target: animContainer
                             property: "visualCoreWidth"
                             duration: 180
                             easing.type: Easing.InCubic
                         }
-                        // Stage 3 (Reverse): Retract height back into the bar
+                        // (Reverse): Retract height back into the bar
                         NumberAnimation {
                             target: animContainer
                             property: "animHeight"
@@ -207,42 +201,36 @@ PanelWindow {
                 isCompleted = true; // Unlocks the transition to play
             }
 
-            // SlantedBox handles height, core width, and slant mapping dynamically
+            // SlantedBox handles height, core width, and slant mapping
             SlantedBox {
                 id: tooltipBg
                 anchors.left: tooltipWindow.alignSide === "Left" ? parent.left : undefined
                 anchors.right: tooltipWindow.alignSide === "Right" ? parent.right : undefined
                 anchors.top: parent.top
-                height: animContainer.animHeight // Directly animates height to grow/expand
-
-                // Scales the slantWidth dynamically to lock the visual diagonal angle on every frame
+                height: animContainer.animHeight // animates height to grow/expand
                 slantWidth: Math.round(height * (tooltipWindow.slantWidth / (tooltipWindow.moduleItem && tooltipWindow.moduleItem.height > 0 ? tooltipWindow.moduleItem.height : 40)))
-
-                // Adjusts total width dynamically to keep flat core aligned with visualCoreWidth
                 width: Math.round(animContainer.visualCoreWidth + slantWidth)
 
                 slantLeft: tooltipWindow.slantLeft
                 slantRight: tooltipWindow.slantRight
             }
 
-            // Left-to-Right text reveal curtain mask
+            // Left-to-Right text reveal
             Item {
                 id: textClippingMask
                 anchors.left: parent.left
                 anchors.top: parent.top
                 width: animContainer.revealWidth // Animates 0 -> tooltipWidth
                 height: tooltipWindow.tooltipHeight
-                clip: true // Performs the actual left-to-right horizontal wipe
+                clip: true
 
-                // Fixed-size text layout nested inside the curtain
                 Item {
                     id: textWrapper
                     width: tooltipWindow.tooltipWidth
                     height: tooltipWindow.tooltipHeight
-                    anchors.left: parent.left // Keeps left-aligned to mask
+                    anchors.left: parent.left
                     opacity: animContainer.textOpacity
 
-                    // User custom content compiles directly into this children list
                 }
             }
         }

@@ -54,7 +54,7 @@ Item {
     // Unified Layout Constraints
     width: 140
     Layout.preferredWidth: 140
-    height: parent ? parent.height : 40 // Safe guard against null-parent startup evaluations
+    height: parent ? parent.height : 40
 
     // Centralized SlantedBox Background
     SlantedBox {
@@ -237,7 +237,6 @@ Item {
                 topOffset: alarmBox.tooltipTopOffset
                 rightOffset: alarmBox.tooltipRightOffset
 
-                // Explicitly pass capsule slants to keep the window parallel
                 slantLeft: alarmBox.slantLeft
                 slantRight: alarmBox.slantRight
 
@@ -247,12 +246,11 @@ Item {
                     }
                 }
 
-                // Inlined Custom Content Scope
                 Item {
                     id: alarmInputWrapper
                     anchors.fill: parent
 
-                    // Explicitly defined style references (solves nested lookup context errors)
+                    //  defined style references (solves nested lookup context errors)
                     readonly property color colorBase05: (shell && shell.theme) ? (shell.theme.base05 || "yellow") : "yellow"
                     readonly property color colorBase00: (shell && shell.theme) ? (shell.theme.base00 || "black") : "black"
                     readonly property color colorBase03: (shell && shell.theme) ? (shell.theme.base03 || "#333333") : "#333333"
@@ -271,7 +269,6 @@ Item {
                         x: alarmTooltip.slantX(y) + 150
                     }
 
-                    // Slanted Divider Line
                     Rectangle {
                         id: alarmDivider
                         height: 2

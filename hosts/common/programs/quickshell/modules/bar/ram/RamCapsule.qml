@@ -19,10 +19,10 @@ Item {
     property int tooltipCollapsedWidth: 136  // Sleek, thin width during the downward unroll
     property int tooltipExpandedWidth: 437  // Final horizontal width once fully open
     property int tooltipTopOffset: 0         // Micro-adjust vertical spacing (px)
-    property int tooltipRightOffset: 18      // Micro-adjust horizontal alignment (px)
+    property int tooltipRightOffset: 21      // Micro-adjust horizontal alignment (px)
     // =========================================================================
 
-    // Module slant configurations
+    // slant config
     property string slantLeft: "Right"
     property string slantRight: "Right"
     property int slantWidth: shell.theme.slantWidth
@@ -32,15 +32,12 @@ Item {
     property string topProcessesText: "Loading system processes..."
     property string textAccumulatorBuffer: ""
 
-    // Split the raw processes output into a clean array of lines
     readonly property var processLinesArray: topProcessesText.split("\n").filter(line => line.trim() !== "")
 
-    // Unified Layout Constraints
     width: 175
     Layout.preferredWidth: 175
-    height: parent ? parent.height : 40 // Safe guard against null-parent startup evaluations
+    height: parent ? parent.height : 40
 
-    // Centralized SlantedBox Background
     SlantedBox {
         id: bg
         anchors.fill: parent
@@ -49,7 +46,7 @@ Item {
         slantWidth: ramBox.slantWidth
     }
 
-    // Metric Data Collector
+    // Data Collector
     Process {
         id: ramStatsProc
         running: true
@@ -69,7 +66,7 @@ Item {
         }
     }
 
-    // Client Process Scanner
+    // Process Scanner
     Process {
         id: topProcFetcher
         running: false
@@ -83,7 +80,6 @@ Item {
         }
     }
 
-    // Main Canvas Display Text
     Text {
         id: ramText
         anchors.fill: parent
@@ -133,7 +129,6 @@ Item {
         }
     }
 
-    // Panel Window Pop-up Renderer
     Loader {
         id: tooltipLoader
         active: ramHoverTracker.hovered || ramBox.pinTooltip || (tooltipLoader.item && tooltipLoader.item.animHeight > 0)
@@ -153,11 +148,9 @@ Item {
                 topOffset: ramBox.tooltipTopOffset
                 rightOffset: ramBox.tooltipRightOffset
 
-                // Explicitly pass capsule slants to keep the window parallel
                 slantLeft: ramBox.slantLeft
                 slantRight: ramBox.slantRight
 
-                // Nested custom text lists compile directly into this children list
                 Text {
                     text: "TOP RAM CONSUMERS:"
                     font.family: shell.theme.fontFamily
@@ -191,7 +184,6 @@ Item {
         }
     }
 
-    // Metric Refresher
     Timer {
         id: statsRefreshTimer
         interval: 2000; running: true; repeat: true; triggeredOnStart: true

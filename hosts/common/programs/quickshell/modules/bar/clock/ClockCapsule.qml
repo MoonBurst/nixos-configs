@@ -42,7 +42,7 @@ Item {
         id: clockText
         anchors.fill: parent
 
-        // Dynamically clear margins using SlantedBox paddings
+        //  clear margins using SlantedBox paddings
         anchors.leftMargin: bg.leftPadding
         anchors.rightMargin: bg.rightPadding
         anchors.topMargin: (shell && shell.theme) ? (shell.theme.globalPadding || 12) : 12

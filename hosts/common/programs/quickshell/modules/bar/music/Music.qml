@@ -26,7 +26,6 @@ Item {
     property string slantRight: "Left"
     property int slantWidth: shell.theme.slantWidth
 
-    // Global Widget Properties
     property var barWindow: null
     property string trackStr: "No Track"
     property string tooltipTitle: "No Title Playing"
@@ -63,7 +62,7 @@ Item {
     property real x3: (slantRight === "Left") ? (width - slantWidth - halfBorder) : (width - halfBorder)
     property real x4: (slantRight === "Right") ? (width - slantWidth - halfBorder) : (width - halfBorder)
 
-    // Centralized SlantedBox Background
+
     SlantedBox {
         id: bg
         anchors.fill: parent
@@ -262,7 +261,7 @@ Item {
                 topOffset: musicBox.tooltipTopOffset
                 rightOffset: musicBox.tooltipRightOffset
 
-                // Explicitly pass capsule slants to keep the window parallel
+                // pass capsule slants to keep the window parallel
                 slantLeft: musicBox.slantLeft
                 slantRight: musicBox.slantRight
 
@@ -336,7 +335,7 @@ Item {
                             color: "transparent"
                         }
 
-                        // Staggered Title Text inside Track block
+                        //  Title Text inside Track block
                         Text {
                             id: titleText
                             y: 18
@@ -377,7 +376,7 @@ Item {
                         }
                     }
 
-                    // Slanted Seek / Track Position Slider
+                    // Seek / Track Position Slider
                     Row {
                         y: 185
                         x: musicTooltip.slantX(y) + 24
@@ -401,7 +400,7 @@ Item {
                             to: musicBox.totalSeconds > 0 ? musicBox.totalSeconds : 100
                             value: musicBox.elapsedSeconds
 
-                            // Slanted background track
+                            // background track
                             background: SlantedBox {
                                 id: seekTrackBg
                                 implicitWidth: 200
@@ -428,7 +427,7 @@ Item {
                                 }
                             }
 
-                            // Slanted Handle (Thumb)
+                            // Handle (Thumb)
                             handle: SlantedBox {
                                 id: seekThumb
                                 x: seekSlider.leftPadding + seekSlider.visualPosition * (seekSlider.availableWidth - width)
@@ -494,7 +493,7 @@ Item {
                                 when: !volSlider.pressed
                             }
 
-                            // Slanted background track
+                            // background track
                             background: SlantedBox {
                                 id: volTrackBg
                                 implicitWidth: 200
@@ -521,7 +520,7 @@ Item {
                                 }
                             }
 
-                            // Slanted Handle (Thumb)
+                            // Handle (Thumb)
                             handle: SlantedBox {
                                 id: volThumb
                                 x: volSlider.leftPadding + volSlider.visualPosition * (volSlider.availableWidth - width)
@@ -673,7 +672,7 @@ Item {
                             height: 40
                         }
 
-                        // Directory Folder Opener (Sleeker 80x40px sizing)
+                        // Directory Folder Opener
                         Item {
                             id: folderButton
                             width: 80
@@ -754,7 +753,7 @@ Item {
                             visible: musicBox.confirmDeleteMode
                         }
 
-                        // Cancel "No" Button (Sleeker 80x40px sizing)
+                        // Cancel "No" Button
                         Item {
                             id: noButton
                             width: 80

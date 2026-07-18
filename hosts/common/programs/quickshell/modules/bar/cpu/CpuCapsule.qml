@@ -15,9 +15,9 @@ Item {
     // =========================================================================
     //  EDITABLE TOOLTIP CONFIGURATION
     // =========================================================================
-    property int tooltipHeight: 420          // Vertical height of the expanded box
+    property int tooltipHeight: 400          // Vertical height of the expanded box
     property int tooltipCollapsedWidth: 130  // Sleek, thin width during the downward unroll
-    property int tooltipExpandedWidth: 430   // Final horizontal width once fully open
+    property int tooltipExpandedWidth: 325   // Final horizontal width once fully open
     property int tooltipTopOffset: 0         // Micro-adjust vertical spacing (px)
     property int tooltipRightOffset: 18      // Micro-adjust horizontal alignment (px)
     // =========================================================================
@@ -33,12 +33,11 @@ Item {
     property string textAccumulatorBuffer: ""
     readonly property var processLinesArray: topProcessesText.split("\n").filter(line => line.trim() !== "")
 
-    // Unified Layout Constraints
+
     width: 175
     Layout.preferredWidth: 175
-    height: parent ? parent.height : 40 // Safe guard against null-parent startup evaluations
+    height: parent ? parent.height : 40
 
-    // Centralized SlantedBox Background
     SlantedBox {
         id: bg
         anchors.fill: parent
@@ -146,7 +145,7 @@ Item {
                 topOffset: cpuBox.tooltipTopOffset
                 rightOffset: cpuBox.tooltipRightOffset
 
-                // Explicitly pass capsule slants to keep the window parallel
+                // pass capsule slants to keep the window parallel
                 slantLeft: cpuBox.slantLeft
                 slantRight: cpuBox.slantRight
 
