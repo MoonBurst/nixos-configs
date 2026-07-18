@@ -1,3 +1,4 @@
+// CalendarCapsule.qml
 import QtQuick
 import QtQuick.Controls 2
 import QtQuick.Layouts 1.15
@@ -11,23 +12,23 @@ import "../../style"
 Item {
     id: calendarBox
 
-    // Styling & Layout
+    // Styling & Layout (Sized dynamically inside your parent bar container)
     anchors.fill: parent
 
-    //Slant config
+    // =========================================================================
+    //  EDITABLE TOOLTIP CONFIGURATION
+    // =========================================================================
+    property int tooltipHeight: 350          // Vertical height of the expanded box
+    property int tooltipCollapsedWidth: 130  // Sleek, thin width during the downward unroll
+    property int tooltipExpandedWidth: 430   // Final horizontal width once fully open
+    property int tooltipTopOffset: 0         // Micro-adjust vertical spacing (px)
+    property int tooltipRightOffset: 22       // Micro-adjust horizontal alignment (px)
+    // =========================================================================
+
+    // Module slant configurations (Leans left)
     property string slantLeft: "Left"
     property string slantRight: "Left"
     property int slantWidth: shell.theme.slantWidth
-
-    // Tooltip configuration
-    property int tooltipHeight: 420
-
-    // Tooltip slant
-    readonly property real tooltipSlantWidth: (calendarBox.height > 0)
-    ? (tooltipHeight * (slantWidth / calendarBox.height))
-    : 15
-
-    property int tooltipWidth: 410 + (tooltipSlantWidth * 2)
 
     // Global Widget Properties
     property var barWindow: null
@@ -67,8 +68,8 @@ Item {
     Text {
         id: calendarText
         anchors.fill: parent
-        anchors.leftMargin: calendarBox.leftPadding
-        anchors.rightMargin: calendarBox.rightPadding
+        anchors.leftMargin: bg.leftPadding
+        anchors.rightMargin: bg.rightPadding
         anchors.topMargin: shell.theme.globalPadding
         anchors.bottomMargin: shell.theme.globalPadding
 
@@ -85,80 +86,66 @@ Item {
         id: calendarHoverTracker
     }
 
-    // Click to toggle/pin the tooltip
     TapHandler {
         onTapped: {
-         //   calendarBox.pinTooltip = !calendarBox.pinTooltip
+            // calendarBox.pinTooltip = !calendarBox.pinTooltip
         }
     }
 
-    // Dynamic Panel Renderer
+    // Panel Window Pop-up Renderer
     Loader {
-        active: calendarHoverTracker.hovered || calendarBox.pinTooltip
+        id: tooltipLoader
+        active: calendarHoverTracker.hovered || calendarBox.pinTooltip || (tooltipLoader.item && tooltipLoader.item.animHeight > 0)
 
         sourceComponent: Component {
-            PanelWindow {
-                screen: calendarBox.barWindow ? calendarBox.barWindow.screen : null
-                WlrLayershell.layer: WlrLayer.Overlay
-                WlrLayershell.namespace: "quickshell-calendar-tooltip"
-                WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+            SlantedTooltip {
+                id: calendarTooltip
+                moduleItem: calendarBox
+                barWindow: calendarBox.barWindow
+                tooltipActive: calendarHoverTracker.hovered
+                pin: calendarBox.pinTooltip
 
-                anchors.top: true
-                anchors.left: true
-                anchors.right: false
-                anchors.bottom: false
+                // Instruct the template to align left and expand rightwards
+                alignSide: "Left"
 
-                implicitWidth: calendarBox.tooltipWidth
-                implicitHeight: calendarBox.tooltipHeight
-                color: "transparent"
+                // Maps variables defined at the top of the file
+                tooltipHeight: calendarBox.tooltipHeight
+                collapsedCoreWidth: calendarBox.tooltipCollapsedWidth
+                expandedCoreWidth: calendarBox.tooltipExpandedWidth
+                topOffset: calendarBox.tooltipTopOffset
+                rightOffset: calendarBox.tooltipRightOffset
 
-                WlrLayershell.margins.top: shell.theme.globalPadding + 55
+                // Explicitly pass capsule slants to keep the window parallel
+                slantLeft: calendarBox.slantLeft
+                slantRight: calendarBox.slantRight
 
-                // Centers dropdown aligned under the parent container
-                WlrLayershell.margins.left: {
-                    if (!calendarBox.barWindow || typeof calendarContainer === "undefined" || !calendarContainer) return 0;
-                    var containerX = calendarContainer.x;
-                    var calendarCenterAbsolute = containerX + (calendarContainer.width / 2);
-                    var targetLeftMargin = Math.round(calendarCenterAbsolute - (calendarBox.tooltipWidth / 2));
-
-                    return Math.max(targetLeftMargin, shell.theme.globalPadding);
-                }
-
-                // Tooltip background using SlantedBox
-                SlantedBox {
-                    id: tooltipBg
-                    anchors.fill: parent
-                    slantLeft: calendarBox.slantLeft
-                    slantRight: calendarBox.slantRight
-                    slantWidth: calendarBox.tooltipSlantWidth
-
-                    readonly property color colorBase04: (shell && shell.theme) ? (shell.theme.base04 || "gray") : "gray"
-                    readonly property color colorBase02: (shell && shell.theme) ? (shell.theme.base02 || "#222222") : "#222222"
-                    readonly property string fontFamily: (shell && shell.theme) ? (shell.theme.fontFamily || "monospace") : "monospace"
-                    readonly property real slantRatio: (height > 0) ? (slantWidth / height) : 0.35
-                }
-
-
+                // Stationary layout wrapper (maps old theme properties securely to the new scope)
                 Item {
+                    id: containerWrapper
                     anchors.fill: parent
+
+                    readonly property string fontFamily: (shell && shell.theme) ? (shell.theme.fontFamily || "monospace") : "monospace"
+                    readonly property color colorBase05: (shell && shell.theme) ? (shell.theme.base05 || "yellow") : "yellow"
+                    readonly property color colorBase02: (shell && shell.theme) ? (shell.theme.base02 || "#222222") : "#222222"
+                    readonly property real slantRatio: calendarTooltip.tooltipSlantWidth / calendarTooltip.tooltipHeight
 
                     // Month/Year Header
                     Text {
                         text: calendarBox.currentDate.toLocaleDateString(Qt.locale(), "MMMM yyyy")
                         color: shell.theme.base05
-                        font.family: tooltipBg.fontFamily
+                        font.family: containerWrapper.fontFamily
                         font.pixelSize: 22
                         font.bold: true
 
                         y: 30
-                        x: (y * tooltipBg.slantRatio) + 24
+                        x: calendarTooltip.slantX(y) + 24
                     }
 
                     // Slanted Days of the Week Headers
                     Row {
                         y: 75
-                        x: (y * tooltipBg.slantRatio) + 24
-                        width: tooltipBg.width - calendarBox.tooltipSlantWidth - 48
+                        x: calendarTooltip.slantX(y) + 24
+                        width: calendarTooltip.width - calendarTooltip.tooltipSlantWidth - 48
                         spacing: 0
 
                         Repeater {
@@ -167,8 +154,8 @@ Item {
                             Text {
                                 width: parent.width / 7
                                 text: modelData
-                                color: tooltipBg.colorBase04
-                                font.family: tooltipBg.fontFamily
+                                color: containerWrapper.colorBase05 // Updated to use the standard text color (base05)
+                                font.family: containerWrapper.fontFamily
                                 font.pixelSize: 15
                                 font.bold: true
                                 horizontalAlignment: Text.AlignHCenter
@@ -176,7 +163,7 @@ Item {
                         }
                     }
 
-                    // Tooltip Calendar
+                    // Tooltip Calendar Calculations Helper
                     Item {
                         id: daysGridData
                         readonly property int firstDayOffset: new Date(calendarBox.currentYear, calendarBox.currentMonth, 1).getDay()
@@ -195,8 +182,8 @@ Item {
                             readonly property int weekIndex: index
 
                             y: 110 + (index * 46) // Vertical row spacing
-                            x: (y * tooltipBg.slantRatio) + 24
-                            width: tooltipBg.width - calendarBox.tooltipSlantWidth - 48
+                            x: calendarTooltip.slantX(y) + 24
+                            width: calendarTooltip.width - calendarTooltip.tooltipSlantWidth - 48
                             spacing: 0
 
                             Repeater {
@@ -221,16 +208,16 @@ Item {
                                         visible: dayCellItem.isValidDay
                                         slantLeft: "Left"
                                         slantRight: "Left"
-                                        slantWidth: parent.height * tooltipBg.slantRatio
+                                        slantWidth: parent.height * containerWrapper.slantRatio
                                         borderColor: dayCellItem.isToday ? shell.theme.base05 : "transparent"
-                                        color: dayCellItem.isToday ? tooltipBg.colorBase02 : tooltipBg.color
+                                        color: dayCellItem.isToday ? containerWrapper.colorBase02 : bg.color
                                     }
 
                                     Text {
                                         anchors.centerIn: parent
                                         text: dayCellItem.isValidDay ? dayCellItem.dayNumber : ""
                                         color: shell.theme.base05
-                                        font.family: tooltipBg.fontFamily
+                                        font.family: containerWrapper.fontFamily
                                         font.pixelSize: shell.theme.globalFontSize
                                         font.bold: dayCellItem.isToday
                                     }

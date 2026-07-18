@@ -1,3 +1,4 @@
+// CpuCapsule.qml
 import QtQuick
 import QtQuick.Controls 2
 import QtQuick.Layouts 1.15
@@ -8,24 +9,23 @@ import "../../style"
 
 Item {
     id: cpuBox
-
-    // Standardized Tooltip Sizing
-    property int tooltipHeight: 420
     property var barWindow: null
+    property bool pinTooltip: false
 
-    // Slant config
+    // =========================================================================
+    //  EDITABLE TOOLTIP CONFIGURATION
+    // =========================================================================
+    property int tooltipHeight: 420          // Vertical height of the expanded box
+    property int tooltipCollapsedWidth: 130  // Sleek, thin width during the downward unroll
+    property int tooltipExpandedWidth: 430   // Final horizontal width once fully open
+    property int tooltipTopOffset: 0         // Micro-adjust vertical spacing (px)
+    property int tooltipRightOffset: 18      // Micro-adjust horizontal alignment (px)
+    // =========================================================================
 
+    // Module slant configurations
     property string slantLeft: "Right"
     property string slantRight: "Right"
     property int slantWidth: shell.theme.slantWidth
-
-    // Tooltip slant
-    readonly property real tooltipSlantWidth: (cpuBox.height > 0)
-    ? (tooltipHeight * (slantWidth / cpuBox.height))
-    : 15
-
-    // Standardized Tooltip Sizing
-    property int tooltipWidth: 380 + (tooltipSlantWidth * 2)
 
     property string cpuUsageStr: "0%"
     property string cpuTempStr: "0°C"
@@ -33,9 +33,12 @@ Item {
     property string textAccumulatorBuffer: ""
     readonly property var processLinesArray: topProcessesText.split("\n").filter(line => line.trim() !== "")
 
-    // Toggle to pin the tooltip open for screenshots (Click the CPU capsule to toggle)
-    property bool pinTooltip: false
+    // Unified Layout Constraints
+    width: 175
+    Layout.preferredWidth: 175
+    height: parent ? parent.height : 40 // Safe guard against null-parent startup evaluations
 
+    // Centralized SlantedBox Background
     SlantedBox {
         id: bg
         anchors.fill: parent
@@ -43,9 +46,6 @@ Item {
         slantRight: cpuBox.slantRight
         slantWidth: cpuBox.slantWidth
     }
-
-    width: 175
-    height: parent.height
 
     // Metric Data Collector
     Process {
@@ -95,7 +95,6 @@ Item {
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
 
-        // Automatically scale text down to fit inside the boundaries
         fontSizeMode: Text.Fit
         minimumPixelSize: 8
         elide: Text.ElideRight
@@ -119,84 +118,67 @@ Item {
         }
     }
 
-    // Click to toggle/pin the tooltip
     TapHandler {
         onTapped: {
             cpuBox.textAccumulatorBuffer = "";
             topProcFetcher.running = false;
             topProcFetcher.running = true;
-       //     cpuBox.pinTooltip = !cpuBox.pinTooltip;
         }
     }
 
-    // Dynamic Panel Renderer
+    // Panel Window Pop-up Renderer
     Loader {
-        active: cpuHoverTracker.hovered || cpuBox.pinTooltip
+        id: tooltipLoader
+        active: cpuHoverTracker.hovered || cpuBox.pinTooltip || (tooltipLoader.item && tooltipLoader.item.animHeight > 0)
 
         sourceComponent: Component {
-            PanelWindow {
-                screen: cpuBox.barWindow ? cpuBox.barWindow.screen : null
-                WlrLayershell.layer: WlrLayer.Overlay
-                WlrLayershell.namespace: "quickshell-cpu-tooltip"
-                WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-                anchors.top: true
-                anchors.right: true
+            SlantedTooltip {
+                id: cpuTooltip
+                moduleItem: cpuBox
+                barWindow: cpuBox.barWindow
+                tooltipActive: cpuHoverTracker.hovered
+                pin: cpuBox.pinTooltip
 
-                WlrLayershell.margins.top: shell.theme.globalPadding + 55
-                WlrLayershell.margins.right: cpuBox.barWindow ? Math.max(10 + shell.theme.globalPadding, cpuBox.barWindow.width - cpuBox.mapToItem(null, 0, 0).x - (cpuBox.width / 2) - (cpuBox.tooltipWidth / 2)) : 10
+                // Maps variables defined at the top of the file
+                tooltipHeight: cpuBox.tooltipHeight
+                collapsedCoreWidth: cpuBox.tooltipCollapsedWidth
+                expandedCoreWidth: cpuBox.tooltipExpandedWidth
+                topOffset: cpuBox.tooltipTopOffset
+                rightOffset: cpuBox.tooltipRightOffset
 
-                implicitWidth: cpuBox.tooltipWidth
-                implicitHeight: cpuBox.tooltipHeight
-                color: "transparent"
+                // Explicitly pass capsule slants to keep the window parallel
+                slantLeft: cpuBox.slantLeft
+                slantRight: cpuBox.slantRight
 
-                // Tooltip background using SlantedBox
-                SlantedBox {
-                    id: tooltipBg
-                    anchors.fill: parent
-                    slantLeft: cpuBox.slantLeft
-                    slantRight: cpuBox.slantRight
-                    slantWidth: cpuBox.tooltipSlantWidth
-
-                    readonly property real slantRatio: (height > 0) ? (slantWidth / height) : 0.35
+                // Slanted Text Content Layout inside the tooltip children scope
+                Text {
+                    text: "ACTIVE CPU CLIENTS:"
+                    font.family: shell.theme.fontFamily
+                    font.pixelSize: shell.theme.globalFontSize - 1
+                    font.bold: true
+                    color: shell.theme.base05
+                    y: 35
+                    x: cpuTooltip.slantX(y) + 24
                 }
 
-                Item {
-                    anchors.fill: parent
+                // Slanted Divider Line (Staggers right-to-left)
+                Rectangle {
+                    height: 2
+                    color: shell.theme.base02
+                    width: 360
+                    y: 65
+                    x: cpuTooltip.slantX(y) + 24
+                }
 
-                    // Header (Staggers right-to-left based on reversed y math)
+                Repeater {
+                    model: cpuBox.processLinesArray.length
                     Text {
-                        text: "ACTIVE CPU CLIENTS:"
-                        font.family: shell.theme.fontFamily
-                        font.pixelSize: shell.theme.globalFontSize
-                        font.bold: true
+                        text: cpuBox.processLinesArray[index]
+                        font.family: "monospace"
+                        font.pixelSize: shell.theme.globalFontSize - 1
                         color: shell.theme.base05
-
-                        y: 35
-                        x: ((tooltipBg.height - y) * tooltipBg.slantRatio) + 24
-                    }
-
-                    // Slanted Divider Line (Staggers right-to-left)
-                    Rectangle {
-                        height: 2
-                        color: shell.theme.base02
-                        width: 310
-
-                        y: 65
-                        x: ((tooltipBg.height - y) * tooltipBg.slantRatio) + 24
-                    }
-
-                    Repeater {
-                        model: cpuBox.processLinesArray.length
-
-                        Text {
-                            text: cpuBox.processLinesArray[index]
-                            font.family: "monospace"
-                            font.pixelSize: shell.theme.globalFontSize
-                            color: shell.theme.base05
-
-                            y: 95 + (index * 28)
-                            x: ((tooltipBg.height - y) * tooltipBg.slantRatio) + 24
-                        }
+                        y: 95 + (index * 28)
+                        x: cpuTooltip.slantX(y) + 24
                     }
                 }
             }

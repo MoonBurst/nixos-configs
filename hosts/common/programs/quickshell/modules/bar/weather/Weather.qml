@@ -1,3 +1,4 @@
+// WeatherCapsule.qml
 import QtQuick
 import QtQuick.Controls 2
 import QtQuick.Layouts 1.15
@@ -9,21 +10,24 @@ import "../../style"
 
 Item {
     id: weatherCapsule
-
-    property int tooltipHeight: 420
     property var barWindow: null
+    property bool pinTooltip: false
 
-    // Slant config
+    // =========================================================================
+    //  EDITABLE TOOLTIP CONFIGURATION
+    // =========================================================================
+    property int tooltipHeight: 620          // Vertical height of the expanded box
+    property int tooltipCollapsedWidth: 130  // Sleek, thin width during the downward unroll
+    property int tooltipExpandedWidth: 450   // Final horizontal width once fully open
+    property int tooltipTopOffset: 0         // Micro-adjust vertical spacing (px)
+    property int tooltipRightOffset: 22       // Micro-adjust horizontal alignment (px)
+    // =========================================================================
+
+    // Module slant configurations (Leans left)
     property string slantLeft: "Left"
     property string slantRight: "Left"
     property int slantWidth: shell.theme.slantWidth
 
-    readonly property real tooltipSlantWidth: (weatherCapsule.height > 0)
-    ? (tooltipHeight * (slantWidth / weatherCapsule.height))
-    : 15
-
-    // Standardized Tooltip Sizing
-    property int tooltipWidth: 380 + (tooltipSlantWidth * 2)
     property string weatherStr: "..."
     property string weatherTooltipText: "Fetching live weather metrics..."
     property string dataAccumulatorBuffer: ""
@@ -31,8 +35,10 @@ Item {
     // Split the raw forecast text into a clean array of lines
     readonly property var processLinesArray: weatherTooltipText.split("\n").filter(line => line.trim() !== "")
 
-    // Toggle to pin the tooltip open for screenshots (Click the weather capsule to toggle)
-    property bool pinTooltip: false
+    // Unified Layout Constraints
+    width: 140
+    Layout.preferredWidth: 140
+    height: parent ? parent.height : 40 // Safe guard against null-parent startup evaluations
 
     // Centralized SlantedBox Background
     SlantedBox {
@@ -42,9 +48,6 @@ Item {
         slantRight: weatherCapsule.slantRight
         slantWidth: weatherCapsule.slantWidth
     }
-
-    width: 140
-    height: parent.height
 
     // Main weather display fetcher
     Process {
@@ -146,7 +149,6 @@ Item {
 
     HoverHandler { id: weatherHoverTracker }
 
-    // Click to toggle/pin the tooltip
     TapHandler {
         onTapped: {
             weatherCapsule.dataAccumulatorBuffer = "";
@@ -154,95 +156,66 @@ Item {
             weatherFetcher.running = true;
             forecastFetcher.running = false;
             forecastFetcher.running = true;
-//            weatherCapsule.pinTooltip = !weatherCapsule.pinTooltip;
         }
     }
 
+    // Panel Window Pop-up Renderer
     Loader {
-        active: (weatherHoverTracker.hovered && weatherCapsule.barWindow !== null) || weatherCapsule.pinTooltip
+        id: tooltipLoader
+        active: weatherHoverTracker.hovered || weatherCapsule.pinTooltip || (tooltipLoader.item && tooltipLoader.item.animHeight > 0)
 
         sourceComponent: Component {
-            PanelWindow {
-                screen: weatherCapsule.barWindow ? weatherCapsule.barWindow.screen : null
-                WlrLayershell.layer: WlrLayer.Overlay
-                WlrLayershell.namespace: "quickshell-weather-tooltip"
-                WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+            SlantedTooltip {
+                id: weatherTooltip
+                moduleItem: weatherCapsule
+                barWindow: weatherCapsule.barWindow
+                tooltipActive: weatherHoverTracker.hovered
+                pin: weatherCapsule.pinTooltip
 
-                anchors.top: true
-                anchors.left: true
-                anchors.right: false
-                anchors.bottom: false
+                // Instruct the template to align left and expand rightwards
+                alignSide: "Left"
 
-                implicitWidth: weatherCapsule.tooltipWidth
-                implicitHeight: weatherCapsule.tooltipHeight
-                color: "transparent"
+                // Maps variables defined at the top of the file
+                tooltipHeight: weatherCapsule.tooltipHeight
+                collapsedCoreWidth: weatherCapsule.tooltipCollapsedWidth
+                expandedCoreWidth: weatherCapsule.tooltipExpandedWidth
+                topOffset: weatherCapsule.tooltipTopOffset
+                rightOffset: weatherCapsule.tooltipRightOffset
 
-                WlrLayershell.margins.top: shell.theme.globalPadding + 55
+                // Explicitly pass capsule slants to keep the window parallel
+                slantLeft: weatherCapsule.slantLeft
+                slantRight: weatherCapsule.slantRight
 
-                // Centers dropdown aligned dynamically under the parent container
-                WlrLayershell.margins.left: {
-                    if (!weatherCapsule.barWindow) return 0;
-                    var xOffset = weatherCapsule.x;
-                    var p = weatherCapsule.parent;
-                    while (p && p !== weatherCapsule.barWindow.contentItem) {
-                        xOffset += p.x;
-                        p = p.parent;
-                    }
-                    var centerPoint = xOffset + (weatherCapsule.width / 2);
-                    return Math.round(centerPoint - (weatherCapsule.tooltipWidth / 2));
+                // Header
+                Text {
+                    text: "🌤️ COMPLETE DETAILED FORECAST MATRIX"
+                    font.family: shell.theme.fontFamily
+                    font.pixelSize: shell.theme.globalFontSize - 2
+                    font.bold: true
+                    color: shell.theme.base05
+                    y: 35
+                    x: weatherTooltip.slantX(y) + 24
                 }
 
-                // Tooltip background using SlantedBox
-                SlantedBox {
-                    id: tooltipBg
-                    anchors.fill: parent
-                    slantLeft: weatherCapsule.slantLeft
-                    slantRight: weatherCapsule.slantRight
-                    slantWidth: weatherCapsule.tooltipSlantWidth
-
-
-                    readonly property real slantRatio: (height > 0) ? (slantWidth / height) : 0.35
+                // Slanted Divider Line (Staggers left-to-right)
+                Rectangle {
+                    height: 2
+                    color: shell.theme.base02
+                    width: 360
+                    y: 65
+                    x: weatherTooltip.slantX(y) + 24
                 }
 
-                // Content layout
-                Item {
-                    anchors.fill: parent
-
-                    // 1. Header
+                // Monospace Forecast List
+                Repeater {
+                    model: weatherCapsule.processLinesArray.length
                     Text {
-                        text: "🌤️ COMPLETE DETAILED FORECAST MATRIX"
-                        font.family: shell.theme.fontFamily
-                        font.pixelSize: shell.theme.globalFontSize - 2
-                        font.bold: true
+                        text: weatherCapsule.processLinesArray[index]
+                        font.family: "monospace"
+                        font.pixelSize: shell.theme.globalFontSize - 1
                         color: shell.theme.base05
-
-                        y: 30
-                        x: (y * tooltipBg.slantRatio) + 24
-                    }
-
-                    //Divider Line
-                    Rectangle {
-                        height: 2
-                        color: shell.theme.base02
-                        width: 310
-
-                        y: 55
-                        x: (y * tooltipBg.slantRatio) + 24
-                    }
-
-                    //Monospace Forecast List
-                    Repeater {
-                        model: weatherCapsule.processLinesArray.length
-
-                        Text {
-                            text: weatherCapsule.processLinesArray[index]
-                            font.family: "monospace"
-                            font.pixelSize: shell.theme.globalFontSize
-                            color: shell.theme.base05
-
-                            y: 75 + (index * 18)
-                            x: (y * tooltipBg.slantRatio) + 24
-                        }
+                        y: 95 + (index * 28) // Standardized spacing
+                        x: weatherTooltip.slantX(y) + 24
                     }
                 }
             }

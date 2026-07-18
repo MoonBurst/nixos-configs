@@ -1,3 +1,4 @@
+// RamCapsule.qml
 import QtQuick
 import QtQuick.Controls 2
 import QtQuick.Layouts 1.15
@@ -8,21 +9,23 @@ import "../../style"
 
 Item {
     id: ramBox
-    property int tooltipHeight: 420
     property var barWindow: null
+    property bool pinTooltip: false
 
-    // Slant config
+    // =========================================================================
+    //  EDITABLE TOOLTIP CONFIGURATION
+    // =========================================================================
+    property int tooltipHeight: 400          // Vertical height of the expanded box
+    property int tooltipCollapsedWidth: 136  // Sleek, thin width during the downward unroll
+    property int tooltipExpandedWidth: 437  // Final horizontal width once fully open
+    property int tooltipTopOffset: 0         // Micro-adjust vertical spacing (px)
+    property int tooltipRightOffset: 18      // Micro-adjust horizontal alignment (px)
+    // =========================================================================
+
+    // Module slant configurations
     property string slantLeft: "Right"
     property string slantRight: "Right"
     property int slantWidth: shell.theme.slantWidth
-
-    // Tooltip slant
-    readonly property real tooltipSlantWidth: (ramBox.height > 0)
-    ? (tooltipHeight * (slantWidth / ramBox.height))
-    : 15
-
-    // Standardized Tooltip Sizing
-    property int tooltipWidth: 380 + (tooltipSlantWidth * 2)
 
     property real totalGiB: 0.0
     property real availableGiB: 0.0
@@ -32,8 +35,10 @@ Item {
     // Split the raw processes output into a clean array of lines
     readonly property var processLinesArray: topProcessesText.split("\n").filter(line => line.trim() !== "")
 
-    // Toggle to pin the tooltip open for screenshots (Click the RAM capsule to toggle)
-    property bool pinTooltip: false
+    // Unified Layout Constraints
+    width: 175
+    Layout.preferredWidth: 175
+    height: parent ? parent.height : 40 // Safe guard against null-parent startup evaluations
 
     // Centralized SlantedBox Background
     SlantedBox {
@@ -43,12 +48,6 @@ Item {
         slantRight: ramBox.slantRight
         slantWidth: ramBox.slantWidth
     }
-
-    // Unified Layout Constraints
-    Binding { target: ramBox; property: "Layout.preferredWidth"; value: 175 }
-    Binding { target: ramBox; property: "width"; value: 175 }
-
-    height: parent.height
 
     // Metric Data Collector
     Process {
@@ -100,7 +99,6 @@ Item {
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
 
-        // Automatically scale text down to fit inside the boundaries
         fontSizeMode: Text.Fit
         minimumPixelSize: 8
         elide: Text.ElideRight
@@ -128,90 +126,74 @@ Item {
         onHoveredChanged: if (hovered) { ramBox.textAccumulatorBuffer = ""; topProcFetcher.running = true; }
     }
 
-    // Click to toggle/pin the tooltip
     TapHandler {
         onTapped: {
             ramBox.textAccumulatorBuffer = "";
             topProcFetcher.running = true;
-        //    ramBox.pinTooltip = !ramBox.pinTooltip;
         }
     }
 
     // Panel Window Pop-up Renderer
     Loader {
-        active: ramHoverTracker.hovered || ramBox.pinTooltip
+        id: tooltipLoader
+        active: ramHoverTracker.hovered || ramBox.pinTooltip || (tooltipLoader.item && tooltipLoader.item.animHeight > 0)
 
         sourceComponent: Component {
-            PanelWindow {
-                screen: ramBox.barWindow ? ramBox.barWindow.screen : null
-                WlrLayershell.layer: WlrLayer.Overlay
-                WlrLayershell.namespace: "quickshell-ram-tooltip"
-                WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-                anchors.top: true
-                anchors.right: true
+            SlantedTooltip {
+                id: ramTooltip
+                moduleItem: ramBox
+                barWindow: ramBox.barWindow
+                tooltipActive: ramHoverTracker.hovered
+                pin: ramBox.pinTooltip
 
-                WlrLayershell.margins.top: shell.theme.globalPadding + 55
-                WlrLayershell.margins.right: ramBox.barWindow ? Math.max(10 + shell.theme.globalPadding, ramBox.barWindow.width - ramBox.mapToItem(null, 0, 0).x - (ramBox.width / 2) - (ramBox.tooltipWidth / 2)) : 10
+                // Maps variables defined at the top of the file
+                tooltipHeight: ramBox.tooltipHeight
+                collapsedCoreWidth: ramBox.tooltipCollapsedWidth
+                expandedCoreWidth: ramBox.tooltipExpandedWidth
+                topOffset: ramBox.tooltipTopOffset
+                rightOffset: ramBox.tooltipRightOffset
 
-                implicitWidth: ramBox.tooltipWidth
-                implicitHeight: ramBox.tooltipHeight
-                color: "transparent"
+                // Explicitly pass capsule slants to keep the window parallel
+                slantLeft: ramBox.slantLeft
+                slantRight: ramBox.slantRight
 
-                // Tooltip background using SlantedBox
-                SlantedBox {
-                    id: tooltipBg
-                    anchors.fill: parent
-                    slantLeft: ramBox.slantLeft
-                    slantRight: ramBox.slantRight
-                    slantWidth: ramBox.tooltipSlantWidth
+                // Nested custom text lists compile directly into this children list
+                Text {
+                    text: "TOP RAM CONSUMERS:"
+                    font.family: shell.theme.fontFamily
+                    font.pixelSize: shell.theme.globalFontSize - 1
+                    font.bold: true
+                    color: shell.theme.base05
+                    y: 35
+                    x: ramTooltip.slantX(y) + 24
                 }
 
-                //  Text content layout
-                Item {
-                    anchors.fill: parent
+                Rectangle {
+                    height: 2
+                    color: shell.theme.base02
+                    width: 360
+                    y: 65
+                    x: ramTooltip.slantX(y) + 24
+                }
 
-                    // Header
+                Repeater {
+                    model: ramBox.processLinesArray.length
                     Text {
-                        text: "TOP RAM CONSUMERS:"
-                        font.family: shell.theme.fontFamily
-                        font.pixelSize: shell.theme.globalFontSize
-                        font.bold: true
+                        text: ramBox.processLinesArray[index]
+                        font.family: "monospace"
+                        font.pixelSize: shell.theme.globalFontSize - 1
                         color: shell.theme.base05
-
-                        y: 35
-                        x: ((tooltipBg.height - y) * tooltipBg.slantRatio) + 24
-                    }
-
-                    // Slanted Divider Line
-                    Rectangle {
-                        height: 2
-                        color: shell.theme.base02
-                        width: 310
-
-                        y: 65
-                        x: ((tooltipBg.height - y) * tooltipBg.slantRatio) + 24
-                    }
-
-                    // Monospace Process List
-                    Repeater {
-                        model: ramBox.processLinesArray.length
-
-                        Text {
-                            text: ramBox.processLinesArray[index]
-                            font.family: "monospace"
-                            font.pixelSize: shell.theme.globalFontSize
-                            color: shell.theme.base05
-
-                            y: 95 + (index * 28)
-                            x: ((tooltipBg.height - y) * tooltipBg.slantRatio) + 24
-                        }
+                        y: 95 + (index * 28)
+                        x: ramTooltip.slantX(y) + 24
                     }
                 }
             }
         }
     }
 
+    // Metric Refresher
     Timer {
+        id: statsRefreshTimer
         interval: 2000; running: true; repeat: true; triggeredOnStart: true
         onTriggered: {
             ramStatsProc.running = true;

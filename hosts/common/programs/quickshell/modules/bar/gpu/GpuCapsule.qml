@@ -1,3 +1,4 @@
+// GpuCapsule.qml
 import QtQuick
 import QtQuick.Controls 2
 import QtQuick.Layouts 1.15
@@ -8,21 +9,23 @@ import "../../style"
 
 Item {
     id: gpuBox
-
-    // Standardized Tooltip Sizing
-    property int tooltipHeight: 420
     property var barWindow: null
-    //Slant config
+    property bool pinTooltip: false
+
+    // =========================================================================
+    //  EDITABLE TOOLTIP CONFIGURATION
+    // =========================================================================
+    property int tooltipHeight: 400          // Vertical height of the expanded box
+    property int tooltipCollapsedWidth: 280  // Sleek, thin width during the downward unroll
+    property int tooltipExpandedWidth: 300   // Final horizontal width once fully open
+    property int tooltipTopOffset: 0         // Micro-adjust vertical spacing (px)
+    property int tooltipRightOffset: 18      // Micro-adjust horizontal alignment (px)
+    // =========================================================================
+
+    // Module slant configurations
     property string slantLeft: "Right"
     property string slantRight: "Right"
     property int slantWidth: shell.theme.slantWidth
-
-    readonly property real tooltipSlantWidth: (gpuBox.height > 0)
-    ? (tooltipHeight * (slantWidth / gpuBox.height))
-    : 15
-
-    // Standardized Tooltip Sizing
-    property int tooltipWidth: 380 + (tooltipSlantWidth * 2)
 
     property string gpuUsageRaw: "0"
     property string gpuTempRaw: "0"
@@ -33,8 +36,10 @@ Item {
 
     readonly property var processLinesArray: topGpuProcessesText.split("\n").filter(line => line.trim() !== "")
 
-    // Toggle to pin the tooltip open for screenshots (Click the GPU capsule to toggle)
-    property bool pinTooltip: false
+    // Unified Layout Constraints
+    width: gpuText.implicitWidth + leftPadding + rightPadding
+    Layout.preferredWidth: width
+    height: parent ? parent.height : 40 // Safe guard against null-parent startup evaluations
 
     // Centralized SlantedBox Background
     SlantedBox {
@@ -44,11 +49,6 @@ Item {
         slantRight: gpuBox.slantRight
         slantWidth: gpuBox.slantWidth
     }
-
-    Binding { target: gpuBox; property: "Layout.preferredWidth"; value: gpuText.implicitWidth + gpuBox.leftPadding + gpuBox.rightPadding }
-    Binding { target: gpuBox; property: "width"; value: gpuText.implicitWidth + gpuBox.leftPadding + gpuBox.rightPadding }
-
-    height: parent.height
 
     // Metric Data Collector (AMD/Nvidia)
     Process {
@@ -136,84 +136,66 @@ Item {
         onHoveredChanged: if (hovered) { gpuBox.textAccumulatorBuffer = ""; gpuProcFetcher.running = true; }
     }
 
-    // Click to toggle/pin the tooltip
     TapHandler {
         onTapped: {
             gpuBox.textAccumulatorBuffer = "";
             gpuProcFetcher.running = true;
-        //    gpuBox.pinTooltip = !gpuBox.pinTooltip;
         }
     }
 
     // Panel Window Loader
     Loader {
-        active: gpuHoverTracker.hovered || gpuBox.pinTooltip
+        id: tooltipLoader
+        active: gpuHoverTracker.hovered || gpuBox.pinTooltip || (tooltipLoader.item && tooltipLoader.item.animHeight > 0)
 
         sourceComponent: Component {
-            PanelWindow {
-                screen: gpuBox.barWindow ? gpuBox.barWindow.screen : null
-                WlrLayershell.layer: WlrLayer.Overlay
-                WlrLayershell.namespace: "quickshell-gpu-tooltip"
-                WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-                anchors.top: true
-                anchors.right: true
+            SlantedTooltip {
+                id: gpuTooltip
+                moduleItem: gpuBox
+                barWindow: gpuBox.barWindow
+                tooltipActive: gpuHoverTracker.hovered
+                pin: gpuBox.pinTooltip
 
-                WlrLayershell.margins.top: shell.theme.globalPadding + 55
-                WlrLayershell.margins.right: gpuBox.barWindow ? Math.max(10 + shell.theme.globalPadding, gpuBox.barWindow.width - gpuBox.mapToItem(null, 0, 0).x - (gpuBox.width / 2) - (gpuBox.tooltipWidth / 2)) : 10
+                // Maps variables defined at the top of the file
+                tooltipHeight: gpuBox.tooltipHeight
+                collapsedCoreWidth: gpuBox.tooltipCollapsedWidth
+                expandedCoreWidth: gpuBox.tooltipExpandedWidth
+                topOffset: gpuBox.tooltipTopOffset
+                rightOffset: gpuBox.tooltipRightOffset
 
-                implicitWidth: gpuBox.tooltipWidth
-                implicitHeight: gpuBox.tooltipHeight
-                color: "transparent"
+                // Explicitly pass capsule slants to keep the window parallel
+                slantLeft: gpuBox.slantLeft
+                slantRight: gpuBox.slantRight
 
-                // Tooltip background using SlantedBox
-                SlantedBox {
-                    id: tooltipBg
-                    anchors.fill: parent
-                    slantLeft: gpuBox.slantLeft
-                    slantRight: gpuBox.slantRight
-                    slantWidth: gpuBox.tooltipSlantWidth
-
-                    // Local math handles staggering safely
-                    readonly property real slantRatio: (height > 0) ? (slantWidth / height) : 0.35
+                // Slanted Text Content Layout inside the tooltip children scope
+                Text {
+                    text: "ACTIVE GPU CLIENTS:"
+                    font.family: shell.theme.fontFamily
+                    font.pixelSize: shell.theme.globalFontSize - 1
+                    font.bold: true
+                    color: shell.theme.base05
+                    y: 35
+                    x: gpuTooltip.slantX(y) + 24
                 }
 
-                // --- SLANTED TEXT CONTENT LAYOUT ---
-                Item {
-                    anchors.fill: parent
+                // Slanted Divider Line (Staggers right-to-left)
+                Rectangle {
+                    height: 2
+                    color: shell.theme.base02
+                    width: 360
+                    y: 65
+                    x: gpuTooltip.slantX(y) + 24
+                }
 
-                        Text {
-                        text: "ACTIVE GPU CLIENTS:"
-                        font.family: tooltipBg.fontFamily
-                        font.pixelSize: shell.theme.globalFontSize
-                        font.bold: true
+                Repeater {
+                    model: gpuBox.processLinesArray.length
+                    Text {
+                        text: gpuBox.processLinesArray[index]
+                        font.family: "monospace"
+                        font.pixelSize: shell.theme.globalFontSize - 1
                         color: shell.theme.base05
-
-                        y: 35
-                        x: ((tooltipBg.height - y) * tooltipBg.slantRatio) + 24
-                    }
-
-                    // Slanted Divider Line (Staggers right-to-left)
-                    Rectangle {
-                        height: 2
-                        color: shell.theme.base02
-                        width: 310
-
-                        y: 65
-                        x: ((tooltipBg.height - y) * tooltipBg.slantRatio) + 24
-                    }
-
-                    Repeater {
-                        model: gpuBox.processLinesArray.length
-
-                        Text {
-                            text: gpuBox.processLinesArray[index]
-                            font.family: "monospace"
-                            font.pixelSize: shell.theme.globalFontSize
-                            color: shell.theme.base05
-
-                            y: 95 + (index * 28)
-                            x: ((tooltipBg.height - y) * tooltipBg.slantRatio) + 24
-                        }
+                        y: 95 + (index * 28)
+                        x: gpuTooltip.slantX(y) + 24
                     }
                 }
             }

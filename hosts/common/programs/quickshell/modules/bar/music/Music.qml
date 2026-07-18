@@ -1,3 +1,4 @@
+// MusicCapsule.qml
 import QtQuick
 import QtQuick.Controls 2
 import QtQuick.Layouts 1.15
@@ -10,16 +11,29 @@ import "../../style"
 Item {
     id: musicBox
 
-    // ==========================================
-    // GLOBAL STATE PROPERTIES
-    // ==========================================
+    // =========================================================================
+    //  EDITABLE TOOLTIP CONFIGURATION
+    // =========================================================================
+    property int tooltipHeight: 420          // Vertical height of the expanded box
+    property int tooltipCollapsedWidth: 130  // Sleek, thin width during the downward unroll
+    property int tooltipExpandedWidth: 430   // Final horizontal width once fully open (410px matches old dimensions)
+    property int tooltipTopOffset: 0         // Micro-adjust vertical spacing (px)
+    property int tooltipRightOffset: 20       // Micro-adjust horizontal alignment (px)
+    // =========================================================================
+
+    // Module slant configurations (Leans left)
+    property string slantLeft: "Left"
+    property string slantRight: "Left"
+    property int slantWidth: shell.theme.slantWidth
+
+    // Global Widget Properties
     property var barWindow: null
     property string trackStr: "No Track"
     property string tooltipTitle: "No Title Playing"
     property string tooltipArtist: "No Artist Data"
     property string trackCountStr: "Track 0 of 0"
 
-    // Expose the internal IPC process to child components loaded via Loader
+    // Expose the internal IPC process to child components
     property var mpdIpc: mpdIpc
 
     property string currentFile: ""
@@ -33,22 +47,10 @@ Item {
     property bool popupActive: false
     property bool confirmDeleteMode: false
 
-    // Slant config
-    property string slantLeft: "Left"
-    property string slantRight: "Left"
-    property int slantWidth: shell.theme.slantWidth
-
-    // Centralized SlantedBox Background
-    SlantedBox {
-        id: bg
-        anchors.fill: parent
-        slantLeft: musicBox.slantLeft
-        slantRight: musicBox.slantRight
-        slantWidth: musicBox.slantWidth
-    }
-
+    // Unified Layout Constraints
     width: 200
-    height: parent ? parent.height : 40
+    Layout.preferredWidth: 200
+    height: parent ? parent.height : 40 // Safe guard against null-parent startup evaluations
 
     // Calculated Helpers (Local background math)
     readonly property real halfBorder: shell.theme.globalBorderWidth / 2
@@ -61,7 +63,16 @@ Item {
     property real x3: (slantRight === "Left") ? (width - slantWidth - halfBorder) : (width - halfBorder)
     property real x4: (slantRight === "Right") ? (width - slantWidth - halfBorder) : (width - halfBorder)
 
-   // Display Helper
+    // Centralized SlantedBox Background
+    SlantedBox {
+        id: bg
+        anchors.fill: parent
+        slantLeft: musicBox.slantLeft
+        slantRight: musicBox.slantRight
+        slantWidth: musicBox.slantWidth
+    }
+
+    // Display Helper
     function updateTrackString() {
         if (musicBox.playbackState === "stop") {
             musicBox.trackStr = "No Track";
@@ -80,7 +91,7 @@ Item {
     }
 
     // Socket IPC connection
-        Process {
+    Process {
         id: mpdIpc
         running: true
 
@@ -197,7 +208,7 @@ Item {
         color: shell.theme.base05
         text: musicBox.trackStr
         font.family: shell.theme.fontFamily
-        font.pixelSize: shell.theme.globalFontSize - 2
+        font.pixelSize: shell.theme.globalFontSize - 20
         font.bold: true
         horizontalAlignment: Text.AlignLeft
         verticalAlignment: Text.AlignVCenter
@@ -229,61 +240,553 @@ Item {
         }
     }
 
-    PanelWindow {
-        id: musicTooltipWindow
+    // Panel Window Pop-up Renderer
+    Loader {
+        id: tooltipLoader
+        active: musicBox.popupActive || (tooltipLoader.item && tooltipLoader.item.animHeight > 0)
 
-        screen: musicBox.barWindow ? musicBox.barWindow.screen : Quickshell.screens
-        visible: musicBox.popupActive
+        sourceComponent: Component {
+            SlantedTooltip {
+                id: musicTooltip
+                moduleItem: musicBox
+                barWindow: musicBox.barWindow
+                tooltipActive: musicBox.popupActive
 
-        WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.namespace: "quickshell-music-tooltip"
-        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+                // Instruct the template to align left and expand rightwards
+                alignSide: "Left"
 
-        anchors.top: true
-        anchors.left: true
-        anchors.right: true
-        anchors.bottom: true
-        color: "transparent"
+                // Maps variables defined at the top of the file
+                tooltipHeight: musicBox.tooltipHeight
+                collapsedCoreWidth: musicBox.tooltipCollapsedWidth
+                expandedCoreWidth: musicBox.tooltipExpandedWidth
+                topOffset: musicBox.tooltipTopOffset
+                rightOffset: musicBox.tooltipRightOffset
 
-        MouseArea {
-            anchors.fill: parent
-            onPressed: {
-                musicBox.popupActive = false;
-                musicBox.confirmDeleteMode = false;
-            }
-        }
+                // Explicitly pass capsule slants to keep the window parallel
+                slantLeft: musicBox.slantLeft
+                slantRight: musicBox.slantRight
 
-        Item {
-            id: cardContainer
+                // Stationary layout wrapper (maps old theme properties securely to the new scope)
+                Item {
+                    id: containerWrapper
+                    anchors.fill: parent
 
-            // Dynamically scale the popup size based on the loaded tooltip's implicit calculations
-            width: contentLoader.item ? contentLoader.item.implicitWidth : 674
-            height: contentLoader.item ? contentLoader.item.implicitHeight : 420
+                    readonly property string fontFamily: (shell && shell.theme) ? (shell.theme.fontFamily || "monospace") : "monospace"
+                    readonly property color colorBase05: (shell && shell.theme) ? (shell.theme.base05 || "yellow") : "yellow"
+                    readonly property color colorBase03: (shell && shell.theme) ? (shell.theme.base03 || "#333333") : "#333333"
+                    readonly property color colorBase02: (shell && shell.theme) ? (shell.theme.base02 || "#222222") : "#222222"
+                    readonly property real slantRatio: musicTooltip.tooltipSlantWidth / musicTooltip.tooltipHeight
 
-            y: shell.theme.globalPadding + 55
+                    // Helpers and Actions
+                    function formatTime(secs) {
+                        if (!secs || isNaN(secs) || secs < 0) return "0:00";
+                        var m = Math.floor(secs / 60);
+                        var s = Math.floor(secs % 60);
+                        return m + ":" + (s < 10 ? "0" : "") + s;
+                    }
 
-            x: {
-                if (!musicBox.barWindow) return 100;
-                var globalCoords = musicBox.mapToItem(null, 0, 0);
-                var musicCenterAbsolute = globalCoords.x + (musicBox.width / 2);
-                var targetLeftMargin = Math.round(musicCenterAbsolute - (width / 2));
+                    Shortcut {
+                        sequence: "Escape"
+                        enabled: true
+                        onActivated: {
+                            musicBox.popupActive = false;
+                            musicBox.confirmDeleteMode = false;
+                        }
+                    }
 
-                if (targetLeftMargin < shell.theme.globalPadding) return shell.theme.globalPadding;
-                return targetLeftMargin;
-            }
+                    // File Deleter
+                    Process {
+                        id: deleteSongProc
+                        command: [
+                            "sh", "-c",
+                            "python3 -c \"\n" +
+                            "import os, subprocess\n" +
+                            "try:\n" +
+                            "    rel_path = '" + musicBox.currentFile + "'\n" +
+                            "    music_dir = os.path.expanduser('~/Music')\n" +
+                            "    abs_path = os.path.join(music_dir, rel_path)\n" +
+                            "    if os.path.exists(abs_path):\n" +
+                            "        os.remove(abs_path)\n" +
+                            "except Exception:\n" +
+                            "    pass\n" +
+                            "\""
+                        ]
+                        onRunningChanged: {
+                            if (!running && musicBox.confirmDeleteMode) {
+                                musicBox.confirmDeleteMode = false
+                                musicBox.mpdIpc.write("next\nstatus\ncurrentsong\n");
+                            }
+                        }
+                    }
 
-            MouseArea {
-                anchors.fill: parent
-                propagateComposedEvents: false
-                onPressed: (mouse) => mouse.accepted = true
-                onReleased: (mouse) => mouse.accepted = true
-                onClicked: (mouse) => mouse.accepted = true
-            }
+                    Item {
+                        id: trackDetailsBlock
+                        y: 45
+                        x: musicTooltip.slantX(y) + 60
+                        width: musicTooltip.width - musicTooltip.tooltipSlantWidth - 48
+                        height: 110
 
-            Loader {
-                id: contentLoader
-                anchors.fill: parent
-                source: "MusicTooltip.qml"
+                        SlantedBox {
+                            id: blockBg
+                            anchors.fill: parent
+                            slantLeft: "Left"
+                            slantRight: "Left"
+                            slantWidth: parent.height * containerWrapper.slantRatio
+                            borderColor: containerWrapper.colorBase05
+                            color: "transparent"
+                        }
+
+                        // Staggered Title Text inside Track block
+                        Text {
+                            id: titleText
+                            y: 18
+                            x: musicTooltip.slantX(45 + y) + 12
+                            width: parent.width - (parent.height * containerWrapper.slantRatio) - 24
+                            text: musicBox.tooltipTitle && musicBox.tooltipTitle !== "" ? musicBox.tooltipTitle : musicBox.trackStr
+                            font.family: containerWrapper.fontFamily
+                            font.pixelSize: 18
+                            font.bold: true
+                            color: containerWrapper.colorBase05
+                            elide: Text.ElideRight
+                        }
+
+                        // Staggered Artist Text inside Track block
+                        Text {
+                            id: artistText
+                            y: 48
+                            x: musicTooltip.slantX(45 + y) + 12
+                            width: parent.width - (parent.height * containerWrapper.slantRatio) - 24
+                            text: musicBox.tooltipArtist && musicBox.tooltipArtist !== "" ? musicBox.tooltipArtist : "Unknown Artist"
+                            font.family: containerWrapper.fontFamily
+                            font.pixelSize: 20
+                            color: containerWrapper.colorBase05
+                            opacity: 0.8
+                            elide: Text.ElideRight
+                        }
+
+                        // Staggered Track Count Text inside Track block
+                        Text {
+                            id: countText
+                            y: 78
+                            x: musicTooltip.slantX(45 + y) + 12
+                            width: parent.width - (parent.height * containerWrapper.slantRatio) - 24
+                            text: musicBox.trackCountStr
+                            font.family: containerWrapper.fontFamily
+                            font.pixelSize: 20
+                            color: containerWrapper.colorBase05
+                        }
+                    }
+
+                    // Slanted Seek / Track Position Slider
+                    Row {
+                        y: 185
+                        x: musicTooltip.slantX(y) + 24
+                        width: musicTooltip.width - musicTooltip.tooltipSlantWidth - 48
+                        spacing: 8
+
+                        Text {
+                            id: currentTimeText
+                            text: formatTime(musicBox.elapsedSeconds)
+                            font.family: containerWrapper.fontFamily
+                            font.pixelSize: 12
+                            color: containerWrapper.colorBase05
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        Slider {
+                            id: seekSlider
+                            width: parent.width - currentTimeText.width - totalTimeText.width - 16
+                            anchors.verticalCenter: parent.verticalCenter
+                            from: 0
+                            to: musicBox.totalSeconds > 0 ? musicBox.totalSeconds : 100
+                            value: musicBox.elapsedSeconds
+
+                            // Slanted background track
+                            background: SlantedBox {
+                                id: seekTrackBg
+                                implicitWidth: 200
+                                implicitHeight: 10
+                                width: seekSlider.availableWidth
+                                height: implicitHeight
+                                slantLeft: "Left"
+                                slantRight: "Left"
+                                slantWidth: 14
+                                color: containerWrapper.colorBase03
+                                borderColor: "transparent"
+
+                                // Filled Progress Track
+                                SlantedBox {
+                                    id: seekFillShape
+                                    height: parent.height
+                                    width: Math.max(16, seekSlider.visualPosition * parent.width)
+                                    visible: width > 0
+                                    slantLeft: "Left"
+                                    slantRight: "Left"
+                                    slantWidth: 14
+                                    color: containerWrapper.colorBase05
+                                    borderColor: "transparent"
+                                }
+                            }
+
+                            // Slanted Handle (Thumb)
+                            handle: SlantedBox {
+                                id: seekThumb
+                                x: seekSlider.leftPadding + seekSlider.visualPosition * (seekSlider.availableWidth - width)
+                                y: seekSlider.topPadding + seekSlider.availableHeight / 2 - height / 2
+                                implicitWidth: 16
+                                implicitHeight: 16
+                                slantLeft: "Left"
+                                slantRight: "Left"
+                                slantWidth: 10
+                                color: containerWrapper.colorBase05
+                                borderColor: containerWrapper.colorBase05
+                            }
+
+                            onMoved: {
+                                var idx = musicBox.currentTrackIdx - 1;
+                                if (idx >= 0) {
+                                    musicBox.mpdIpc.write("seek " + idx + " " + Math.round(value) + "\nstatus\n");
+                                }
+                            }
+                        }
+
+                        Binding {
+                            target: seekSlider
+                            property: "value"
+                            value: musicBox.elapsedSeconds
+                            when: !seekSlider.pressed
+                        }
+
+                        Text {
+                            id: totalTimeText
+                            text: formatTime(musicBox.totalSeconds)
+                            font.family: containerWrapper.fontFamily
+                            font.pixelSize: 20
+                            color: containerWrapper.colorBase05
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+
+                    // Slanted Volume Control Slider
+                    Row {
+                        y: 240
+                        x: musicTooltip.slantX(y) + 24
+                        width: musicTooltip.width - musicTooltip.tooltipSlantWidth - 48
+                        spacing: 8
+
+                        Text {
+                            text: "VOL"
+                            font.pixelSize: 20
+                            color: containerWrapper.colorBase05
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        Slider {
+                            id: volSlider
+                            width: parent.width - 64
+                            anchors.verticalCenter: parent.verticalCenter
+                            from: 0
+                            to: 100
+                            value: musicBox.currentVolume
+
+                            Binding on value {
+                                value: musicBox.currentVolume
+                                when: !volSlider.pressed
+                            }
+
+                            // Slanted background track
+                            background: SlantedBox {
+                                id: volTrackBg
+                                implicitWidth: 200
+                                implicitHeight: 10
+                                width: volSlider.availableWidth
+                                height: implicitHeight
+                                slantLeft: "Left"
+                                slantRight: "Left"
+                                slantWidth: 14
+                                color: containerWrapper.colorBase03
+                                borderColor: "transparent"
+
+                                // Filled Progress Track
+                                SlantedBox {
+                                    id: volFillShape
+                                    height: parent.height
+                                    width: Math.max(16, volSlider.visualPosition * parent.width)
+                                    visible: width > 0
+                                    slantLeft: "Left"
+                                    slantRight: "Left"
+                                    slantWidth: 14
+                                    color: containerWrapper.colorBase05
+                                    borderColor: "transparent"
+                                }
+                            }
+
+                            // Slanted Handle (Thumb)
+                            handle: SlantedBox {
+                                id: volThumb
+                                x: volSlider.leftPadding + volSlider.visualPosition * (volSlider.availableWidth - width)
+                                y: volSlider.topPadding + volSlider.availableHeight / 2 - height / 2
+                                implicitWidth: 16
+                                implicitHeight: 16
+                                slantLeft: "Left"
+                                slantRight: "Left"
+                                slantWidth: 10
+                                color: containerWrapper.colorBase05
+                                borderColor: containerWrapper.colorBase05
+                            }
+
+                            onMoved: {
+                                musicBox.mpdIpc.write("setvol " + Math.round(value) + "\nstatus\n");
+                            }
+                        }
+
+                        Text {
+                            text: Math.round(volSlider.value) + "%"
+                            font.family: containerWrapper.fontFamily
+                            font.pixelSize: 20
+                            color: containerWrapper.colorBase05
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+
+                    // Row 1: Primary Playback Controls (Aligned cleanly at y: 285)
+                    Row {
+                        y: 285
+                        x: musicTooltip.slantX(y) + 24
+                        width: musicTooltip.width - musicTooltip.tooltipSlantWidth - 48
+                        spacing: 12
+
+                        // Dynamic spacer to center the primary media buttons horizontally
+                        Item {
+                            width: Math.max(0, (parent.width - 324) / 2) // 3x 100px buttons + 2x 12px spacers = 324px
+                            height: 45
+                        }
+
+                        // Previous Track Button
+                        Item {
+                            id: prevButton
+                            width: 100
+                            height: 45
+                            readonly property real btnSlantWidth: height * containerWrapper.slantRatio
+
+                            SlantedBox {
+                                anchors.fill: parent
+                                slantLeft: "Left"
+                                slantRight: "Left"
+                                slantWidth: parent.height * containerWrapper.slantRatio
+                                color: "transparent"
+                                borderColor: containerWrapper.colorBase05
+                            }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "⏮"
+                                font.pixelSize: 20
+                                color: containerWrapper.colorBase05
+                            }
+
+                            TapHandler {
+                                onTapped: musicBox.mpdIpc.write("previous\nstatus\ncurrentsong\n")
+                            }
+                        }
+
+                        // Play / Pause Button
+                        Item {
+                            id: playButton
+                            width: 100
+                            height: 45
+                            readonly property real btnSlantWidth: height * containerWrapper.slantRatio
+
+                            SlantedBox {
+                                anchors.fill: parent
+                                slantLeft: "Left"
+                                slantRight: "Left"
+                                slantWidth: parent.height * containerWrapper.slantRatio
+                                color: "transparent"
+                                borderColor: containerWrapper.colorBase05
+                            }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: musicBox.playbackState === "play" ? "⏸" : "⏯"
+                                font.pixelSize: 20
+                                color: containerWrapper.colorBase05
+                            }
+
+                            TapHandler {
+                                onTapped: {
+                                    if (musicBox.playbackState === "play") {
+                                        musicBox.mpdIpc.write("pause 1\nstatus\n");
+                                    } else if (musicBox.playbackState === "pause") {
+                                        musicBox.mpdIpc.write("pause 0\nstatus\n");
+                                    } else {
+                                        musicBox.mpdIpc.write("play\nstatus\n");
+                                    }
+                                }
+                            }
+                        }
+
+                        // Next Track Button
+                        Item {
+                            id: nextButton
+                            width: 100
+                            height: 45
+                            readonly property real btnSlantWidth: height * containerWrapper.slantRatio
+
+                            SlantedBox {
+                                anchors.fill: parent
+                                slantLeft: "Left"
+                                slantRight: "Left"
+                                slantWidth: parent.height * containerWrapper.slantRatio
+                                color: "transparent"
+                                borderColor: containerWrapper.colorBase05
+                            }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "⏭"
+                                font.pixelSize: 20
+                                color: containerWrapper.colorBase05
+                            }
+
+                            TapHandler {
+                                onTapped: musicBox.mpdIpc.write("next\nstatus\ncurrentsong\n")
+                            }
+                        }
+                    }
+
+                    // Row 2: Secondary Utility Controls (📂 Open Folder & 🗑️ Delete/Confirm Actions at y: 345)
+                    Row {
+                        y: 345
+                        x: musicTooltip.slantX(y) + 24
+                        width: musicTooltip.width - musicTooltip.tooltipSlantWidth - 48
+                        spacing: 12
+
+                        // Dynamic spacer to center the secondary utility buttons horizontally
+                        Item {
+                            width: {
+                                var totalBtnWidth = musicBox.confirmDeleteMode
+                                ? (sureButton.width + 12 + 25 + 12 + noButton.width)
+                                : (folderButton.width + 12 + sureButton.width);
+                                return Math.max(0, (parent.width - totalBtnWidth) / 2);
+                            }
+                            height: 40
+                        }
+
+                        // Directory Folder Opener (Sleeker 80x40px sizing)
+                        Item {
+                            id: folderButton
+                            width: 80
+                            height: 40
+                            visible: !musicBox.confirmDeleteMode
+                            readonly property real btnSlantWidth: height * containerWrapper.slantRatio
+
+                            SlantedBox {
+                                anchors.fill: parent
+                                slantLeft: "Left"
+                                slantRight: "Left"
+                                slantWidth: parent.height * containerWrapper.slantRatio
+                                color: "transparent"
+                                borderColor: containerWrapper.colorBase05
+                            }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "📂"
+                                font.pixelSize: 20
+                                color: containerWrapper.colorBase05
+                            }
+
+                            TapHandler {
+                                onTapped: {
+                                    Quickshell.execDetached([
+                                        "sh", "-c",
+                                        "abs_path=\"$HOME/Music/" + musicBox.currentFile + "\"; " +
+                                        "dir_path=$(dirname \"$abs_path\"); " +
+                                        "if [ -d \"$dir_path\" ]; then nohup nemo \"$dir_path\" >/dev/null 2>&1 & fi"
+                                    ])
+                                    musicBox.popupActive = false
+                                }
+                            }
+                        }
+
+                        // Sure / Delete Trigger Button
+                        Item {
+                            id: sureButton
+                            width: musicBox.confirmDeleteMode ? 140 : 80 // Adapts width smoothly on deletion triggers
+                            height: 40
+                            readonly property real btnSlantWidth: height * containerWrapper.slantRatio
+
+                            Behavior on width { NumberAnimation { duration: 100 } }
+
+                            SlantedBox {
+                                anchors.fill: parent
+                                slantLeft: "Left"
+                                slantRight: "Left"
+                                slantWidth: parent.height * containerWrapper.slantRatio
+                                borderColor: musicBox.confirmDeleteMode ? "#ffffff" : containerWrapper.colorBase05
+                                color: musicBox.confirmDeleteMode ? "#ff5555" : "transparent"
+                            }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: musicBox.confirmDeleteMode ? "⚠️ Sure?" : "🗑️"
+                                font.pixelSize: musicBox.confirmDeleteMode ? 14 : 22
+                                font.bold: musicBox.confirmDeleteMode
+                                color: musicBox.confirmDeleteMode ? "#ffffff" : containerWrapper.colorBase05
+                            }
+
+                            TapHandler {
+                                onTapped: {
+                                    if (!musicBox.confirmDeleteMode) {
+                                        musicBox.confirmDeleteMode = true
+                                    } else {
+                                        deleteSongProc.running = true
+                                    }
+                                }
+                            }
+                        }
+
+                        // Gap spacing item during confirm-delete mode
+                        Item {
+                            width: 25
+                            height: 40
+                            visible: musicBox.confirmDeleteMode
+                        }
+
+                        // Cancel "No" Button (Sleeker 80x40px sizing)
+                        Item {
+                            id: noButton
+                            width: 80
+                            height: 40
+                            visible: musicBox.confirmDeleteMode
+                            readonly property real btnSlantWidth: height * containerWrapper.slantRatio
+
+                            SlantedBox {
+                                anchors.fill: parent
+                                slantLeft: "Left"
+                                slantRight: "Left"
+                                slantWidth: parent.height * containerWrapper.slantRatio
+                                color: "transparent"
+                                borderColor: containerWrapper.colorBase05
+                            }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "No"
+                                font.pixelSize: 20
+                                color: containerWrapper.colorBase05
+                            }
+
+                            TapHandler {
+                                onTapped: {
+                                    musicBox.popupActive = false
+                                    musicBox.confirmDeleteMode = false
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
