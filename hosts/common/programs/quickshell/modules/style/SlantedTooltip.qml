@@ -42,10 +42,24 @@ PanelWindow {
         WlrLayershell.namespace: "quickshell-slanted-tooltip"
         WlrLayershell.keyboardFocus: tooltipWindow.visible ? tooltipWindow.keyboardFocus : WlrLayershell.None
 
-        // Explicit flat bindings: Keeps coordinates locked to the bar module without flicker
-        WlrLayershell.margins.top: tooltipWindow.frozenTopMargin
-        WlrLayershell.margins.right: tooltipWindow.frozenRightMargin
-        WlrLayershell.margins.left: tooltipWindow.frozenLeftMargin
+        // Declarative Hybrid Bindings: Completely silences the 1-frame startup flicker
+        WlrLayershell.margins.top: tooltipWindow.tooltipActive ? tooltipWindow.targetTopMargin : tooltipWindow.frozenTopMargin
+        WlrLayershell.margins.right: tooltipWindow.tooltipActive ? tooltipWindow.calculatedRightMargin : tooltipWindow.frozenRightMargin
+        WlrLayershell.margins.left: tooltipWindow.tooltipActive ? tooltipWindow.calculatedLeftMargin : tooltipWindow.frozenLeftMargin
+
+        // Frozen margin buffers
+        property real frozenLeftMargin: 0
+        property real frozenRightMargin: 0
+        property real frozenTopMargin: 0
+
+        // Capture the perfect final coordinates the exact frame hover ends
+        onTooltipActiveChanged: {
+            if (!tooltipActive) {
+                frozenLeftMargin = calculatedLeftMargin;
+                frozenRightMargin = calculatedRightMargin;
+                frozenTopMargin = targetTopMargin;
+            }
+        }
 
         anchors.top: true
         anchors.left: alignSide === "Left" || alignSide === "Center"
@@ -53,8 +67,11 @@ PanelWindow {
 
         screen: tooltipWindow.barWindow ? tooltipWindow.barWindow.screen : null
 
-        // Controls window visibility and handles graceful collapsing transitions before hiding
-        visible: (tooltipActive || pin || animContainer.animHeight > 0) && isReady && targetTopMargin > 0
+        // RAW COORDINATE GATE: Refuses to draw the window until the mapping resolves to non-zero values
+        visible: (tooltipActive || pin || animContainer.animHeight > 0) &&
+        isReady &&
+        mappedTarget.x > 0 &&
+        mappedTarget.y > 0
 
         // Fixed deprecations: Setting implicit bounds prevents Wayland stretching
         implicitWidth: tooltipWidth
@@ -117,29 +134,37 @@ PanelWindow {
             return 0;
         }
 
-        // FROZEN MARGIN BUFFER SYSTEM (Clears Wayland configure-loop flickering)
-        property real frozenLeftMargin: 0
-        property real frozenRightMargin: 0
-        property real frozenTopMargin: 0
+        property real animHeight: animContainer.animHeight
 
-        onCalculatedLeftMarginChanged: {
-            if (tooltipActive) frozenLeftMargin = calculatedLeftMargin;
-        }
-        onCalculatedRightMarginChanged: {
-            if (tooltipActive) frozenRightMargin = calculatedRightMargin;
-        }
-        onTargetTopMarginChanged: {
-            if (tooltipActive) frozenTopMargin = targetTopMargin;
-        }
-        onTooltipActiveChanged: {
-            if (tooltipActive) {
-                frozenLeftMargin = calculatedLeftMargin;
-                frozenRightMargin = calculatedRightMargin;
-                frozenTopMargin = targetTopMargin;
+        // Manual Animation Handler: Drives seamless start/stop values
+        readonly property bool shouldExpand: isReady && (tooltipWindow.tooltipActive || tooltipWindow.pin)
+
+        onShouldExpandChanged: {
+            if (shouldExpand) {
+                closeAnimation.stop();
+                openAnimation.start();
+            } else {
+                openAnimation.stop();
+                closeAnimation.start();
             }
         }
 
-        property real animHeight: animContainer.animHeight
+        Component.onCompleted: {
+            // Initialize exact positioning properties on startup
+            if (shouldExpand) {
+                animContainer.animHeight = tooltipWindow.tooltipHeight;
+                animContainer.visualCoreWidth = tooltipWindow.expandedCoreWidth;
+                animContainer.revealWidth = tooltipWindow.tooltipWidth;
+                animContainer.textOpacity = 1.0;
+                tooltipWindow.innerLayoutTrigger = true;
+            } else {
+                animContainer.animHeight = 0;
+                animContainer.visualCoreWidth = tooltipWindow.collapsedCoreWidth;
+                animContainer.revealWidth = 0;
+                animContainer.textOpacity = 0.0;
+                tooltipWindow.innerLayoutTrigger = false;
+            }
+        }
 
         // Layout boundary
         Item {
@@ -151,113 +176,99 @@ PanelWindow {
             width: parent.width
             height: parent.height
 
-            // Control variables for the animation
             property real animHeight: 0
             property real visualCoreWidth: tooltipWindow.collapsedCoreWidth
             property real revealWidth: 0
             property real textOpacity: 0
 
-            property bool isCompleted: false
-            readonly property bool shouldExpand: isCompleted && (tooltipWindow.tooltipActive || tooltipWindow.pin)
+            // OPEN ANIMATION: Smoothly continues from any mid-transit value
+            SequentialAnimation {
+                id: openAnimation
 
-            state: shouldExpand ? "expanded" : "collapsed"
-
-            states: [
-                State {
-                    name: "collapsed"
-                    PropertyChanges { target: animContainer; animHeight: 0; visualCoreWidth: tooltipWindow.collapsedCoreWidth; revealWidth: 0; textOpacity: 0 }
-                },
-                State {
-                    name: "expanded"
-                    PropertyChanges { target: animContainer; animHeight: tooltipWindow.tooltipHeight; visualCoreWidth: tooltipWindow.expandedCoreWidth; revealWidth: tooltipWindow.tooltipWidth; textOpacity: 1 }
+                // Stage 1: Drop straight down (pillar)
+                NumberAnimation {
+                    target: animContainer
+                    property: "animHeight"
+                    to: tooltipWindow.tooltipHeight
+                    duration: 250
+                    easing.type: Easing.OutCubic
                 }
-            ]
-
-            transitions: [
-                Transition {
-                    from: "collapsed"; to: "expanded"
-                    SequentialAnimation {
-                        // Stage 1: Drop straight down (pillar)
-                        NumberAnimation {
-                            target: animContainer
-                            property: "animHeight"
-                            duration: 250
-                            easing.type: Easing.OutCubic
-                        }
-                        // Stage 2: Spread horizontally outward to sides
-                        NumberAnimation {
-                            target: animContainer
-                            property: "visualCoreWidth"
-                            duration: 250
-                            easing.type: Easing.OutCubic
-                        }
-                        // Complete background & trigger inner column layout sweep (Clock Grid)
-                        PropertyAction {
-                            target: tooltipWindow
-                            property: "innerLayoutTrigger"
-                            value: true
-                        }
-                        // Stage 3: Reveal inner text (Parallel mask wipe & opacity fade)
-                        ParallelAnimation {
-                            NumberAnimation {
-                                target: animContainer
-                                property: "revealWidth"
-                                duration: 250
-                                easing.type: Easing.OutCubic
-                            }
-                            NumberAnimation {
-                                target: animContainer
-                                property: "textOpacity"
-                                duration: 150
-                                easing.type: Easing.OutQuad
-                            }
-                        }
+                // Stage 2: Spread horizontally outward to sides
+                NumberAnimation {
+                    target: animContainer
+                    property: "visualCoreWidth"
+                    to: tooltipWindow.expandedCoreWidth
+                    duration: 250
+                    easing.type: Easing.OutCubic
+                }
+                // Complete background & trigger inner column layout sweep (Clock Grid)
+                PropertyAction {
+                    target: tooltipWindow
+                    property: "innerLayoutTrigger"
+                    value: true
+                }
+                // Stage 3: Reveal inner text (Parallel mask wipe & opacity fade)
+                ParallelAnimation {
+                    NumberAnimation {
+                        target: animContainer
+                        property: "revealWidth"
+                        to: tooltipWindow.tooltipWidth
+                        duration: 250
+                        easing.type: Easing.OutCubic
                     }
-                },
-                Transition {
-                    from: "expanded"; to: "collapsed"
-                    SequentialAnimation {
-                        // Turn off inner triggers instantly
-                        PropertyAction {
-                            target: tooltipWindow
-                            property: "innerLayoutTrigger"
-                            value: false
-                        }
-                        // Stage 1 (Reverse): Wipe out text
-                        ParallelAnimation {
-                            NumberAnimation {
-                                target: animContainer
-                                property: "revealWidth"
-                                duration: 120
-                                easing.type: Easing.InQuad
-                            }
-                            NumberAnimation {
-                                target: animContainer
-                                property: "textOpacity"
-                                duration: 100
-                                easing.type: Easing.InQuad
-                            }
-                        }
-                        // Stage 2 (Reverse): Collapse horizontally
-                        NumberAnimation {
-                            target: animContainer
-                            property: "visualCoreWidth"
-                            duration: 180
-                            easing.type: Easing.InCubic
-                        }
-                        // Stage 3 (Reverse): Retract vertical height back up into the bar
-                        NumberAnimation {
-                            target: animContainer
-                            property: "animHeight"
-                            duration: 200
-                            easing.type: Easing.InCubic
-                        }
+                    NumberAnimation {
+                        target: animContainer
+                        property: "textOpacity"
+                        to: 1.0
+                        duration: 150
+                        easing.type: Easing.OutQuad
                     }
                 }
-            ]
+            }
 
-            Component.onCompleted: {
-                isCompleted = true; // Unlocks the transition to play
+            // CLOSE ANIMATION: Smoothly collapses from any mid-transit value
+            SequentialAnimation {
+                id: closeAnimation
+
+                // Turn off inner triggers instantly
+                PropertyAction {
+                    target: tooltipWindow
+                    property: "innerLayoutTrigger"
+                    value: false
+                }
+                // Stage 1 (Reverse): Wipe out text
+                ParallelAnimation {
+                    NumberAnimation {
+                        target: animContainer
+                        property: "revealWidth"
+                        to: 0
+                        duration: 120
+                        easing.type: Easing.InQuad
+                    }
+                    NumberAnimation {
+                        target: animContainer
+                        property: "textOpacity"
+                        to: 0.0
+                        duration: 100
+                        easing.type: Easing.InQuad
+                    }
+                }
+                // Stage 2 (Reverse): Collapse horizontally
+                NumberAnimation {
+                    target: animContainer
+                    property: "visualCoreWidth"
+                    to: tooltipWindow.collapsedCoreWidth
+                    duration: 180
+                    easing.type: Easing.InCubic
+                }
+                // Stage 3 (Reverse): Retract vertical height back up into the bar
+                NumberAnimation {
+                    target: animContainer
+                    property: "animHeight"
+                    to: 0
+                    duration: 200
+                    easing.type: Easing.InCubic
+                }
             }
 
             // STYLE 1: Standard SlantedBox background (Only visible when backgroundStyle is "Slant")
