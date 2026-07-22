@@ -9,6 +9,7 @@
     ./website
    ./ffmpeg.nix
    ./corectrl.nix
+   ./services.nix
 #    ./vm.nix
   ];
 environment.sessionVariables = {

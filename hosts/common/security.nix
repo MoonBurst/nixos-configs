@@ -86,6 +86,12 @@ programs.git = {
     '';
   };
 
+security.wrappers.nethogs = {
+  source = "${pkgs.nethogs}/bin/nethogs";
+  capabilities = "cap_net_admin,cap_net_raw+ep";
+  owner = "root";
+  group = "root";
+};
   security.pam.services.quickshell = {};
   services.gnome.gnome-keyring.enable = true;
   security.pam.services.greetd.enableGnomeKeyring = true;

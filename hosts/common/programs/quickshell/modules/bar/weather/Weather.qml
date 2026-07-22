@@ -17,10 +17,10 @@ Item {
     //  EDITABLE TOOLTIP CONFIGURATION
     // =========================================================================
     property int tooltipHeight: 620          // Vertical height of the expanded box
-    property int tooltipCollapsedWidth: 130  // Sleek, thin width during the downward unroll
+    property int tooltipCollapsedWidth: 110  // Sleek, thin width during the downward unroll
     property int tooltipExpandedWidth: 450   // Final horizontal width once fully open
-    property int tooltipTopOffset: 0         // Micro-adjust vertical spacing (px)
-    property int tooltipRightOffset: 22       // Micro-adjust horizontal alignment (px)
+    property int tooltipTopOffset: -2         // Micro-adjust vertical spacing (px)
+    property int tooltipRightOffset: 20       // Micro-adjust horizontal alignment (px)
     // =========================================================================
 
     property string slantLeft: "Left"
@@ -131,8 +131,9 @@ Item {
         id: weatherText
         anchors.fill: parent
 
-        anchors.leftMargin: weatherCapsule.leftPadding
-        anchors.rightMargin: weatherCapsule.rightPadding
+        // Corrected to reference bg's padding properties
+        anchors.leftMargin: bg.leftPadding
+        anchors.rightMargin: bg.rightPadding
         anchors.topMargin: shell.theme.globalPadding
         anchors.bottomMargin: shell.theme.globalPadding
 
@@ -160,7 +161,8 @@ Item {
     // Panel Window Pop-up Renderer
     Loader {
         id: tooltipLoader
-        active: weatherHoverTracker.hovered || weatherCapsule.pinTooltip || (tooltipLoader.item && tooltipLoader.item.animHeight > 0)
+        property bool keepingActive: false
+        active: weatherHoverTracker.hovered || weatherCapsule.pinTooltip || keepingActive
 
         sourceComponent: Component {
             SlantedTooltip {
@@ -215,6 +217,18 @@ Item {
                         y: 95 + (index * 28) // Standardized spacing
                         x: weatherTooltip.slantX(y) + 24
                     }
+                }
+            }
+        }
+
+        Connections {
+            target: tooltipLoader.item
+            ignoreUnknownSignals: true
+            function onAnimHeightChanged() {
+                if (tooltipLoader.item) {
+                    tooltipLoader.keepingActive = (tooltipLoader.item.animHeight > 0);
+                } else {
+                    tooltipLoader.keepingActive = false;
                 }
             }
         }

@@ -6,6 +6,8 @@ import Quickshell.Services.Notifications
 import Quickshell.Io
 import Quickshell.Services.Pam
 
+import "./modules/overlays/recording" as Recording
+import "./modules/overlays/magnify" as Magnify
 import "./modules/overlays/notifications" as Notifications
 import "./modules/overlays/quickshot" as Quickshot
 import "./modules/overlays/launcher" as LauncherModule
@@ -445,6 +447,24 @@ ShellRoot {
 
     LauncherModule.Clipboard {
         id: clipboardOverlayWindow
+    }
+    /*
+     * =========================================================================
+     * RECORDING OVERLAY
+     * =========================================================================
+     */
+        Recording.Recording {
+        id: recordingOverlay
+
+        }
+    /*
+     * =========================================================================
+     * MAGNIFIER OVERLAY
+     * =========================================================================
+     */
+
+    Magnify.Magnify {
+        id: magnifierOverlay
     }
 
 

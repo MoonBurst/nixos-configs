@@ -4,8 +4,7 @@ let
   homeDir = toString config.home.homeDirectory;
 
   syncMailHelper = pkgs.writeScriptBin "sync-mail-cache" ''#!${pkgs.python3}/bin/python3
-import os, sys, json, subprocess, time, glob, configparser, sqlite3, getpass, re, shutil, mimetypes, socket, email.utils
-from concurrent.futures import ThreadPoolExecutor
+import os, sys, json, subprocess, time, glob, configparser, sqlite3, getpass, re, shutil, mimetypes, socket, email.utils, gc, ctypes
 
 # Force all prints to immediately flush to systemd journal logs
 _original_print = print
@@ -33,6 +32,18 @@ mbsync_file = os.path.join(mbsync_dir, "mbsyncrc")
 himalaya_config_dir = f"{target_home}/.config/himalaya"
 himalaya_config = os.path.join(himalaya_config_dir, "config.toml")
 last_backfill = 0
+
+# Cache variables to prevent aggressive disk thrashing
+_db_path_cache = None
+_last_db_search = 0
+
+def trim_memory():
+    """Forces glibc to release cached memory pools back to the operating system."""
+    try:
+        libc = ctypes.CDLL("libc.so.6")
+        libc.malloc_trim(0)
+    except Exception as e:
+        print(f"[Memory Trim Warning]: Failed to release heap memory: {e}")
 
 # Generate dynamic configuration files with verified credentials
 if gmail_address and gmail_password:
@@ -74,7 +85,7 @@ type = "tls"
 text-mime-header = "text/plain"
 
 [accounts.gmail.envelope.list]
-page-size = 100000
+page-size = 3000
 """)
 
     os.makedirs(mbsync_dir, exist_ok=True)
@@ -151,7 +162,6 @@ def download_and_route_attachments(msg_id, folder, destination_dir, is_preview=F
     output_logs = res.stdout + "\n" + res.stderr
     downloaded_paths = re.findall(r'Downloading\s+"([^"]+)"', output_logs)
 
-    # WRITE DEBUG LOG TO TMP FOR DIAGNOSTICS
     try:
         with open("/tmp/himalaya_last_download.log", "w") as lf:
             lf.write(f"DESTINATION: {destination_dir}\n")
@@ -161,7 +171,6 @@ def download_and_route_attachments(msg_id, folder, destination_dir, is_preview=F
         print(f"[Debug Log Error] Failed to write file: {le}")
 
     for src_path in downloaded_paths:
-        # Resolve paths relative to the destination_dir if they are not absolute
         actual_src = src_path if os.path.isabs(src_path) else os.path.join(destination_dir, src_path)
         if os.path.exists(actual_src):
             filename = os.path.basename(actual_src)
@@ -177,6 +186,15 @@ def download_and_route_attachments(msg_id, folder, destination_dir, is_preview=F
     return res
 
 def get_sqlite_db_path():
+    global _db_path_cache, _last_db_search
+    if _db_path_cache is not None:
+        return _db_path_cache
+
+    current_time = time.time()
+    if current_time - _last_db_search < 15:
+        return None
+    _last_db_search = current_time
+
     search_paths = [
         f"{target_home}/.local/share/*/QML/OfflineStorage/Databases",
         f"{target_home}/.local/share/QML/OfflineStorage/Databases",
@@ -188,7 +206,8 @@ def get_sqlite_db_path():
                 config = configparser.ConfigParser()
                 config.read(ini_path)
                 if config.has_section("General") and config.get("General", "Name") == "QMailQueue":
-                    return ini_path.replace(".ini", ".sqlite")
+                    _db_path_cache = ini_path.replace(".ini", ".sqlite")
+                    return _db_path_cache
             except Exception: pass
     return None
 
@@ -267,7 +286,6 @@ def process_live_text_queue():
                     print(f"[Queue] Successfully marked UNREAD {arg1} in '{arg2}'")
                     actions_taken = True
             elif action == "SEND":
-                # Highly simplified, bulletproof filename and body extraction regex
                 attachments = re.findall(r'filename="([^"]+)"', arg3)
                 clean_body = re.sub(r'<#part[\s\S]*?</#part>', "", arg3).strip()
 
@@ -290,8 +308,6 @@ def process_live_text_queue():
                         if os.path.exists(filepath):
                             try:
                                 filename = os.path.basename(filepath)
-
-                                # Guess MIME type dynamically based on file extension
                                 ctype, encoding = mimetypes.guess_type(filepath)
                                 if ctype is None or encoding is not None:
                                     ctype = "application/octet-stream"
@@ -303,7 +319,7 @@ def process_live_text_queue():
                                 encoders.encode_base64(part)
                                 part.add_header("Content-Disposition", "attachment", filename=filename)
                                 msg.attach(part)
-                                print(f"[Queue Processor] Successfully attached file to RFC payload (MIME: {ctype}): {filepath}")
+                                print(f"[Queue Processor] Successfully attached file: {filepath}")
                             except Exception as e:
                                 print(f"[Queue Error] Failed to attach {filepath}: {e}")
                         else:
@@ -320,8 +336,6 @@ def process_live_text_queue():
                     send_notification("Delivery Failure", f"Failed to send message to {arg1}")
                     print(f"[Queue Error] Send failure: {res.stderr.strip()}")
             elif action == "DRAFT":
-                # Construction and file-handling of offline-first drafts
-                # arg1: To (recipient), arg2: Subject, arg3: Body (content text)
                 raw_rfc_message = f"From: {gmail_address}\nTo: {arg1}\nSubject: {arg2}\nMIME-Version: 1.0\nContent-Type: text/plain; charset=utf-8\nContent-Transfer-Encoding: 8bit\nDate: {email.utils.formatdate(localtime=True)}\n\n{arg3}"
                 draft_dir = f"{target_home}/.local/share/mail/gmail/.[Gmail].Drafts/new"
                 os.makedirs(draft_dir, exist_ok=True)
@@ -357,7 +371,6 @@ def process_live_text_queue():
                     if split_idx == -1: split_idx = clean_body.find("\r\n\r\n")
                     if split_idx != -1: clean_body = clean_body[split_idx:].strip()
 
-                    # Trigger file-system first visual preview extraction
                     preview_dir = f"{target_home}/.cache/himalaya/previews/{arg1}"
                     download_and_route_attachments(arg1, arg2, preview_dir, is_preview=True)
                     local_files = os.listdir(preview_dir) if os.path.exists(preview_dir) else []
@@ -369,11 +382,9 @@ def process_live_text_queue():
                         } for fname in local_files
                     ]
 
-                    # Output active body to local temp file
                     temp_body_file = "/tmp/qmail_active_body.txt"
                     with open(temp_body_file, "w") as tf: tf.write(f"{arg1}\n{clean_body}")
 
-                    # Write back to local cache permanently for future offline loads
                     if os.path.exists(cache_file):
                         try:
                             with open(cache_file, "r") as f: data = json.load(f)
@@ -444,26 +455,9 @@ def process_live_text_queue():
     except Exception as e: print(f"[Queue Processor Error]: {e}")
     return False
 
-def load_existing_bodies(cache_file_path):
-    bodies = {}
-    if not os.path.exists(cache_file_path): return bodies
-    try:
-        with open(cache_file_path, "r") as f:
-            data = json.load(f)
-            if isinstance(data, list):
-                for item in data:
-                    m_id = item.get("message-id") or item.get("id")
-                    if m_id and item.get("body_content"): bodies[m_id] = item["body_content"]
-    except Exception: pass
-    return bodies
-
 def rebuild_local_ui_cache():
     print("Rebuilding emails.json layout index cache vectors...")
 
-    # Priority order maps the target directories to the local cache identifier.
-    # Inbox, Starred, Steam, and Trash take priority over the master "All Mail" list.
-    # Moving ".Steam" to the absolute top of the folder list ensures that all Steam emails
-    # are strictly cataloged in the Steam tab, even if a copy resides in the Inbox.
     priority_folders = [
         (".Steam", "steam"),
         (".[Gmail].Starred", "starred"),
@@ -475,18 +469,25 @@ def rebuild_local_ui_cache():
         (".[Gmail].All Mail", "all")
     ]
 
-    existing_bodies = load_existing_bodies(cache_file)
+    # Load existing cache file exactly once
+    existing_bodies = {}
     old_ids = set()
     if os.path.exists(cache_file):
         try:
             with open(cache_file, "r") as f:
-                for item in json.load(f):
-                    m_id = item.get("message-id") or item.get("id")
-                    if m_id: old_ids.add(m_id)
-        except Exception: pass
+                data = json.load(f)
+                if isinstance(data, list):
+                    for item in data:
+                        m_id = item.get("message-id") or item.get("id")
+                        if m_id:
+                            old_ids.add(m_id)
+                            if item.get("body_content"):
+                                existing_bodies[m_id] = item["body_content"]
+        except Exception as e:
+            print(f"[Cache Load Warning] Failed to parse existing cache: {e}")
 
     def fetch_folder_data(target_folder, qml_label):
-        cmd = ["${pkgs.himalaya}/bin/himalaya", "--config", himalaya_config, "--output", "json", "envelope", "list", "--folder", target_folder, "--page-size", "100000"]
+        cmd = ["${pkgs.himalaya}/bin/himalaya", "--config", himalaya_config, "--output", "json", "envelope", "list", "--folder", target_folder, "--page-size", "3000"]
         res = subprocess.run(cmd, capture_output=True, text=True, env=env_copy)
         items = []
         if res.returncode == 0 and res.stdout.strip():
@@ -501,9 +502,10 @@ def rebuild_local_ui_cache():
                         msg_unique_id = item.get("message-id") or msg_id
                         has_att = item.get("has-attachment") or item.get("has_attachment") or False
 
-                        if msg_unique_id in existing_bodies:
+                        # OPTIMIZATION: Only load and preserve text bodies for active, high-priority folders
+                        if qml_label in ["inbox", "starred", "steam"] and msg_unique_id in existing_bodies:
                             item["body_content"] = existing_bodies[msg_unique_id]
-                        elif msg_id and idx < 15:
+                        elif msg_id and qml_label in ["inbox", "starred", "steam"] and idx < 15:
                             read_cmd = ["${pkgs.himalaya}/bin/himalaya", "--config", himalaya_config, "message", "read", str(msg_id), "--folder", target_folder]
                             read_res = subprocess.run(read_cmd, capture_output=True, text=True, env=env_copy)
                             if read_res.returncode == 0:
@@ -519,7 +521,6 @@ def rebuild_local_ui_cache():
 
                         if has_att and msg_id:
                             preview_dir = f"{target_home}/.cache/himalaya/previews/{msg_id}"
-                            download_and_route_attachments(msg_id, target_folder, preview_dir, is_preview=True)
                             local_files = os.listdir(preview_dir) if os.path.exists(preview_dir) else []
                             item["attachments"] = [
                                 {
@@ -535,21 +536,18 @@ def rebuild_local_ui_cache():
             except Exception: pass
         return items
 
+    # Process folders sequentially to prevent overlapping memory usage spikes
     folder_results = {}
-    with ThreadPoolExecutor(max_workers=8) as executor:
-        futures = {executor.submit(fetch_folder_data, target_folder, qml_label): target_folder for target_folder, qml_label in priority_folders}
-        for future in futures:
-            target_folder = futures[future]
-            try:
-                folder_results[target_folder] = future.result()
-            except Exception:
-                folder_results[target_folder] = []
+    for target_folder, qml_label in priority_folders:
+        try:
+            folder_results[target_folder] = fetch_folder_data(target_folder, qml_label)
+        except Exception as e:
+            print(f"[Sync Warning] Failed to fetch folder {target_folder}: {e}")
+            folder_results[target_folder] = []
 
     master_list = []
     seen_signatures = set()
 
-    # Process collected folders strictly in the priority order.
-    # An email found in primary folders will block duplicates from being saved inside "all" (All Mail).
     for target_folder, qml_label in priority_folders:
         for item in folder_results.get(target_folder, []):
             subject = (item.get("subject") or "").strip()
@@ -575,6 +573,15 @@ def rebuild_local_ui_cache():
     os.replace(cache_file + ".tmp", cache_file)
     print("[Live Queue Engine] Front-end UI cache synchronization pass finalized.")
 
+    # Explicitly clean up massive heap collections and run memory trimming
+    del folder_results
+    del master_list
+    del seen_signatures
+    del existing_bodies
+    del old_ids
+    gc.collect()
+    trim_memory()
+
 def run_gentle_backfill():
     global last_backfill
     current_time = time.time()
@@ -588,6 +595,10 @@ def run_gentle_backfill():
 
         uncached_items = []
         for item in data:
+            # OPTIMIZATION: Do not backfill bodies for massive, secondary folders
+            if item.get("folder") in ["all", "trash", "spam", "sent"]:
+                continue
+
             if not item.get("body_content") or item.get("body_content").strip() == "":
                 uncached_items.append(item)
                 if len(uncached_items) >= 5: break
@@ -641,11 +652,14 @@ def run_gentle_backfill():
             with open(cache_file + ".tmp", "w") as f: json.dump(data, f, indent=2)
             os.replace(cache_file + ".tmp", cache_file)
             print("[Background Backfill] Successfully cached batch. Visual database updated.")
+            gc.collect()
+            trim_memory()
     except Exception as e: print(f"[Background Backfill Error]: {e}")
 
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "--daemon":
     print("[Live Queue Engine] Instantiating high-performance reactive loop...", flush=True)
-    last_sync = 0
+    # Start first sync 60 seconds after boot
+    last_sync = time.time() - 240
     while True:
         process_live_text_queue()
         run_gentle_backfill()
@@ -656,7 +670,8 @@ if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "--daemon":
             subprocess.run(["${pkgs.isync}/bin/mbsync", "-c", mbsync_file, "gmail"], env=env_copy)
             rebuild_local_ui_cache()
             last_sync = current_time
-        time.sleep(0.1)
+        # Loop delay set to 1.0s to reduce idle CPU cycles
+        time.sleep(1.0)
     sys.exit(0)
 
 if __name__ == "__main__":
@@ -677,7 +692,8 @@ in
       Type = "simple";
       ExecStart = "${syncMailHelper}/bin/sync-mail-cache --daemon";
       Restart = "always";
-      RestartSec = "2";
+      RestartSec = "10";
+      MemoryMax = "2G";
     };
     Install = { WantedBy = [ "default.target" ]; };
   };

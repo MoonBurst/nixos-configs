@@ -13,26 +13,36 @@ Item {
     property bool pinTooltip: false
 
     // =========================================================================
+    // SAFE STRONGLY-TYPED THEME FALLBACKS (Resolves startup warnings)
+    // =========================================================================
+    readonly property int themePadding: (shell && shell.theme && typeof shell.theme.globalPadding !== "undefined") ? shell.theme.globalPadding : 12
+    readonly property int themeFontSize: (shell && shell.theme && typeof shell.theme.globalFontSize !== "undefined") ? shell.theme.globalFontSize : 14
+    readonly property string themeFontFamily: (shell && shell.theme && typeof shell.theme.fontFamily !== "undefined") ? shell.theme.fontFamily : "monospace"
+    readonly property int themeSlantWidth: (shell && shell.theme && typeof shell.theme.slantWidth !== "undefined") ? shell.theme.slantWidth : 12
+    readonly property color themeBase05: (shell && shell.theme && typeof shell.theme.base05 !== "undefined") ? shell.theme.base05 : "yellow"
+    readonly property color themeBase0C: (shell && shell.theme && typeof shell.theme.base0C !== "undefined") ? shell.theme.base0C : "green"
+    // =========================================================================
+
+    // =========================================================================
     //  EDITABLE TOOLTIP CONFIGURATION
     // =========================================================================
     property int tooltipHeight: 400          // Vertical height of the expanded box
-    property int tooltipCollapsedWidth: 130  // Sleek, thin width during the downward unroll
+    property int tooltipCollapsedWidth: 150  // Sleek, thin width during the downward unroll
     property int tooltipExpandedWidth: 325   // Final horizontal width once fully open
-    property int tooltipTopOffset: 0         // Micro-adjust vertical spacing (px)
-    property int tooltipRightOffset: 18      // Micro-adjust horizontal alignment (px)
+    property int tooltipTopOffset: -2         // Micro-adjust vertical spacing (px)
+    property int tooltipRightOffset: 21      // Micro-adjust horizontal alignment (px)
     // =========================================================================
 
     // Module slant configurations
     property string slantLeft: "Right"
     property string slantRight: "Right"
-    property int slantWidth: shell.theme.slantWidth
+    property int slantWidth: cpuBox.themeSlantWidth
 
     property string cpuUsageStr: "0%"
     property string cpuTempStr: "0°C"
     property string topProcessesText: "Loading CPU processes..."
     property string textAccumulatorBuffer: ""
     readonly property var processLinesArray: topProcessesText.split("\n").filter(line => line.trim() !== "")
-
 
     width: 175
     Layout.preferredWidth: 175
@@ -84,12 +94,12 @@ Item {
         anchors.fill: parent
         anchors.leftMargin: bg.leftPadding
         anchors.rightMargin: bg.rightPadding
-        anchors.topMargin: shell.theme.globalPadding
-        anchors.bottomMargin: shell.theme.globalPadding
+        anchors.topMargin: themePadding
+        anchors.bottomMargin: themePadding
 
         textFormat: Text.RichText
-        font.family: shell.theme.fontFamily
-        font.pixelSize: shell.theme.globalFontSize
+        font.family: themeFontFamily
+        font.pixelSize: themeFontSize
         font.bold: true
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
@@ -99,8 +109,8 @@ Item {
         elide: Text.ElideRight
 
         text: {
-            const greenColor = shell.theme.base0C.toString();
-            const yellowColor = shell.theme.base05.toString();
+            const greenColor = themeBase0C.toString();
+            const yellowColor = themeBase05.toString();
             return "<font color='" + greenColor + "'>CPU:</font> " +
             "<font color='" + yellowColor + "'>" + cpuBox.cpuUsageStr + " " + cpuBox.cpuTempStr + "</font>";
         }
@@ -125,61 +135,45 @@ Item {
         }
     }
 
-    // Panel Window Pop-up Renderer
-    Loader {
-        id: tooltipLoader
-        active: cpuHoverTracker.hovered || cpuBox.pinTooltip || (tooltipLoader.item && tooltipLoader.item.animHeight > 0)
+    // Tooltip Window (Directly Instantiated for smooth reverse collapse)
+    SlantedTooltip {
+        id: cpuTooltip
+        moduleItem: cpuBox
+        barWindow: cpuBox.barWindow
+        tooltipActive: cpuHoverTracker.hovered
+        pin: cpuBox.pinTooltip
 
-        sourceComponent: Component {
-            SlantedTooltip {
-                id: cpuTooltip
-                moduleItem: cpuBox
-                barWindow: cpuBox.barWindow
-                tooltipActive: cpuHoverTracker.hovered
-                pin: cpuBox.pinTooltip
+        // Maps variables defined at the top of the file
+        tooltipHeight: cpuBox.tooltipHeight
+        collapsedCoreWidth: cpuBox.tooltipCollapsedWidth
+        expandedCoreWidth: cpuBox.tooltipExpandedWidth
+        topOffset: cpuBox.tooltipTopOffset
+        rightOffset: cpuBox.tooltipRightOffset
 
-                // Maps variables defined at the top of the file
-                tooltipHeight: cpuBox.tooltipHeight
-                collapsedCoreWidth: cpuBox.tooltipCollapsedWidth
-                expandedCoreWidth: cpuBox.tooltipExpandedWidth
-                topOffset: cpuBox.tooltipTopOffset
-                rightOffset: cpuBox.tooltipRightOffset
+        // pass capsule slants to keep the window parallel
+        slantLeft: cpuBox.slantLeft
+        slantRight: cpuBox.slantRight
 
-                // pass capsule slants to keep the window parallel
-                slantLeft: cpuBox.slantLeft
-                slantRight: cpuBox.slantRight
+        // Slanted Text Content Layout inside the tooltip children scope
+        Text {
+            text: "ACTIVE CPU CLIENTS:"
+            font.family: themeFontFamily
+            font.pixelSize: themeFontSize - 1
+            font.bold: true
+            color: themeBase05
+            y: 35
+            x: cpuTooltip.slantX(y) + 24
+        }
 
-                // Slanted Text Content Layout inside the tooltip children scope
-                Text {
-                    text: "ACTIVE CPU CLIENTS:"
-                    font.family: shell.theme.fontFamily
-                    font.pixelSize: shell.theme.globalFontSize - 1
-                    font.bold: true
-                    color: shell.theme.base05
-                    y: 35
-                    x: cpuTooltip.slantX(y) + 24
-                }
-
-                // Slanted Divider Line (Staggers right-to-left)
-                Rectangle {
-                    height: 2
-                    color: shell.theme.base02
-                    width: 360
-                    y: 65
-                    x: cpuTooltip.slantX(y) + 24
-                }
-
-                Repeater {
-                    model: cpuBox.processLinesArray.length
-                    Text {
-                        text: cpuBox.processLinesArray[index]
-                        font.family: "monospace"
-                        font.pixelSize: shell.theme.globalFontSize - 1
-                        color: shell.theme.base05
-                        y: 95 + (index * 28)
-                        x: cpuTooltip.slantX(y) + 24
-                    }
-                }
+        Repeater {
+            model: cpuBox.processLinesArray.length
+            Text {
+                text: cpuBox.processLinesArray[index]
+                font.family: "monospace"
+                font.pixelSize: themeFontSize - 1
+                color: themeBase05
+                y: 95 + (index * 28)
+                x: cpuTooltip.slantX(y) + 24
             }
         }
     }

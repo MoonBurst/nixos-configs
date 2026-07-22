@@ -13,19 +13,33 @@ Item {
     property bool pinTooltip: false
 
     // =========================================================================
+    // SAFE STRONGLY-TYPED THEME FALLBACKS (Resolves startup warnings)
+    // =========================================================================
+    readonly property int themePadding: (shell && shell.theme && typeof shell.theme.globalPadding !== "undefined") ? shell.theme.globalPadding : 12
+    readonly property int themeFontSize: (shell && shell.theme && typeof shell.theme.globalFontSize !== "undefined") ? shell.theme.globalFontSize : 14
+    readonly property string themeFontFamily: (shell && shell.theme && typeof shell.theme.fontFamily !== "undefined") ? shell.theme.fontFamily : "monospace"
+    readonly property int themeSlantWidth: (shell && shell.theme && typeof shell.theme.slantWidth !== "undefined") ? shell.theme.slantWidth : 12
+    readonly property color themeBase00: (shell && shell.theme && typeof shell.theme.base00 !== "undefined") ? shell.theme.base00 : "black"
+    readonly property color themeBase05: (shell && shell.theme && typeof shell.theme.base05 !== "undefined") ? shell.theme.base05 : "yellow"
+    readonly property color themeBase08: (shell && shell.theme && typeof shell.theme.base08 !== "undefined") ? shell.theme.base08 : "red"
+    readonly property color themeBase09: (shell && shell.theme && typeof shell.theme.base09 !== "undefined") ? shell.theme.base09 : "orange"
+    readonly property color themeBase0C: (shell && shell.theme && typeof shell.theme.base0C !== "undefined") ? shell.theme.base0C : "green"
+    // =========================================================================
+
+    // =========================================================================
     //  EDITABLE TOOLTIP CONFIGURATION
     // =========================================================================
     property int tooltipHeight: 400          // Vertical height of the expanded box
-    property int tooltipCollapsedWidth: 280  // Sleek, thin width during the downward unroll
+    property int tooltipCollapsedWidth: 275  // Sleek, thin width during the downward unroll
     property int tooltipExpandedWidth: 300   // Final horizontal width once fully open
-    property int tooltipTopOffset: 0         // Micro-adjust vertical spacing (px)
-    property int tooltipRightOffset: 18      // Micro-adjust horizontal alignment (px)
+    property int tooltipTopOffset: -2        // Micro-adjust vertical spacing (px)
+    property int tooltipRightOffset: 21      // Micro-adjust horizontal alignment (px)
     // =========================================================================
 
     // Module slant configurations
     property string slantLeft: "Right"
     property string slantRight: "Right"
-    property int slantWidth: shell.theme.slantWidth
+    property int slantWidth: gpuBox.themeSlantWidth
 
     property string gpuUsageRaw: "0"
     property string gpuTempRaw: "0"
@@ -36,7 +50,7 @@ Item {
 
     readonly property var processLinesArray: topGpuProcessesText.split("\n").filter(line => line.trim() !== "")
 
-    width: gpuText.implicitWidth + leftPadding + rightPadding
+    width: gpuText.implicitWidth + bg.leftPadding + bg.rightPadding
     Layout.preferredWidth: width
     height: parent ? parent.height : 40 // Safe guard against null-parent startup evaluations
 
@@ -92,14 +106,14 @@ Item {
         id: gpuText
         anchors.fill: parent
 
-        anchors.leftMargin: gpuBox.leftPadding
-        anchors.rightMargin: gpuBox.rightPadding
-        anchors.topMargin: shell.theme.globalPadding
-        anchors.bottomMargin: shell.theme.globalPadding
+        anchors.leftMargin: bg.leftPadding
+        anchors.rightMargin: bg.rightPadding
+        anchors.topMargin: themePadding
+        anchors.bottomMargin: themePadding
 
         textFormat: Text.RichText
-        font.family: shell.theme.fontFamily
-        font.pixelSize: shell.theme.globalFontSize
+        font.family: themeFontFamily
+        font.pixelSize: themeFontSize
         font.bold: true
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
@@ -108,24 +122,24 @@ Item {
             const currentTemp = parseInt(gpuBox.gpuTempRaw) || 0;
             const currentFreeVram = parseInt(gpuBox.gpuVramFreeRaw) || 0;
 
-            let tempColor = shell.theme.base05.toString();
-            if (currentTemp >= 80) tempColor = shell.theme.base08.toString();
-            else if (currentTemp >= 70) tempColor = shell.theme.base09.toString();
+            let tempColor = themeBase05.toString();
+            if (currentTemp >= 80) tempColor = themeBase08.toString();
+            else if (currentTemp >= 70) tempColor = themeBase09.toString();
 
-            let vramColor = shell.theme.base05.toString();
-            if (currentFreeVram <= 4) vramColor = shell.theme.base08.toString();
-            else if (currentFreeVram <= 12) vramColor = shell.theme.base09.toString();
+            let vramColor = themeBase05.toString();
+            if (currentFreeVram <= 4) vramColor = themeBase08.toString();
+            else if (currentFreeVram <= 12) vramColor = themeBase09.toString();
 
             function formatStat(rawVal, targetLength, activeColor) {
                 let padCount = targetLength - rawVal.length;
-                let zerosStr = padCount > 0 ? "<font color='" + shell.theme.base00.toString() + "'>" + "0".repeat(padCount) + "</font>" : "";
+                let zerosStr = padCount > 0 ? "<font color='" + themeBase00.toString() + "'>" + "0".repeat(padCount) + "</font>" : "";
                 return zerosStr + "<font color='" + activeColor + "'>" + rawVal + "</font>";
             }
 
-            return "<font color='" + shell.theme.base0C.toString() + "'>GPU:</font> " +
-            formatStat(gpuBox.gpuUsageRaw, 2, shell.theme.base05.toString()) + "<font color='" + shell.theme.base05.toString() + "'>%</font> " +
+            return "<font color='" + themeBase0C.toString() + "'>GPU:</font> " +
+            formatStat(gpuBox.gpuUsageRaw, 2, themeBase05.toString()) + "<font color='" + themeBase05.toString() + "'>%</font> " +
                 formatStat(gpuBox.gpuTempRaw, 2, tempColor) + "<font color='" + tempColor + "'>°C</font> " +
-                    formatStat(gpuBox.gpuPowerRaw, 3, shell.theme.base05.toString()) + "<font color='" + shell.theme.base05.toString() + "'>W</font> " +
+                    formatStat(gpuBox.gpuPowerRaw, 3, themeBase05.toString()) + "<font color='" + themeBase05.toString() + "'>W</font> " +
                         formatStat(gpuBox.gpuVramFreeRaw, 2, vramColor) + "<font color='" + vramColor + "'>GiB</font>";
         }
     }
@@ -142,61 +156,45 @@ Item {
         }
     }
 
-    // Panel Window Loader
-    Loader {
-        id: tooltipLoader
-        active: gpuHoverTracker.hovered || gpuBox.pinTooltip || (tooltipLoader.item && tooltipLoader.item.animHeight > 0)
+    // Tooltip Window (Directly Instantiated for smooth reverse collapse)
+    SlantedTooltip {
+        id: gpuTooltip
+        moduleItem: gpuBox
+        barWindow: gpuBox.barWindow
+        tooltipActive: gpuHoverTracker.hovered
+        pin: gpuBox.pinTooltip
 
-        sourceComponent: Component {
-            SlantedTooltip {
-                id: gpuTooltip
-                moduleItem: gpuBox
-                barWindow: gpuBox.barWindow
-                tooltipActive: gpuHoverTracker.hovered
-                pin: gpuBox.pinTooltip
+        // Maps variables defined at the top of the file
+        tooltipHeight: gpuBox.tooltipHeight
+        collapsedCoreWidth: gpuBox.tooltipCollapsedWidth
+        expandedCoreWidth: gpuBox.tooltipExpandedWidth
+        topOffset: gpuBox.tooltipTopOffset
+        rightOffset: gpuBox.tooltipRightOffset
 
-                // Maps variables defined at the top of the file
-                tooltipHeight: gpuBox.tooltipHeight
-                collapsedCoreWidth: gpuBox.tooltipCollapsedWidth
-                expandedCoreWidth: gpuBox.tooltipExpandedWidth
-                topOffset: gpuBox.tooltipTopOffset
-                rightOffset: gpuBox.tooltipRightOffset
+        // pass capsule slants to keep the window parallel
+        slantLeft: gpuBox.slantLeft
+        slantRight: gpuBox.slantRight
 
-                //  pass capsule slants to keep the window parallel
-                slantLeft: gpuBox.slantLeft
-                slantRight: gpuBox.slantRight
+        // Text Content Layout inside the tooltip children scope
+        Text {
+            text: "ACTIVE GPU CLIENTS:"
+            font.family: themeFontFamily
+            font.pixelSize: themeFontSize - 1
+            font.bold: true
+            color: themeBase05
+            y: 35
+            x: gpuTooltip.slantX(y) + 24
+        }
 
-                //  Text Content Layout inside the tooltip children scope
-                Text {
-                    text: "ACTIVE GPU CLIENTS:"
-                    font.family: shell.theme.fontFamily
-                    font.pixelSize: shell.theme.globalFontSize - 1
-                    font.bold: true
-                    color: shell.theme.base05
-                    y: 35
-                    x: gpuTooltip.slantX(y) + 24
-                }
-
-                // Divider Line (Staggers right-to-left)
-                Rectangle {
-                    height: 2
-                    color: shell.theme.base02
-                    width: 360
-                    y: 65
-                    x: gpuTooltip.slantX(y) + 24
-                }
-
-                Repeater {
-                    model: gpuBox.processLinesArray.length
-                    Text {
-                        text: gpuBox.processLinesArray[index]
-                        font.family: "monospace"
-                        font.pixelSize: shell.theme.globalFontSize - 1
-                        color: shell.theme.base05
-                        y: 95 + (index * 28)
-                        x: gpuTooltip.slantX(y) + 24
-                    }
-                }
+        Repeater {
+            model: gpuBox.processLinesArray.length
+            Text {
+                text: gpuBox.processLinesArray[index]
+                font.family: "monospace"
+                font.pixelSize: themeFontSize - 1
+                color: themeBase05
+                y: 95 + (index * 28)
+                x: gpuTooltip.slantX(y) + 24
             }
         }
     }

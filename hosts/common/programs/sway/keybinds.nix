@@ -33,7 +33,9 @@ in
     "${super}+e" = "exec ${explorer}";
     "${super}+d" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call launcher toggle";
     "${super}+k" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call clipboard toggle";
+    "${super}+Shift+k" = "exec save-replay";
     "${super}+l" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call lockscreen lock";
+    "${super}+m" = "exec sh -c 'echo toggle > /tmp/magnifier-state'";
     "${super}+o" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call todo toggle";
     "${super}+SHIFT+m" = "exec ${pkgs.evolution}/bin/evolution";
 
@@ -54,9 +56,6 @@ in
     # ░▀▀▀░▀▀▀░▀░▀░▀▀▀░▀▀▀░▀░▀░▀▀▀░▀░▀░▀▀▀░░▀░
    # "${super}+SHIFT+S" = "exec ${pkgs.grim}/bin/grim -g \"$(${pkgs.slurp}/bin/slurp -d)\" - | ${pkgs.satty}/bin/satty -f - -o ~/Screenshots/%Y-%m-%d_%H:%M:%S.png --save-after-copy";
    "${super}+SHIFT+S" = "exec qs -n -p ~/nix/hosts/common/programs/quickshell/modules/overlays/quickshot";
-
-
-    "${super}+Shift+k" = "exec ${pkgs.obs-cmd}/bin/obs-cmd replay save && notify-send -i ${pkgs.obs-studio}/share/icons/hicolor/128x128/apps/com.obsproject.Studio.png 'OBS' 'Clip Saved!'";
 
     # ░█░█░█▀█░█▀▄░█░█░█▀▀░█▀█░█▀█░█▀▀░█▀▀
     # ░█▄█░█░█░█▀▄░█▀▄░▀▀█░█▀▀░█▀█░█░░░█▀▀

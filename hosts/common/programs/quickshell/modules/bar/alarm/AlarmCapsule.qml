@@ -15,13 +15,26 @@ Item {
     property bool pinTooltip: false
 
     // =========================================================================
+    // SAFE STRONGLY-TYPED THEME FALLBACKS
+    // =========================================================================
+    readonly property int themePadding: (shell && shell.theme && typeof shell.theme.globalPadding !== "undefined") ? shell.theme.globalPadding : 12
+    readonly property int themeFontSize: (shell && shell.theme && typeof shell.theme.globalFontSize !== "undefined") ? shell.theme.globalFontSize : 14
+    readonly property string themeFontFamily: (shell && shell.theme && typeof shell.theme.fontFamily !== "undefined") ? shell.theme.fontFamily : "monospace"
+    readonly property int themeSlantWidth: (shell && shell.theme && typeof shell.theme.slantWidth !== "undefined") ? shell.theme.slantWidth : 12
+    readonly property color themeBase00: (shell && shell.theme && typeof shell.theme.base00 !== "undefined") ? shell.theme.base00 : "black"
+    readonly property color themeBase02: (shell && shell.theme && typeof shell.theme.base02 !== "undefined") ? shell.theme.base02 : "#222222"
+    readonly property color themeBase03: (shell && shell.theme && typeof shell.theme.base03 !== "undefined") ? shell.theme.base03 : "#333333"
+    readonly property color themeBase05: (shell && shell.theme && typeof shell.theme.base05 !== "undefined") ? shell.theme.base05 : "yellow"
+    // =========================================================================
+
+    // =========================================================================
     //  EDITABLE TOOLTIP & INPUT LAYOUT CONFIGURATION
     // =========================================================================
     // Tooltip Window Sizing & Positioning
     property int tooltipHeight: 350         // Vertical height of the expanded box
-    property int tooltipCollapsedWidth: 130  // Sleek, thin width during the downward unroll
+    property int tooltipCollapsedWidth: 110  // Sleek, thin width during the downward unroll
     property int tooltipExpandedWidth: 350   // Final horizontal width once fully open
-    property int tooltipTopOffset: 0         // Micro-adjust vertical spacing (px)
+    property int tooltipTopOffset: -2        // Micro-adjust vertical spacing (px)
     property int tooltipRightOffset: 21       // Micro-adjust horizontal alignment (px)
 
     // Inner Input Blocks Vertical Positions
@@ -45,7 +58,7 @@ Item {
     // Module slant configurations (Leans left)
     property string slantLeft: "Left"
     property string slantRight: "Left"
-    property int slantWidth: shell.theme.slantWidth
+    property int slantWidth: alarmBox.themeSlantWidth
 
     property string alarmDisplayText: "No Alarm"
     property string stateFile: "/tmp/waybar_alarm_state"
@@ -202,306 +215,295 @@ Item {
 
         anchors.leftMargin: bg.leftPadding
         anchors.rightMargin: bg.rightPadding
-        anchors.topMargin: shell.theme.globalPadding
-        anchors.bottomMargin: shell.theme.globalPadding
+        anchors.topMargin: themePadding
+        anchors.bottomMargin: themePadding
 
         text: alarmBox.alarmDisplayText
-        font.family: shell.theme.fontFamily
-        font.pixelSize: shell.theme.globalFontSize
+        font.family: themeFontFamily
+        font.pixelSize: themeFontSize
         font.bold: true
-        color: shell.theme.base05
+        color: themeBase05
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
     }
 
-    // Panel Window Pop-up Prompt Loader
-    Loader {
-        id: tooltipLoader
-        active: alarmBox.popupVisible || (tooltipLoader.item && tooltipLoader.item.animHeight > 0)
+    // Panel Window Pop-up Prompt (Directly Instantiated for smooth reverse collapse)
+    SlantedTooltip {
+        id: alarmTooltip
+        moduleItem: alarmBox
+        barWindow: alarmBox.barWindow
+        tooltipActive: alarmBox.popupVisible
 
-        sourceComponent: Component {
-            SlantedTooltip {
-                id: alarmTooltip
-                moduleItem: alarmBox
-                barWindow: alarmBox.barWindow
-                tooltipActive: alarmBox.popupVisible
+        // Instruct the template to align left, expand right, and request exclusive keyboard focus
+        alignSide: "Left"
+        keyboardFocus: WlrLayershell.Exclusive
 
-                // Instruct the template to align left, expand right, and request exclusive keyboard focus
-                alignSide: "Left"
-                keyboardFocus: WlrLayershell.Exclusive
+        // Maps variables defined at the top of the file
+        tooltipHeight: alarmBox.tooltipHeight
+        collapsedCoreWidth: alarmBox.tooltipCollapsedWidth
+        expandedCoreWidth: alarmBox.tooltipExpandedWidth
+        topOffset: alarmBox.tooltipTopOffset
+        rightOffset: alarmBox.tooltipRightOffset
 
-                // Maps variables defined at the top of the file
-                tooltipHeight: alarmBox.tooltipHeight
-                collapsedCoreWidth: alarmBox.tooltipCollapsedWidth
-                expandedCoreWidth: alarmBox.tooltipExpandedWidth
-                topOffset: alarmBox.tooltipTopOffset
-                rightOffset: alarmBox.tooltipRightOffset
+        slantLeft: alarmBox.slantLeft
+        slantRight: alarmBox.slantRight
 
-                slantLeft: alarmBox.slantLeft
-                slantRight: alarmBox.slantRight
+        onVisibleChanged: {
+            if (visible && typeof timeInput !== "undefined" && timeInput !== null) {
+                timeInput.forceInitialFocus();
+            }
+        }
 
-                onVisibleChanged: {
-                    if (visible && typeof timeInput !== "undefined" && timeInput !== null) {
-                        timeInput.forceInitialFocus();
+        Item {
+            id: alarmInputWrapper
+            anchors.fill: parent
+
+            readonly property real slantRatio: alarmTooltip.tooltipSlantWidth / alarmTooltip.tooltipHeight
+
+            // Header
+            Text {
+                id: alarmTitle
+                text: "Set Alarm"
+                font.family: themeFontFamily
+                font.pixelSize: 22
+                font.bold: true
+                color: themeBase05
+                y: 20
+                x: alarmTooltip.slantX(y) + 150
+            }
+
+            Rectangle {
+                id: alarmDivider
+                height: 2
+                color: themeBase02
+                width: 360
+                y: 70
+                x: alarmTooltip.slantX(y) + 24
+            }
+
+            // Interactive Slanted Input Fields
+            Item {
+                id: timeInput
+                y: 95
+                x: alarmTooltip.slantX(y) + 24
+                width: 360 // Matches expanded core width
+
+                property bool editingHours: true
+                readonly property string countdownText: countdownField.text
+                readonly property string targetTimeText: targetTimeField.text
+
+                function clearInput() {
+                    countdownField.text = "";
+                }
+
+                function forceInitialFocus() {
+                    countdownField.text = "";
+                    var now = new Date();
+                    var currentHours = now.getHours();
+                    var currentMinutes = String(now.getMinutes()).padStart(2, '0');
+                    var displayHours = currentHours % 12;
+                    if (displayHours === 0) displayHours = 12;
+                    targetTimeField.text = displayHours + ":" + currentMinutes;
+                    timeInput.editingHours = true;
+                    countdownField.forceActiveFocus();
+                }
+
+                function adjustTimeSegment(isUp) {
+                    var parts = targetTimeField.text.split(":");
+                    if (parts.length !== 2) return;
+
+                    var h = parseInt(parts[0], 10);
+                    var m = parseInt(parts[1], 10);
+                    if (isNaN(h)) h = 12;
+                    if (isNaN(m)) m = 0;
+
+                    if (timeInput.editingHours) {
+                        if (isUp) {
+                            h = (h === 12) ? 1 : h + 1;
+                        } else {
+                            h = (h === 1) ? 12 : h - 1;
+                        }
+                    } else {
+                        if (isUp) {
+                            m = (m === 59) ? 0 : m + 1;
+                        } else {
+                            m = (m === 0) ? 59 : m - 1;
+                        }
+                    }
+
+                    var hStr = String(h);
+                    var mStr = String(m).padStart(2, '0');
+                    targetTimeField.text = hStr + ":" + mStr;
+                    countdownField.text = "";
+                    timeInput.updateTimeSelection();
+                }
+
+                // Reference: Fixed alignment lookup order
+                function updateTimeSelection() {
+                    var colonIdx = targetTimeField.text.indexOf(":");
+                    if (colonIdx === -1) return;
+
+                    if (timeInput.editingHours) {
+                        targetTimeField.select(0, colonIdx);
+                    } else {
+                        targetTimeField.select(colonIdx + 1, targetTimeField.text.length);
                     }
                 }
 
+                // Countdown Input Block
                 Item {
-                    id: alarmInputWrapper
-                    anchors.fill: parent
+                    id: countdownBlock
+                    y: alarmBox.countdownBlockY - 95 // Offset relative to timeInput Y
+                    x: (alarmTooltip.slantX(y + 150) - alarmTooltip.slantX(95)) + alarmBox.countdownBlockXOffset
+                    width: parent.width - x - 80
+                    height: alarmBox.blockHeight
 
-                    //  defined style references (solves nested lookup context errors)
-                    readonly property color colorBase05: (shell && shell.theme) ? (shell.theme.base05 || "yellow") : "yellow"
-                    readonly property color colorBase00: (shell && shell.theme) ? (shell.theme.base00 || "black") : "black"
-                    readonly property color colorBase03: (shell && shell.theme) ? (shell.theme.base03 || "#333333") : "#333333"
-                    readonly property string fontFamily: (shell && shell.theme) ? (shell.theme.fontFamily || "monospace") : "monospace"
-                    readonly property real slantRatio: alarmTooltip.tooltipSlantWidth / alarmTooltip.tooltipHeight
-
-                    // Header
                     Text {
-                        id: alarmTitle
-                        text: "Set Alarm"
-                        font.family: alarmInputWrapper.fontFamily
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        y: 0
+                        text: "Countdown"
+                        color: themeBase05
+                        font.family: themeFontFamily
+                        font.pixelSize: 24
+                        font.bold: true
+                    }
+
+                    TextField {
+                        id: countdownField
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        y: alarmBox.fieldLabelSpacing
+
+                        width: parent.width
+                        height: alarmBox.fieldHeight
+                        font.family: themeFontFamily
                         font.pixelSize: 22
                         font.bold: true
-                        color: alarmInputWrapper.colorBase05
-                        y: 20
-                        x: alarmTooltip.slantX(y) + 150
+
+                        color: themeBase05
+                        selectionColor: themeBase05
+                        selectedTextColor: themeBase00
+                        horizontalAlignment: Text.AlignHCenter
+
+                        leftPadding: alarmBox.inputLeftPadding
+                        rightPadding: alarmBox.inputRightPadding
+
+                        onTextChanged: {
+                            if (activeFocus && text.trim() !== "") {
+                                targetTimeField.text = "";
+                            }
+                        }
+
+                        onAccepted: alarmBox.confirmAndSaveAlarm(countdownField.text, targetTimeField.text)
+
+                        Keys.onPressed: (event) => {
+                            if (event.key === Qt.Key_Escape) {
+                                alarmBox.cancelAndClosePopup();
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Up) {
+                                var cNum = parseInt(countdownField.text, 10);
+                                if (isNaN(cNum)) cNum = 0;
+                                countdownField.text = String(cNum + 1);
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Down) {
+                                var cNum2 = parseInt(countdownField.text, 10);
+                                if (isNaN(cNum2) || cNum2 <= 0) cNum2 = 1;
+                                countdownField.text = String(cNum2 - 1);
+                                event.accepted = true;
+                            }
+                        }
+
+                        background: SlantedBox {
+                            anchors.fill: parent
+                            slantLeft: "Left"
+                            slantRight: "Left"
+                            slantWidth: parent.height * alarmInputWrapper.slantRatio
+                            borderColor: countdownField.focus ? themeBase05 : themeBase03
+                            color: themeBase00
+                            borderWidth: 2
+                        }
+                    }
+                }
+
+                // Target Time Input Block ("What time?")
+                Item {
+                    id: targetTimeBlock
+                    y: alarmBox.targetTimeBlockY - 95 // Offset relative to timeInput Y
+                    x: (alarmTooltip.slantX(y + 150) - alarmTooltip.slantX(95)) + alarmBox.targetTimeBlockXOffset
+                    width: parent.width - x - 24
+                    height: alarmBox.blockHeight
+
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        y: 0
+                        text: "What time?"
+                        color: themeBase05
+                        font.family: themeFontFamily
+                        font.pixelSize: 24
+                        font.bold: true
                     }
 
-                    Rectangle {
-                        id: alarmDivider
-                        height: 2
-                        color: shell.theme.base02
-                        width: 360
-                        y: 70
-                        x: alarmTooltip.slantX(y) + 24
-                    }
+                    TextField {
+                        id: targetTimeField
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        y: alarmBox.fieldLabelSpacing
 
-                    // Interactive Slanted Input Fields
-                    Item {
-                        id: timeInput
-                        y: 95
-                        x: alarmTooltip.slantX(y) + 24
-                        width: 360 // Matches expanded core width
+                        width: parent.width
+                        height: alarmBox.fieldHeight
+                        font.family: themeFontFamily
+                        font.pixelSize: 22
+                        font.bold: true
 
-                        property bool editingHours: true
-                        readonly property string countdownText: countdownField.text
-                        readonly property string targetTimeText: targetTimeField.text
+                        color: themeBase05
+                        selectionColor: themeBase05
+                        selectedTextColor: themeBase00
+                        horizontalAlignment: Text.AlignHCenter
 
-                        function clearInput() {
-                            countdownField.text = "";
-                        }
+                        leftPadding: alarmBox.inputLeftPadding
+                        rightPadding: alarmBox.inputRightPadding
 
-                        function forceInitialFocus() {
-                            countdownField.text = "";
-                            var now = new Date();
-                            var currentHours = now.getHours();
-                            var currentMinutes = String(now.getMinutes()).padStart(2, '0');
-                            var displayHours = currentHours % 12;
-                            if (displayHours === 0) displayHours = 12;
-                            targetTimeField.text = displayHours + ":" + currentMinutes;
-                            timeInput.editingHours = true;
-                            countdownField.forceActiveFocus();
-                        }
-
-                        function adjustTimeSegment(isUp) {
-                            var parts = targetTimeField.text.split(":");
-                            if (parts.length !== 2) return;
-
-                            var h = parseInt(parts[0], 10);
-                            var m = parseInt(parts[1], 10);
-                            if (isNaN(h)) h = 12;
-                            if (isNaN(m)) m = 0;
-
-                            if (timeInput.editingHours) {
-                                if (isUp) {
-                                    h = (h === 12) ? 1 : h + 1;
-                                } else {
-                                    h = (h === 1) ? 12 : h - 1;
-                                }
-                            } else {
-                                if (isUp) {
-                                    m = (m === 59) ? 0 : m + 1;
-                                } else {
-                                    m = (m === 0) ? 59 : m - 1;
-                                }
-                            }
-
-                            var hStr = String(h);
-                            var mStr = String(m).padStart(2, '0');
-                            targetTimeField.text = hStr + ":" + mStr;
-                            countdownField.text = "";
-                            timeInput.updateTimeSelection();
-                        }
-
-                        function updateTimeSelection() {
-                            var colonIdx = targetTimeField.text.indexOf(":");
-                            if (colonIdx === -1) return;
-
-                            if (timeInput.editingHours) {
-                                targetTimeField.select(0, colonIdx);
-                            } else {
-                                targetTimeField.select(colonIdx + 1, targetTimeField.text.length);
+                        onTextChanged: {
+                            if (activeFocus && text.trim() !== "") {
+                                countdownField.text = "";
                             }
                         }
 
-                        // Countdown Input Block
-                        Item {
-                            id: countdownBlock
-                            y: alarmBox.countdownBlockY - 95 // Offset relative to timeInput Y
-                            x: (alarmTooltip.slantX(y + 150) - alarmTooltip.slantX(95)) + alarmBox.countdownBlockXOffset
-                            width: parent.width - x - 80
-                            height: alarmBox.blockHeight
+                        onAccepted: alarmBox.confirmAndSaveAlarm(countdownField.text, targetTimeField.text)
 
-                            Text {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                y: 0
-                                text: "Countdown"
-                                color: alarmInputWrapper.colorBase05
-                                font.family: alarmInputWrapper.fontFamily
-                                font.pixelSize: 24
-                                font.bold: true
-                            }
-
-                            TextField {
-                                id: countdownField
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                y: alarmBox.fieldLabelSpacing
-
-                                width: parent.width
-                                height: alarmBox.fieldHeight
-                                font.family: alarmInputWrapper.fontFamily
-                                font.pixelSize: 22
-                                font.bold: true
-
-                                color: alarmInputWrapper.colorBase05
-                                selectionColor: alarmInputWrapper.colorBase05
-                                selectedTextColor: alarmInputWrapper.colorBase00
-                                horizontalAlignment: Text.AlignHCenter
-
-                                leftPadding: alarmBox.inputLeftPadding
-                                rightPadding: alarmBox.inputRightPadding
-
-                                onTextChanged: {
-                                    if (activeFocus && text.trim() !== "") {
-                                        targetTimeField.text = "";
-                                    }
-                                }
-
-                                onAccepted: alarmBox.confirmAndSaveAlarm(countdownField.text, targetTimeField.text)
-
-                                Keys.onPressed: (event) => {
-                                    if (event.key === Qt.Key_Escape) {
-                                        alarmBox.cancelAndClosePopup();
-                                        event.accepted = true;
-                                    } else if (event.key === Qt.Key_Up) {
-                                        var cNum = parseInt(countdownField.text, 10);
-                                        if (isNaN(cNum)) cNum = 0;
-                                        countdownField.text = String(cNum + 1);
-                                        event.accepted = true;
-                                    } else if (event.key === Qt.Key_Down) {
-                                        var cNum2 = parseInt(countdownField.text, 10);
-                                        if (isNaN(cNum2) || cNum2 <= 0) cNum2 = 1;
-                                        countdownField.text = String(cNum2 - 1);
-                                        event.accepted = true;
-                                    }
-                                }
-
-                                background: SlantedBox {
-                                    anchors.fill: parent
-                                    slantLeft: "Left"
-                                    slantRight: "Left"
-                                    slantWidth: parent.height * alarmInputWrapper.slantRatio
-                                    borderColor: countdownField.focus ? alarmInputWrapper.colorBase05 : alarmInputWrapper.colorBase03
-                                    color: alarmInputWrapper.colorBase00
-                                    borderWidth: 2
-                                }
+                        onActiveFocusChanged: {
+                            if (activeFocus) {
+                                timeInput.updateTimeSelection();
                             }
                         }
 
-                        // Target Time Input Block ("What time?")
-                        Item {
-                            id: targetTimeBlock
-                            y: alarmBox.targetTimeBlockY - 95 // Offset relative to timeInput Y
-                            x: (alarmTooltip.slantX(y + 150) - alarmTooltip.slantX(95)) + alarmBox.targetTimeBlockXOffset
-                            width: parent.width - x - 24
-                            height: alarmBox.blockHeight
-
-                            Text {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                y: 0
-                                text: "What time?"
-                                color: alarmInputWrapper.colorBase05
-                                font.family: alarmInputWrapper.fontFamily
-                                font.pixelSize: 24
-                                font.bold: true
+                        Keys.onPressed: (event) => {
+                            if (event.key === Qt.Key_Escape) {
+                                alarmBox.cancelAndClosePopup();
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Left) {
+                                timeInput.editingHours = true;
+                                timeInput.updateTimeSelection();
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Right) {
+                                timeInput.editingHours = false;
+                                timeInput.updateTimeSelection();
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Up) {
+                                timeInput.adjustTimeSegment(true);
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Down) {
+                                timeInput.adjustTimeSegment(false);
+                                event.accepted = true;
                             }
+                        }
 
-                            TextField {
-                                id: targetTimeField
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                y: alarmBox.fieldLabelSpacing
-
-                                width: parent.width
-                                height: alarmBox.fieldHeight
-                                font.family: alarmInputWrapper.fontFamily
-                                font.pixelSize: 22
-                                font.bold: true
-
-                                color: alarmInputWrapper.colorBase05
-                                selectionColor: alarmInputWrapper.colorBase05
-                                selectedTextColor: alarmInputWrapper.colorBase00
-                                horizontalAlignment: Text.AlignHCenter
-
-                                leftPadding: alarmBox.inputLeftPadding
-                                rightPadding: alarmBox.inputRightPadding
-
-                                onTextChanged: {
-                                    if (activeFocus && text.trim() !== "") {
-                                        countdownField.text = "";
-                                    }
-                                }
-
-                                onAccepted: alarmBox.confirmAndSaveAlarm(countdownField.text, targetTimeField.text)
-
-                                onActiveFocusChanged: {
-                                    if (activeFocus) {
-                                        timeInput.updateTimeSelection();
-                                    }
-                                }
-
-                                Keys.onPressed: (event) => {
-                                    if (event.key === Qt.Key_Escape) {
-                                        alarmBox.cancelAndClosePopup();
-                                        event.accepted = true;
-                                    } else if (event.key === Qt.Key_Left) {
-                                        timeInput.editingHours = true;
-                                        timeInput.updateTimeSelection();
-                                        event.accepted = true;
-                                    } else if (event.key === Qt.Key_Right) {
-                                        timeInput.editingHours = false;
-                                        timeInput.updateTimeSelection();
-                                        event.accepted = true;
-                                    } else if (event.key === Qt.Key_Up) {
-                                        timeInput.adjustTimeSegment(true);
-                                        event.accepted = true;
-                                    } else if (event.key === Qt.Key_Down) {
-                                        timeInput.adjustTimeSegment(false);
-                                        event.accepted = true;
-                                    }
-                                }
-
-                                background: SlantedBox {
-                                    anchors.fill: parent
-                                    slantLeft: "Left"
-                                    slantRight: "Left"
-                                    slantWidth: parent.height * alarmInputWrapper.slantRatio
-                                    borderColor: targetTimeField.focus ? alarmInputWrapper.colorBase05 : alarmInputWrapper.colorBase03
-                                    color: alarmInputWrapper.colorBase00
-                                    borderWidth: 2
-                                }
-                            }
+                        background: SlantedBox {
+                            anchors.fill: parent
+                            slantLeft: "Left"
+                            slantRight: "Left"
+                            slantWidth: parent.height * alarmInputWrapper.slantRatio
+                            borderColor: targetTimeField.focus ? themeBase05 : themeBase03
+                            color: themeBase00
+                            borderWidth: 2
                         }
                     }
                 }
