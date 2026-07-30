@@ -13,9 +13,7 @@ Item {
 
     anchors.fill: parent
 
-    // =========================================================================
-    // SAFE STRONGLY-TYPED THEME FALLBACKS
-    // =========================================================================
+    //Theme fallbacks
     readonly property int themePadding: (shell && shell.theme && typeof shell.theme.globalPadding !== "undefined") ? shell.theme.globalPadding : 12
     readonly property int themeBorderWidth: (shell && shell.theme && typeof shell.theme.globalBorderWidth !== "undefined") ? shell.theme.globalBorderWidth : 3
     readonly property real themeHalfB: themeBorderWidth / 2
@@ -70,9 +68,7 @@ Item {
         id: clockHoverTracker
     }
 
-    // ============================================================================
-    // THE TIMEZONE MATRIX POPUP WINDOW (Directly Instantiated)
-    // ============================================================================
+    //Timezones tooltip
     SlantedTooltip {
         id: timezoneClockWindow
 
@@ -80,7 +76,7 @@ Item {
         barWindow: clockBox.barWindow
         tooltipActive: clockHoverTracker.hovered
 
-        // Unified style configuration
+        //  style configuration
         backgroundStyle: "Hexagon"
         alignSide: "Center"
 
@@ -406,7 +402,6 @@ Item {
 
                                                 readonly property bool isLocalZone: modelData.offset === popupContent.systemOffset
 
-                                                // Declared first to completely silence forward-reference warnings
                                                 Text {
                                                     id: timeDisplay
                                                     text: popupContent.getTimezoneTime(modelData.offset)

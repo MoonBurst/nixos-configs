@@ -6,6 +6,10 @@ let
     config.allowUnfree = true;
   };
 
+  horizon-electron = pkgs.writeShellScriptBin "horizon-electron" ''
+    exec ${inputs.horizon.packages.${pkgs.stdenv.hostPlatform.system}.horizon-electron}/bin/horizon-electron --ozone-platform=wayland --password-store=gnome-libsecret "$@"
+  '';
+
   matrixApp = pkgs.writeShellScriptBin "matrix" ''
     exec ${pkgs.brave}/bin/brave \
       --app=https://moonburst.net \
@@ -20,9 +24,7 @@ let
 in
 {
   home.packages = with pkgs; [
- inputs.horizon.packages.${pkgs.system}.horizon-electron
-
-
+    horizon-electron
 
     # --- Unstable Packages ---
     unstable.dolphin-emu
@@ -43,6 +45,7 @@ in
 
     # --- System & Utilities ---
     btrfs-assistant
+
     # --- Development & Productivity ---
     kdePackages.kate
     protonup-qt
@@ -53,9 +56,17 @@ in
     openscad
   ];
 
-
   # --- Desktop Entry for Launcher ---
   xdg.desktopEntries = {
+    horizon = {
+      name = "Horizon";
+      genericName = "Horizon Launcher";
+      exec = "${horizon-electron}/bin/horizon-electron %U";
+      icon = "fchat-horizon";
+      terminal = false;
+      categories = [ "Game" ];
+    };
+
     matrix-brave = {
       name = "Matrix (Brave)";
       genericName = "Matrix Client";

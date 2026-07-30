@@ -11,15 +11,15 @@ Item {
     id: gpuBox
     property var barWindow: null
     property bool pinTooltip: false
+    property string searchQuery: ""
 
-    // =========================================================================
-    // SAFE STRONGLY-TYPED THEME FALLBACKS (Resolves startup warnings)
-    // =========================================================================
+    // Theme Fallbacks
     readonly property int themePadding: (shell && shell.theme && typeof shell.theme.globalPadding !== "undefined") ? shell.theme.globalPadding : 12
     readonly property int themeFontSize: (shell && shell.theme && typeof shell.theme.globalFontSize !== "undefined") ? shell.theme.globalFontSize : 14
     readonly property string themeFontFamily: (shell && shell.theme && typeof shell.theme.fontFamily !== "undefined") ? shell.theme.fontFamily : "monospace"
     readonly property int themeSlantWidth: (shell && shell.theme && typeof shell.theme.slantWidth !== "undefined") ? shell.theme.slantWidth : 12
     readonly property color themeBase00: (shell && shell.theme && typeof shell.theme.base00 !== "undefined") ? shell.theme.base00 : "black"
+    readonly property color themeBase02: (shell && shell.theme && typeof shell.theme.base02 !== "undefined") ? shell.theme.base02 : "#222222"
     readonly property color themeBase05: (shell && shell.theme && typeof shell.theme.base05 !== "undefined") ? shell.theme.base05 : "yellow"
     readonly property color themeBase08: (shell && shell.theme && typeof shell.theme.base08 !== "undefined") ? shell.theme.base08 : "red"
     readonly property color themeBase09: (shell && shell.theme && typeof shell.theme.base09 !== "undefined") ? shell.theme.base09 : "orange"
@@ -27,11 +27,11 @@ Item {
     // =========================================================================
 
     // =========================================================================
-    //  EDITABLE TOOLTIP CONFIGURATION
+    // EDITABLE TOOLTIP CONFIGURATION
     // =========================================================================
-    property int tooltipHeight: 400          // Vertical height of the expanded box
-    property int tooltipCollapsedWidth: 275  // Sleek, thin width during the downward unroll
-    property int tooltipExpandedWidth: 300   // Final horizontal width once fully open
+    property int tooltipHeight: 420          // Vertical height of the expanded box
+    property int tooltipCollapsedWidth: 134  // Sleek, thin width during the downward unroll
+    property int tooltipExpandedWidth: 440   // Final horizontal width once fully open
     property int tooltipTopOffset: -2        // Micro-adjust vertical spacing (px)
     property int tooltipRightOffset: 21      // Micro-adjust horizontal alignment (px)
     // =========================================================================
@@ -50,11 +50,20 @@ Item {
 
     readonly property var processLinesArray: topGpuProcessesText.split("\n").filter(line => line.trim() !== "")
 
-    width: gpuText.implicitWidth + bg.leftPadding + bg.rightPadding
-    Layout.preferredWidth: width
-    height: parent ? parent.height : 40 // Safe guard against null-parent startup evaluations
+    // Live Filtered Process List
+    readonly property var filteredProcessLinesArray: {
+        var lines = processLinesArray;
+        if (searchQuery.trim() === "") return lines;
+        var q = searchQuery.trim().toLowerCase();
+        return lines.filter(function(line) {
+            return line.toLowerCase().indexOf(q) !== -1;
+        });
+    }
 
-    // Centralized SlantedBox Background
+    width: 175
+    Layout.preferredWidth: 175
+    height: parent ? parent.height : 40
+
     SlantedBox {
         id: bg
         anchors.fill: parent
@@ -84,13 +93,13 @@ Item {
         }
     }
 
-    // Process Scanner
+    // Process Scanner (Outputs: PID|FormattedString)
     Process {
         id: gpuProcFetcher
         running: false
         command: [
             "sh", "-c",
-            "if command -v nvidia-smi >/dev/null 2>&1; then out=$(nvidia-smi --query-compute-apps=name,utilization.gpu --format=csv,noheader,nounits 2>/dev/null); if [ ! -z \"$out\" ]; then echo \"$out\" | awk -F', ' '{printf \"%-15s %4s%%\\n\", substr($1,1,15), $2}'; exit; fi; fi; card_dir=$(ls -d /sys/class/drm/card*/device 2>/dev/null | head -n 1); total_load=$(cat \"$card_dir/gpu_busy_percent\" 2>/dev/null || echo 0); out=$(ps -eo comm,rss --sort=-rss | awk -v total_gpu=\"$total_load\" 'NR>1 { mib=int($2/1024); if(mib>150 && $1!=\"sh\" && $1!=\"bash\" && $1!=\"systemd\") { proc[NR]=$1; mem[NR]=mib; sum+=mib } } END { if(sum==0) sum=1; for(i in proc) { share=(mem[i]/sum)*total_gpu; if(share>0.0 || mem[i]>500) printf \"%-15s %4.1f%%\\n\", substr(proc[i],1,15), share } }' | sort -rn -k2,2 | head -n 10); if [ ! -z \"$out\" ]; then echo \"$out\"; else echo 'No active engine clients'; fi"
+            "if command -v nvidia-smi >/dev/null 2>&1; then out=$(nvidia-smi --query-compute-apps=pid,name,utilization.gpu --format=csv,noheader,nounits 2>/dev/null); if [ ! -z \"$out\" ]; then echo \"$out\" | awk -F', ' '{printf \"%s|%-10s %4s%%\\n\", $1, substr($2,1,10), $3}'; exit; fi; fi; card_dir=$(ls -d /sys/class/drm/card*/device 2>/dev/null | head -n 1); total_load=$(cat \"$card_dir/gpu_busy_percent\" 2>/dev/null || echo 0); out=$(ps -eo pid,comm,rss --sort=-rss | awk -v total_gpu=\"$total_load\" 'NR>1 { mib=int($3/1024); if(mib>150 && $2!=\"sh\" && $2!=\"bash\" && $2!=\"systemd\") { pids[NR]=$1; proc[NR]=$2; mem[NR]=mib; sum+=mib } } END { if(sum==0) sum=1; for(i in proc) { share=(mem[i]/sum)*total_gpu; if(share>0.0 || mem[i]>500) printf \"%s|%-10s %4.1f%%\\n\", pids[i], substr(proc[i],1,10), share } }' | sort -rn -k2,2 | head -n 10); if [ ! -z \"$out\" ]; then echo \"$out\"; else echo 'No active engine clients'; fi"
         ]
         stdout: SplitParser {
             splitMarker: "\n"
@@ -98,6 +107,27 @@ Item {
         }
         onExited: {
             gpuBox.topGpuProcessesText = gpuBox.textAccumulatorBuffer.trim() !== "" ? gpuBox.textAccumulatorBuffer.trim() : "No active engine clients";
+        }
+    }
+
+    // Process Killer Helper
+    Process {
+        id: killProc
+        function killPid(pid) {
+            if (!pid) return;
+            command = ["kill", "-9", pid.toString()];
+            running = true;
+        }
+    }
+
+    // Delayed refresh after killing a process
+    Timer {
+        id: killRefreshTimer
+        interval: 300
+        repeat: false
+        onTriggered: {
+            gpuBox.textAccumulatorBuffer = "";
+            gpuProcFetcher.running = true;
         }
     }
 
@@ -146,17 +176,26 @@ Item {
 
     HoverHandler {
         id: gpuHoverTracker
-        onHoveredChanged: if (hovered) { gpuBox.textAccumulatorBuffer = ""; gpuProcFetcher.running = true; }
-    }
-
-    TapHandler {
-        onTapped: {
-            gpuBox.textAccumulatorBuffer = "";
-            gpuProcFetcher.running = true;
+        onHoveredChanged: {
+            if (hovered && !gpuTooltip.isHovered && !searchInput.activeFocus) {
+                gpuBox.textAccumulatorBuffer = "";
+                gpuProcFetcher.running = true;
+            }
         }
     }
 
-    // Tooltip Window (Directly Instantiated for smooth reverse collapse)
+    // Click capsule to pin/unpin tooltip open
+    TapHandler {
+        onTapped: {
+            gpuBox.pinTooltip = !gpuBox.pinTooltip;
+            if (gpuBox.pinTooltip && !searchInput.activeFocus) {
+                gpuBox.textAccumulatorBuffer = "";
+                gpuProcFetcher.running = true;
+            }
+        }
+    }
+
+    // Tooltip Window
     SlantedTooltip {
         id: gpuTooltip
         moduleItem: gpuBox
@@ -164,37 +203,170 @@ Item {
         tooltipActive: gpuHoverTracker.hovered
         pin: gpuBox.pinTooltip
 
-        // Maps variables defined at the top of the file
+        // Request keyboard input from Wayland compositor when search is focused/active
+        WlrLayershell.keyboardFocus: (gpuBox.pinTooltip || searchInput.activeFocus) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+
+        readonly property bool isHovered: tooltipHoverTracker.hovered
+
         tooltipHeight: gpuBox.tooltipHeight
         collapsedCoreWidth: gpuBox.tooltipCollapsedWidth
         expandedCoreWidth: gpuBox.tooltipExpandedWidth
         topOffset: gpuBox.tooltipTopOffset
         rightOffset: gpuBox.tooltipRightOffset
 
-        // pass capsule slants to keep the window parallel
         slantLeft: gpuBox.slantLeft
         slantRight: gpuBox.slantRight
 
-        // Text Content Layout inside the tooltip children scope
+        Item {
+            anchors.fill: parent
+            HoverHandler {
+                id: tooltipHoverTracker
+            }
+        }
+
         Text {
             text: "ACTIVE GPU CLIENTS:"
             font.family: themeFontFamily
             font.pixelSize: themeFontSize - 1
             font.bold: true
             color: themeBase05
-            y: 35
-            x: gpuTooltip.slantX(y) + 24
+            y: 24
+            x: gpuTooltip.slantX(y) + 20
+        }
+
+        // Full-width Slanted Search/Filter Field
+        Item {
+            id: searchContainer
+            y: 50
+            x: gpuTooltip.slantX(y) + 20
+            width: 345
+            height: 26
+
+            SlantedBox {
+                anchors.fill: parent
+                slantLeft: gpuBox.slantLeft
+                slantRight: gpuBox.slantRight
+                slantWidth: 12
+            }
+
+            TextInput {
+                id: searchInput
+                anchors.fill: parent
+                anchors.leftMargin: 12
+                anchors.rightMargin: 12
+                verticalAlignment: TextInput.AlignVCenter
+                color: gpuBox.themeBase05
+                font.family: "monospace"
+                font.pixelSize: gpuBox.themeFontSize - 1
+                clip: true
+                selectByMouse: true
+                focus: true
+                activeFocusOnPress: true
+
+                onTextChanged: gpuBox.searchQuery = text
+
+                Text {
+                    anchors.fill: parent
+                    verticalAlignment: Text.AlignVCenter
+                    text: "Search/Filter processes..."
+                    color: gpuBox.themeBase05
+                    opacity: 0.4
+                    font.family: "monospace"
+                    font.pixelSize: gpuBox.themeFontSize - 1
+                    visible: searchInput.text === "" && !searchInput.activeFocus
+                }
+            }
+        }
+
+        Rectangle {
+            height: 2
+            color: themeBase02
+            width: 345
+            y: 86
+            x: gpuTooltip.slantX(y) + 20
         }
 
         Repeater {
-            model: gpuBox.processLinesArray.length
-            Text {
-                text: gpuBox.processLinesArray[index]
-                font.family: "monospace"
-                font.pixelSize: themeFontSize - 1
-                color: themeBase05
-                y: 95 + (index * 28)
-                x: gpuTooltip.slantX(y) + 24
+            model: gpuBox.filteredProcessLinesArray.length
+            delegate: Item {
+                id: processRow
+                readonly property string rawLine: gpuBox.filteredProcessLinesArray[index]
+                readonly property var parts: rawLine.split("|")
+                readonly property string pid: parts.length > 1 ? parts[0] : ""
+                readonly property string displayText: parts.length > 1 ? parts[1] : rawLine
+
+                y: 102 + (index * 28)
+                x: gpuTooltip.slantX(y) + 20
+                width: 345
+                height: 22
+
+                HoverHandler {
+                    id: rowHoverTracker
+                }
+
+                // Slanted Hover Box around entire process row
+                SlantedBox {
+                    anchors.fill: parent
+                    anchors.topMargin: -2
+                    anchors.bottomMargin: -2
+                    anchors.leftMargin: -4
+                    anchors.rightMargin: -2
+                    slantLeft: gpuBox.slantLeft
+                    slantRight: gpuBox.slantRight
+                    slantWidth: 12
+                    visible: rowHoverTracker.hovered
+                }
+
+                Text {
+                    anchors.left: parent.left
+                    anchors.leftMargin: 6
+                    anchors.right: killBtn.left
+                    anchors.rightMargin: 8
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: processRow.displayText
+                    font.family: "monospace"
+                    font.pixelSize: gpuBox.themeFontSize - 1
+                    color: gpuBox.themeBase05
+                    elide: Text.ElideRight
+                }
+
+                // Slanted Kill Process Button
+                Item {
+                    id: killBtn
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 50
+                    height: 18
+                    visible: processRow.pid !== ""
+
+                    SlantedBox {
+                        anchors.fill: parent
+                        slantLeft: gpuBox.slantLeft
+                        slantRight: gpuBox.slantRight
+                        slantWidth: 12
+                    }
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "✕"
+                        color: killBtnHover.hovered ? gpuBox.themeBase08 : gpuBox.themeBase08
+                        font.pixelSize: 11
+                        font.bold: true
+                    }
+
+                    HoverHandler {
+                        id: killBtnHover
+                    }
+
+                    TapHandler {
+                        onTapped: {
+                            if (processRow.pid !== "") {
+                                killProc.killPid(processRow.pid);
+                                killRefreshTimer.start();
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -204,7 +376,10 @@ Item {
         onTriggered: {
             gpuStatsProc.running = false;
             gpuStatsProc.running = true;
-            if (gpuHoverTracker.hovered || gpuBox.pinTooltip) { gpuBox.textAccumulatorBuffer = ""; gpuProcFetcher.running = true; }
+            if ((gpuHoverTracker.hovered || gpuBox.pinTooltip) && !gpuTooltip.isHovered && !searchInput.activeFocus) {
+                gpuBox.textAccumulatorBuffer = "";
+                gpuProcFetcher.running = true;
+            }
         }
     }
 }

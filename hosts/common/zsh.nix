@@ -38,6 +38,14 @@
     interactiveShellInit = ''
       export SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/moon_keys.txt"
 
+
+      if [ -z "$XDG_RUNTIME_DIR" ]; then
+        export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+      fi
+      if [ -z "$DBUS_SESSION_BUS_ADDRESS" ] && [ -S "$XDG_RUNTIME_DIR/bus" ]; then
+        export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
+      fi
+
       # --- SSH Completion Fix ---
       zstyle ':completion:*:*:ssh:*:hosts' hosts moonbeauty lunarchild
       zstyle ':completion:*:*:scp:*:hosts' hosts moonbeauty lunarchild

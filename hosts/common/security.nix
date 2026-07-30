@@ -26,18 +26,16 @@
       gmail_app_password.owner = "moonburst";
       gmail_address.owner = "moonburst";
     };
-
   };
 
-programs.git = {
-  enable = true;
-  config = {
-    credential = {
-      helper = "!f() { echo \"username=MoonBurst\"; echo \"password=$(cat /run/secrets/git_token)\"; }; f";
+  programs.git = {
+    enable = true;
+    config = {
+      credential = {
+        helper = "!f() { echo \"username=MoonBurst\"; echo \"password=$(cat /run/secrets/git_token)\"; }; f";
+      };
     };
   };
-};
-
 
   systemd.tmpfiles.rules = [
     "d /home/moonburst/.config/sops/age 0700 moonburst users - -"
@@ -86,28 +84,32 @@ programs.git = {
     '';
   };
 
-security.wrappers.nethogs = {
-  source = "${pkgs.nethogs}/bin/nethogs";
-  capabilities = "cap_net_admin,cap_net_raw+ep";
-  owner = "root";
-  group = "root";
-};
-  security.pam.services.quickshell = {};
+  security.wrappers.nethogs = {
+    source = "${pkgs.nethogs}/bin/nethogs";
+    capabilities = "cap_net_admin,cap_net_raw+ep";
+    owner = "root";
+    group = "root";
+  };
+
+  # --- PAM Lockscreen Configuration ---
+  security.pam.services.quickshell.enableGnomeKeyring = true;
+  security.pam.services.swaylock.enableGnomeKeyring = true;
+
   services.gnome.gnome-keyring.enable = true;
+  services.gnome.gcr-ssh-agent.enable = false;
   security.pam.services.greetd.enableGnomeKeyring = true;
   services.xserver.displayManager.lightdm.enable = false;
 
-  security.pam.services.swaylock = {};
-  services.gnome.gcr-ssh-agent.enable = false;
   programs.gnupg.agent = {
     enable = true;
     enableSSHSupport = true;
   };
+
   programs.fuse.userAllowOther = true;
   security.polkit.enable = true;
   security.rtkit.enable = true;
   boot.tmp.useTmpfs = true;
   environment.systemPackages = with pkgs; [
-    sops age pass authenticator cloudflared
+    sops age pass authenticator cloudflared gnome-keyring
   ];
 }

@@ -13,12 +13,9 @@ Item {
     property string borgProgress: "Idle"
     property int syncPercent: 0
     property string syncStatus: "idle"
-
     property var tooltipLines: ["Status: Idle", "No active backup operations."]
 
-    // =========================================================================
-    // SAFE STRONGLY-TYPED THEME FALLBACKS (Resolves startup warnings)
-    // =========================================================================
+    // Theme Fallbacks
     readonly property int themePadding: (shell && shell.theme && typeof shell.theme.globalPadding !== "undefined") ? shell.theme.globalPadding : 12
     readonly property int themeFontSize: (shell && shell.theme && typeof shell.theme.globalFontSize !== "undefined") ? shell.theme.globalFontSize : 14
     readonly property string themeFontFamily: (shell && shell.theme && typeof shell.theme.fontFamily !== "undefined") ? shell.theme.fontFamily : "monospace"
@@ -26,8 +23,10 @@ Item {
     readonly property color themeBase01: (shell && shell.theme && typeof shell.theme.base01 !== "undefined") ? shell.theme.base01 : "#1a1a1a"
     readonly property color themeBase02: (shell && shell.theme && typeof shell.theme.base02 !== "undefined") ? shell.theme.base02 : "gray"
     readonly property color themeBase05: (shell && shell.theme && typeof shell.theme.base05 !== "undefined") ? shell.theme.base05 : "yellow"
-    // =========================================================================
 
+    // =========================================================================
+    //  EDITABLE TOOLTIP & INPUT LAYOUT CONFIGURATION
+    // =========================================================================
     property int tooltipHeight: 280
     property int tooltipCollapsedWidth: 105
     property int tooltipExpandedWidth: 380
@@ -187,7 +186,7 @@ Item {
         }
     }
 
-    // Tooltip Window (Directly Instantiated for smooth reverse collapse)
+    // Tooltip Window
     SlantedTooltip {
         id: borgTooltip
         moduleItem: borgBox
@@ -224,7 +223,7 @@ Item {
             x: borgTooltip.slantX(y) + 24
         }
 
-        // Slanted Progress Bar container
+        // Progress Bar container
         Rectangle {
             id: progressBarBg
             height: 15

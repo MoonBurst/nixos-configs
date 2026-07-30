@@ -449,8 +449,9 @@ Item {
                 "previewSource": previewVal
             });
 
-            // Trigger sound effects and callbacks
+            // Trigger sound effects, voice speech, and callbacks
             notificationIPC.playNotificationSound(notification);
+            notificationIPC.speakNotification(notification);
             positionNotificationsDeck();
             rulesLoader.handleIncomingNotificationCues(notification);
         }

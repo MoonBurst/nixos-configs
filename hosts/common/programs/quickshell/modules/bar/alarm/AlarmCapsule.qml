@@ -14,9 +14,7 @@ Item {
     property var barWindow: null
     property bool pinTooltip: false
 
-    // =========================================================================
-    // SAFE STRONGLY-TYPED THEME FALLBACKS
-    // =========================================================================
+  // Theme Fallbacks
     readonly property int themePadding: (shell && shell.theme && typeof shell.theme.globalPadding !== "undefined") ? shell.theme.globalPadding : 12
     readonly property int themeFontSize: (shell && shell.theme && typeof shell.theme.globalFontSize !== "undefined") ? shell.theme.globalFontSize : 14
     readonly property string themeFontFamily: (shell && shell.theme && typeof shell.theme.fontFamily !== "undefined") ? shell.theme.fontFamily : "monospace"
@@ -25,7 +23,6 @@ Item {
     readonly property color themeBase02: (shell && shell.theme && typeof shell.theme.base02 !== "undefined") ? shell.theme.base02 : "#222222"
     readonly property color themeBase03: (shell && shell.theme && typeof shell.theme.base03 !== "undefined") ? shell.theme.base03 : "#333333"
     readonly property color themeBase05: (shell && shell.theme && typeof shell.theme.base05 !== "undefined") ? shell.theme.base05 : "yellow"
-    // =========================================================================
 
     // =========================================================================
     //  EDITABLE TOOLTIP & INPUT LAYOUT CONFIGURATION
@@ -55,7 +52,7 @@ Item {
     property int inputRightPadding: 50       // Right text padding inside input fields
     // =========================================================================
 
-    // Module slant configurations (Leans left)
+    // slant configurations
     property string slantLeft: "Left"
     property string slantRight: "Left"
     property int slantWidth: alarmBox.themeSlantWidth
@@ -64,12 +61,12 @@ Item {
     property string stateFile: "/tmp/waybar_alarm_state"
     property bool popupVisible: false
 
-    // Unified Layout Constraints
+    //  Layout
     width: 140
     Layout.preferredWidth: 140
     height: parent ? parent.height : 40
 
-    // Centralized SlantedBox Background
+    //  SlantedBox Background
     SlantedBox {
         id: bg
         anchors.fill: parent
@@ -78,7 +75,7 @@ Item {
         slantWidth: alarmBox.slantWidth
     }
 
-    // Alarm state check processes
+    // Alarm state check
     Process {
         id: alarmFetcher
         running: true
@@ -227,14 +224,13 @@ Item {
         verticalAlignment: Text.AlignVCenter
     }
 
-    // Panel Window Pop-up Prompt (Directly Instantiated for smooth reverse collapse)
+    // Panel Window Pop-up)
     SlantedTooltip {
         id: alarmTooltip
         moduleItem: alarmBox
         barWindow: alarmBox.barWindow
         tooltipActive: alarmBox.popupVisible
 
-        // Instruct the template to align left, expand right, and request exclusive keyboard focus
         alignSide: "Left"
         keyboardFocus: WlrLayershell.Exclusive
 
@@ -281,7 +277,7 @@ Item {
                 x: alarmTooltip.slantX(y) + 24
             }
 
-            // Interactive Slanted Input Fields
+            // Interactive Input Fields
             Item {
                 id: timeInput
                 y: 95
@@ -338,7 +334,6 @@ Item {
                     timeInput.updateTimeSelection();
                 }
 
-                // Reference: Fixed alignment lookup order
                 function updateTimeSelection() {
                     var colonIdx = targetTimeField.text.indexOf(":");
                     if (colonIdx === -1) return;
@@ -511,7 +506,6 @@ Item {
         }
     }
 
-    // Refresh Alarm State Timer
     Timer {
         interval: 1000; running: true; repeat: true
         onTriggered: {

@@ -1,5 +1,6 @@
 pragma Singleton
 import "./Email"
+import "../rng"
 
 import QtQuick
 
@@ -18,13 +19,13 @@ Item {
     readonly property alias email: email
     readonly property alias todo: todo
     readonly property alias pass: pass
+    readonly property alias rng: rng
 
     /*
      * MATH ENGINE
      */
 
-    readonly property
-    var mathEngine: MathEngine
+    readonly property var mathEngine: MathEngine
 
     /*
      * MODULE INSTANCES
@@ -60,5 +61,9 @@ Item {
 
     Pass {
         id: pass
+    }
+
+    Rng {
+        id: rng
     }
 }

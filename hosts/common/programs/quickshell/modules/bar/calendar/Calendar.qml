@@ -14,9 +14,7 @@ Item {
 
     anchors.fill: parent
 
-    // =========================================================================
-    // SAFE STRONGLY-TYPED THEME FALLBACKS (Resolves startup warnings)
-    // =========================================================================
+    //Theme fallbacks
     readonly property int themePadding: (shell && shell.theme && typeof shell.theme.globalPadding !== "undefined") ? shell.theme.globalPadding : 12
     readonly property int themeFontSize: (shell && shell.theme && typeof shell.theme.globalFontSize !== "undefined") ? shell.theme.globalFontSize : 14
     readonly property string themeFontFamily: (shell && shell.theme && typeof shell.theme.fontFamily !== "undefined") ? shell.theme.fontFamily : "monospace"
@@ -93,11 +91,11 @@ Item {
 
     TapHandler {
         onTapped: {
-            calendarBox.pinTooltip = !calendarBox.pinTooltip
+           // calendarBox.pinTooltip = !calendarBox.pinTooltip
         }
     }
 
-    // Tooltip Window (Directly Instantiated for smooth reverse collapse)
+    // Tooltip Window
     SlantedTooltip {
         id: calendarTooltip
         moduleItem: calendarBox
@@ -118,8 +116,6 @@ Item {
         // pass capsule slants to keep the window parallel
         slantLeft: calendarBox.slantLeft
         slantRight: calendarBox.slantRight
-
-        // Stationary layout wrapper (maps old theme properties securely to the new scope)
         Item {
             id: containerWrapper
             anchors.fill: parent

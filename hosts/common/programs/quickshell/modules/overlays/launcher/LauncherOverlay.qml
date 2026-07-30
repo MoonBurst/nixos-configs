@@ -88,7 +88,7 @@ Rectangle {
             // Real-Time Filter: Typing in active password mode filters results
             if (currentMode === "pass") {
                 var query = trimmed;
-                if (trimmed.startsWith("pass ")); {
+                if (trimmed.startsWith("pass ")) {
                     query = trimmed.substring(5).trim();
                 }
                 ctrl.pass.searchQuery = query;
@@ -176,6 +176,13 @@ Rectangle {
                 return
             }
 
+            // RNG / Dice Trigger: Typing "rng", "dice", "roll", or "coin" opens the floating overlay
+            if (trimmed === "rng" || trimmed === "dice" || trimmed === "roll" || trimmed === "coin" || trimmed.startsWith("rng ") || trimmed.startsWith("roll ")) {
+                launcherRoot.closeOverlay();
+                if (ctrl.rng) ctrl.rng.showWindow();
+                return;
+            }
+
             launcherRoot.mode = "apps"
             launcherRoot.ctrl.appLauncher.refreshFilter(trimmed)
         }
@@ -225,6 +232,10 @@ Rectangle {
     function toggleTodo() { toggleOverlayMode("todo"); }
     function togglePass() { toggleOverlayMode("pass"); }
     function toggleEmail() { if (mode === "Email" && launcherWindow.visible) closeOverlay(); else toggleOverlayMode("Email"); }
+    function toggleRng() {
+        closeOverlay();
+        if (ctrl.rng) ctrl.rng.toggleWindow();
+    }
     function openDictionary(word) {
         launcherRoot.mode = "dictionary"
         searchField.text = word || ""
@@ -783,7 +794,7 @@ Rectangle {
                     focus: true
 
                     width: parent.width
-                    height: active ? parent.contentHeight +70: 0
+                    height: active ? parent.contentHeight + 70 : 0
 
                     source: "Todo.qml"
 
@@ -818,7 +829,6 @@ Rectangle {
             }
         }
 
-
         SystemReadout {
             id: systemReadoutPanel
             height: parent.height
@@ -826,6 +836,7 @@ Rectangle {
             barWindow: launcherRoot.launcherWindow
         }
     }
+
     /*
      * EMAIL LOADER
      */
@@ -839,20 +850,15 @@ Rectangle {
             active: launcherRoot.mode.toLowerCase() === "email"
             visible: active
 
-            // Hard-locks your spacious high-resolution widescreen canvas bounds template
             width: 1500
             height: 900
 
-            // Anchors the 1500x900 box directly to the middle of the display monitor
             anchors.centerIn: parent
 
-            // Seamlessly load your dedicated external workspace script file
             source: "Email/Email.qml"
 
-            // Force the layout container item to handle core keyboard focus loops on load
             focus: launcherRoot.mode.toLowerCase() === "email"
 
-            // Pin active keyboard control straight onto your inner ListView alias on successful load
             onLoaded: {
                 if (item) {
                     Qt.callLater(function() {

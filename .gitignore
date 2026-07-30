@@ -1,1 +1,4 @@
 /hosts/common/programs/quickshell/Theme.qml
+hosts/common/assets/*.onnx
+hosts/common/assets/*.index
+hosts/common/assets/*.pth

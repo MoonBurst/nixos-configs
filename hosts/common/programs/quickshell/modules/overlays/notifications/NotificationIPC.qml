@@ -67,7 +67,7 @@ Item {
     }
 
     // ============================================================================
-    // AUDIO
+    // AUDIO & TTS
     // ============================================================================
     function playNotificationSound(notification) {
         if (!notification) return;
@@ -92,6 +92,126 @@ Item {
         if (trackPath.length > 0) {
             if (shell.debug) console.log("Playing notification audio cue:", trackPath);
             Quickshell.execDetached(["mpv", "--no-video", "--volume=80", trackPath]);
+        }
+    }
+
+    // Generic/unhelpful app names that shouldn't be spoken aloud as a prefix.
+    // Common culprits: CLI tools called without -a APPNAME fall back to their
+    // own binary name (e.g. plain `notify-send` without -a).
+    readonly property var genericSpeechAppNames: ["notify-send", "notification", "notify"]
+
+    // ============================================================================
+    // SPEECH FILTER: only notifications matching one of these (case-insensitive,
+    // substring match against appName + summary + body) get spoken aloud.
+    // Leave this list empty to speak everything, as before.
+    // Edit freely — names, keywords, phrases, whatever you want to be alerted to.
+    // ============================================================================
+    readonly property var speechKeywordFilter: [
+        "Apogee",
+        "Cageheart",
+        "Luster Dawn",
+        "Solar Sonata",
+        "Vikhlop",
+        "urgent"
+    ]
+
+    function shouldSpeak(appName, summary, body) {
+        if (ipc.speechKeywordFilter.length === 0) return true;
+
+        let haystack = (appName + " " + summary + " " + body).toLowerCase();
+        for (let i = 0; i < ipc.speechKeywordFilter.length; i++) {
+            if (haystack.includes(ipc.speechKeywordFilter[i].toLowerCase())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Same exclusion rule NotificationOverlay.qml already applies to history:
+    // clipboard-sync spam and mic-toggle alerts don't belong here either.
+    function isClipboardOrMicNotification(appName, summary, body) {
+        let appNameLower = (appName || "").toLowerCase();
+        let summaryLower = (summary || "").toLowerCase();
+        let bodyLower = (body || "").toLowerCase();
+
+        let isMicNotif = appNameLower.includes("microphone") || appNameLower.includes("mic") ||
+            summaryLower.includes("microphone") || summaryLower.includes("mic") ||
+            bodyLower.includes("microphone") || bodyLower.includes("mic");
+
+        let isClipboardNotif = appNameLower.includes("greenclip") || appNameLower.includes("copyq") ||
+            appNameLower.includes("clipboard") || appNameLower.includes("clip") ||
+            summaryLower.includes("copied to clipboard") || bodyLower.includes("copied to clipboard") ||
+            summaryLower.includes("clipboard manager");
+
+        return isMicNotif || isClipboardNotif;
+    }
+
+    // Debounce: skip speaking the exact same appName+summary+body twice within this window.
+    readonly property int dedupWindowMs: 3000
+    property string lastSpokenKey: ""
+    property double lastSpokenTime: 0
+
+    // Cap spoken length so long message bodies don't run on forever.
+    readonly property int maxSpeechLength: 200
+
+    readonly property var urlRegex: /(https?:\/\/[^\s<]+)/gi
+
+    function cleanSpeechText(text) {
+        // Strip HTML tags
+        let cleaned = text.replace(/<[^>]*>/g, "");
+
+        // Replace raw links with a short spoken phrase instead of reading the URL aloud
+        cleaned = cleaned.replace(ipc.urlRegex, "Sent a link");
+
+        // Strip common Markdown formatting characters, keeping inner text
+        cleaned = cleaned.replace(/(\*\*|__)(.*?)\1/g, "$2");   // bold
+        cleaned = cleaned.replace(/(\*|_)(.*?)\1/g, "$2");      // italic
+        cleaned = cleaned.replace(/~~(.*?)~~/g, "$1");          // strikethrough
+        cleaned = cleaned.replace(/`([^`]+)`/g, "$1");          // inline code
+        cleaned = cleaned.replace(/^#{1,6}\s*/gm, "");          // headers
+
+        cleaned = cleaned.replace(/\s+/g, " ").trim();
+
+        if (cleaned.length > ipc.maxSpeechLength) {
+            cleaned = cleaned.substring(0, ipc.maxSpeechLength).trim() + "...";
+        }
+
+        return cleaned;
+    }
+
+    function speakNotification(notification) {
+        if (!notification) return;
+
+        let appName = notification.appName || notification.desktopEntry || "";
+        let summary = notification.summary || "";
+        let body = notification.body || "";
+
+        if (ipc.isClipboardOrMicNotification(appName, summary, body)) {
+            return;
+        }
+
+        if (!ipc.shouldSpeak(appName, summary, body)) {
+            return;
+        }
+
+        let dedupKey = appName + "|" + summary + "|" + body;
+        let now = Date.now();
+        if (dedupKey === ipc.lastSpokenKey && (now - ipc.lastSpokenTime) < ipc.dedupWindowMs) {
+            return;
+        }
+
+        if (ipc.genericSpeechAppNames.includes(appName.toLowerCase())) {
+            appName = "";
+        }
+
+        // Format speech text
+        let speechText = (appName ? appName + ": " : "") + summary + (body ? ". " + body : "");
+        speechText = ipc.cleanSpeechText(speechText);
+
+        if (speechText.length > 0) {
+            ipc.lastSpokenKey = dedupKey;
+            ipc.lastSpokenTime = now;
+            Quickshell.execDetached(["sage-tts", speechText]);
         }
     }
 

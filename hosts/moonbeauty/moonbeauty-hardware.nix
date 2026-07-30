@@ -28,13 +28,6 @@ boot.kernelParams = [
   "video=DP-1:2560x1440"
 
 
-
-
-    #VM stuff
-#  "amd_iommu=on"
-#  "iommu=pt"
-#  "vfio-pci.ids=1002:743f,1002:ab28" # RX 6400 Video and Audio IDs
-
   ];
   boot.initrd.kernelModules = [ 
     "amdgpu" 
@@ -53,14 +46,6 @@ boot.extraModprobeConfig = ''
 # options kvmfr static_size_mb=64
  options v4l2loopback devices=1 video_nr=1 card_label="OBS Virtual Camera" exclusive_caps=1
 '';
-#virtualisation.libvirtd.qemu.verbatimConfig = ''
-#  cgroup_device_acl = [
-#      "/dev/null", "/dev/full", "/dev/zero",
-#      "/dev/random", "/dev/urandom",
-#      "/dev/ptmx", "/dev/kvm", "/dev/rtc",
-#      "/dev/hpet", "/dev/kvmfr0"
-#  ]
-#'';
 
 
 #This is for the latest kernel

@@ -116,7 +116,7 @@ let
     fi
   '';
 
-  start-replay-buffer = pkgs.writeShellScriptBin "start-replay-buffer" ''
+start-replay-buffer = pkgs.writeShellScriptBin "start-replay-buffer" ''
     set -euo pipefail
     TARGET_DIR="/mnt/3TBHDD/Recordings"
     mkdir -p "$TARGET_DIR"
@@ -130,6 +130,7 @@ let
     echo "  Use 'save-replay' to save the buffer."
     echo "=========================================================="
 
+    # Redirect stdout and stderr to /dev/null to stop journal log spam
     exec gpu-screen-recorder \
       -w DP-1 \
       -f 60 \
@@ -137,7 +138,7 @@ let
       -c mp4 \
       -k hevc \
       -r 60 \
-      -o "$TARGET_DIR"
+      -o "$TARGET_DIR" > /dev/null 2>&1
   '';
 
   save-replay = pkgs.writeShellScriptBin "save-replay" ''

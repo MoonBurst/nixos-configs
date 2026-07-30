@@ -6,6 +6,7 @@ import Quickshell.Services.Notifications
 import Quickshell.Io
 import Quickshell.Services.Pam
 
+import "./modules/overlays/rng" as RNG
 import "./modules/overlays/recording" as Recording
 import "./modules/overlays/magnify" as Magnify
 import "./modules/overlays/notifications" as Notifications
@@ -224,7 +225,7 @@ ShellRoot {
                 anchors.leftMargin: mainBarContainer.layoutSpacing
                 anchors.verticalCenter: parent.verticalCenter
 
-                width: 130
+                width: 150
                 height: mainBarContainer.capsuleHeight
 
                 WeatherCapsule.Weather {
@@ -453,10 +454,9 @@ ShellRoot {
      * RECORDING OVERLAY
      * =========================================================================
      */
-        Recording.Recording {
+    Recording.Recording {
         id: recordingOverlay
-
-        }
+    }
     /*
      * =========================================================================
      * MAGNIFIER OVERLAY
@@ -467,20 +467,26 @@ ShellRoot {
         id: magnifierOverlay
     }
 
+    /*
+     * =========================================================================
+     * RNG OVERLAY
+     * =========================================================================
+     */
+
+    RNG.DiceRollerWindow {
+        id: diceRollerWindowInstance
+        shell: shell
+    }
+
+    Component.onCompleted: {
+        LauncherModule.LauncherController.rng.diceWindowInstance = diceRollerWindowInstance;
+    }
 
     /*
      * =========================================================================
      * LOCKSCREEN DATA STORAGE & CENTRAL PAM ENGINE
      * =========================================================================
      */
-
-    property bool horizonLaunched: false
-
-    // Tells systemd to start the horizon service cleanly
-    Process {
-        id: horizonLauncher
-        command: ["systemctl", "--user", "start", "horizon"]
-    }
 
     PamContext {
         id: lockPam
@@ -497,12 +503,6 @@ ShellRoot {
                 sessionLock.locked = false;
                 shellRootRef.globalPasswordBuffer = "";
                 shellRootRef.passwordLength = 0;
-
-                // Safely launch Horizon via systemd after the keyring is decrypted
-                if (!horizonLaunched) {
-                    horizonLauncher.running = true;
-                    horizonLaunched = true;
-                }
             } else if (!active && messageIsError) {
                 shellRootRef.globalPasswordBuffer = "";
                 shellRootRef.passwordLength = -1;
@@ -510,10 +510,9 @@ ShellRoot {
         }
     }
 
-
     WlSessionLock {
         id: sessionLock
-        locked: false
+        locked: true
 
         onLockedChanged: {
             shellRootRef.globalPasswordBuffer = "";
@@ -535,7 +534,6 @@ ShellRoot {
             sessionLock.locked = true;
         }
     }
-
 
     /*
      * =========================================================================
@@ -568,6 +566,13 @@ ShellRoot {
         target: "pass"
         function toggle(): void {
             launcherOverlay.togglePass()
+        }
+    }
+
+    IpcHandler {
+        target: "rng"
+        function toggle(): void {
+            launcherOverlay.toggleRng()
         }
     }
 
