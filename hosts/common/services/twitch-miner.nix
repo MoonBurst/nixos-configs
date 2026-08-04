@@ -4,11 +4,23 @@
   # 1. Enable Podman virtualization backend
   virtualisation.podman = {
     enable = true;
-    dockerCompat = true; # Allows docker-styled commands to link seamlessly
+    dockerCompat = true;
     defaultNetwork.settings.dns_enabled = true;
   };
 
-  # 2. Declarative Multi-Container OCI Podman Setup
+  # 2. Open necessary ports in the NixOS Firewall
+  networking.firewall.allowedTCPPorts = [
+    8082 5800 # Main Miner
+    8084 5801 # Berrydrop Miner
+  ];
+
+  # 3. Automatically create directories on the host with correct permissions
+  systemd.tmpfiles.rules = [
+    "d /var/lib/twitch-drops-miner/main 0777 root root -"
+    "d /var/lib/twitch-drops-miner/berrydrop 0777 root root -"
+  ];
+
+  # 4. Declarative Multi-Container OCI Podman Setup
   virtualisation.oci-containers = {
     backend = "podman";
     containers = {
@@ -18,14 +30,14 @@
         image = "docker.io/dungfu/twitch-drops-miner:latest";
         autoStart = true;
         ports = [
-          "8082:8082" # Main application data listener port
-          "5800:5800" # WebUI Port for logging in and captcha verification
+          "8082:8082"
+          "5800:5800"
         ];
         volumes = [
           "/var/lib/twitch-drops-miner/main:/TwitchDropsMiner/config"
         ];
         environment = {
-       TZ = "America/Chicago"; # Change this string value to match your local timezone
+          TZ = "America/Chicago";
         };
       };
 
@@ -34,17 +46,42 @@
         image = "docker.io/dungfu/twitch-drops-miner:latest";
         autoStart = true;
         ports = [
-          "8084:8082" # Shifts internal container port to a unique host port to prevent network clashes
-          "5801:5800" # Shifts WebUI to a unique port so both panels remain active concurrently
+          "8084:8082"
+          "5801:5800"
         ];
         volumes = [
           "/var/lib/twitch-drops-miner/berrydrop:/TwitchDropsMiner/config"
         ];
         environment = {
-          TZ = "America/Chicago"; # Change this string value to match your local timezone
+          TZ = "America/Chicago";
         };
       };
 
     };
   };
+
+# 5. Passwordless Sudo Rules for QuickShell Podman Monitoring
+  security.sudo.extraRules = [
+    {
+      users = [ "moonburst" ]; # Your username
+      commands = [
+        {
+          command = "/run/current-system/sw/bin/podman";
+          options = [ "NOPASSWD" ];
+        }
+        {
+          command = "/run/current-system/sw/bin/systemctl";
+          options = [ "NOPASSWD" ];
+        }
+        {
+          command = "${pkgs.podman}/bin/podman";
+          options = [ "NOPASSWD" ];
+        }
+        {
+          command = "${pkgs.systemd}/bin/systemctl";
+          options = [ "NOPASSWD" ];
+        }
+      ];
+    }
+  ];
 }

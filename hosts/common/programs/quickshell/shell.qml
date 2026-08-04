@@ -6,6 +6,7 @@ import Quickshell.Services.Notifications
 import Quickshell.Io
 import Quickshell.Services.Pam
 
+import "./modules/bar/unified" as UnifiedMonitor
 import "./modules/overlays/rng" as RNG
 import "./modules/overlays/recording" as Recording
 import "./modules/overlays/magnify" as Magnify
@@ -235,7 +236,7 @@ ShellRoot {
             }
 
             Item {
-                id: borgContainer
+                id: unifiedContainer
 
                 anchors.left: weatherContainer.right
                 anchors.leftMargin: mainBarContainer.layoutSpacing
@@ -244,7 +245,7 @@ ShellRoot {
                 width: 125
                 height: mainBarContainer.capsuleHeight
 
-                BorgCapsule.BorgCapsule {
+                UnifiedMonitor.UnifiedMonitor {
                     anchors.fill: parent
                     barWindow: topBarWindow
                 }
@@ -253,7 +254,7 @@ ShellRoot {
             Item {
                 id: notifyContainer
 
-                anchors.left: borgContainer.right
+                anchors.left: unifiedContainer.right
                 anchors.leftMargin: mainBarContainer.layoutSpacing
                 anchors.verticalCenter: parent.verticalCenter
 
@@ -265,6 +266,7 @@ ShellRoot {
                     barWindow: topBarWindow
                 }
             }
+
 
 
             /*
@@ -512,7 +514,7 @@ ShellRoot {
 
     WlSessionLock {
         id: sessionLock
-        locked: true
+        locked: false
 
         onLockedChanged: {
             shellRootRef.globalPasswordBuffer = "";

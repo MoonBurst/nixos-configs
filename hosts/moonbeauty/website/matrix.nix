@@ -4,9 +4,7 @@ let
   unstablePkgs = if args ? inputs.nixpkgs-unstable
   then import args.inputs.nixpkgs-unstable {
     system = pkgs.stdenv.hostPlatform.system;
-    config = {
-      permittedInsecurePackages = [ "olm-3.2.16" ];
-    };
+    config.permittedInsecurePackages = [ "olm-3.2.16" ];
   }
   else pkgs;
 
@@ -18,6 +16,29 @@ let
   discordEnvPath = config.sops.templates."discord-env".path;
 
   homepage = import ./homepage.nix { inherit pkgs; };
+
+  # Reusable Nginx configuration blocks
+  defaultListen = [
+    { addr = "0.0.0.0"; port = 80; }
+    { addr = "[::]"; port = 80; }
+  ];
+
+  commonNginxHeaders = ''
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+    ${if enableVerboseLogging then "" else "access_log off;"}
+    log_not_found off;
+  '';
+
+  matrixProxyConfig = ''
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_pass_header Authorization;
+    proxy_pass_header Content-Type;
+    proxy_read_timeout 600s;
+    proxy_send_timeout 600s;
+  '';
 in
 
 {
@@ -153,15 +174,11 @@ in
   };
 
   services.nginx.virtualHosts."moonburst.net" = {
-    listen = [
-      { addr = "0.0.0.0"; port = 80; }
-      { addr = "[::]"; port = 80; }
-    ];
+    listen = defaultListen;
 
     extraConfig = ''
       client_max_body_size 50M;
-      add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
-      ${if enableVerboseLogging then "" else "access_log off;"}
+      ${commonNginxHeaders}
     '';
 
     locations = {
@@ -189,30 +206,15 @@ in
         proxyPass = "http://127.0.0.1:6167";
         proxyWebsockets = true;
         extraConfig = ''
-          proxy_set_header Host $host;
-          proxy_set_header X-Real-IP $remote_addr;
-          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-          proxy_set_header X-Forwarded-Proto https;
-          proxy_pass_header Authorization;
-          proxy_pass_header Content-Type;
+          ${matrixProxyConfig}
           proxy_buffering off;
-          proxy_read_timeout 600s;
-          proxy_send_timeout 600s;
         '';
       };
+
       "/_matrix" = {
         proxyPass = "http://127.0.0.1:6167";
         proxyWebsockets = true;
-        extraConfig = ''
-          proxy_set_header Host $host;
-          proxy_set_header X-Real-IP $remote_addr;
-          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-          proxy_set_header X-Forwarded-Proto https;
-          proxy_pass_header Authorization;
-          proxy_pass_header Content-Type;
-          proxy_read_timeout 600s;
-          proxy_send_timeout 600s;
-        '';
+        extraConfig = matrixProxyConfig;
       };
 
       "/" = {
@@ -222,15 +224,11 @@ in
   };
 
   services.nginx.virtualHosts."matrix.moonburst.net" = {
-    listen = [
-      { addr = "0.0.0.0"; port = 80; }
-      { addr = "[::]"; port = 80; }
-    ];
+    listen = defaultListen;
 
     extraConfig = ''
       client_max_body_size 30M;
-      add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
-      ${if enableVerboseLogging then "" else "access_log off;"}
+      ${commonNginxHeaders}
     '';
 
     locations = {

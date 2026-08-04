@@ -14,18 +14,15 @@
 #    ./vm.nix
   ];
 
-  # Fix upstream Tailscale hash mismatch in nixpkgs unstable
-  nixpkgs.overlays = [
-    (final: prev: {
-      tailscale = prev.tailscale.overrideAttrs (oldAttrs: {
-        vendorHash = "sha256-Sd2iLJ7eDfDYdIRuW4xuiKgzhQWJWGAnz97FJWrVRlE=";
-      });
-    })
-  ];
 
   environment.sessionVariables = {
     WLR_DRM_DEVICES = "/dev/dri/card0";
   };
+
+  environment.pathsToLink = [
+    "/share/applications"
+    "/share/xdg-desktop-portal"
+  ];
 
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
   networking.hostName = "moonbeauty";

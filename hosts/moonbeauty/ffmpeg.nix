@@ -42,7 +42,8 @@ let
     ${pkgs.libnotify}/bin/notify-send "Twitch Stream" "Starting Live Stream on $MONITOR..." -i media-record
 
     # Launch gpu-screen-recorder (AMD hardware encoder with native transform support)
-    nohup gpu-screen-recorder \
+    nohup ${pkgs.gpu-screen-recorder}/bin/gpu-screen-recorder \
+      -v no \
       -w "$MONITOR" \
       -f 60 \
       -a "$AUDIO_DEVICE" \
@@ -116,29 +117,31 @@ let
     fi
   '';
 
-start-replay-buffer = pkgs.writeShellScriptBin "start-replay-buffer" ''
+  start-replay-buffer = pkgs.writeShellScriptBin "start-replay-buffer" ''
     set -euo pipefail
     TARGET_DIR="/mnt/3TBHDD/Recordings"
     mkdir -p "$TARGET_DIR"
 
     echo "=========================================================="
     echo "  Starting GPU Screen Recorder Replay Buffer..."
-    echo "  Capturing: DP-1 (2560x1440)"
+    echo "  Capturing: Wayland Portal (DP-1)"
     echo "  Audio:     Default Output"
     echo "  Buffer size: 60 seconds"
     echo "  Output directory: $TARGET_DIR"
     echo "  Use 'save-replay' to save the buffer."
     echo "=========================================================="
 
-    # Redirect stdout and stderr to /dev/null to stop journal log spam
-    exec gpu-screen-recorder \
-      -w DP-1 \
+    # Disables verbose status logging (-v no) and filters out FPS spam lines
+    exec ${pkgs.gpu-screen-recorder}/bin/gpu-screen-recorder \
+      -v no \
+      -w portal \
       -f 60 \
       -a "default_output" \
       -c mp4 \
-      -k hevc \
+      -k h264 \
+      -fallback-cpu-encoding yes \
       -r 60 \
-      -o "$TARGET_DIR" > /dev/null 2>&1
+      -o "$TARGET_DIR" 2>&1 | ${pkgs.gnugrep}/bin/grep --line-buffered -v "update fps:"
   '';
 
   save-replay = pkgs.writeShellScriptBin "save-replay" ''
@@ -163,11 +166,24 @@ in {
 
   programs.gpu-screen-recorder.enable = true;
 
+  systemd.user.services.gpu-replay-buffer = {
+    description = "GPU Screen Recorder Instant Replay Buffer Daemon";
+    after = [ "graphical-session.target" ];
+    partOf = [ "graphical-session.target" ];
+    serviceConfig = {
+      ExecStart = "${start-replay-buffer}/bin/start-replay-buffer";
+      Restart = "on-failure";
+      RestartSec = "3s";
+    };
+    wantedBy = [ "graphical-session.target" ];
+  };
+
   environment.systemPackages = [
     twitch-stream
     record-region
     start-replay-buffer
     save-replay
+    pkgs.gpu-screen-recorder
     pkgs.wf-recorder
     pkgs.slurp
     pkgs.ffmpeg-headless

@@ -1,6 +1,7 @@
 { pkgs, lib, config, ... }: {
   imports = [
     ./autostart.nix
+    ./desktop.nix
     ./keybinds.nix
     ./outputs.nix
     ./window-rules.nix

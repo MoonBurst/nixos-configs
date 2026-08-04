@@ -20,7 +20,6 @@ in
 
 # **Background Services**
     { command = "eval $(${pkgs.gnome-keyring}/bin/gnome-keyring-daemon --start --components=secrets) && dbus-update-activation-environment --systemd --all && systemctl --user start quickshell"; }
-    { command = "start-replay-buffer"; }
     { command = "${pkgs.corectrl}/bin/corectrl"; }
     # **Clipboard Management (Cliphist)**
     { command = "${pkgs.wl-clipboard}/bin/wl-paste --type text --watch ${pkgs.cliphist}/bin/cliphist store -max-items 50"; }

@@ -29,7 +29,7 @@ Item {
     // EDITABLE TOOLTIP CONFIGURATION
     // =========================================================================
     property int tooltipHeight: 420          // Vertical height of the expanded box
-    property int tooltipCollapsedWidth: 134  // Sleek, thin width during the downward unroll
+    property int tooltipCollapsedWidth: 150  // Sleek, thin width during the downward unroll
     property int tooltipExpandedWidth: 440   // Final horizontal width once fully open
     property int tooltipTopOffset: -2        // Micro-adjust vertical spacing (px)
     property int tooltipRightOffset: 21      // Micro-adjust horizontal alignment (px)

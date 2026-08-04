@@ -24,16 +24,12 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-
     sops-nix.url = "github:Mic92/sops-nix";
     moon-numix.url = "github:moonburst/moon-numix-icons";
 
-horizon = {
-  url = "github:Fchat-Horizon/Horizon?ref=main";
-  inputs.nixpkgs.follows = "nixpkgs-unstable";
-};
-
-
+    horizon = {
+      url = "github:Fchat-Horizon/Horizon?ref=main";
+    };
 
   };
 

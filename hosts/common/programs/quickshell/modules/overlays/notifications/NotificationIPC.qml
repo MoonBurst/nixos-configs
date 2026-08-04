@@ -152,7 +152,7 @@ Item {
     property double lastSpokenTime: 0
 
     // Cap spoken length so long message bodies don't run on forever.
-    readonly property int maxSpeechLength: 200
+    readonly property int maxSpeechLength: 50
 
     readonly property var urlRegex: /(https?:\/\/[^\s<]+)/gi
 
@@ -218,7 +218,7 @@ Item {
     // ============================================================================
     // ACTIVATE INTERFACE (UNIVERSAL APPLICATION JUMP ENGINE)
     // ============================================================================
-    // FIXED: Added optional directNotificationObject parameter to handle historical activations natively
+    //  optional directNotificationObject parameter to handle historical activations natively
     function activate(card, summary, body, appName, directNotificationObject) {
         if (shell.debug) console.log("ACTIVATE ENTERED");
 
@@ -237,7 +237,7 @@ Item {
 
         let desktopHint = (liveNotif && liveNotif.hints) ? (liveNotif.hints["desktop-entry"] || "") : "";
 
-        // 1. DYNAMIC GLOBAL WINDOW STEERING LAYER
+        //  DYNAMIC GLOBAL WINDOW STEERING LAYER
         if (appNameStr.length > 0 || desktopHint.length > 0) {
             let primaryTarget = appNameStr || desktopHint;
             let secondaryTarget = desktopHint || appNameStr;
@@ -262,7 +262,7 @@ Item {
             Quickshell.execDetached(["swaymsg", swayCommand]);
         }
 
-        // 2. UNIFIED D-BUS INVOCATION HANDSHAKE FLOW
+        // UNIFIED D-BUS INVOCATION HANDSHAKE FLOW
         if (liveNotif && liveNotif.actions && liveNotif.actions.length > 0) {
             let targetAction = null;
 

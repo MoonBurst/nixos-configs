@@ -25,7 +25,8 @@
     keybind = alt+up=scroll_page_up
 
     # --- Blue Embers Engine ---
-    custom-shader = ~/.config/ghostty/shaders/blue_embers.glsl
+    # Fixed: Replaced ~ with an absolute path so the parser can resolve the engine rules cleanly
+    custom-shader = /home/moonburst/.config/ghostty/shaders/blue_embers.glsl
     custom-shader-animation = always
   '';
 
@@ -185,9 +186,8 @@
         vec2 termUV = fragCoord.xy / iResolution.xy;
         vec4 terminalColor = texture(iChannel0, termUV);
 
-            // Aggressively drops off so only absolute near-black gets the background
+        // Aggressively drops off so only absolute near-black gets the background
         float alpha = pow(1.0 - smoothstep(0.0, 0.15, length(terminalColor.rgb)), 4.0);
-
 
         vec3 blendedColor = mix(terminalColor.rgb, col, alpha);
         fragColor = vec4(blendedColor, terminalColor.a);

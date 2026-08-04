@@ -96,16 +96,6 @@
         magick "$filename" -crop 50%x50% +adjoin -resize 400x400! "''${filename%.*}_%d.''${filename##*.}"
       }
 
-      # --- Steam Join Lobby Link Handler ---
-      command_not_found_handler() {
-        if [[ "$1" == steam://* ]]; then
-          xdg-open "$1"
-          return 0
-        fi
-        echo "zsh: command not found: $1"
-        return 127
-      }
-
       zmodload zsh/complist
       bindkey '^e' edit-command-line
       autoload -Uz edit-command-line; zle -N edit-command-line
@@ -128,9 +118,21 @@
     WLR_NO_HARDWARE_CURSORS = "1";
     WLR_RENDERER_ALLOW_SOFTWARE = "1";
     WLR_RENDERER = "gles2";
-    XDG_CURRENT_DESKTOP = "sway";
-    XDG_SESSION_DESKTOP = "sway";
+    # XDG_SESSION_TYPE is safe to hardcode -- every session here is
+    # Wayland regardless of which compositor is running.
     XDG_SESSION_TYPE = "wayland";
+    # XDG_CURRENT_DESKTOP / XDG_SESSION_DESKTOP intentionally NOT set
+    # here. This file is loaded for every session (PAM/login-level,
+    # before any compositor starts), so a value baked in here would
+    # always be "sway" -- even under Hyprland or anything else -- and
+    # would break desktop-portal selection, GTK/Qt theming decisions,
+    # and any app that keys off XDG_CURRENT_DESKTOP. Set these per
+    # compositor instead, in sway's / Hyprland's own startup, and
+    # re-export them into the systemd/dbus user environment there
+    # (e.g. `dbus-update-activation-environment --systemd --all` or
+    # `systemctl --user import-environment`) so dbus/systemd-activated
+    # apps and new terminals see the right values, not just direct
+    # children of the compositor process.
     CARGO_HOME = "$HOME/.local/share/cargo";
     DOTNET_CLI_HOME = "$HOME/.local/share/dotnet";
     GNUPGHOME = "$HOME/.local/share/gnupg";

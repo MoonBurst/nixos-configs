@@ -15,15 +15,16 @@
     ./programs/librewolf.nix
     ./programs/nemo.nix
     ./programs/mpd.nix
-
-
+#   ./programs/hyprland/default.nix
   ];
+
+  # Enables system-level Sway permissions (PAM, screen locker support, display manager session)
+  programs.sway.enable = true;
 
   home-manager.users.moonburst = {
     imports = [
-      ./programs/sway/sway.nix
       ./programs/ghostty.nix
-      ./programs/himalaya.nix
+      ./programs/sway/sway.nix # <-- Moved inside Home Manager
     ];
 
     xdg.configFile."qt6ct/qt6ct.conf".force = true;
@@ -49,10 +50,9 @@
   i18n.defaultLocale = "en_US.UTF-8";
   i18n.extraLocales = [ "en_US.UTF-8/UTF-8" ];
   nixpkgs.config.allowUnfree = true;
-  
-  # REMOVED: olm-3.2.16 is no longer permitted globally to keep your desktop secure
-  nixpkgs.config.permittedInsecurePackages = [ 
-    "pnpm-10.29.2" 
+
+  nixpkgs.config.permittedInsecurePackages = [
+    "pnpm-10.29.2"
   ];
 
   nix.settings = {
