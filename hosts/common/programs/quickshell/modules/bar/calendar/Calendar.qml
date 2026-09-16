@@ -26,11 +26,11 @@ Item {
     // =========================================================================
     //  EDITABLE TOOLTIP CONFIGURATION
     // =========================================================================
-    property int tooltipHeight: 350          // Vertical height of the expanded box
+    property int tooltipHeight: 390          // Vertical height of the expanded box
     property int tooltipCollapsedWidth: 100  // Sleek, thin width during the downward unroll
-    property int tooltipExpandedWidth: 430   // Final horizontal width once fully open
+    property int tooltipExpandedWidth: 500   // Final horizontal width once fully open
     property int tooltipTopOffset: -2        // Micro-adjust vertical spacing (px)
-    property int tooltipRightOffset: 21       // Micro-adjust horizontal alignment (px)
+    property int tooltipRightOffset: 21      // Micro-adjust horizontal alignment (px)
     // =========================================================================
 
     property string slantLeft: "Left"
@@ -91,7 +91,7 @@ Item {
 
     TapHandler {
         onTapped: {
-           // calendarBox.pinTooltip = !calendarBox.pinTooltip
+            // calendarBox.pinTooltip = !calendarBox.pinTooltip
         }
     }
 
@@ -107,7 +107,6 @@ Item {
         alignSide: "Left"
 
         // Maps variables defined at the top of the file
-        tooltipHeight: calendarBox.tooltipHeight
         collapsedCoreWidth: calendarBox.tooltipCollapsedWidth
         expandedCoreWidth: calendarBox.tooltipExpandedWidth
         topOffset: calendarBox.tooltipTopOffset
@@ -211,7 +210,7 @@ Item {
                                 text: dayCellItem.isValidDay ? dayCellItem.dayNumber : ""
                                 color: themeBase05
                                 font.family: themeFontFamily
-                                font.pixelSize: themeFontSize
+                                font.pixelSize: 20 // Changed to 20
                                 font.bold: dayCellItem.isToday
                             }
                         }

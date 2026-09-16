@@ -11,6 +11,7 @@
     ./ffmpeg.nix
     ./corectrl.nix
     ./services.nix
+    ./ai.nix
 #    ./vm.nix
   ];
 
