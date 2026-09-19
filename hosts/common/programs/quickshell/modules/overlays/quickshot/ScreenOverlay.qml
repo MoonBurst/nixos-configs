@@ -1,10 +1,10 @@
 import Quickshell
 import Quickshell.Wayland
 import QtQuick
+import QtQuick.Effects
 
-// A full-screen, click-through-free overlay for a single monitor. It freezes the
-// screen with a ScreencopyView, lets the user rubber-band a region, annotate it,
-// and then copies or saves the cropped result.
+// A full-screen overlay with rubber-band selection, annotation tools,
+// faint watermarking, and a Dual-Stage GPU Binary Contrast Scanner.
 PanelWindow {
     id: root
 
@@ -24,7 +24,7 @@ PanelWindow {
         right: true
     }
 
-    // ---- Selection state (overlay-local logical coordinates) -----------------
+    // ---- Selection state -----------------------------------------------------
     property real selX: 0
     property real selY: 0
     property real selW: 0
@@ -34,27 +34,21 @@ PanelWindow {
     property bool exporting: false
 
     readonly property bool ready: shot.hasContent
-    // Headless end-to-end validation hook (QUICKSHOT_SELFTEST=1): scripts a
-    // selection + annotations + export so the whole pipeline can be checked.
     readonly property string selfTestMode: {
         var v = Quickshell.env("QUICKSHOT_SELFTEST");
         return v ? String(v) : "";
     }
     readonly property bool selfTest: selfTestMode === "1" || selfTestMode === "2"
     onReadyChanged: if (ready && selfTest) Qt.callLater(runSelfTest)
-    // True unless another monitor has already claimed the selection.
     readonly property bool active: ShotState.ownsSelection(modelData.name)
-    // True only on the monitor that actually owns the selection.
     readonly property bool isOwner: ShotState.activeScreen === modelData.name
     readonly property bool showChrome: ready && !exporting && (creating || hasSelection)
-    // Logical -> native pixel ratio, used to report/export at full resolution.
     readonly property real captureScale: shot.sourceSize.width > 0
     ? shot.sourceSize.width / Math.max(1, width) : 1
 
-    // Pending grab mode ("copy" | "save" | "ocr" | "selftest").
     property string _mode: ""
 
-    // Route global key shortcuts to whichever overlay owns the selection.
+    // Route global shortcuts
     Connections {
         target: ShotState
         function onCopyRequested() { if (root.isOwner) root.exportRegion("copy"); }
@@ -63,7 +57,6 @@ PanelWindow {
         function onOcrRequested() { if (root.isOwner) root.exportRegion("ocr"); }
         function onToolChanged() {
             if (ShotState.tool === "colorpicker" && root.active && root.ready) {
-                // Grab the fully-rendered screen frame once on tool activation to bypass startup race conditions
                 captureRoot.grabToImage(function (result) {
                     if (result) {
                         var path = "/tmp/quickshot-backdrop.png";
@@ -75,7 +68,6 @@ PanelWindow {
         }
     }
 
-    // Flat file backing texture for the color picker magnifier
     Image {
         id: backdropImage
         visible: false
@@ -90,8 +82,7 @@ PanelWindow {
         Component.onCompleted: forceActiveFocus()
         Keys.onPressed: function (event) { root.onKey(event); }
 
-        // 1. Exportable scene: frozen screenshot + annotations. Only this subtree
-        //    is captured by grabToImage; everything below is selection chrome.
+        // 1. Exportable scene
         Item {
             id: exportClip
             clip: true
@@ -111,12 +102,51 @@ PanelWindow {
                     id: shot
                     anchors.fill: parent
                     captureSource: root.modelData
-                    // live:false captures exactly one frozen frame. The context
-                    // auto-captures when it becomes ready, so we must NOT call
-                    // captureFrame() before then (it would only warn). The
-                    // fallback Timer below re-requests if that frame never lands.
                     live: false
                     paintCursor: false
+                }
+
+                // ---- Dual-Stage Real-Time GPU Binary Contrast Scanner ----
+                // Stage 1: Crop & pivot contrast around background threshold
+                ShaderEffectSource {
+                    id: stage1Source
+                    sourceItem: shot
+                    sourceRect: Qt.rect(root.selX, root.selY, Math.max(1, root.selW), Math.max(1, root.selH))
+                    visible: false
+                    live: true
+                }
+
+                MultiEffect {
+                    id: stage1Effect
+                    width: Math.max(1, root.selW)
+                    height: Math.max(1, root.selH)
+                    visible: false // Internal texture pipeline to Stage 2
+
+                    source: stage1Source
+                    contrast: 0.88
+                    saturation: -1.0
+                    brightness: ShotState.scanThreshold
+                }
+
+                // Stage 2: Binary hard clipper (slams subtle shifts into crisp solid black & white)
+                ShaderEffectSource {
+                    id: stage2Source
+                    sourceItem: stage1Effect
+                    visible: false
+                    live: true
+                }
+
+                MultiEffect {
+                    id: realTimeScanEffect
+                    x: root.selX
+                    y: root.selY
+                    width: Math.max(1, root.selW)
+                    height: Math.max(1, root.selH)
+                    visible: ShotState.scanMode && root.hasSelection
+
+                    source: stage2Source
+                    contrast: 0.96   // Extreme binary contrast cutoff
+                    brightness: 0.0
                 }
 
                 AnnotationCanvas {
@@ -132,7 +162,7 @@ PanelWindow {
             }
         }
 
-        // Keep requesting a frame until the compositor delivers one.
+        // Keep requesting frame until delivered
         Timer {
             interval: 120
             repeat: true
@@ -148,9 +178,7 @@ PanelWindow {
             }
         }
 
-        // 2. Dimming veil — four rectangles tiled around the selection so the
-        //    selected region stays at full brightness. With no selection the
-        //    bottom rectangle covers the whole screen.
+        // 2. Dimming veil
         Item {
             anchors.fill: parent
             visible: root.ready
@@ -174,7 +202,7 @@ PanelWindow {
             }
         }
 
-        // 3. Selection outline.
+        // 3. Selection outline
         Rectangle {
             visible: root.showChrome
             x: root.selX
@@ -182,11 +210,11 @@ PanelWindow {
             width: root.selW
             height: root.selH
             color: "transparent"
-            border.color: Style.selectionBorder
+            border.color: ShotState.scanMode ? "#ff007f" : Style.selectionBorder
             border.width: Style.selectionBorderWidth
         }
 
-        // 4. Dimension badge.
+        // 4. Dimension badge
         Rectangle {
             visible: root.showChrome
             color: "#0d0e13"
@@ -206,7 +234,7 @@ PanelWindow {
             }
         }
 
-        // 5. Pre-selection hint.
+        // 5. Pre-selection hint
         Rectangle {
             visible: root.ready && root.active && !root.hasSelection && !root.creating && ShotState.tool !== "colorpicker"
             anchors.centerIn: parent
@@ -221,11 +249,11 @@ PanelWindow {
                 color: Style.text
                 font.family: Style.fontFamily
                 font.pixelSize: 15
-                text: "Drag to select a region    •    Esc to cancel"
+                text: "Drag over an image to scan it    •    Esc to cancel"
             }
         }
 
-        // 6. Region creation (rubber band) — active before a selection exists.
+        // 6. Region creation
         MouseArea {
             id: creator
             anchors.fill: parent
@@ -258,7 +286,7 @@ PanelWindow {
             }
         }
 
-        // 7. Move the selection (select tool only).
+        // 7. Move the selection
         MouseArea {
             id: mover
             enabled: root.active && root.hasSelection && ShotState.tool === "select"
@@ -289,12 +317,11 @@ PanelWindow {
                 var dy = ny - root.selY;
                 root.selX = nx;
                 root.selY = ny;
-                // Annotations travel with the selection.
                 canvas.translateAll(dx, dy);
             }
         }
 
-        // 8. Draw annotations (any draw tool).
+        // 8. Draw annotations
         MouseArea {
             id: drawArea
             enabled: root.active && root.hasSelection && root.ready && ShotState.isDrawTool()
@@ -318,11 +345,7 @@ PanelWindow {
             }
         }
 
-        // 8b. Inline text editor. Declared after drawArea so it hit-tests above
-        //     it — clicks on the text box reach the editor (caret/selection),
-        //     while clicks elsewhere in the selection still start a new box.
-        //     It is outside the captured subtree, so the live editor is never
-        //     part of the exported image (the committed Text annotation is).
+        // 8b. Inline text editor
         TextInput {
             id: editor
             visible: canvas.editing !== null
@@ -347,7 +370,7 @@ PanelWindow {
             }
         }
 
-        // 8c. Color Picker Area (only active when the color picker tool is active)
+        // 8c. Color Picker Area
         MouseArea {
             id: colorPickerArea
             enabled: root.active && root.ready && ShotState.tool === "colorpicker"
@@ -355,7 +378,7 @@ PanelWindow {
             anchors.fill: parent
             hoverEnabled: true
             acceptedButtons: Qt.LeftButton
-            cursorShape: Qt.BlankCursor // Hide the traditional cursor to let magnifier align smoothly
+            cursorShape: Qt.BlankCursor
 
             property real mouseX: 0
             property real mouseY: 0
@@ -363,7 +386,7 @@ PanelWindow {
             onPositionChanged: function (mouse) {
                 mouseX = mouse.x;
                 mouseY = mouse.y;
-                magnifierCanvas.requestPaint(); // Synchronize the circular magnifier repaint loop
+                magnifierCanvas.requestPaint();
             }
 
             onPressed: function (mouse) {
@@ -383,7 +406,6 @@ PanelWindow {
             height: 130
             z: 2000
 
-            // Circular vector viewport rendering the cropped image source and grid lines
             Canvas {
                 id: magnifierCanvas
                 anchors.fill: parent
@@ -391,19 +413,14 @@ PanelWindow {
                 onPaint: {
                     var ctx = getContext("2d");
                     ctx.reset();
-
                     var w = width;
                     var h = height;
 
-                    // 1. Clip coordinates to a perfect circle inside the border bounds
                     ctx.beginPath();
                     ctx.arc(w / 2, h / 2, w / 2 - 2, 0, 2 * Math.PI);
                     ctx.clip();
-
-                    // 2. Disable bilinear image smoothing for blocky pixel grids
                     ctx.imageSmoothingEnabled = false;
 
-                    // 3. Draw the zoomed flat image safely inside the circle using high-DPI scaled offsets
                     if (backdropImage.status === Image.Ready) {
                         var scale = root.captureScale;
                         var sx = (colorPickerArea.mouseX - 6.5) * scale;
@@ -411,40 +428,22 @@ PanelWindow {
                         var sw = 13 * scale;
                         var sh = 13 * scale;
 
-                        ctx.drawImage(
-                            backdropImage,
-                            sx,
-                            sy,
-                            sw,
-                            sh,
-                            0,
-                            0,
-                            w,
-                            h
-                        );
+                        ctx.drawImage(backdropImage, sx, sy, sw, sh, 0, 0, w, h);
                     } else {
-                        // Fallback background color if image is loading
                         ctx.fillStyle = "#151515";
                         ctx.fillRect(0, 0, w, h);
                     }
 
-                    // 4. Draw grid mesh lines
                     ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
                     ctx.lineWidth = 1;
                     var step = w / 13;
                     for (var i = 1; i < 13; i++) {
                         ctx.beginPath();
-                        ctx.moveTo(i * step, 0);
-                        ctx.lineTo(i * step, h);
-                        ctx.stroke();
-
+                        ctx.moveTo(i * step, 0); ctx.lineTo(i * step, h); ctx.stroke();
                         ctx.beginPath();
-                        ctx.moveTo(0, i * step);
-                        ctx.lineTo(w, i * step);
-                        ctx.stroke();
+                        ctx.moveTo(0, i * step); ctx.lineTo(w, i * step); ctx.stroke();
                     }
 
-                    // 5. Draw the central targeting square marker (clicked pixel focus)
                     var centerSize = w / 13;
                     var cx = (w - centerSize) / 2;
                     var cy = (h - centerSize) / 2;
@@ -459,7 +458,6 @@ PanelWindow {
                 }
             }
 
-            // Outer circular frame borders layered on top of the circular canvas
             Rectangle {
                 anchors.fill: parent
                 radius: width / 2
@@ -478,7 +476,7 @@ PanelWindow {
             }
         }
 
-        // 9. Resize handles (select tool only).
+        // 9. Resize handles
         Repeater {
             model: [
                 { role: "tl", fx: 0,   fy: 0   },
@@ -501,7 +499,7 @@ PanelWindow {
             }
         }
 
-        // 10. Toolbar.
+        // 10. Toolbar
         Toolbar {
             id: toolbar
             visible: root.showChrome && root.hasSelection && root.isOwner
@@ -522,6 +520,255 @@ PanelWindow {
             onOcr: root.exportRegion("ocr")
             onCancel: root.cancel()
         }
+
+        // 11. Persistent Watermark & Dual-Stage Real-Time Scanner Bar
+        Rectangle {
+            id: watermarkBadge
+            visible: root.ready && root.active && !root.exporting
+            anchors.top: parent.top
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.topMargin: 16
+            z: 99999
+
+            width: ShotState.scanMode ? 560 : 420
+            height: 36
+            radius: 8
+            color: Style.panel
+            border.color: ShotState.scanMode ? "#ff007f" : (ShotState.watermarkText.length > 0 ? (Style.selectionBorder || ShotState.strokeColor) : Style.panelBorder)
+            border.width: 1.5
+
+            Behavior on width { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
+
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.IBeamCursor
+                onPressed: function(mouse) {
+                    watermarkInputField.forceActiveFocus();
+                    mouse.accepted = true;
+                }
+            }
+
+            Row {
+                anchors.fill: parent
+                anchors.leftMargin: 10
+                anchors.rightMargin: 10
+                spacing: 8
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "≋"
+                    color: ShotState.watermarkText.length > 0 ? (Style.selectionBorder || ShotState.strokeColor) : Style.text
+                    font.pixelSize: 15
+                }
+
+                Item {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: ShotState.scanMode ? 140 : (parent.width - 200)
+                    height: parent.height
+                    clip: true
+
+                    TextInput {
+                        id: watermarkInputField
+                        anchors.fill: parent
+                        verticalAlignment: TextInput.AlignVCenter
+                        text: ShotState.watermarkText
+                        color: Style.text
+                        font.family: Style.fontFamily
+                        font.pixelSize: 13
+                        selectByMouse: true
+                        clip: true
+
+                        Text {
+                            anchors.fill: parent
+                            verticalAlignment: Text.AlignVCenter
+                            text: "Secret watermark..."
+                            color: "#6c7086"
+                            font.family: Style.fontFamily
+                            font.pixelSize: 13
+                            visible: !watermarkInputField.text && !watermarkInputField.activeFocus
+                        }
+
+                        onTextChanged: {
+                            ShotState.watermarkText = text;
+                        }
+                    }
+                }
+
+                // Eye Preview Toggle
+                Rectangle {
+                    id: revealSwitch
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 36
+                    height: 22
+                    radius: 11
+                    color: ShotState.revealWatermark ? ShotState.strokeColor : "#313244"
+
+                    Behavior on color { ColorAnimation { duration: 150 } }
+
+                    Rectangle {
+                        anchors.verticalCenter: parent.verticalCenter
+                        x: ShotState.revealWatermark ? parent.width - width - 2 : 2
+                        width: 18
+                        height: 18
+                        radius: 9
+                        color: "#ffffff"
+
+                        Behavior on x { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "👁"
+                            font.pixelSize: 10
+                            color: ShotState.revealWatermark ? "#11111b" : "#6c7086"
+                        }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: ShotState.revealWatermark = !ShotState.revealWatermark
+                    }
+                }
+
+                // Instant Real-Time Dual-Stage Contrast Scanner Button
+                Rectangle {
+                    id: scanButton
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 76
+                    height: 24
+                    radius: 6
+                    color: ShotState.scanMode ? "#ff007f" : "#24273a"
+                    border.color: ShotState.scanMode ? "#ff007f" : "#494d64"
+                    border.width: 1
+
+                    Row {
+                        anchors.centerIn: parent
+                        spacing: 4
+                        Text {
+                            text: "🔬"
+                            font.pixelSize: 11
+                        }
+                        Text {
+                            text: ShotState.scanMode ? "BOOST ON" : "SCAN"
+                            color: ShotState.scanMode ? "#ffffff" : Style.text
+                            font.pixelSize: 10
+                            font.bold: true
+                        }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (!root.hasSelection) {
+                                root.notify("Scanner", "Drag a box around an image on your screen first.", false);
+                                return;
+                            }
+                            ShotState.scanMode = !ShotState.scanMode;
+                        }
+                    }
+                }
+
+                // ---- Real-Time Contrast Pivot Controls (Active in SCAN MODE) ----
+                Row {
+                    visible: ShotState.scanMode
+                    spacing: 5
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    // Dark background preset (e.g. Discord, terminal, dark editor)
+                    Rectangle {
+                        width: 44
+                        height: 22
+                        radius: 4
+                        color: ShotState.scanThreshold > 0.1 ? "#ff007f" : "#313244"
+                        Text {
+                            anchors.centerIn: parent
+                            text: "DARK"
+                            color: "#ffffff"
+                            font.pixelSize: 9
+                            font.bold: true
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: ShotState.scanThreshold = 0.38
+                        }
+                    }
+
+                    // Light background preset (e.g. white web pages, documents)
+                    Rectangle {
+                        width: 44
+                        height: 22
+                        radius: 4
+                        color: ShotState.scanThreshold < -0.1 ? "#ff007f" : "#313244"
+                        Text {
+                            anchors.centerIn: parent
+                            text: "LIGHT"
+                            color: "#ffffff"
+                            font.pixelSize: 9
+                            font.bold: true
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: ShotState.scanThreshold = -0.38
+                        }
+                    }
+
+                    // Smooth Threshold Scrubber Track
+                    Rectangle {
+                        id: scrubberTrack
+                        width: 65
+                        height: 12
+                        radius: 6
+                        color: "#181825"
+                        border.color: "#45475a"
+                        border.width: 1
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        Rectangle {
+                            id: scrubberHandle
+                            width: 12
+                            height: 12
+                            radius: 6
+                            color: "#ffffff"
+                            x: Math.max(0, Math.min(scrubberTrack.width - width, (scrubberTrack.width - width) * ((ShotState.scanThreshold + 0.8) / 1.6)))
+
+                            MouseArea {
+                                anchors.fill: parent
+                                drag.target: parent
+                                drag.axis: Drag.XAxis
+                                drag.minimumX: 0
+                                drag.maximumX: scrubberTrack.width - scrubberHandle.width
+                                onPositionChanged: {
+                                    var progress = scrubberHandle.x / (scrubberTrack.width - scrubberHandle.width);
+                                    ShotState.scanThreshold = -0.8 + progress * 1.6;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Clear button
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "✕"
+                    color: Style.text
+                    opacity: 0.6
+                    font.pixelSize: 12
+                    visible: watermarkInputField.text.length > 0
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            watermarkInputField.text = "";
+                            content.forceActiveFocus();
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // ---- Deferred grab -------------------------------------------------------
@@ -530,10 +777,6 @@ PanelWindow {
         interval: 24
         repeat: false
         onTriggered: {
-            // No explicit targetSize: Qt renders the item's logical size scaled
-            // by the window's devicePixelRatio, which equals the ScreencopyView's
-            // native texture resolution — a crisp, correctly-sized native crop.
-            // Passing a native-px targetSize would double-apply the DPR.
             var grab = exportClip.grabToImage(function (result) {
                 root.deliver(result, root._mode);
             });
@@ -545,7 +788,6 @@ PanelWindow {
         }
     }
 
-    // Safety net: if the grab callback never fires, recover instead of hanging.
     Timer {
         id: exportWatchdog
         interval: 2500
@@ -587,6 +829,14 @@ PanelWindow {
 
     // ---- Keyboard ------------------------------------------------------------
     function onKey(e) {
+        if (watermarkInputField.activeFocus) {
+            if (e.key === Qt.Key_Escape || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
+                content.forceActiveFocus();
+                e.accepted = true;
+            }
+            return;
+        }
+
         if (e.key === Qt.Key_Escape) {
             root.cancel();
             e.accepted = true;
@@ -640,8 +890,6 @@ PanelWindow {
         var rw = Math.max(1, Math.round(selW));
         var rh = Math.max(1, Math.round(selH));
 
-        // Reframe the clip to the selection and shift the scene up/left so the
-        // region aligns to the clip's origin (single-grab crop).
         exportClip.x = rx;
         exportClip.y = ry;
         exportClip.width = rw;
@@ -653,7 +901,6 @@ PanelWindow {
         grabTimer.start();
     }
 
-    // Restore the live state after a failed/aborted grab so the user can retry.
     function abortExport() {
         exportWatchdog.stop();
         exporting = false;
@@ -727,7 +974,6 @@ PanelWindow {
             var tempPath = "/tmp/quickshot_pixel.png";
             result.saveToFile(tempPath);
 
-            // Append a unique micro-timestamp query parameter to bypass cache
             var cacheBuster = "?t=" + new Date().getTime();
             colorCanvas.sample("file://" + tempPath + cacheBuster, function (rgba) {
                 var r = rgba[0];
@@ -737,11 +983,9 @@ PanelWindow {
                 var hex = rgbToHex(r, g, b);
                 var rgbStr = "rgb(" + r + ", " + g + ", " + b + ")";
 
-                // Update selected annotation stroke color
                 ShotState.strokeColor = hex;
                 notifyColor(hex, rgbStr);
 
-                // Clean up temporary pixel image and return tool to selection mode
                 Quickshell.execDetached(["rm", "-f", tempPath]);
                 ShotState.tool = "select";
             });
@@ -757,7 +1001,6 @@ PanelWindow {
     }
 
     function notifyColor(hex, rgbStr) {
-        // Create an SVG icon containing the chosen color on the fly
         var cleanHex = hex.replace("#", "");
         var iconPath = "/tmp/qs_color_icon_" + cleanHex + ".svg";
         var svgContent = '<svg width="64" height="64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="' + hex + '" rx="8"/></svg>';
@@ -765,7 +1008,6 @@ PanelWindow {
         var title = "Color Picked";
         var body = hex + "  •  " + rgbStr;
 
-        // Write it to clipboard, generate the SVG icon, and fire an urgent notify-send using that icon
         var cmd = [
             "sh", "-c",
             "echo -n " + ShotState.shQuote(hex) + " | wl-copy && " +
@@ -776,14 +1018,13 @@ PanelWindow {
         Quickshell.execDetached(cmd);
     }
 
-    // ---- Color picking nodes -------------------------------------------------
     Item {
         id: colorSamplerItem
         x: 0
         y: 0
         width: 1
         height: 1
-        visible: true // Statically rendered inside the active window bounds
+        visible: true
         opacity: 0.01
 
         ShaderEffectSource {
@@ -792,7 +1033,6 @@ PanelWindow {
             sourceItem: captureRoot
             live: true
             smooth: false
-            // Statically bound to the current mouse coordinates in real-time
             sourceRect: Qt.rect(colorPickerArea.mouseX, colorPickerArea.mouseY, 1, 1)
         }
     }
@@ -803,7 +1043,7 @@ PanelWindow {
         y: 0
         width: 1
         height: 1
-        visible: true // Statically rendered inside the active window bounds
+        visible: true
         opacity: 0.01
 
         property var callback: null
@@ -816,7 +1056,7 @@ PanelWindow {
                 callback(imgData.data);
                 callback = null;
             }
-            unloadImage(colorCanvas.currentUrl); // Free memory cache
+            unloadImage(colorCanvas.currentUrl);
         }
         function sample(url, cb) {
             callback = cb;
@@ -829,16 +1069,15 @@ PanelWindow {
                     callback(imgData.data);
                     callback = null;
                 }
-                unloadImage(url); // Free memory cache
+                unloadImage(url);
             } else {
                 loadImage(url);
             }
         }
     }
 
-    // ---- Self-test (headless validation) -------------------------------------
+    // ---- Self-test -----------------------------------------------------------
     function runSelfTest() {
-        // Only the first monitor to become ready drives the test.
         if (!ShotState.ownsSelection(modelData.name))
             return;
         ShotState.claimScreen(modelData.name);
@@ -849,15 +1088,13 @@ PanelWindow {
         hasSelection = true;
 
         if (selfTestMode === "2") {
-            // Drive the real interactive draft path for the tools reported broken.
             gestureStroke("rect", 110, 110, 320, 230);
             gestureStroke("highlight", 130, 300, 360, 345);
             ShotState.tool = "counter"; canvas.beginDraft(170, 165); canvas.endDraft();
             ShotState.tool = "counter"; canvas.beginDraft(240, 200); canvas.endDraft();
             gestureStroke("ellipse", 360, 120, 540, 250);
             gestureStroke("arrow", 140, 270, 430, 360);
-            // Exercise the move path: shift the selection and the annotations
-            // together. If they travel as one, the crop frames them identically.
+
             var dx = 90, dy = 60;
             setSel(selX + dx, selY + dy, selW, selH);
             canvas.translateAll(dx, dy);
@@ -874,7 +1111,7 @@ PanelWindow {
             { type: "pen",      points: [{x:400,y:300},{x:430,y:330},{x:460,y:300},{x:490,y:340}], color: "#ffffff", width: 4 },
             { type: "counter",  x1: 150, y1: 150, color: "#5e5ce6", number: 1, fontSize: 26 },
             { type: "text",     x1: 170, y1: 250, text: "Quickshot", color: "#ffd60a", fontSize: 28 },
-            { type: "redact", x1: 380, y1: 270, x2: 540, y2: 380 }
+            { type: "redact",   x1: 380, y1: 270, x2: 540, y2: 380 }
         ];
 
         runSelfTestExport();

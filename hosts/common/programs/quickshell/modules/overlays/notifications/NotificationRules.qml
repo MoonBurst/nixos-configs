@@ -10,11 +10,11 @@ Item {
 
     property var characterProfiles: [
         { name: "apogee",        summary: "Apogee",        color: "#0CD0CD", sound: false },
-        { name: "solar_sonata",  summary: "Solar Sonata",  color: "#f7f716", sound: true  },
-        { name: "cageheart",     summary: "Cageheart",     color: "#8ad5a6", sound: true  },
-        { name: "olivia",        summary: "Olivia",        color: "#18FFD5", sound: true  },
+        { name: "solar_sonata",  summary: "Solar Sonata",  color: "#f7f716", sound: false  },
+        { name: "cageheart",     summary: "Cageheart",     color: "#8ad5a6", sound: false  },
+        { name: "olivia",        summary: "Olivia",        color: "#18FFD5", sound: false  },
         { name: "genesis_frost", summary: "Genesis Frost", color: "#9ce8ff", sound: false },
-        { name: "luster_dawn",   summary: "Luster Dawn",   color: "#e041de", sound: true  }
+        { name: "luster_dawn",   summary: "Luster Dawn",   color: "#e041de", sound: false  }
     ]
 
     // FIXED: Uses Quickshell.shellDir to resolve deprecation warnings in newer runtimes

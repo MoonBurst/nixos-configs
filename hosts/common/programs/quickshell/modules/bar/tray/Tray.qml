@@ -1,3 +1,4 @@
+// Tray.qml
 import QtQuick
 import QtQuick.Controls 2
 import QtQuick.Layouts 1.15
@@ -17,7 +18,36 @@ Item {
     implicitWidth: trayBubbleWrapper.width
     height: parent.height
 
-    // Centralized SlantedBox Background
+    Timer {
+        id: autoCollapseTimer
+        interval: 3000
+        repeat: false
+        running: false
+        onTriggered: {
+            if (trayRoot.isExpanded && trayRoot.activeMenu === null && !trayHoverArea.containsMouse) {
+                trayRoot.isExpanded = false;
+            }
+        }
+    }
+
+    function resetCollapseTimer() {
+        if (trayRoot.isExpanded) {
+            autoCollapseTimer.restart();
+        }
+    }
+
+    function stopCollapseTimer() {
+        autoCollapseTimer.stop();
+    }
+
+    onIsExpandedChanged: {
+        if (isExpanded) {
+            resetCollapseTimer();
+        } else {
+            stopCollapseTimer();
+        }
+    }
+
     SlantedBox {
         id: trayBubbleWrapper
         slantLeft: "Right"
@@ -29,6 +59,20 @@ Item {
 
         Behavior on width {
             NumberAnimation { duration: 200; easing.type: Easing.InOutQuad }
+        }
+
+        MouseArea {
+            id: trayHoverArea
+            anchors.fill: parent
+            hoverEnabled: true
+            acceptedButtons: Qt.NoButton
+            onEntered: trayRoot.stopCollapseTimer()
+            onExited: {
+                if (trayRoot.activeMenu === null) {
+                    trayRoot.resetCollapseTimer();
+                }
+            }
+            onPositionChanged: trayRoot.resetCollapseTimer()
         }
 
         RowLayout {
@@ -104,7 +148,18 @@ Item {
 
             PanelWindow {
                 id: menuPopup
-                screen: barWindow ? barWindow.screen : null
+
+                screen: {
+                    if (barWindow && barWindow.screen) return barWindow.screen;
+                    var p = trayItem;
+                    while (p) {
+                        if (p.screen) return p.screen;
+                        if (p.Window && p.Window.window && p.Window.window.screen) return p.Window.window.screen;
+                        p = p.parent;
+                    }
+                    return Quickshell.screens[0] || null;
+                }
+
                 visible: false
 
                 WlrLayershell.layer: WlrLayer.Overlay
@@ -124,10 +179,12 @@ Item {
                 onVisibleChanged: {
                     if (visible) {
                         escapeFocusProxy.forceActiveFocus();
+                        trayRoot.stopCollapseTimer();
                     } else {
                         if (trayRoot.activeMenu === menuPopup) {
                             trayRoot.activeMenu = null;
                         }
+                        trayRoot.resetCollapseTimer();
                     }
                 }
 
@@ -206,7 +263,14 @@ Item {
                 anchors.fill: parent
                 hoverEnabled: true
                 acceptedButtons: Qt.LeftButton | Qt.RightButton
+                onEntered: trayRoot.stopCollapseTimer()
+                onExited: {
+                    if (trayRoot.activeMenu === null) {
+                        trayRoot.resetCollapseTimer();
+                    }
+                }
                 onClicked: (mouse) => {
+                    trayRoot.resetCollapseTimer();
                     if (mouse.button === Qt.LeftButton) {
                         if (trayRoot.activeMenu !== null) {
                             trayRoot.activeMenu.visible = false;

@@ -1,3 +1,4 @@
+// AudioCapsule.qml
 import QtQuick
 import QtQuick.Controls 2
 import Quickshell
@@ -13,7 +14,6 @@ Item {
     width: 140
     height: parent.height
 
-    // Centralized SlantedBox Background
     SlantedBox {
         id: bg
         anchors.fill: parent
@@ -71,7 +71,6 @@ Item {
     Text {
         id: audioText
         anchors.fill: parent
-
         anchors.leftMargin: bg.leftPadding
         anchors.rightMargin: bg.rightPadding
         anchors.topMargin: (shell && shell.theme) ? (shell.theme.globalPadding || 12) : 12
@@ -98,7 +97,7 @@ Item {
 
     Timer {
         id: audioPollerTimer
-        interval: 500; running: true; repeat: true; triggeredOnStart: true
+        interval: 2000; running: true; repeat: true; triggeredOnStart: true
         onTriggered: {
             audioFetcher.running = false;
             audioFetcher.running = true;

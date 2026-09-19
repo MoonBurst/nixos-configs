@@ -1,28 +1,57 @@
 import QtQuick
 
 // Owns the annotation model and the in-progress draft, and renders both on top
-// of the frozen screenshot. Drawing gestures are fed in from the overlay's
-// drawing MouseArea via beginDraft / updateDraft / endDraft. Text is handled
-// specially through an inline editor.
+// of the frozen screenshot.
 Item {
     id: canvas
 
-    // Committed annotations (array of plain objects). Reassigned wholesale so
-    // the Repeater re-evaluates.
     property var annotations: []
-    // The shape currently being dragged out, or null.
     property var draft: null
-    // The frozen ScreencopyView, handed to redact annotations for sampling.
     property Item backdrop: null
-    // The text annotation currently being typed, or null.
     property var editing: null
 
     property var _penPoints: null
 
-    // The inline text editor lives in the overlay (above the drawing MouseArea)
-    // rather than here, so it can be clicked into. These signals drive it.
     signal editStarted()
     signal editFinished()
+
+    // ---- Repeating Watermark Layer (Pure QML) -------------------------------
+    Item {
+        id: watermarkLayer
+        anchors.fill: parent
+        z: -1 // Sits behind drawn annotations
+        clip: true
+        enabled: false // Never intercepts mouse gestures
+
+        visible: Boolean(ShotState.watermarkText && ShotState.watermarkText.trim().length > 0)
+
+        // High visibility (0.80) when preview switch is ON; stealth (0.009) when OFF or exporting
+        opacity: (ShotState.revealWatermark && !ShotState.finishing) ? 0.80 : ShotState.watermarkOpacity
+
+        readonly property int cols: Math.max(1, Math.ceil(width / 240) + 8)
+        readonly property int rows: Math.max(1, Math.ceil(height / 130) + 8)
+
+        Grid {
+            anchors.centerIn: parent
+            rotation: -30
+            columns: watermarkLayer.cols
+            spacing: 85
+
+            Repeater {
+                model: watermarkLayer.cols * watermarkLayer.rows
+                delegate: Text {
+                    text: ShotState.watermarkText
+                    color: "#ffffff"
+                    style: ShotState.revealWatermark ? Text.Outline : Text.Normal
+                    styleColor: "#000000"
+                    font.pixelSize: 28                 // Large 28px glyphs
+                    font.bold: true                    // Solid 3px strokes
+                    font.capitalization: Font.AllUppercase // Open letters won't clog under contrast
+                    font.letterSpacing: 4              // Clean separation between characters
+                }
+            }
+        }
+    }
 
     // ---- Committed annotations ----------------------------------------------
     Repeater {
@@ -43,7 +72,6 @@ Item {
 
     // ---- Gesture API ---------------------------------------------------------
     function beginDraft(gx, gy) {
-        // Always commit a pending text edit before starting a new gesture.
         if (canvas.editing)
             finishEditing();
 
@@ -57,8 +85,8 @@ Item {
                 type: "counter",
                 x1: gx, y1: gy,
                 color: String(ShotState.strokeColor),
-                number: ShotState.counterValue,
-                fontSize: ShotState.fontSize
+                           number: ShotState.counterValue,
+                           fontSize: ShotState.fontSize
             });
             ShotState.counterValue += 1;
             return;
@@ -66,8 +94,8 @@ Item {
         if (t === "pen") {
             canvas._penPoints = [{ x: gx, y: gy }];
             canvas.draft = { type: "pen", points: canvas._penPoints.slice(),
-                             color: String(ShotState.strokeColor), width: ShotState.strokeWidth };
-            return;
+                color: String(ShotState.strokeColor), width: ShotState.strokeWidth };
+                return;
         }
         canvas.draft = makeDraft(t, gx, gy, gx, gy);
     }
@@ -78,7 +106,7 @@ Item {
         if (canvas.draft.type === "pen") {
             canvas._penPoints.push({ x: gx, y: gy });
             canvas.draft = { type: "pen", points: canvas._penPoints.slice(),
-                             color: canvas.draft.color, width: canvas.draft.width };
+                color: canvas.draft.color, width: canvas.draft.width };
         } else {
             var d = canvas.draft;
             canvas.draft = makeDraft(d.type, d.x1, d.y1, gx, gy);
@@ -112,8 +140,6 @@ Item {
         canvas.annotations = canvas.annotations.concat([a]);
     }
 
-    // Shift every annotation by (dx, dy) so they travel with the selection when
-    // it is moved. Endpoints, corners and freehand points are all translated.
     function translateAll(dx, dy) {
         if ((dx === 0 && dy === 0) || canvas.annotations.length === 0)
             return;
@@ -131,7 +157,6 @@ Item {
         });
     }
 
-    // ---- Text editing --------------------------------------------------------
     function startTextEdit(gx, gy) {
         canvas.editing = {
             type: "text",
@@ -156,7 +181,6 @@ Item {
         canvas.editFinished();
     }
 
-    // ---- Edit operations -----------------------------------------------------
     function undo() {
         if (canvas.editing) {
             cancelEditing();
@@ -172,7 +196,6 @@ Item {
         ShotState.counterValue = 1;
     }
 
-    // Ensure no editor/draft is left dangling before a grab.
     function commitDraft() {
         if (canvas.editing)
             finishEditing();

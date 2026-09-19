@@ -72,8 +72,6 @@ Item {
     function playNotificationSound(notification) {
         if (!notification) return;
 
-        // Optimized string matching via local cached lookups
-        // FIXED: Uses native Quickshell.shellDir to prevent "undefined/resources/" loading warnings
         let summaryLower = (notification.summary || "").toLowerCase();
         let bodyLower = (notification.body || "").toLowerCase();
         let baseResource = Quickshell.shellDir + "/resources/";
@@ -95,23 +93,22 @@ Item {
         }
     }
 
-    // Generic/unhelpful app names that shouldn't be spoken aloud as a prefix.
-    // Common culprits: CLI tools called without -a APPNAME fall back to their
-    // own binary name (e.g. plain `notify-send` without -a).
     readonly property var genericSpeechAppNames: ["notify-send", "notification", "notify"]
 
-    // ============================================================================
-    // SPEECH FILTER: only notifications matching one of these (case-insensitive,
-    // substring match against appName + summary + body) get spoken aloud.
-    // Leave this list empty to speak everything, as before.
-    // Edit freely — names, keywords, phrases, whatever you want to be alerted to.
-    // ============================================================================
+    readonly property var chatAppNames: [
+        "vesktop", "discord", "element", "cinny", "matrix",
+        "telegram", "signal", "slack", "fluffychat", "nheko",
+        "thunderbird", "gmail", "kmail", "mail"
+    ]
+
     readonly property var speechKeywordFilter: [
         "Apogee",
         "Cageheart",
         "Luster Dawn",
         "Solar Sonata",
         "Vikhlop",
+        "Gadren",
+        "Parker",
         "urgent"
     ]
 
@@ -127,48 +124,69 @@ Item {
         return false;
     }
 
-    // Same exclusion rule NotificationOverlay.qml already applies to history:
-    // clipboard-sync spam and mic-toggle alerts don't belong here either.
     function isClipboardOrMicNotification(appName, summary, body) {
         let appNameLower = (appName || "").toLowerCase();
         let summaryLower = (summary || "").toLowerCase();
         let bodyLower = (body || "").toLowerCase();
 
         let isMicNotif = appNameLower.includes("microphone") || appNameLower.includes("mic") ||
-            summaryLower.includes("microphone") || summaryLower.includes("mic") ||
-            bodyLower.includes("microphone") || bodyLower.includes("mic");
+        summaryLower.includes("microphone") || summaryLower.includes("mic") ||
+        bodyLower.includes("microphone") || bodyLower.includes("mic");
 
         let isClipboardNotif = appNameLower.includes("greenclip") || appNameLower.includes("copyq") ||
-            appNameLower.includes("clipboard") || appNameLower.includes("clip") ||
-            summaryLower.includes("copied to clipboard") || bodyLower.includes("copied to clipboard") ||
-            summaryLower.includes("clipboard manager");
+        appNameLower.includes("clipboard") || appNameLower.includes("clip") ||
+        summaryLower.includes("copied to clipboard") || bodyLower.includes("copied to clipboard") ||
+        summaryLower.includes("clipboard manager");
 
         return isMicNotif || isClipboardNotif;
     }
 
-    // Debounce: skip speaking the exact same appName+summary+body twice within this window.
+    // Strips room/server/channel names from usernames
+    function extractSenderName(rawSummary) {
+        if (!rawSummary) return "";
+        let sender = rawSummary.trim();
+
+        // 1. Remove parenthesized channels/servers: "User (#general)" -> "User"
+        sender = sender.replace(/\s*\([^)]*\)/g, "");
+
+        // 2. Remove bracketed tags: "User [#general]" -> "User"
+        sender = sender.replace(/\s*\[[^\]]*\]/g, "");
+
+        // 3. Remove "in RoomName": "User in General Chat" -> "User"
+        sender = sender.replace(/\s+in\s+.*$/i, "");
+
+        // 4. Remove Channel prefix if formatted like "#general > User" or "Server > User"
+        if (sender.indexOf(">") !== -1) {
+            let parts = sender.split(">");
+            sender = parts[parts.length - 1];
+        }
+
+        // 5. Remove Channel prefix if formatted like "#channel: User"
+        if (sender.indexOf(":") !== -1 && sender.startsWith("#")) {
+            let parts = sender.split(":");
+            sender = parts[parts.length - 1];
+        }
+
+        return sender.trim();
+    }
+
     readonly property int dedupWindowMs: 3000
     property string lastSpokenKey: ""
     property double lastSpokenTime: 0
 
-    // Cap spoken length so long message bodies don't run on forever.
-    readonly property int maxSpeechLength: 50
+    readonly property int maxSpeechLength: 75
 
     readonly property var urlRegex: /(https?:\/\/[^\s<]+)/gi
 
     function cleanSpeechText(text) {
-        // Strip HTML tags
         let cleaned = text.replace(/<[^>]*>/g, "");
-
-        // Replace raw links with a short spoken phrase instead of reading the URL aloud
         cleaned = cleaned.replace(ipc.urlRegex, "Sent a link");
 
-        // Strip common Markdown formatting characters, keeping inner text
-        cleaned = cleaned.replace(/(\*\*|__)(.*?)\1/g, "$2");   // bold
-        cleaned = cleaned.replace(/(\*|_)(.*?)\1/g, "$2");      // italic
-        cleaned = cleaned.replace(/~~(.*?)~~/g, "$1");          // strikethrough
-        cleaned = cleaned.replace(/`([^`]+)`/g, "$1");          // inline code
-        cleaned = cleaned.replace(/^#{1,6}\s*/gm, "");          // headers
+        cleaned = cleaned.replace(/(\*\*|__)(.*?)\1/g, "$2");
+        cleaned = cleaned.replace(/(\*|_)(.*?)\1/g, "$2");
+        cleaned = cleaned.replace(/~~(.*?)~~/g, "$1");
+        cleaned = cleaned.replace(/`([^`]+)`/g, "$1");
+        cleaned = cleaned.replace(/^#{1,6}\s*/gm, "");
 
         cleaned = cleaned.replace(/\s+/g, " ").trim();
 
@@ -182,30 +200,46 @@ Item {
     function speakNotification(notification) {
         if (!notification) return;
 
-        let appName = notification.appName || notification.desktopEntry || "";
-        let summary = notification.summary || "";
+        let appName = (notification.appName || notification.desktopEntry || "").toLowerCase();
+        let rawSummary = notification.summary || "";
         let body = notification.body || "";
 
-        if (ipc.isClipboardOrMicNotification(appName, summary, body)) {
+        if (ipc.isClipboardOrMicNotification(appName, rawSummary, body)) {
             return;
         }
 
-        if (!ipc.shouldSpeak(appName, summary, body)) {
+        if (!ipc.shouldSpeak(appName, rawSummary, body)) {
             return;
         }
 
-        let dedupKey = appName + "|" + summary + "|" + body;
+        let dedupKey = appName + "|" + rawSummary + "|" + body;
         let now = Date.now();
         if (dedupKey === ipc.lastSpokenKey && (now - ipc.lastSpokenTime) < ipc.dedupWindowMs) {
             return;
         }
 
-        if (ipc.genericSpeechAppNames.includes(appName.toLowerCase())) {
-            appName = "";
+        let speechText = "";
+        let isChat = false;
+
+        for (let i = 0; i < ipc.chatAppNames.length; i++) {
+            if (appName.includes(ipc.chatAppNames[i])) {
+                isChat = true;
+                break;
+            }
         }
 
-        // Format speech text
-        let speechText = (appName ? appName + ": " : "") + summary + (body ? ". " + body : "");
+        // Clean sender name (stripping room/channel tags)
+        let senderName = ipc.extractSenderName(rawSummary);
+
+        if (isChat && senderName.length > 0 && body.length > 0) {
+            speechText = "Message from " + senderName + ": " + body;
+        } else if (isChat && senderName.length > 0) {
+            speechText = "Message from " + senderName;
+        } else {
+            let appPrefix = ipc.genericSpeechAppNames.includes(appName) ? "" : (appName ? notification.appName + ": " : "");
+            speechText = appPrefix + rawSummary + (body ? ". " + body : "");
+        }
+
         speechText = ipc.cleanSpeechText(speechText);
 
         if (speechText.length > 0) {
@@ -218,7 +252,6 @@ Item {
     // ============================================================================
     // ACTIVATE INTERFACE (UNIVERSAL APPLICATION JUMP ENGINE)
     // ============================================================================
-    //  optional directNotificationObject parameter to handle historical activations natively
     function activate(card, summary, body, appName, directNotificationObject) {
         if (shell.debug) console.log("ACTIVATE ENTERED");
 
@@ -226,7 +259,6 @@ Item {
         let bodyStr = body || "";
         let appNameStr = appName || "";
 
-        // Resolve original notification object properties to scrape desktop hints
         let liveNotif = null;
         if (card) {
             liveNotif = card.originalNotification || card.notification;
@@ -237,15 +269,13 @@ Item {
 
         let desktopHint = (liveNotif && liveNotif.hints) ? (liveNotif.hints["desktop-entry"] || "") : "";
 
-        //  DYNAMIC GLOBAL WINDOW STEERING LAYER
         if (appNameStr.length > 0 || desktopHint.length > 0) {
             let primaryTarget = appNameStr || desktopHint;
             let secondaryTarget = desktopHint || appNameStr;
-            let baseNameClean = primaryTarget.replace(/-electron/g, "").replace(/-desktop/g, "").replace("vesktop", "discord"); // Fallbacks for common apps
+            let baseNameClean = primaryTarget.replace(/-electron/g, "").replace(/-desktop/g, "").replace("vesktop", "discord");
 
             if (shell.debug) console.log("Dynamic target resolution rule processing for app: " + primaryTarget);
 
-            // Loop through targets to guarantee 'focus parent; focus child' appends to EVERY option cleanly
             let targets = [primaryTarget, secondaryTarget, baseNameClean];
             let commandParts = [];
 
@@ -262,7 +292,6 @@ Item {
             Quickshell.execDetached(["swaymsg", swayCommand]);
         }
 
-        // UNIFIED D-BUS INVOCATION HANDSHAKE FLOW
         if (liveNotif && liveNotif.actions && liveNotif.actions.length > 0) {
             let targetAction = null;
 
@@ -286,7 +315,6 @@ Item {
                     ipc
                 );
                 dbusTimer.triggered.connect(function() {
-                    // Safe execution wrap: Prevents TypeErrors if the C++ object gets destroyed during the 120ms focus delay
                     try {
                         if (targetAction && typeof targetAction.invoke === "function") {
                             targetAction.invoke();

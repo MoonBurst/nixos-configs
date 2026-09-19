@@ -13,15 +13,12 @@ Item {
     property var barWindow: null
     property bool pinTooltip: false
 
-    // =========================================================================
-    //  EDITABLE TOOLTIP CONFIGURATION
-    // =========================================================================
-    property int tooltipHeight: 450          // Vertical height of the expanded box
-    property int tooltipCollapsedWidth: 130  // Sleek, thin width during the downward unroll
-    property int tooltipExpandedWidth: 520   // Expanded width to prevent right-side overflow
-    property int tooltipTopOffset: -2         // Micro-adjust vertical spacing (px)
-    property int tooltipRightOffset: 21       // Micro-adjust horizontal alignment (px)
-    // =========================================================================
+    // EDITABLE TOOLTIP CONFIGURATION
+    property int tooltipHeight: 450
+    property int tooltipCollapsedWidth: 130
+    property int tooltipExpandedWidth: 550
+    property int tooltipTopOffset: -2
+    property int tooltipRightOffset: 21
 
     property string slantLeft: "Left"
     property string slantRight: "Left"
@@ -31,24 +28,22 @@ Item {
     property string weatherTooltipText: "Fetching live weather metrics..."
     property string dataAccumulatorBuffer: ""
 
-    // Severe Weather Warning States: "none", "active" (Red), "upcoming" (Orange)
+    // Outage Risk Levels: "none", "active" (Red), "upcoming" (Orange)
     property string warningLevel: "none"
+    property string warningCause: ""
     readonly property color activeWarningColor: "#FF5555"   // Red
     readonly property color upcomingWarningColor: "#FFB86C" // Orange
 
-    // Dynamic line limit based on container height
     readonly property int maxTooltipLines: Math.max(1, Math.floor((tooltipHeight - 120) / 25))
 
-    // Split raw forecast text into clean array & strictly limit line count to prevent bottom overflow
     readonly property var processLinesArray: {
         var lines = weatherTooltipText.split("\n").filter(line => line.trim() !== "");
         return lines.slice(0, maxTooltipLines);
     }
 
-    // Expanded width to accommodate emojis and dual temp readouts comfortably
     width: 180
     Layout.preferredWidth: 180
-    height: parent ? parent.height : 40 // Safe guard against null-parent startup evaluations
+    height: parent ? parent.height : 40
 
     SlantedBox {
         id: bg
@@ -58,63 +53,56 @@ Item {
         slantWidth: weatherCapsule.slantWidth
     }
 
-    // Main weather display fetcher (Standardized to Fahrenheit / Celsius: ?u / ?m)
-    Process {
-        id: weatherFetcher
-        running: true
-        command: ["sh", "-c", "echo \"$(curl -s 'wttr.in/?u&format=%t')/$(curl -s 'wttr.in/?m&format=%t')\" | tr -d ' +'"]
-        stdout: SplitParser {
-            onRead: data => {
-                var clean = data.trim();
-                if (clean !== "" && clean.indexOf("<!DOCTYPE") === -1 && clean.indexOf("html") === -1 && clean !== "/") {
-                    weatherCapsule.weatherStr = clean;
-                } else {
-                    weatherFallbackProc.running = true;
-                }
-            }
-        }
-    }
-
-    // Detailed JSON forecast fetcher (Dynamic IP Geolocation)
     Process {
         id: forecastFetcher
         running: true
-        command: ["sh", "-c", "curl -s 'wttr.in/?format=j1' | tr -d '\n'"]
+        command: [
+            "sh",
+            "-c",
+            "curl -s -A 'Quickshell-Weather/1.0' --connect-timeout 5 --max-time 10 'https://wttr.in/?format=j1' | tr -d '\\n'"
+        ]
         stdout: SplitParser {
             splitMarker: ""
             onRead: data => { weatherCapsule.dataAccumulatorBuffer += data; }
         }
         onExited: {
             var rawData = weatherCapsule.dataAccumulatorBuffer.trim();
+            weatherCapsule.dataAccumulatorBuffer = "";
+
             if (rawData === "" || rawData.charAt(0) !== '{') {
-                weatherCapsule.weatherTooltipText = "Detailed forecast temporarily rate-limited.\nMain readout falls back to unthrottled endpoints.";
+                weatherCapsule.weatherTooltipText = "Detailed forecast temporarily rate-limited.\nRetrying automatically on next interval.";
                 return;
             }
+
             try {
                 var forecast = JSON.parse(rawData);
                 var tooltipString = "";
 
                 var activeWarn = false;
                 var upcomingWarn = false;
+                var detectedCause = "";
 
-                // Helper to detect severe weather conditions
-                var isSevere = function(desc, code) {
+                var isOutageRisk = function(desc, code) {
                     if (!desc) desc = "";
                     var lower = desc.toLowerCase();
-                    var severeKeywords = [
-                        "thunderstorm", "thundery", "blizzard", "tornado", "hurricane",
-                        "gale", "heavy freezing", "torrential", "squall", "warning",
-                        "advisory", "ice storm", "hail"
+
+                    var dangerousKeywords = [
+                        "severe thunderstorm", "tornado", "hurricane", "typhoon",
+                        "high wind", "gale", "blizzard", "ice storm", "freezing rain",
+                        "squall", "derecho", "tropical storm", "damaging wind",
+                        "heavy thunderstorm"
                     ];
-                    for (var k = 0; k < severeKeywords.length; k++) {
-                        if (lower.indexOf(severeKeywords[k]) !== -1) return true;
+
+                    for (var k = 0; k < dangerousKeywords.length; k++) {
+                        if (lower.indexOf(dangerousKeywords[k]) !== -1) return true;
                     }
-                    var severeCodes = [230, 386, 389, 392, 395]; // Severe Weather WMO Codes
-                    if (code && severeCodes.indexOf(parseInt(code, 10)) !== -1) return true;
+
+                    var dangerousCodes = [389, 395, 314];
+                    if (code && dangerousCodes.indexOf(parseInt(code, 10)) !== -1) return true;
+
                     return false;
                 };
 
-                // Helper to format hour integer to " 3:00 PM"
                 var formatHourStr = function(timeNum) {
                     var ampm = timeNum < 12 ? "AM" : "PM";
                     var displayHour = timeNum % 12;
@@ -122,12 +110,16 @@ Item {
                     return (displayHour < 10 ? " " : "") + displayHour + ":00 " + ampm;
                 };
 
-                // 1. Current Live Weather at top
+                // 1. Current Weather
                 if (forecast.current_condition && forecast.current_condition.length > 0) {
                     var curr = forecast.current_condition[0];
                     var currDesc = (curr.weatherDesc && curr.weatherDesc[0]) ? curr.weatherDesc[0].value : "";
-                    if (isSevere(currDesc, curr.weatherCode)) {
+
+                    weatherCapsule.weatherStr = curr.temp_F + "°F/" + curr.temp_C + "°C";
+
+                    if (isOutageRisk(currDesc, curr.weatherCode)) {
                         activeWarn = true;
+                        detectedCause = currDesc;
                     }
                     tooltipString += "Current\n";
                     tooltipString += "  Now: " + curr.temp_F + "°F / " + curr.temp_C + "°C, " + currDesc + "\n\n";
@@ -135,21 +127,21 @@ Item {
 
                 var currentHour = new Date().getHours();
 
-                // 2. Today's Strictly Future Hours
+                // 2. Today's Forecast
                 var today = forecast.weather[0];
                 var todayLines = [];
                 for (var i = 0; i < today.hourly.length; i++) {
                     var hourData = today.hourly[i];
                     var timeNum = parseInt(hourData.time, 10) / 100;
 
-                    // Only show hours starting at or after the current system hour
                     if (timeNum >= currentHour) {
                         var desc = (hourData.weatherDesc && hourData.weatherDesc[0]) ? hourData.weatherDesc[0].value : "";
                         var code = hourData.weatherCode;
 
-                        if (isSevere(desc, code)) {
+                        if (isOutageRisk(desc, code)) {
                             if (timeNum <= currentHour + 3) {
                                 upcomingWarn = true;
+                                if (!detectedCause) detectedCause = desc;
                             }
                         }
 
@@ -164,42 +156,33 @@ Item {
                 // 3. Tomorrow's Forecast
                 var tomorrow = forecast.weather[1];
                 var tomorrowLines = [];
-                for (var i = 0; i < tomorrow.hourly.length; i++) {
-                    var hourData = tomorrow.hourly[i];
-                    var timeNum = parseInt(hourData.time, 10) / 100;
-                    var desc = (hourData.weatherDesc && hourData.weatherDesc[0]) ? hourData.weatherDesc[0].value : "";
-                    tomorrowLines.push("  " + formatHourStr(timeNum) + ": " + hourData.tempF + "°F / " + hourData.tempC + "°C, " + desc);
+                for (var j = 0; j < tomorrow.hourly.length; j++) {
+                    var tmHourData = tomorrow.hourly[j];
+                    var tmTimeNum = parseInt(tmHourData.time, 10) / 100;
+                    var tmDesc = (tmHourData.weatherDesc && tmHourData.weatherDesc[0]) ? tmHourData.weatherDesc[0].value : "";
+                    tomorrowLines.push("  " + formatHourStr(tmTimeNum) + ": " + tmHourData.tempF + "°F / " + tmHourData.tempC + "°C, " + tmDesc);
                 }
 
                 if (tomorrowLines.length > 0) {
                     tooltipString += "Tomorrow\n" + tomorrowLines.join("\n");
                 }
 
-                // Set overall warning level state
                 weatherCapsule.warningLevel = activeWarn ? "active" : (upcomingWarn ? "upcoming" : "none");
+                weatherCapsule.warningCause = detectedCause;
                 weatherCapsule.weatherTooltipText = tooltipString.trim();
+
+                // WRITE SYSTEM-WIDE STORM ALERT FLAG TO MEMORY BUS
+                if (weatherCapsule.warningLevel === "active") {
+                    Quickshell.execDetached(["sh", "-c", "echo 1 > /dev/shm/weather-storm-active.txt"]);
+                } else {
+                    Quickshell.execDetached(["sh", "-c", "rm -f /dev/shm/weather-storm-active.txt"]);
+                }
             } catch (e) {
                 weatherCapsule.weatherTooltipText = "Error parsing detailed forecast entries.";
             }
         }
     }
 
-    // Unthrottled endpoint fallback (Standardized to Fahrenheit / Celsius)
-    Process {
-        id: weatherFallbackProc
-        running: false
-        command: ["sh", "-c", "echo \"$(curl -s 'https://wttr.in/?u&format=%t')/$(curl -s 'https://wttr.in/?m&format=%t')\" | tr -d ' +'"]
-        stdout: SplitParser {
-            onRead: data => {
-                var clean = data.trim();
-                if (clean !== "" && clean.indexOf("<!DOCTYPE") === -1 && clean.indexOf("html") === -1 && clean !== "/") {
-                    weatherCapsule.weatherStr = clean;
-                }
-            }
-        }
-    }
-
-    // Main weather display text
     Text {
         id: weatherText
         anchors.fill: parent
@@ -235,14 +218,11 @@ Item {
     TapHandler {
         onTapped: {
             weatherCapsule.dataAccumulatorBuffer = "";
-            weatherFetcher.running = false;
-            weatherFetcher.running = true;
             forecastFetcher.running = false;
             forecastFetcher.running = true;
         }
     }
 
-    // Panel Window Pop-up Renderer
     Loader {
         id: tooltipLoader
         property bool keepingActive: false
@@ -277,15 +257,16 @@ Item {
                 slantLeft: weatherCapsule.slantLeft
                 slantRight: weatherCapsule.slantRight
 
-                // Dynamic Warning Header
                 Text {
                     text: {
-                        if (weatherCapsule.warningLevel === "active") return "🚨 ACTIVE WEATHER WARNING IN EFFECT";
-                        if (weatherCapsule.warningLevel === "upcoming") return "⚠️ WEATHER WARNING IN NEXT 3 HOURS";
+                        if (weatherCapsule.warningLevel === "active")
+                            return "🚨 OUTAGE RISK: " + weatherCapsule.warningCause.toUpperCase();
+                        if (weatherCapsule.warningLevel === "upcoming")
+                            return "⚠️ OUTAGE RISK IN NEXT 3 HOURS: " + weatherCapsule.warningCause.toUpperCase();
                         return "🌤️ COMPLETE DETAILED FORECAST MATRIX";
                     }
                     font.family: shell.theme.fontFamily
-                    font.pixelSize: shell.theme.globalFontSize
+                    font.pixelSize: shell.theme.globalFontSize - 1
                     font.bold: true
                     color: {
                         if (weatherCapsule.warningLevel === "active") return weatherCapsule.activeWarningColor;
@@ -296,7 +277,6 @@ Item {
                     x: weatherTooltip.slantX(y) + 24
                 }
 
-                // Divider Line
                 Rectangle {
                     height: 2
                     color: {
@@ -309,7 +289,6 @@ Item {
                     x: weatherTooltip.slantX(y) + 24
                 }
 
-                // Monospace Forecast List
                 Repeater {
                     model: weatherCapsule.processLinesArray.length
                     Text {
@@ -320,13 +299,13 @@ Item {
 
                         color: {
                             var line = weatherCapsule.processLinesArray[index];
-                            if (line.indexOf(":") === -1) return shell.theme.base0A; // Category Header
+                            if (line.indexOf(":") === -1) return shell.theme.base0A;
 
                             var lower = line.toLowerCase();
                             var severeKeywords = [
-                                "thunderstorm", "thundery", "blizzard", "tornado", "hurricane",
-                                "gale", "heavy freezing", "torrential", "squall", "warning",
-                                "advisory", "ice storm", "hail"
+                                "severe thunderstorm", "tornado", "hurricane", "typhoon",
+                                "high wind", "gale", "blizzard", "ice storm", "freezing rain",
+                                "squall", "derecho", "heavy thunderstorm"
                             ];
 
                             for (var k = 0; k < severeKeywords.length; k++) {
@@ -363,13 +342,10 @@ Item {
         }
     }
 
-    // Refresh weather metrics every 30 minutes
     Timer {
         interval: 1800000; running: true; repeat: true
         onTriggered: {
             weatherCapsule.dataAccumulatorBuffer = "";
-            weatherFetcher.running = false;
-            weatherFetcher.running = true;
             forecastFetcher.running = false;
             forecastFetcher.running = true;
         }

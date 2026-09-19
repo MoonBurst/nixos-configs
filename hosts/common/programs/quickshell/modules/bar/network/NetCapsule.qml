@@ -12,9 +12,6 @@ Item {
     width: 260
     height: parent ? parent.height : 40
 
-    // =========================================================================
-    // SAFE STRONGLY-TYPED THEME FALLBACKS (Resolves startup warnings)
-    // =========================================================================
     readonly property int themePadding: (shell && shell.theme && typeof shell.theme.globalPadding !== "undefined") ? shell.theme.globalPadding : 12
     readonly property int themeFontSize: (shell && shell.theme && typeof shell.theme.globalFontSize !== "undefined") ? shell.theme.globalFontSize : 14
     readonly property string themeFontFamily: (shell && shell.theme && typeof shell.theme.fontFamily !== "undefined") ? shell.theme.fontFamily : "monospace"
@@ -24,24 +21,18 @@ Item {
     readonly property var themeBase05: (shell && shell.theme && shell.theme.base05 !== undefined) ? shell.theme.base05 : "yellow"
     readonly property var themeBase08: (shell && shell.theme && shell.theme.base08 !== undefined) ? shell.theme.base08 : "#fb4934"
     readonly property var themeBase0C: (shell && shell.theme && shell.theme.base0C !== undefined) ? shell.theme.base0C : "green"
-    // =========================================================================
 
     property string downSpeedStr: "0B"
     property string upSpeedStr: "0B"
     property string pingStr: "??ms"
     property var barWindow: null
 
-    // =========================================================================
-    //  EDITABLE TOOLTIP CONFIGURATION
-    // =========================================================================
-    property int tooltipHeight: 400          // Vertical height of the expanded box
-    property int tooltipCollapsedWidth: 240  // Sleek, thin width during unroll
-    property int tooltipExpandedWidth: 437  // Final horizontal width once fully open
-    property int tooltipTopOffset: -2       // Vertical spacing (px)
-    property int tooltipRightOffset: 21      // Horizontal alignment (px)
-    // =========================================================================
+    property int tooltipHeight: 400
+    property int tooltipCollapsedWidth: 240
+    property int tooltipExpandedWidth: 437
+    property int tooltipTopOffset: -2
+    property int tooltipRightOffset: 21
 
-    // Slant configuration matching your SlantedBox setup
     property string slantLeft: "Right"
     property string slantRight: "Right"
     property int slantWidth: netBox.themeSlantWidth
@@ -58,11 +49,14 @@ Item {
         slantWidth: netBox.slantWidth
     }
 
-    // Bandwidth Throughput Statistics Process
     Process {
         id: netStatsProc
         running: true
-        command: ["sh", "-c", "interface=$(ip route | awk '/default/ {print $5; exit}'); awk -v iface=\"$interface\" '$1 ~ iface {down=$2; up=$10; print down \":\" up}' /proc/net/dev"]
+        command: [
+            "sh", "-c",
+            "interface=$(ip route | awk '/default/ {print $5; exit}'); " +
+            "awk -v iface=\"$interface\" '$1 ~ iface {print $2 \":\" $10}' /proc/net/dev"
+        ]
 
         property real lastDown: 0
         property real lastUp: 0
@@ -101,7 +95,6 @@ Item {
         }
     }
 
-    // Active Network Latency (Ping) Process
     Process {
         id: pingProc
         running: false
@@ -124,7 +117,6 @@ Item {
         }
     }
 
-    // NixOS-Aware Real-time Process Bandwidth Sniffer
     Process {
         id: topNetProcFetcher
         running: false
@@ -155,7 +147,6 @@ Item {
     Text {
         id: netText
         anchors.fill: parent
-
         anchors.leftMargin: bg.leftPadding
         anchors.rightMargin: bg.rightPadding
         anchors.topMargin: themePadding
@@ -191,7 +182,6 @@ Item {
         }
     }
 
-    // Tooltip Window (Directly Instantiated for smooth reverse collapse)
     SlantedTooltip {
         id: netTooltip
         moduleItem: netBox
@@ -199,7 +189,6 @@ Item {
         tooltipActive: netHoverTracker.hovered
         pin: false
 
-        // Maps configuration variables defined at the top
         tooltipHeight: netBox.tooltipHeight
         collapsedCoreWidth: netBox.tooltipCollapsedWidth
         expandedCoreWidth: netBox.tooltipExpandedWidth
@@ -248,7 +237,7 @@ Item {
             netStatsProc.running = true;
 
             ticks++;
-            if (ticks >= 5) {
+            if (ticks >= 15) {
                 ticks = 0;
                 pingProc.running = false;
                 pingProc.running = true;

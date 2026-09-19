@@ -13,18 +13,18 @@
     ./zsh.nix
     ./programs/brave.nix
     ./programs/librewolf.nix
-    ./programs/nemo.nix
     ./programs/mpd.nix
+    ./programs/nemo.nix
 #   ./programs/hyprland/default.nix
   ];
 
-  # Enables system-level Sway permissions (PAM, screen locker support, display manager session)
   programs.sway.enable = true;
 
   home-manager.users.moonburst = {
     imports = [
       ./programs/ghostty.nix
-      ./programs/sway/sway.nix # <-- Moved inside Home Manager
+      ./programs/himalaya.nix
+      ./programs/sway/sway.nix
     ];
 
     xdg.configFile."qt6ct/qt6ct.conf".force = true;

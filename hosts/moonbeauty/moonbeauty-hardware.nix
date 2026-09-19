@@ -49,7 +49,7 @@ boot.extraModprobeConfig = ''
 
 
 #This is for the latest kernel
-#  boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.kernelPackages = pkgs.linuxPackages_latest;
   # ====================================================================
   #  FILE SYSTEM
   # ====================================================================

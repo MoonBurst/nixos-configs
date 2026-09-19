@@ -70,11 +70,21 @@ Item {
             return
         }
 
-        // Run via a detached subshell so programs survive when Quickshell reloads
+        launcher.running = false
+
+        // Detach process into independent systemd scope or delegate to Sway
         launcher.command = [
             "sh",
             "-c",
-            "nohup setsid " + command + " >/dev/null 2>&1 &"
+            'if command -v systemd-run >/dev/null 2>&1; then\n' +
+            '    systemd-run --user --scope --slice=app.slice sh -c "$1" >/dev/null 2>&1 &\n' +
+            'elif command -v swaymsg >/dev/null 2>&1; then\n' +
+            '    swaymsg exec -- "$1" >/dev/null 2>&1\n' +
+            'else\n' +
+            '    ( nohup setsid -f sh -c "$1" >/dev/null 2>&1 & )\n' +
+            'fi',
+            "launcher-exec",
+            command
         ]
 
         launcher.running = true

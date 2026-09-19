@@ -3,6 +3,7 @@
 {
   imports = [
     ../common/default.nix
+    ./automation.nix
     ./sage.nix
     ./moonbeauty-hardware.nix
     ./mounts.nix
@@ -41,7 +42,14 @@
 
   programs.nix-ld = {
     enable = true;
-    libraries = with pkgs; [ stdenv.cc.cc.lib zlib ];
+    libraries = with pkgs; [
+      stdenv.cc.cc.lib
+      zlib
+      SDL2
+      libGL
+      libX11
+      alsa-lib
+    ];
   };
 
   programs.appimage = {

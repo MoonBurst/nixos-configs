@@ -229,7 +229,7 @@ Item {
         color: themeBase05
         text: musicBox.trackStr
         font.family: themeFontFamily
-        font.pixelSize: themeFontSize - 20 // Restored to your original relative size
+        font.pixelSize: themeFontSize - 20
         font.bold: true
         horizontalAlignment: Text.AlignLeft
         verticalAlignment: Text.AlignVCenter

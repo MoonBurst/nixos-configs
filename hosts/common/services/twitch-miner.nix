@@ -6,6 +6,20 @@
     enable = true;
     dockerCompat = true;
     defaultNetwork.settings.dns_enabled = true;
+
+    autoPrune = {
+      enable = true;
+      dates = "weekly";
+    };
+  };
+
+  # Podman Auto-Update Timer (Automatically updates miners on weekly schedule)
+  systemd.timers.podman-auto-update = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnCalendar = "weekly";
+      Persistent = true;
+    };
   };
 
   # 2. Open necessary ports in the NixOS Firewall
@@ -29,6 +43,9 @@
       "twitch-miner" = {
         image = "docker.io/dungfu/twitch-drops-miner:latest";
         autoStart = true;
+        labels = {
+          "io.containers.autoupdate" = "registry";
+        };
         ports = [
           "8082:8082"
           "5800:5800"
@@ -45,6 +62,9 @@
       "twitchminer-berrydrop" = {
         image = "docker.io/dungfu/twitch-drops-miner:latest";
         autoStart = true;
+        labels = {
+          "io.containers.autoupdate" = "registry";
+        };
         ports = [
           "8084:8082"
           "5801:5800"
@@ -60,25 +80,17 @@
     };
   };
 
-# 5. Passwordless Sudo Rules for QuickShell Podman Monitoring
+  # 5. Passwordless Sudo Rules Strictly for Podman
   security.sudo.extraRules = [
     {
-      users = [ "moonburst" ]; # Your username
+      users = [ "moonburst" ];
       commands = [
         {
           command = "/run/current-system/sw/bin/podman";
           options = [ "NOPASSWD" ];
         }
         {
-          command = "/run/current-system/sw/bin/systemctl";
-          options = [ "NOPASSWD" ];
-        }
-        {
           command = "${pkgs.podman}/bin/podman";
-          options = [ "NOPASSWD" ];
-        }
-        {
-          command = "${pkgs.systemd}/bin/systemctl";
           options = [ "NOPASSWD" ];
         }
       ];

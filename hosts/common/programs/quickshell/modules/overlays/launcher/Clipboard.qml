@@ -1,3 +1,4 @@
+// modules/overlays/launcher/Clipboard.qml
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -17,7 +18,7 @@ Item {
 
     property var allClipboardItems: []
     property var thumbnailQueue: []
-    property var deleteQueue: [] // Queue to handle rapid deletions sequentially
+    property var deleteQueue: []
 
     property alias filteredClipboardItems: filteredClipboardModel
 
@@ -42,7 +43,6 @@ Item {
         running: true
         repeat: true
         onTriggered: {
-            // Only poll if we aren't actively processing deletions to avoid race conditions
             if (deleteQueue.length === 0 && !deleteProcess.running && !pollCheckWorker.running) {
                 pollCheckWorker.running = true
             }
@@ -58,7 +58,6 @@ Item {
         filterTimer.restart()
     }
 
-    // Clear and reload clipboard context from database
     function loadClipboard() {
         allClipboardItems = []
         thumbnailQueue = []
@@ -164,7 +163,6 @@ Item {
         copyProcess.running = true
     }
 
-    // Optimistic Deletion: Update UI immediately, queue backend writes
     function deleteSelected() {
         if (selectedIndex < 0 || selectedIndex >= filteredClipboardModel.count) {
             return
@@ -176,7 +174,6 @@ Item {
         const targetId = item.id
         const rawLine = item.rawLineText
 
-        // 1. Remove from local memory immediately
         let allIdx = -1
         for (let i = 0; i < allClipboardItems.length; i++) {
             if (allClipboardItems[i].id === targetId) {
@@ -188,16 +185,13 @@ Item {
             allClipboardItems.splice(allIdx, 1)
         }
 
-        // 2. Remove from active UI list
         filteredClipboardModel.remove(selectedIndex)
 
-        // Adjust index and update preview
         if (selectedIndex >= filteredClipboardModel.count) {
             selectedIndex = Math.max(0, filteredClipboardModel.count - 1)
         }
         updatePreview()
 
-        // 3. Queue backend deletion
         deleteQueue.push(rawLine)
         processDeleteQueue()
     }
@@ -228,12 +222,12 @@ Item {
         const thumbPath = isImage ? thumbDir + "/quickshell_clip_thumb_" + clipId + ".png" : ""
 
         if (isImage) {
-            // Optimised check: only decode/convert if the thumbnail file does NOT already exist
+            // Strictly require valid PNG encoding; never fallback to raw pipe dump
             thumbnailQueue.push(
                 "[ -f " + thumbPath + " ] || (" +
                 "cliphist decode " + clipId + " | magick - -thumbnail 100x100 png:" + thumbPath + " 2>/dev/null || " +
                 "cliphist decode " + clipId + " | convert - -thumbnail 100x100 png:" + thumbPath + " 2>/dev/null || " +
-                "cliphist decode " + clipId + " > " + thumbPath + " 2>/dev/null)"
+                "rm -f " + thumbPath + ")"
             )
         }
 
@@ -241,7 +235,7 @@ Item {
             id: clipId,
             text: clipText,
             searchText: clipText.toLowerCase(),
-                               isImage,
+                               isImage: isImage,
                                imagePath: thumbPath,
                                rawLineText: rawLine
         })
@@ -253,7 +247,7 @@ Item {
         thumbnailWorker.command = [
             "sh",
             "-c",
-            "mkdir -p /tmp/clipboard_thumbnails;" + thumbnailQueue.join(";")
+            "mkdir -p /tmp/clipboard_thumbnails; " + thumbnailQueue.join("; ")
         ]
         thumbnailWorker.running = true
     }
@@ -336,7 +330,7 @@ Item {
     Process {
         id: deleteProcess
         onExited: {
-            processDeleteQueue() // Check if there are more queued items to delete
+            processDeleteQueue()
         }
     }
 

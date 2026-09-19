@@ -1,58 +1,27 @@
 { config, pkgs, ... }: {
 
-  systemd.services.zram = {
-    description = "Dynamic 50% RAM zram Service";
-    wantedBy = [ "multi-user.target" ];
-    after = [ "dev-zram0.device" ];
+  # 1. Fixes Kernel Memory Defragmentation Stutters
+  boot.kernelParams = [ "transparent_hugepage=madvise" ];
 
-    path = with pkgs; [
-      gawk
-      gnugrep
-      kmod
-      util-linux
-    ];
-
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-    };
-
-    script = ''
-#Load the module
-      modprobe zram
-
-#Reset the device
-      echo 1 > /sys/block/zram0/reset || true
-
-#Calculate 50% of Total RAM dynamically
-      TOTAL_K=$(grep MemTotal /proc/meminfo | awk '{print $2}')
-      ZRAM_SIZE=$((TOTAL_K / 2))"K"
-
-#Set the dynamic size and algorithm
-      echo zstd > /sys/block/zram0/comp_algorithm
-      echo $ZRAM_SIZE > /sys/block/zram0/disksize
-
-#Disable all other swap (ensures disk is never used)
-      swapoff -a || true
-
-#Activate zram
-      mkswap /dev/zram0
-      swapon /dev/zram0 --priority 100
-    '';
-
-    preStop = ''
-      swapoff /dev/zram0 || true
-      echo 1 > /sys/block/zram0/reset
-    '';
+  # 2. Ultra-Fast Zero-Overhead ZRAM Memory Pool
+  zramSwap = {
+    enable = true;
+    algorithm = "lzo-rle";
+    memoryPercent = 100;
   };
 
-  # Kernel tweaks to prioritize RAM over disk
+  # 3. Steam & Gaming Integration
+  programs.steam.enable = true;
+  programs.gamemode.enable = true;
+
+  # 4. Low-Latency Kernel Memory Tuning
   boot.kernel.sysctl = {
-    "vm.swappiness" = 180;
-    "vm.page-cluster" = 0;
-    "vm.vfs_cache_pressure" = 500;
+    "vm.swappiness" = 10;             # Uses free physical RAM first
+    "vm.compaction_proactiveness" = 0; # Stops background RAM defrag daemon
+    "vm.page-cluster" = 0;             # Single-page swapping for ZRAM
+    "vm.watermark_boost_factor" = 0;   # Prevents CPU spikes during memory allocation
   };
 
-  environment.systemPackages = [ pkgs.util-linux ];
+  # 5. Disable Disk Swap
   swapDevices = [ ];
 }

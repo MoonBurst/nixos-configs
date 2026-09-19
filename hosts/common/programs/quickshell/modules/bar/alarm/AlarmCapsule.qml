@@ -14,7 +14,7 @@ Item {
     property var barWindow: null
     property bool pinTooltip: false
 
-  // Theme Fallbacks
+    // Theme Fallbacks
     readonly property int themePadding: (shell && shell.theme && typeof shell.theme.globalPadding !== "undefined") ? shell.theme.globalPadding : 12
     readonly property int themeFontSize: (shell && shell.theme && typeof shell.theme.globalFontSize !== "undefined") ? shell.theme.globalFontSize : 14
     readonly property string themeFontFamily: (shell && shell.theme && typeof shell.theme.fontFamily !== "undefined") ? shell.theme.fontFamily : "monospace"
@@ -27,32 +27,26 @@ Item {
     // =========================================================================
     //  EDITABLE TOOLTIP & INPUT LAYOUT CONFIGURATION
     // =========================================================================
-    // Tooltip Window Sizing & Positioning
-    property int tooltipHeight: 350         // Vertical height of the expanded box
-    property int tooltipCollapsedWidth: 110  // Sleek, thin width during the downward unroll
-    property int tooltipExpandedWidth: 350   // Final horizontal width once fully open
-    property int tooltipTopOffset: -2        // Micro-adjust vertical spacing (px)
-    property int tooltipRightOffset: 21       // Micro-adjust horizontal alignment (px)
+    property int tooltipHeight: 350
+    property int tooltipCollapsedWidth: 110
+    property int tooltipExpandedWidth: 350
+    property int tooltipTopOffset: -2
+    property int tooltipRightOffset: 21
 
-    // Inner Input Blocks Vertical Positions
-    property int countdownBlockY: 80        // Vertical position of countdown input block
-    property int targetTimeBlockY: 200       // Vertical position of "what time?" input block
+    property int countdownBlockY: 80
+    property int targetTimeBlockY: 200
 
-    // Inner Input Blocks Horizontal Shift Offsets
-    property int countdownBlockXOffset: 20    // Shift countdown block (negative: left, positive: right)
-    property int targetTimeBlockXOffset: 20  // Shift target time block (negative: left, positive: right)
+    property int countdownBlockXOffset: 20
+    property int targetTimeBlockXOffset: 20
 
-    // Input Box Customizers
-    property int blockHeight: 100            // Height of each input block (label + input box)
-    property int fieldHeight: 50             // Height of each text input box
-    property int fieldLabelSpacing: 40       // Spacing from block top to input box top
+    property int blockHeight: 100
+    property int fieldHeight: 50
+    property int fieldLabelSpacing: 40
 
-    // Text Padding Inside Input Boxes
-    property int inputLeftPadding: 50        // Left text padding inside input fields
-    property int inputRightPadding: 50       // Right text padding inside input fields
+    property int inputLeftPadding: 50
+    property int inputRightPadding: 50
     // =========================================================================
 
-    // slant configurations
     property string slantLeft: "Left"
     property string slantRight: "Left"
     property int slantWidth: alarmBox.themeSlantWidth
@@ -61,12 +55,10 @@ Item {
     property string stateFile: "/tmp/waybar_alarm_state"
     property bool popupVisible: false
 
-    //  Layout
     width: 140
     Layout.preferredWidth: 140
     height: parent ? parent.height : 40
 
-    //  SlantedBox Background
     SlantedBox {
         id: bg
         anchors.fill: parent
@@ -75,7 +67,7 @@ Item {
         slantWidth: alarmBox.slantWidth
     }
 
-    // Alarm state check
+    // Alarm state check with Real PipeWire 25% Hardware Attenuation & 3-Second Cut-off
     Process {
         id: alarmFetcher
         running: true
@@ -85,7 +77,7 @@ Item {
             "read start total msg < \"$SF\"; cur=$(date +%s); el=$((cur - start)); rem=$((total - el)); " +
             "if [ $rem -le 0 ]; then " +
             "  /run/current-system/sw/bin/notify-send -t 10000 \"Alarm Alert\" \"$(echo \"$msg\" | sed 's/\"//g')\"; " +
-            "  pw-cat -p ~/Documents/communicator.mp3 || play ~/Documents/communicator.mp3 || true & " +
+            "  (timeout 3s pw-play --volume 0.25 ~/Documents/communicator.mp3 || mpv --no-video --volume=25 --end=3 ~/Documents/communicator.mp3 || true) & " +
             "  echo \"No Alarm\"; rm -f \"$SF\"; " +
             "else " +
             "  h=$((rem / 3600)); m=$(((rem % 3600) / 60)); s=$((rem % 60)); " +
@@ -106,7 +98,6 @@ Item {
         var currentEpoch = Math.floor(Date.now() / 1000);
         var now = new Date();
 
-        //  Countdown priority override
         if (countdownRaw && countdownRaw.trim() !== "") {
             var rawTimer = countdownRaw.trim().toLowerCase();
             var match;
@@ -121,13 +112,11 @@ Item {
                 if (unit === 's') totalSeconds += num;
             }
 
-            // Fallback for plain integers
             if (totalSeconds === 0 && /^\d+$/.test(rawTimer)) {
                 totalSeconds = parseInt(rawTimer, 10) * 60;
             }
         }
 
-        // Time Parser
         if (totalSeconds === 0 && timeOfDayRaw && timeOfDayRaw.trim() !== "") {
             var timeStr = timeOfDayRaw.trim().toUpperCase().replace(/[:\s]/g, "");
             var cleanMatch = /^(\d{3,4})(AM|PM)?$/.exec(timeStr);
@@ -205,7 +194,6 @@ Item {
         }
     }
 
-    // Main Bar display text
     Text {
         id: alarmText
         anchors.fill: parent
@@ -224,7 +212,6 @@ Item {
         verticalAlignment: Text.AlignVCenter
     }
 
-    // Panel Window Pop-up)
     SlantedTooltip {
         id: alarmTooltip
         moduleItem: alarmBox
@@ -234,7 +221,6 @@ Item {
         alignSide: "Left"
         keyboardFocus: WlrLayershell.Exclusive
 
-        // Maps variables defined at the top of the file
         tooltipHeight: alarmBox.tooltipHeight
         collapsedCoreWidth: alarmBox.tooltipCollapsedWidth
         expandedCoreWidth: alarmBox.tooltipExpandedWidth
@@ -256,7 +242,6 @@ Item {
 
             readonly property real slantRatio: alarmTooltip.tooltipSlantWidth / alarmTooltip.tooltipHeight
 
-            // Header
             Text {
                 id: alarmTitle
                 text: "Set Alarm"
@@ -277,12 +262,11 @@ Item {
                 x: alarmTooltip.slantX(y) + 24
             }
 
-            // Interactive Input Fields
             Item {
                 id: timeInput
                 y: 95
                 x: alarmTooltip.slantX(y) + 24
-                width: 360 // Matches expanded core width
+                width: 360
 
                 property bool editingHours: true
                 readonly property string countdownText: countdownField.text
@@ -345,10 +329,9 @@ Item {
                     }
                 }
 
-                // Countdown Input Block
                 Item {
                     id: countdownBlock
-                    y: alarmBox.countdownBlockY - 95 // Offset relative to timeInput Y
+                    y: alarmBox.countdownBlockY - 95
                     x: (alarmTooltip.slantX(y + 150) - alarmTooltip.slantX(95)) + alarmBox.countdownBlockXOffset
                     width: parent.width - x - 80
                     height: alarmBox.blockHeight
@@ -419,10 +402,9 @@ Item {
                     }
                 }
 
-                // Target Time Input Block ("What time?")
                 Item {
                     id: targetTimeBlock
-                    y: alarmBox.targetTimeBlockY - 95 // Offset relative to timeInput Y
+                    y: alarmBox.targetTimeBlockY - 95
                     x: (alarmTooltip.slantX(y + 150) - alarmTooltip.slantX(95)) + alarmBox.targetTimeBlockXOffset
                     width: parent.width - x - 24
                     height: alarmBox.blockHeight

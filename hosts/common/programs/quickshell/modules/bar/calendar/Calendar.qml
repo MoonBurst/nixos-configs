@@ -38,6 +38,8 @@ Item {
     property int slantWidth: calendarBox.themeSlantWidth
     property var barWindow: null
     property string dateStr: "01/01/0001"
+
+    // Reactive Date State
     property var currentDate: new Date()
     property int currentMonth: currentDate.getMonth()
     property int currentYear: currentDate.getFullYear()
@@ -63,6 +65,9 @@ Item {
         triggeredOnStart: true
         onTriggered: {
             var date = new Date()
+            calendarBox.currentDate = date
+            calendarBox.currentMonth = date.getMonth()
+            calendarBox.currentYear = date.getFullYear()
             calendarBox.dateStr = date.toLocaleDateString(Qt.locale(), Locale.ShortFormat)
         }
     }
@@ -160,9 +165,11 @@ Item {
                 id: daysGridData
                 readonly property int firstDayOffset: new Date(calendarBox.currentYear, calendarBox.currentMonth, 1).getDay()
                 readonly property int daysInMonth: new Date(calendarBox.currentYear, calendarBox.currentMonth + 1, 0).getDate()
-                readonly property int todayDate: new Date().getDate()
-                readonly property int todayMonth: new Date().getMonth()
-                readonly property int todayYear: new Date().getFullYear()
+
+                // Reactive references to calendarBox.currentDate
+                readonly property int todayDate: calendarBox.currentDate.getDate()
+                readonly property int todayMonth: calendarBox.currentDate.getMonth()
+                readonly property int todayYear: calendarBox.currentDate.getFullYear()
             }
 
             // Matrix Weeks
@@ -210,7 +217,7 @@ Item {
                                 text: dayCellItem.isValidDay ? dayCellItem.dayNumber : ""
                                 color: themeBase05
                                 font.family: themeFontFamily
-                                font.pixelSize: 20 // Changed to 20
+                                font.pixelSize: 20
                                 font.bold: dayCellItem.isToday
                             }
                         }

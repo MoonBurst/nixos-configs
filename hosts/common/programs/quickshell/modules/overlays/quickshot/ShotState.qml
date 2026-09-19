@@ -3,34 +3,32 @@ pragma Singleton
 import Quickshell
 import QtQuick
 
-// Shared, cross-monitor session state. The selection geometry and annotations
-// live on the individual ScreenOverlay that owns them (they are screen-local),
-// but the *tool* choices and the "which monitor is active" coordination are
-// global and therefore live here.
+// Shared, cross-monitor session state.
 Singleton {
     id: root
 
-    // Currently selected tool. One of the `id`s in `tools` below, or "select".
+    // Currently selected tool.
     property string tool: "select"
     property color strokeColor: Style.annotationPalette[0]
     property real strokeWidth: 4
     property int fontSize: 26
 
-    // Monotonic counter for the numbered-step tool. Reset when annotations clear.
     property int counterValue: 1
 
-    // Name of the ShellScreen that currently owns the selection. Empty until the
-    // user starts dragging on a monitor; afterwards every other overlay locks
-    // itself out so a screenshot only ever spans the monitor it began on.
-    property string activeScreen: ""
+    // ---- Watermark & Dual-Stage Scanner State ---------------------------------
+    property string watermarkText: ""
+    // 0.009 (0.9%): Ultra-stealth. Completely invisible to the naked eye,
+    // but amplified into crisp binary text by the 2-stage scanner.
+    property real watermarkOpacity: 0.009
+    property bool revealWatermark: false
+    // Toggles real-time high-contrast scanner
+    property bool scanMode: false
+    // Contrast pivot threshold: shifts the scanner to decode dark vs light images
+    property real scanThreshold: 0.38
 
-    // Set once an export has been kicked off so a stray second Enter/click can't
-    // fire a duplicate save while we are tearing down.
+    property string activeScreen: ""
     property bool finishing: false
 
-    // Keyboard focus under layershell lands on a single overlay, which may not
-    // be the monitor that owns the selection. Key handlers therefore broadcast
-    // these requests; only the owning overlay acts on them.
     signal copyRequested()
     signal saveRequested()
     signal undoRequested()
@@ -67,7 +65,6 @@ Singleton {
         return (h && h.length > 0) ? h : "/tmp";
     }
 
-    // Single-quote a path for safe use inside `sh -c`.
     function shQuote(p) {
         return "'" + String(p).replace(/'/g, "'\\''") + "'";
     }

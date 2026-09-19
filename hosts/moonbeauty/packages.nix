@@ -42,13 +42,14 @@ in
     # --- Media & Graphics ---
     audacious
     krita
+    lmstudio
 
     # --- System & Utilities ---
     btrfs-assistant
 
     # --- Development & Productivity ---
     kdePackages.kate
-    protonup-qt
+   unstable.protonup-qt
 
     # --- 3D Printing & CAD ---
     cura-appimage
