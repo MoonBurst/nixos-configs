@@ -65,6 +65,7 @@
     pass                        # Password manager
     nemo
  #   swaylock-effects                    # Screen locker with blur and aesthetic effects
+ imagemagick
     satty                               # Modern screenshot annotation tool
     qview                               # Minimalist, fast image viewer
     pavucontrol                         # PulseAudio/PipeWire volume mixer (essential for debugging mic/speakers)

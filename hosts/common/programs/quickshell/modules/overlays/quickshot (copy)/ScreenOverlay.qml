@@ -1,9 +1,11 @@
 import Quickshell
 import Quickshell.Wayland
 import QtQuick
+import QtQuick.Effects
 
-// A streamlined full-screen overlay with region selection, annotation tools,
-// sub-threshold chromatic watermarking, and fast high-pass extraction.
+// A full-screen overlay with rubber-band selection, annotation tools,
+// faint watermarking, a Dual-Stage GPU Binary Contrast Scanner, and
+// automatic microdot watermark detection on the selected region.
 PanelWindow {
     id: root
 
@@ -31,7 +33,14 @@ PanelWindow {
     property bool hasSelection: false
     property bool creating: false
     property bool exporting: false
-    property int revealKey: 0
+
+    // Restart the debounced watermark scan whenever the selection settles
+    // into a new position/size (created, dragged, or resized). Debounced
+    // rather than run every frame, so dragging doesn't spam decode attempts.
+    onSelXChanged: root._restartWatermarkScan()
+    onSelYChanged: root._restartWatermarkScan()
+    onSelWChanged: root._restartWatermarkScan()
+    onSelHChanged: root._restartWatermarkScan()
 
     readonly property bool ready: shot.hasContent
     readonly property string selfTestMode: {
@@ -44,7 +53,7 @@ PanelWindow {
     readonly property bool isOwner: ShotState.activeScreen === modelData.name
     readonly property bool showChrome: ready && !exporting && (creating || hasSelection)
     readonly property real captureScale: shot.sourceSize.width > 0
-        ? shot.sourceSize.width / Math.max(1, width) : 1
+    ? shot.sourceSize.width / Math.max(1, width) : 1
 
     property string _mode: ""
 
@@ -106,6 +115,49 @@ PanelWindow {
                     paintCursor: false
                 }
 
+                // ---- Dual-Stage Real-Time GPU Binary Contrast Scanner ----
+                // Stage 1: Crop & pivot contrast around background threshold
+                ShaderEffectSource {
+                    id: stage1Source
+                    sourceItem: shot
+                    sourceRect: Qt.rect(root.selX, root.selY, Math.max(1, root.selW), Math.max(1, root.selH))
+                    visible: false
+                    live: true
+                }
+
+                MultiEffect {
+                    id: stage1Effect
+                    width: Math.max(1, root.selW)
+                    height: Math.max(1, root.selH)
+                    visible: false // Internal texture pipeline to Stage 2
+
+                    source: stage1Source
+                    contrast: 0.88
+                    saturation: -1.0
+                    brightness: ShotState.scanThreshold
+                }
+
+                // Stage 2: Binary hard clipper (slams subtle shifts into crisp solid black & white)
+                ShaderEffectSource {
+                    id: stage2Source
+                    sourceItem: stage1Effect
+                    visible: false
+                    live: true
+                }
+
+                MultiEffect {
+                    id: realTimeScanEffect
+                    x: root.selX
+                    y: root.selY
+                    width: Math.max(1, root.selW)
+                    height: Math.max(1, root.selH)
+                    visible: ShotState.scanMode && root.hasSelection
+
+                    source: stage2Source
+                    contrast: 0.96   // Extreme binary contrast cutoff
+                    brightness: 0.0
+                }
+
                 AnnotationCanvas {
                     id: canvas
                     anchors.fill: parent
@@ -119,6 +171,7 @@ PanelWindow {
             }
         }
 
+        // Keep requesting frame until delivered
         Timer {
             interval: 120
             repeat: true
@@ -158,18 +211,6 @@ PanelWindow {
             }
         }
 
-        // 2b. High-Pass Live Extraction Viewport (Displays revealed watermark directly inside the box)
-        Image {
-            id: liveRevealOverlay
-            x: root.selX
-            y: root.selY
-            width: root.selW
-            height: root.selH
-            visible: ShotState.scanMode && root.hasSelection && status === Image.Ready
-            source: ShotState.scanMode ? ("file:///tmp/test_fingerprints/REVEALED_LEAK.png?t=" + root.revealKey) : ""
-            z: 25
-        }
-
         // 3. Selection outline
         Rectangle {
             visible: root.showChrome
@@ -178,7 +219,7 @@ PanelWindow {
             width: root.selW
             height: root.selH
             color: "transparent"
-            border.color: ShotState.scanMode ? "#00f0ff" : Style.selectionBorder
+            border.color: ShotState.scanMode ? "#ff007f" : Style.selectionBorder
             border.width: Style.selectionBorderWidth
         }
 
@@ -217,7 +258,7 @@ PanelWindow {
                 color: Style.text
                 font.family: Style.fontFamily
                 font.pixelSize: 15
-                text: "Drag over an image to crop/scan    •    Esc to cancel"
+                text: "Drag over an image to scan it    •    Esc to cancel"
             }
         }
 
@@ -286,9 +327,6 @@ PanelWindow {
                 root.selX = nx;
                 root.selY = ny;
                 canvas.translateAll(dx, dy);
-            }
-            onReleased: {
-                if (ShotState.scanMode) root.executeHighPassReveal();
             }
         }
 
@@ -467,7 +505,6 @@ PanelWindow {
                 cx: root.selX + modelData.fx * root.selW
                 cy: root.selY + modelData.fy * root.selH
                 onMoved: function (gx, gy) { root.resizeTo(modelData.role, gx, gy); }
-                onFinished: if (ShotState.scanMode) root.executeHighPassReveal()
             }
         }
 
@@ -493,7 +530,7 @@ PanelWindow {
             onCancel: root.cancel()
         }
 
-        // 11. Persistent Watermark & Fast Reveal Bar
+        // 11. Persistent Watermark & Dual-Stage Real-Time Scanner Bar
         Rectangle {
             id: watermarkBadge
             visible: root.ready && root.active && !root.exporting
@@ -502,12 +539,14 @@ PanelWindow {
             anchors.topMargin: 16
             z: 99999
 
-            width: 440
+            width: ShotState.scanMode ? 560 : 420
             height: 36
             radius: 8
             color: Style.panel
-            border.color: ShotState.watermarkText.length > 0 ? (Style.selectionBorder || ShotState.strokeColor) : Style.panelBorder
+            border.color: ShotState.scanMode ? "#ff007f" : (ShotState.watermarkText.length > 0 ? (Style.selectionBorder || ShotState.strokeColor) : Style.panelBorder)
             border.width: 1.5
+
+            Behavior on width { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
 
             MouseArea {
                 anchors.fill: parent
@@ -527,14 +566,15 @@ PanelWindow {
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "≋"
-                    color: ShotState.watermarkText.length > 0 ? Style.accent : Style.text
-                    font.pixelSize: 18
+                    color: ShotState.watermarkText.length > 0 ? (Style.selectionBorder || ShotState.strokeColor) : Style.text
+                    font.pixelSize: 15
                 }
 
                 Item {
                     anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width - 150
+                    width: ShotState.scanMode ? 140 : (parent.width - 200)
                     height: parent.height
+                    clip: true
 
                     TextInput {
                         id: watermarkInputField
@@ -550,7 +590,7 @@ PanelWindow {
                         Text {
                             anchors.fill: parent
                             verticalAlignment: Text.AlignVCenter
-                            text: "Target watermark (e.g. testing)..."
+                            text: "Secret watermark..."
                             color: "#6c7086"
                             font.family: Style.fontFamily
                             font.pixelSize: 13
@@ -563,27 +603,63 @@ PanelWindow {
                     }
                 }
 
-                // High-Pass Extraction Reveal Button
+                // Eye Preview Toggle
+                Rectangle {
+                    id: revealSwitch
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 36
+                    height: 22
+                    radius: 11
+                    color: ShotState.revealWatermark ? ShotState.strokeColor : "#313244"
+
+                    Behavior on color { ColorAnimation { duration: 150 } }
+
+                    Rectangle {
+                        anchors.verticalCenter: parent.verticalCenter
+                        x: ShotState.revealWatermark ? parent.width - width - 2 : 2
+                        width: 18
+                        height: 18
+                        radius: 9
+                        color: "#ffffff"
+
+                        Behavior on x { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "👁"
+                            font.pixelSize: 10
+                            color: ShotState.revealWatermark ? "#11111b" : "#6c7086"
+                        }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: ShotState.revealWatermark = !ShotState.revealWatermark
+                    }
+                }
+
+                // Instant Real-Time Dual-Stage Contrast Scanner Button
                 Rectangle {
                     id: scanButton
                     anchors.verticalCenter: parent.verticalCenter
-                    width: 86
+                    width: 76
                     height: 24
                     radius: 6
-                    color: ShotState.scanMode ? "#00f0ff" : "#24273a"
-                    border.color: ShotState.scanMode ? "#00f0ff" : "#494d64"
+                    color: ShotState.scanMode ? "#ff007f" : "#24273a"
+                    border.color: ShotState.scanMode ? "#ff007f" : "#494d64"
                     border.width: 1
 
                     Row {
                         anchors.centerIn: parent
                         spacing: 4
                         Text {
-                            text: "🔍"
+                            text: "🔬"
                             font.pixelSize: 11
                         }
                         Text {
-                            text: ShotState.scanMode ? "HIDE" : "REVEAL"
-                            color: ShotState.scanMode ? "#11111b" : Style.text
+                            text: ShotState.scanMode ? "BOOST ON" : "SCAN"
+                            color: ShotState.scanMode ? "#ffffff" : Style.text
                             font.pixelSize: 10
                             font.bold: true
                         }
@@ -594,12 +670,89 @@ PanelWindow {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             if (!root.hasSelection) {
-                                root.notify("Revealer", "Select a region on your screen first.", false);
+                                root.notify("Scanner", "Drag a box around an image on your screen first.", false);
                                 return;
                             }
                             ShotState.scanMode = !ShotState.scanMode;
-                            if (ShotState.scanMode) {
-                                root.executeHighPassReveal();
+                        }
+                    }
+                }
+
+                // ---- Real-Time Contrast Pivot Controls (Active in SCAN MODE) ----
+                Row {
+                    visible: ShotState.scanMode
+                    spacing: 5
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    // Dark background preset (e.g. Discord, terminal, dark editor)
+                    Rectangle {
+                        width: 44
+                        height: 22
+                        radius: 4
+                        color: ShotState.scanThreshold > 0.1 ? "#ff007f" : "#313244"
+                        Text {
+                            anchors.centerIn: parent
+                            text: "DARK"
+                            color: "#ffffff"
+                            font.pixelSize: 9
+                            font.bold: true
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: ShotState.scanThreshold = 0.38
+                        }
+                    }
+
+                    // Light background preset (e.g. white web pages, documents)
+                    Rectangle {
+                        width: 44
+                        height: 22
+                        radius: 4
+                        color: ShotState.scanThreshold < -0.1 ? "#ff007f" : "#313244"
+                        Text {
+                            anchors.centerIn: parent
+                            text: "LIGHT"
+                            color: "#ffffff"
+                            font.pixelSize: 9
+                            font.bold: true
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: ShotState.scanThreshold = -0.38
+                        }
+                    }
+
+                    // Smooth Threshold Scrubber Track
+                    Rectangle {
+                        id: scrubberTrack
+                        width: 65
+                        height: 12
+                        radius: 6
+                        color: "#181825"
+                        border.color: "#45475a"
+                        border.width: 1
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        Rectangle {
+                            id: scrubberHandle
+                            width: 12
+                            height: 12
+                            radius: 6
+                            color: "#ffffff"
+                            x: Math.max(0, Math.min(scrubberTrack.width - width, (scrubberTrack.width - width) * ((ShotState.scanThreshold + 0.8) / 1.6)))
+
+                            MouseArea {
+                                anchors.fill: parent
+                                drag.target: parent
+                                drag.axis: Drag.XAxis
+                                drag.minimumX: 0
+                                drag.maximumX: scrubberTrack.width - scrubberHandle.width
+                                onPositionChanged: {
+                                    var progress = scrubberHandle.x / (scrubberTrack.width - scrubberHandle.width);
+                                    ShotState.scanThreshold = -0.8 + progress * 1.6;
+                                }
                             }
                         }
                     }
@@ -627,43 +780,6 @@ PanelWindow {
         }
     }
 
-    // ---- High-Speed Native ImageMagick High-Pass Revealer --------------------
-    function executeHighPassReveal() {
-        if (!hasSelection) return;
-
-        var rx = Math.round(selX);
-        var ry = Math.round(selY);
-        var rw = Math.max(1, Math.round(selW));
-        var rh = Math.max(1, Math.round(selH));
-        
-        exportClip.x = rx; exportClip.y = ry;
-        exportClip.width = rw; exportClip.height = rh;
-        captureRoot.x = -rx; captureRoot.y = -ry;
-        
-        exportClip.grabToImage(function (cropResult) {
-            exportClip.x = 0; exportClip.y = 0;
-            exportClip.width = Qt.binding(function () { return root.width; });
-            exportClip.height = Qt.binding(function () { return root.height; });
-            captureRoot.x = 0; captureRoot.y = 0;
-            
-            if (!cropResult) return;
-            var cropPath = "/tmp/test_fingerprints/captured_leak_temp.png";
-            var outPath = "/tmp/test_fingerprints/REVEALED_LEAK.png";
-            cropResult.saveToFile(cropPath);
-
-            // Fast high-pass subtraction with Level 1 compression (lightning speed)
-            var cmd = [
-                "sh", "-c",
-                "mkdir -p /tmp/test_fingerprints; " +
-                "magick " + ShotState.shQuote(cropPath) + " -channel B -separate \\( +clone -blur 0x2 \\) -compose Subtract -composite -auto-level -define png:compression-level=1 " + ShotState.shQuote(outPath) + "; " +
-                "rm -f " + ShotState.shQuote(cropPath) + "; " +
-                "notify-send -a Quickshot '🔍 REVEAL COMPLETE' 'Revealed directly inside your selection box.'"
-            ];
-            Quickshell.execDetached(cmd);
-            root.revealKey = new Date().getTime();
-        });
-    }
-
     // ---- Deferred grab -------------------------------------------------------
     Timer {
         id: grabTimer
@@ -686,6 +802,209 @@ PanelWindow {
         interval: 2500
         repeat: false
         onTriggered: root.abortExport()
+    }
+
+    // ---- Automatic microdot watermark scanning --------------------------------
+    // Whenever the selection settles (created, moved, or resized -- see the
+    // onSelXChanged/onSelYChanged/onSelWChanged/onSelHChanged handlers up
+    // top), we grab the RAW captured screen (`shot`, not captureRoot -- see
+    // note below) under the selection, look for the microdot pattern, and
+    // fire a notify-send if a watermark checksum validates. Fully in-process:
+    // no external script or separate run needed.
+    //
+    // Deliberately grabs `shot` rather than `captureRoot`: captureRoot also
+    // contains this session's own AnnotationCanvas, including its own live
+    // watermarkLayer (if you've typed a watermark to embed in THIS export).
+    // Grabbing captureRoot would blend your own outgoing watermark into the
+    // pixels you're trying to decode. `shot` is just the frozen screen
+    // capture, so it only reflects what was actually on screen already.
+
+    property string _lastWatermarkText: ""
+
+    Timer {
+        id: watermarkScanTimer
+        interval: 450
+        repeat: false
+        onTriggered: root.scanSelectionForWatermark()
+    }
+
+    function _restartWatermarkScan() {
+        if (root.hasSelection && !root.exporting && root.ready)
+            watermarkScanTimer.restart();
+    }
+
+    Image {
+        id: decodeBackdropImage
+        visible: false
+        cache: false
+        onStatusChanged: if (status === Image.Ready) root._runWatermarkDecode()
+    }
+
+    Canvas {
+        id: decodeCanvas
+        visible: false
+        width: 1
+        height: 1
+    }
+
+    function scanSelectionForWatermark() {
+        if (!hasSelection || exporting || selW < ShotState.wmDotPitch * 4 || selH < ShotState.wmDotPitch * 4)
+            return;
+        // Cap the decode region in device pixels so a huge selection can't
+        // stall the UI thread -- this feature is for scanning an on-screen
+        // image, not the whole desktop.
+        var capPx = 1400;
+        if (selW * captureScale > capPx || selH * captureScale > capPx)
+            return;
+
+        shot.grabToImage(function (result) {
+            if (!result)
+                return;
+            var path = "/tmp/quickshot-wm-decode.png";
+            result.saveToFile(path);
+            decodeBackdropImage.source = "file://" + path + "?t=" + new Date().getTime();
+        });
+    }
+
+    function _runWatermarkDecode() {
+        var scale = root.captureScale;
+        var sx = Math.round(root.selX * scale);
+        var sy = Math.round(root.selY * scale);
+        var sw = Math.max(1, Math.round(root.selW * scale));
+        var sh = Math.max(1, Math.round(root.selH * scale));
+
+        decodeCanvas.width = sw;
+        decodeCanvas.height = sh;
+        var ctx = decodeCanvas.getContext("2d");
+        ctx.reset();
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(decodeBackdropImage, sx, sy, sw, sh, 0, 0, sw, sh);
+
+        var imageData;
+        try {
+            imageData = ctx.getImageData(0, 0, sw, sh);
+        } catch (e) {
+            return;
+        }
+
+        var text = root._decodeMicrodots(imageData.data, sw, sh);
+        if (text && text !== root._lastWatermarkText) {
+            root._lastWatermarkText = text;
+            root.notifyWatermarkMatch(text);
+        } else if (!text) {
+            // Selection moved off the marked region -- allow re-notifying
+            // if the same recipient turns up again later (e.g. after
+            // panning the selection back over it).
+            root._lastWatermarkText = "";
+        }
+    }
+
+    // Brute-forces every grid phase, averages luminance per tile-cell across
+    // every tile repeat + every occurrence of that cell in the selection,
+    // and tries to decode+validate at each phase. Mirrors decode_watermark.py.
+    function _decodeMicrodots(data, w, h) {
+        var pitch = ShotState.wmDotPitch;
+        var cols = ShotState.wmTileCols;
+        var rows = ShotState.wmTileRows;
+        var bitCount = ShotState.wmBitCount;
+
+        var best = null;
+        var bestSpread = 0;
+
+        for (var py = 0; py < pitch; py++) {
+            for (var px = 0; px < pitch; px++) {
+                var sums = new Float64Array(bitCount);
+                var counts = new Int32Array(bitCount);
+
+                for (var y = py, gy = 0; y < h; y += pitch, gy++) {
+                    var row = gy % rows;
+                    var base = row * cols;
+                    for (var x = px, gx = 0; x < w; x += pitch, gx++) {
+                        var idx = base + (gx % cols);
+                        var p = (y * w + x) * 4;
+                        var lum = 0.299 * data[p] + 0.587 * data[p + 1] + 0.114 * data[p + 2];
+                        sums[idx] += lum;
+                        counts[idx] += 1;
+                    }
+                }
+
+                var means = new Float64Array(bitCount);
+                var minV = Infinity, maxV = -Infinity;
+                for (var i = 0; i < bitCount; i++) {
+                    var c = counts[i] || 1;
+                    means[i] = sums[i] / c;
+                    if (means[i] < minV) minV = means[i];
+                    if (means[i] > maxV) maxV = means[i];
+                }
+                var spread = maxV - minV;
+                if (spread < 2.0)
+                    continue; // essentially flat -- no pattern at this phase
+
+                var threshold = (maxV + minV) / 2.0;
+                var bits = new Array(bitCount);
+                for (var b = 0; b < bitCount; b++)
+                    bits[b] = means[b] < threshold ? 1 : 0; // dots render darker
+
+                var text = root._bitsToText(bits);
+                if (text !== null && spread > bestSpread) {
+                    best = text;
+                    bestSpread = spread;
+                }
+            }
+        }
+        return best;
+    }
+
+    function _bitsToText(bits) {
+        var sync = ShotState.wmSyncNibble;
+        for (var i = 0; i < 4; i++)
+            if (bits[i] !== sync[i]) return null;
+
+        var length = 0;
+        for (var j = 4; j < 8; j++)
+            length = (length << 1) | bits[j];
+        if (length < 0 || length > 7)
+            return null;
+
+        var payloadStart = 8;
+        var payloadEnd = payloadStart + 8 * length;
+        if (payloadEnd + 8 > bits.length)
+            return null;
+
+        var bytes = [];
+        for (var k = 0; k < length; k++) {
+            var byte = 0;
+            for (var b2 = 0; b2 < 8; b2++)
+                byte = (byte << 1) | bits[payloadStart + k * 8 + b2];
+            bytes.push(byte);
+        }
+
+        var checksum = 0;
+        for (var b3 = 0; b3 < 8; b3++)
+            checksum = (checksum << 1) | bits[payloadEnd + b3];
+
+        var sum = 0;
+        for (var m = 0; m < bytes.length; m++)
+            sum = (sum + bytes[m]) & 0xff;
+        if (sum !== checksum)
+            return null;
+
+        var str = "";
+        for (var n = 0; n < bytes.length; n++) {
+            if (bytes[n] < 32 || bytes[n] > 126)
+                return null; // not printable ASCII -- reject as a false positive
+            str += String.fromCharCode(bytes[n]);
+        }
+        return str;
+    }
+
+    function notifyWatermarkMatch(text) {
+        Quickshell.execDetached([
+            "notify-send", "-a", "Quickshot", "-u", "critical",
+            "-i", "dialog-warning",
+            "Watermark detected",
+            "This region was watermarked for: " + text
+        ]);
     }
 
     // ---- Geometry helpers ----------------------------------------------------
@@ -819,40 +1138,43 @@ PanelWindow {
         : "/tmp/quickshot-selftest.png";
 
         var ok = result.saveToFile(path);
-        if (ok && (mode === "copy" || mode === "save")) {
-            var targetName = ShotState.watermarkText ? ShotState.watermarkText.trim() : "";
-            var embedCmd = "";
-            
-            // Ultra-fast single-process ImageMagick embedder with Level 1 PNG speed
-            if (targetName.length > 0) {
-                embedCmd = "magick " + ShotState.shQuote(path) + " " +
-                           "\\( -size 240x220 xc:none -fill 'rgba(100, 0, 255, 0.008)' " +
-                           "-font 'Liberation-Sans-Bold' -pointsize 20 -gravity Center " +
-                           "-annotate +0+0 " + ShotState.shQuote(targetName) + " " +
-                           "-distort ScaleRotateTranslate 30 -write mpr:text +delete \\) " +
-                           "\\( +clone -tile mpr:text -draw 'color 0,0 reset' \\) -compose Over -composite -define png:compression-level=1 " + ShotState.shQuote(path) + " && ";
-            }
-            
-            var actionCmd = (mode === "copy")
-                ? ("wl-copy < " + ShotState.shQuote(path) + " && notify-send -a Quickshot 'Copied to clipboard' 'Watermark: " + (targetName.length > 0 ? targetName : "none") + "'")
-                : ("notify-send -a Quickshot 'Screenshot saved' " + ShotState.shQuote(path));
-
-            Quickshell.execDetached(["sh", "-c", embedCmd + actionCmd]);
+        if (ok && mode === "copy") {
+            Quickshell.execDetached(["sh", "-c", "wl-copy --type image/png < " + ShotState.shQuote(path)]);
+            notify("Copied to clipboard", path, false);
+        } else if (ok && mode === "save") {
+            notify("Screenshot saved", path, true);
         } else if (ok && mode === "ocr") {
             var ocrCmd = [
                 "sh", "-c",
-                "text=$(tesseract " + ShotState.shQuote(path) + " stdout 2>/dev/null); if [ -n \"$text\" ]; then printf \"%s\" \"$text\" | wl-copy; notify-send -a Quickshot 'Text Copied' \"$text\"; fi; rm -f " + ShotState.shQuote(path)
+                "if ! command -v tesseract >/dev/null 2>&1; then " +
+                "  notify-send -a Quickshot \"OCR Error\" \"Tesseract is not installed.\"; " +
+                "  rm -f " + ShotState.shQuote(path) + "; " +
+                "  exit 1; " +
+                "fi; " +
+                "if ! command -v wl-copy >/dev/null 2>&1; then " +
+                "  notify-send -a Quickshot \"OCR Error\" \"wl-copy is not installed.\"; " +
+                "  rm -f " + ShotState.shQuote(path) + "; " +
+                "  exit 1; " +
+                "fi; " +
+                "text=$(tesseract " + ShotState.shQuote(path) + " stdout 2>/dev/null | tr -d '\\f' | sed '/./,$!d'); " +
+                "if [ -n \"$text\" ]; then " +
+                "  printf \"%s\" \"$text\" | wl-copy; " +
+                "  notify-send -a Quickshot \"Text Copied\" \"$text\"; " +
+                "else " +
+                "  notify-send -a Quickshot \"OCR Failed\" \"No text found in the selected region.\"; " +
+                "fi; " +
+                "rm -f " + ShotState.shQuote(path)
             ];
             Quickshell.execDetached(ocrCmd);
         }
         Qt.quit();
     }
 
-    function notify(summary, body, withIcon) {
+    function notify(summary, path, withFile) {
         Quickshell.execDetached([
             "notify-send", "-a", "Quickshot",
-            "-i", withIcon ? "image-x-generic" : "dialog-information",
-            summary, body
+            "-i", withFile ? path : "image-x-generic",
+            summary, path
         ]);
     }
 
