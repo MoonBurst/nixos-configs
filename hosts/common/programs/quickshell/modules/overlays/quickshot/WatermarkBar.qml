@@ -1,6 +1,6 @@
 import QtQuick
 
-// Floating top-center input pill with reveal toggle and clear action
+// Streamlined floating watermark bar with zero hardcoded names
 Rectangle {
     id: bar
 
@@ -56,7 +56,7 @@ Rectangle {
                 Text {
                     anchors.fill: parent
                     verticalAlignment: Text.AlignVCenter
-                    text: "Recipients (e.g. alice, bob, charlie)..."
+                    text: "Recipients (e.g. alice, bob, joe)..."
                     color: "#6c7086"
                     font.family: Style.fontFamily
                     font.pixelSize: 13

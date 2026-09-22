@@ -8,15 +8,32 @@ Item {
     property string activeRevealedPath: ""
     signal revealReady(string path)
 
+    function getDateStamp() {
+        var d = new Date();
+        var yyyy = d.getFullYear();
+        var mm = String(d.getMonth() + 1).padStart(2, '0');
+        var dd = String(d.getDate()).padStart(2, '0');
+        return yyyy + "-" + mm + "-" + dd;
+    }
+
     function embedAndDeliver(rawPath, rawNames, mode) {
         var baseDir = ShotState.saveDir();
         var histDir = ShotState.home() + "/.cache/quickshot_history";
         var ts = ShotState.timestamp();
-        var names = rawNames.split(",").map(s => s.trim()).filter(s => s.length > 0);
-        var setupCmd = "mkdir -p " + ShotState.shQuote(baseDir) + " " + ShotState.shQuote(histDir) + "; ";
+        var dateStamp = getDateStamp();
+
+        // Parse names and automatically append today's date to each recipient
+        var names = rawNames.split(",").map(function(s) {
+            var n = s.trim();
+            if (n.length === 0) return "";
+            return n.includes(dateStamp) ? n : (n + " " + dateStamp);
+        }).filter(function(s) { return s.length > 0; });
+
+        // Auto-Pruning: Keeps only the newest 50 screenshots in cache to prevent disk bloat
+        var pruneScript = "ls -1t " + ShotState.shQuote(histDir) + "/*.png 2>/dev/null | tail -n +51 | while read -r old; do rm -f \"$old\" \"${old%.png}.json\"; done; ";
+        var setupCmd = "mkdir -p " + ShotState.shQuote(baseDir) + " " + ShotState.shQuote(histDir) + "; " + pruneScript;
 
         if (names.length > 1) {
-            // Parallel batch pipeline: generate all recipient images and permanent JSON metadata
             var batchCmd = setupCmd;
             var firstOut = "";
 
@@ -47,7 +64,6 @@ Item {
 
             Quickshell.execDetached(["sh", "-c", batchCmd]);
         } else if (names.length === 1) {
-            // Single recipient
             var single = names[0];
             var safeSingle = single.replace(/[^a-zA-Z0-9_\-]/g, "_");
             var outPath = (mode === "save") ? (baseDir + "/quickshot_" + ts + "_" + safeSingle + ".png") : (baseDir + "/quickshot_" + ts + ".png");
@@ -75,12 +91,12 @@ Item {
         } else {
             // Clean un-watermarked screenshot
             var cleanPath = (mode === "save") ? (baseDir + "/quickshot_" + ts + ".png") : rawPath;
-            var histImg = histDir + "/quickshot_" + ts + "_clean.png";
-            var histMeta = histDir + "/quickshot_" + ts + "_clean.json";
+            var cleanHistImg = histDir + "/quickshot_" + ts + "_clean.png";
+            var cleanHistMeta = histDir + "/quickshot_" + ts + "_clean.json";
 
             var cleanCmd = setupCmd +
-                           "cp -f " + ShotState.shQuote(rawPath) + " " + ShotState.shQuote(histImg) + "; " +
-                           "echo '{\"name\":\"Screenshot\",\"path\":\"" + histImg + "\"}' > " + ShotState.shQuote(histMeta) + "; ";
+                           "cp -f " + ShotState.shQuote(rawPath) + " " + ShotState.shQuote(cleanHistImg) + "; " +
+                           "echo '{\"name\":\"Screenshot\",\"path\":\"" + cleanHistImg + "\"}' > " + ShotState.shQuote(cleanHistMeta) + "; ";
 
             if (mode === "copy") {
                 cleanCmd += "wl-copy --type image/png < " + ShotState.shQuote(rawPath) + " && notify-send -a Quickshot 'Copied to clipboard' " + ShotState.shQuote(rawPath);
@@ -91,12 +107,28 @@ Item {
         }
     }
 
+    // High-Pass Revealer + Automated Optical Leaker OCR
     Process {
         id: revealProc
         property string targetFile: ""
         onExited: {
             engine.activeRevealedPath = targetFile;
             engine.revealReady(targetFile);
+
+            var ocrCmd = [
+                "sh", "-c",
+                "if command -v tesseract >/dev/null 2>&1; then " +
+                "  unrot='/tmp/test_fingerprints/UNROTATED.png'; " +
+                "  magick " + ShotState.shQuote(targetFile) + " -distort ScaleRotateTranslate -30 \"$unrot\"; " +
+                "  leaker=$(tesseract \"$unrot\" stdout --psm 6 2>/dev/null | grep -E -o '[a-zA-Z0-9_\-]{3,}' | head -n 2 | paste -sd ' ' -); " +
+                "  rm -f \"$unrot\"; " +
+                "  if [ -n \"$leaker\" ]; then " +
+                "    printf \"%s\" \"$leaker\" | wl-copy; " +
+                "    notify-send -a Quickshot -u critical '🚨 LEAK IDENTIFIED' \"Leaker: $leaker (Copied to clipboard)\"; " +
+                "  fi; " +
+                "fi"
+            ];
+            Quickshell.execDetached(ocrCmd);
         }
     }
 
