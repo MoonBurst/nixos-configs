@@ -1,4 +1,5 @@
 import Quickshell
+import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
 
@@ -21,6 +22,7 @@ PanelWindow {
         right: true
     }
 
+    // ---- Selection state -----------------------------------------------------
     property real selX: 0
     property real selY: 0
     property real selW: 0
@@ -28,7 +30,7 @@ PanelWindow {
     property bool hasSelection: false
     property bool creating: false
     property bool exporting: false
-    property int revealKey: 0
+    property string activeRevealedPath: ""
 
     readonly property bool ready: shot.hasContent
     readonly property string selfTestMode: {
@@ -101,10 +103,24 @@ PanelWindow {
                     paintCursor: false
                 }
 
+                // Live revealed leak image
+                Image {
+                    id: liveRevealOverlay
+                    x: root.selX
+                    y: root.selY
+                    width: root.selW
+                    height: root.selH
+                    visible: false
+                    fillMode: Image.Stretch
+                    cache: false
+                    z: 5
+                }
+
                 AnnotationCanvas {
                     id: canvas
                     anchors.fill: parent
                     backdrop: shot
+                    z: 10
                     onEditFinished: content.forceActiveFocus()
                     onEditStarted: {
                         editor.text = "";
@@ -150,17 +166,6 @@ PanelWindow {
                 x: root.selX + root.selW; y: root.selY
                 width: Math.max(0, root.width - (root.selX + root.selW)); height: root.selH
             }
-        }
-
-        Image {
-            id: liveRevealOverlay
-            x: root.selX
-            y: root.selY
-            width: root.selW
-            height: root.selH
-            visible: ShotState.scanMode && root.hasSelection && status === Image.Ready
-            source: ShotState.scanMode ? ("file:///tmp/test_fingerprints/REVEALED_LEAK.png?t=" + root.revealKey) : ""
-            z: 25
         }
 
         Rectangle {
@@ -580,6 +585,9 @@ PanelWindow {
                             ShotState.scanMode = !ShotState.scanMode;
                             if (ShotState.scanMode) {
                                 root.executeHighPassReveal();
+                            } else {
+                                liveRevealOverlay.visible = false;
+                                liveRevealOverlay.source = "";
                             }
                         }
                     }
@@ -606,8 +614,23 @@ PanelWindow {
         }
     }
 
+    // Process that waits for ImageMagick to finish before updating UI
+    Process {
+        id: revealProcess
+        property string outPath: ""
+        onExited: {
+            liveRevealOverlay.source = "file://" + outPath;
+            liveRevealOverlay.visible = true;
+            root.activeRevealedPath = outPath;
+            root.notify("🔍 REVEAL COMPLETE", "Revealed directly inside your selection box.", false);
+        }
+    }
+
     function executeHighPassReveal() {
         if (!hasSelection) return;
+
+        // 1. Temporarily hide previous overlay so we take a clean screenshot of the screen underneath
+        liveRevealOverlay.visible = false;
 
         var rx = Math.round(selX);
         var ry = Math.round(selY);
@@ -625,19 +648,19 @@ PanelWindow {
             captureRoot.x = 0; captureRoot.y = 0;
             
             if (!cropResult) return;
-            var cropPath = "/tmp/test_fingerprints/captured_leak_temp.png";
-            var outPath = "/tmp/test_fingerprints/REVEALED_LEAK.png";
+            var ts = new Date().getTime();
+            var cropPath = "/tmp/test_fingerprints/captured_" + ts + ".png";
+            var outPath = "/tmp/test_fingerprints/REVEALED_" + ts + ".png";
             cropResult.saveToFile(cropPath);
 
-            var cmd = [
+            revealProcess.outPath = outPath;
+            revealProcess.command = [
                 "sh", "-c",
                 "mkdir -p /tmp/test_fingerprints; " +
                 "magick " + ShotState.shQuote(cropPath) + " -channel B -separate \\( +clone -blur 0x2 \\) -compose Subtract -composite -auto-level -define png:compression-level=1 " + ShotState.shQuote(outPath) + "; " +
-                "rm -f " + ShotState.shQuote(cropPath) + "; " +
-                "notify-send -a Quickshot '🔍 REVEAL COMPLETE' 'Revealed directly inside your selection box.'"
+                "rm -f " + ShotState.shQuote(cropPath)
             ];
-            Quickshell.execDetached(cmd);
-            root.revealKey = new Date().getTime();
+            revealProcess.running = true;
         });
     }
 
@@ -773,7 +796,6 @@ PanelWindow {
         notify("Screenshot failed", "grab timed out — try again", false);
     }
 
-    // Direct immutable MD5 content-hash label generation
     function deliver(result, mode) {
         exportWatchdog.stop();
         if (!result) {
@@ -787,10 +809,32 @@ PanelWindow {
 
         var ok = result.saveToFile(path);
         if (ok && (mode === "copy" || mode === "save")) {
-            var rawText = ShotState.watermarkText ? ShotState.watermarkText.trim() : "";
-            var names = rawText.split(",").map(function(s) { return s.trim(); }).filter(function(s) { return s.length > 0; });
             var baseDir = ShotState.saveDir();
             var ts = ShotState.timestamp();
+
+            // 1. If capturing while REVEAL is active: save/copy the revealed proof
+            if (ShotState.scanMode && liveRevealOverlay.visible && root.activeRevealedPath.length > 0) {
+                var proofPath = baseDir + "/quickshot_" + ts + "_REVEALED.png";
+                var proofCmd = "mkdir -p " + ShotState.shQuote(baseDir) + "; mkdir -p /tmp/clipboard_thumbnails; " +
+                               "cp -f " + ShotState.shQuote(root.activeRevealedPath) + " " + ShotState.shQuote(proofPath) + "; " +
+                               "cliphist store < " + ShotState.shQuote(proofPath) + "; " +
+                               "cid=$(cliphist list | head -n 1 | cut -f1); " +
+                               "chash=$(md5sum " + ShotState.shQuote(proofPath) + " | cut -d' ' -f1); " +
+                               "echo 'REVEALED' > /tmp/clipboard_thumbnails/quickshell_clip_label_${cid}.txt; " +
+                               "echo 'REVEALED' > /tmp/clipboard_thumbnails/label_${chash}.txt; ";
+
+                var proofAction = (mode === "copy")
+                    ? ("wl-copy --type image/png < " + ShotState.shQuote(proofPath) + " && notify-send -a Quickshot 'Revealed Proof Copied' 'Stored on clipboard as [Image: REVEALED]'; ")
+                    : ("notify-send -a Quickshot 'Revealed Proof Saved' " + ShotState.shQuote(proofPath) + "; ");
+
+                Quickshell.execDetached(["sh", "-c", proofCmd + proofAction]);
+                Qt.quit();
+                return;
+            }
+
+            // 2. Standard watermarking pipeline with immutable MD5 hash labeling
+            var rawText = ShotState.watermarkText ? ShotState.watermarkText.trim() : "";
+            var names = rawText.split(",").map(function(s) { return s.trim(); }).filter(function(s) { return s.length > 0; });
 
             if (names.length > 1) {
                 var batchPids = "mkdir -p " + ShotState.shQuote(baseDir) + "; mkdir -p /tmp/clipboard_thumbnails; ";
@@ -802,7 +846,6 @@ PanelWindow {
                     var outPath = baseDir + "/quickshot_" + ts + "_" + safeTarget + ".png";
                     if (i === 0) firstSavedPath = outPath;
 
-                    // Embed watermark and save immutable MD5 hash label
                     batchPids += "magick " + ShotState.shQuote(path) + " " +
                                  "\\( -size 240x220 xc:none -fill 'rgba(100, 0, 255, 0.008)' " +
                                  "-font 'Liberation-Sans-Bold' -pointsize 20 -gravity Center " +
