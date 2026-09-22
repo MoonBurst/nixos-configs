@@ -1,61 +1,60 @@
-import Quickshell.Io
 import Quickshell
+import Quickshell.Io
 import QtQuick
 
-// Dedicated, headless backend engine for parallelized watermarking,
-// high-pass leak extraction, and clipboard history tagging.
 Item {
     id: engine
 
     property string activeRevealedPath: ""
     signal revealReady(string path)
 
-    // Parallel multi-core batch embedder
     function embedAndDeliver(rawPath, rawNames, mode) {
         var baseDir = ShotState.saveDir();
+        var histDir = ShotState.home() + "/.cache/quickshot_history";
         var ts = ShotState.timestamp();
         var names = rawNames.split(",").map(s => s.trim()).filter(s => s.length > 0);
+        var setupCmd = "mkdir -p " + ShotState.shQuote(baseDir) + " " + ShotState.shQuote(histDir) + "; ";
 
         if (names.length > 1) {
-            // Parallel batch pipeline: generate all recipient images simultaneously across CPU cores
-            var script = "mkdir -p " + ShotState.shQuote(baseDir) + "; mkdir -p /tmp/clipboard_thumbnails; ";
-            var firstOut = baseDir + "/quickshot_" + ts + "_" + names[0].replace(/[^a-zA-Z0-9_\-]/g, "_") + ".png";
+            // Parallel batch pipeline: generate all recipient images and permanent JSON metadata
+            var batchCmd = setupCmd;
+            var firstOut = "";
 
             for (var i = 0; i < names.length; i++) {
                 var target = names[i];
                 var safeTarget = target.replace(/[^a-zA-Z0-9_\-]/g, "_");
                 var outPath = baseDir + "/quickshot_" + ts + "_" + safeTarget + ".png";
+                var histImg = histDir + "/quickshot_" + ts + "_" + safeTarget + ".png";
+                var histMeta = histDir + "/quickshot_" + ts + "_" + safeTarget + ".json";
+                if (i === 0) firstOut = outPath;
 
-                script += "(magick " + ShotState.shQuote(rawPath) + " " +
-                          "\\( -size 240x220 xc:none -fill 'rgba(100, 0, 255, 0.008)' " +
-                          "-font 'Liberation-Sans-Bold' -pointsize 20 -gravity Center " +
-                          "-annotate +0+0 " + ShotState.shQuote(target) + " " +
-                          "-distort ScaleRotateTranslate 30 -write mpr:text +delete \\) " +
-                          "\\( +clone -tile mpr:text -draw 'color 0,0 reset' \\) " +
-                          "-compose Over -composite -define png:compression-level=1 " + ShotState.shQuote(outPath) + "; " +
-                          "cliphist store < " + ShotState.shQuote(outPath) + "; " +
-                          "cid=$(cliphist list | head -n 1 | cut -f1); " +
-                          "chash=$(md5sum " + ShotState.shQuote(outPath) + " | cut -d' ' -f1); " +
-                          "echo " + ShotState.shQuote(target) + " > /tmp/clipboard_thumbnails/quickshell_clip_label_${cid}.txt; " +
-                          "echo " + ShotState.shQuote(target) + " > /tmp/clipboard_thumbnails/label_${chash}.txt) & ";
+                batchCmd += "(magick " + ShotState.shQuote(rawPath) + " " +
+                            "\\( -size 240x220 xc:none -fill 'rgba(100, 0, 255, 0.008)' " +
+                            "-font 'Liberation-Sans-Bold' -pointsize 20 -gravity Center " +
+                            "-annotate +0+0 " + ShotState.shQuote(target) + " " +
+                            "-distort ScaleRotateTranslate 30 -write mpr:text +delete \\) " +
+                            "\\( +clone -tile mpr:text -draw 'color 0,0 reset' \\) " +
+                            "-compose Over -composite -define png:compression-level=1 " + ShotState.shQuote(outPath) + "; " +
+                            "cp -f " + ShotState.shQuote(outPath) + " " + ShotState.shQuote(histImg) + "; " +
+                            "echo '{\"name\":\"" + target + "\",\"path\":\"" + histImg + "\"}' > " + ShotState.shQuote(histMeta) + ") & ";
             }
 
-            // Clipboard priority: wait for first image, copy immediately, then let the rest finish in background
-            script += "wait; ";
+            batchCmd += "wait; ";
             if (mode === "copy") {
-                script += "wl-copy --type image/png < " + ShotState.shQuote(firstOut) + " && " +
-                          "firstHash=$(md5sum " + ShotState.shQuote(firstOut) + " | cut -d' ' -f1); " +
-                          "topId=$(cliphist list | head -n 1 | cut -f1); " +
-                          "echo " + ShotState.shQuote(names[0]) + " > /tmp/clipboard_thumbnails/quickshell_clip_label_${topId}.txt; " +
-                          "echo " + ShotState.shQuote(names[0]) + " > /tmp/clipboard_thumbnails/label_${firstHash}.txt; ";
+                batchCmd += "wl-copy --type image/png < " + ShotState.shQuote(firstOut) + " && ";
             }
-            script += "notify-send -a Quickshot 'Batch Watermarked (" + names.length + " copies)' " + ShotState.shQuote("Saved for: " + names.join(", "));
+            batchCmd += "notify-send -a Quickshot 'Batch Watermarked (" + names.length + " copies)' " + ShotState.shQuote("Saved for: " + names.join(", "));
 
-            Quickshell.execDetached(["sh", "-c", script]);
+            Quickshell.execDetached(["sh", "-c", batchCmd]);
         } else if (names.length === 1) {
-            // Single recipient fast embed
+            // Single recipient
             var single = names[0];
-            var cmd = "mkdir -p /tmp/clipboard_thumbnails; " +
+            var safeSingle = single.replace(/[^a-zA-Z0-9_\-]/g, "_");
+            var outPath = (mode === "save") ? (baseDir + "/quickshot_" + ts + "_" + safeSingle + ".png") : (baseDir + "/quickshot_" + ts + ".png");
+            var histImg = histDir + "/quickshot_" + ts + "_" + safeSingle + ".png";
+            var histMeta = histDir + "/quickshot_" + ts + "_" + safeSingle + ".json";
+
+            var cmd = setupCmd +
                       "magick " + ShotState.shQuote(rawPath) + " " +
                       "\\( -size 240x220 xc:none -fill 'rgba(100, 0, 255, 0.008)' " +
                       "-font 'Liberation-Sans-Bold' -pointsize 20 -gravity Center " +
@@ -63,27 +62,35 @@ Item {
                       "-distort ScaleRotateTranslate 30 -write mpr:text +delete \\) " +
                       "\\( +clone -tile mpr:text -draw 'color 0,0 reset' \\) " +
                       "-compose Over -composite -define png:compression-level=1 " + ShotState.shQuote(rawPath) + "; " +
-                      "cliphist store < " + ShotState.shQuote(rawPath) + "; " +
-                      "cid=$(cliphist list | head -n 1 | cut -f1); " +
-                      "chash=$(md5sum " + ShotState.shQuote(rawPath) + " | cut -d' ' -f1); " +
-                      "echo " + ShotState.shQuote(single) + " > /tmp/clipboard_thumbnails/quickshell_clip_label_${cid}.txt; " +
-                      "echo " + ShotState.shQuote(single) + " > /tmp/clipboard_thumbnails/label_${chash}.txt; ";
+                      "cp -f " + ShotState.shQuote(rawPath) + " " + ShotState.shQuote(histImg) + "; " +
+                      "echo '{\"name\":\"" + single + "\",\"path\":\"" + histImg + "\"}' > " + ShotState.shQuote(histMeta) + "; ";
 
-            var copy = (mode === "copy")
-                ? ("wl-copy --type image/png < " + ShotState.shQuote(rawPath) + " && notify-send -a Quickshot 'Copied to clipboard' 'Watermark: " + single + "'")
-                : ("notify-send -a Quickshot 'Screenshot saved' " + ShotState.shQuote(rawPath));
+            if (mode === "copy") {
+                cmd += "wl-copy --type image/png < " + ShotState.shQuote(rawPath) + " && notify-send -a Quickshot 'Copied to clipboard' 'Watermark: " + single + "'";
+            } else {
+                cmd += "cp -f " + ShotState.shQuote(rawPath) + " " + ShotState.shQuote(outPath) + " && notify-send -a Quickshot 'Screenshot saved' " + ShotState.shQuote(outPath);
+            }
 
-            Quickshell.execDetached(["sh", "-c", cmd + copy]);
+            Quickshell.execDetached(["sh", "-c", cmd]);
         } else {
             // Clean un-watermarked screenshot
-            var clean = (mode === "copy")
-                ? ("wl-copy --type image/png < " + ShotState.shQuote(rawPath) + " && notify-send -a Quickshot 'Copied to clipboard' " + ShotState.shQuote(rawPath))
-                : ("notify-send -a Quickshot 'Screenshot saved' " + ShotState.shQuote(rawPath));
-            Quickshell.execDetached(["sh", "-c", clean]);
+            var cleanPath = (mode === "save") ? (baseDir + "/quickshot_" + ts + ".png") : rawPath;
+            var histImg = histDir + "/quickshot_" + ts + "_clean.png";
+            var histMeta = histDir + "/quickshot_" + ts + "_clean.json";
+
+            var cleanCmd = setupCmd +
+                           "cp -f " + ShotState.shQuote(rawPath) + " " + ShotState.shQuote(histImg) + "; " +
+                           "echo '{\"name\":\"Screenshot\",\"path\":\"" + histImg + "\"}' > " + ShotState.shQuote(histMeta) + "; ";
+
+            if (mode === "copy") {
+                cleanCmd += "wl-copy --type image/png < " + ShotState.shQuote(rawPath) + " && notify-send -a Quickshot 'Copied to clipboard' " + ShotState.shQuote(rawPath);
+            } else {
+                cleanCmd += "cp -f " + ShotState.shQuote(rawPath) + " " + ShotState.shQuote(cleanPath) + " && notify-send -a Quickshot 'Screenshot saved' " + ShotState.shQuote(cleanPath);
+            }
+            Quickshell.execDetached(["sh", "-c", cleanCmd]);
         }
     }
 
-    // High-speed RAM-disk high-pass revealer
     Process {
         id: revealProc
         property string targetFile: ""
@@ -108,20 +115,21 @@ Item {
 
     function saveRevealedProof(path, mode) {
         var baseDir = ShotState.saveDir();
+        var histDir = ShotState.home() + "/.cache/quickshot_history";
         var ts = ShotState.timestamp();
         var proofPath = baseDir + "/quickshot_" + ts + "_REVEALED.png";
-        var cmd = "mkdir -p " + ShotState.shQuote(baseDir) + "; mkdir -p /tmp/clipboard_thumbnails; " +
-                  "cp -f " + ShotState.shQuote(engine.activeRevealedPath) + " " + ShotState.shQuote(proofPath) + "; " +
-                  "cliphist store < " + ShotState.shQuote(proofPath) + "; " +
-                  "cid=$(cliphist list | head -n 1 | cut -f1); " +
-                  "chash=$(md5sum " + ShotState.shQuote(proofPath) + " | cut -d' ' -f1); " +
-                  "echo 'REVEALED' > /tmp/clipboard_thumbnails/quickshell_clip_label_${cid}.txt; " +
-                  "echo 'REVEALED' > /tmp/clipboard_thumbnails/label_${chash}.txt; ";
+        var histImg = histDir + "/quickshot_" + ts + "_REVEALED.png";
+        var histMeta = histDir + "/quickshot_" + ts + "_REVEALED.json";
 
-        var copy = (mode === "copy")
-            ? ("wl-copy --type image/png < " + ShotState.shQuote(proofPath) + " && notify-send -a Quickshot 'Revealed Proof Copied' 'Stored in clipboard as [Image: REVEALED]'; ")
+        var cmd = "mkdir -p " + ShotState.shQuote(baseDir) + " " + ShotState.shQuote(histDir) + "; " +
+                  "cp -f " + ShotState.shQuote(engine.activeRevealedPath) + " " + ShotState.shQuote(proofPath) + "; " +
+                  "cp -f " + ShotState.shQuote(proofPath) + " " + ShotState.shQuote(histImg) + "; " +
+                  "echo '{\"name\":\"REVEALED PROOF\",\"path\":\"" + histImg + "\"}' > " + ShotState.shQuote(histMeta) + "; ";
+
+        var action = (mode === "copy")
+            ? ("wl-copy --type image/png < " + ShotState.shQuote(proofPath) + " && notify-send -a Quickshot 'Revealed Proof Copied' 'Stored as [Image: REVEALED PROOF]'; ")
             : ("notify-send -a Quickshot 'Revealed Proof Saved' " + ShotState.shQuote(proofPath) + "; ");
 
-        Quickshell.execDetached(["sh", "-c", cmd + copy]);
+        Quickshell.execDetached(["sh", "-c", cmd + action]);
     }
 }
