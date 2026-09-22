@@ -1,4 +1,3 @@
-// modules/overlays/launcher/Clipboard.qml
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -84,7 +83,7 @@ Item {
                 continue
             }
 
-            if (showAll || item.searchText.includes(q) || (item.isImage && q === "image")) {
+            if (showAll || item.searchText.includes(q) || (item.isImage && (q === "image" || item.text.toLowerCase().includes(q)))) {
                 filteredClipboardModel.append(item)
             }
         }
@@ -158,7 +157,7 @@ Item {
         copyProcess.command = [
             "sh",
             "-c",
-            "cliphist decode " + clipId + " | wl-copy"
+            "cliphist decode " + clipId + " | wl-copy --type image/png"
         ]
         copyProcess.running = true
     }
@@ -222,11 +221,9 @@ Item {
         const thumbPath = isImage ? thumbDir + "/quickshell_clip_thumb_" + clipId + ".png" : ""
 
         if (isImage) {
-            // Strictly require valid PNG encoding; never fallback to raw pipe dump
             thumbnailQueue.push(
                 "[ -f " + thumbPath + " ] || (" +
                 "cliphist decode " + clipId + " | magick - -thumbnail 100x100 png:" + thumbPath + " 2>/dev/null || " +
-                "cliphist decode " + clipId + " | convert - -thumbnail 100x100 png:" + thumbPath + " 2>/dev/null || " +
                 "rm -f " + thumbPath + ")"
             )
         }
@@ -235,9 +232,9 @@ Item {
             id: clipId,
             text: clipText,
             searchText: clipText.toLowerCase(),
-                               isImage: isImage,
-                               imagePath: thumbPath,
-                               rawLineText: rawLine
+            isImage: isImage,
+            imagePath: thumbPath,
+            rawLineText: rawLine
         })
     }
 
@@ -276,7 +273,21 @@ Item {
         command: [
             "sh",
             "-c",
-            "cliphist list | head -n 300"
+            "cliphist list | head -n 300 | while IFS=$'\t' read -r id text; do " +
+            "  lbl=\"\"; " +
+            "  lblFile=\"/tmp/clipboard_thumbnails/quickshell_clip_label_${id}.txt\"; " +
+            "  if [ -f \"$lblFile\" ]; then lbl=$(cat \"$lblFile\" 2>/dev/null | tr -d '\\r\\n'); fi; " +
+            "  if [ -z \"$lbl\" ] && [[ \"$text\" == *\"binary data\"* || \"$text\" == *\"[Image\"* ]]; then " +
+            "    h=$(cliphist decode \"$id\" 2>/dev/null | md5sum | cut -d' ' -f1); " +
+            "    hLbl=\"/tmp/clipboard_thumbnails/label_${h}.txt\"; " +
+            "    if [ -f \"$hLbl\" ]; then " +
+            "      lbl=$(cat \"$hLbl\" 2>/dev/null | tr -d '\\r\\n'); " +
+            "      echo \"$lbl\" > \"$lblFile\" 2>/dev/null; " +
+            "    fi; " +
+            "  fi; " +
+            "  if [ -n \"$lbl\" ]; then text=\"[Image: $lbl]\"; fi; " +
+            "  printf \"%s\t%s\n\" \"$id\" \"$text\"; " +
+            "done"
         ]
 
         stdout: SplitParser {
@@ -291,8 +302,8 @@ Item {
 
                     addClipboardItem(
                         line.slice(0, sep).trim(),
-                                     line.slice(sep + 1).trim(),
-                                     line
+                        line.slice(sep + 1).trim(),
+                        line
                     )
                 }
             }

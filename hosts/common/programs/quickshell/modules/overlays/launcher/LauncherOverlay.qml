@@ -581,11 +581,11 @@ Rectangle {
                                         smooth: false
                                     }
 
-                                    Text {
+Text {
                                         anchors.left: itemIsImage ? listEntryImageComponent.right : parent.left
                                         anchors.leftMargin: itemIsImage ? 20 : 0
                                         anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                                        text: itemIsImage ? "[Image Clipboard Entry]" : itemText
+                                        text: (itemText.startsWith("[Image: ") || !itemIsImage) ? itemText : "[Image Clipboard Entry]"
                                         wrapMode: Text.NoWrap; elide: Text.ElideRight; color: shell.theme.base05; font.pixelSize: 20; textFormat: Text.PlainText
                                     }
                                 }

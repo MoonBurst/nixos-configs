@@ -2,8 +2,6 @@ import Quickshell
 import Quickshell.Wayland
 import QtQuick
 
-// A streamlined full-screen overlay with region selection, annotation tools,
-// sub-threshold chromatic watermarking, and fast high-pass extraction.
 PanelWindow {
     id: root
 
@@ -23,7 +21,6 @@ PanelWindow {
         right: true
     }
 
-    // ---- Selection state -----------------------------------------------------
     property real selX: 0
     property real selY: 0
     property real selW: 0
@@ -48,7 +45,6 @@ PanelWindow {
 
     property string _mode: ""
 
-    // Route global shortcuts
     Connections {
         target: ShotState
         function onCopyRequested() { if (root.isOwner) root.exportRegion("copy"); }
@@ -82,7 +78,6 @@ PanelWindow {
         Component.onCompleted: forceActiveFocus()
         Keys.onPressed: function (event) { root.onKey(event); }
 
-        // 1. Exportable scene
         Item {
             id: exportClip
             clip: true
@@ -134,7 +129,6 @@ PanelWindow {
             }
         }
 
-        // 2. Dimming veil
         Item {
             anchors.fill: parent
             visible: root.ready
@@ -158,7 +152,6 @@ PanelWindow {
             }
         }
 
-        // 2b. High-Pass Live Extraction Viewport (Displays revealed watermark directly inside the box)
         Image {
             id: liveRevealOverlay
             x: root.selX
@@ -170,7 +163,6 @@ PanelWindow {
             z: 25
         }
 
-        // 3. Selection outline
         Rectangle {
             visible: root.showChrome
             x: root.selX
@@ -182,7 +174,6 @@ PanelWindow {
             border.width: Style.selectionBorderWidth
         }
 
-        // 4. Dimension badge
         Rectangle {
             visible: root.showChrome
             color: "#0d0e13"
@@ -202,7 +193,6 @@ PanelWindow {
             }
         }
 
-        // 5. Pre-selection hint
         Rectangle {
             visible: root.ready && root.active && !root.hasSelection && !root.creating && ShotState.tool !== "colorpicker"
             anchors.centerIn: parent
@@ -221,7 +211,6 @@ PanelWindow {
             }
         }
 
-        // 6. Region creation
         MouseArea {
             id: creator
             anchors.fill: parent
@@ -254,7 +243,6 @@ PanelWindow {
             }
         }
 
-        // 7. Move the selection
         MouseArea {
             id: mover
             enabled: root.active && root.hasSelection && ShotState.tool === "select"
@@ -292,7 +280,6 @@ PanelWindow {
             }
         }
 
-        // 8. Draw annotations
         MouseArea {
             id: drawArea
             enabled: root.active && root.hasSelection && root.ready && ShotState.isDrawTool()
@@ -316,7 +303,6 @@ PanelWindow {
             }
         }
 
-        // 8b. Inline text editor
         TextInput {
             id: editor
             visible: canvas.editing !== null
@@ -341,7 +327,6 @@ PanelWindow {
             }
         }
 
-        // 8c. Color Picker Area
         MouseArea {
             id: colorPickerArea
             enabled: root.active && root.ready && ShotState.tool === "colorpicker"
@@ -367,7 +352,6 @@ PanelWindow {
             }
         }
 
-        // 8d. Magnifier Loupe Bubble
         Item {
             id: magnifier
             visible: colorPickerArea.enabled && colorPickerArea.containsMouse
@@ -447,7 +431,6 @@ PanelWindow {
             }
         }
 
-        // 9. Resize handles
         Repeater {
             model: [
                 { role: "tl", fx: 0,   fy: 0   },
@@ -471,7 +454,6 @@ PanelWindow {
             }
         }
 
-        // 10. Toolbar
         Toolbar {
             id: toolbar
             visible: root.showChrome && root.hasSelection && root.isOwner
@@ -493,7 +475,6 @@ PanelWindow {
             onCancel: root.cancel()
         }
 
-        // 11. Persistent Watermark & Fast Reveal Bar
         Rectangle {
             id: watermarkBadge
             visible: root.ready && root.active && !root.exporting
@@ -502,7 +483,7 @@ PanelWindow {
             anchors.topMargin: 16
             z: 99999
 
-            width: 440
+            width: 480
             height: 36
             radius: 8
             color: Style.panel
@@ -550,7 +531,7 @@ PanelWindow {
                         Text {
                             anchors.fill: parent
                             verticalAlignment: Text.AlignVCenter
-                            text: "Target watermark (e.g. testing)..."
+                            text: "Recipients (e.g. alice, bob, charlie)..."
                             color: "#6c7086"
                             font.family: Style.fontFamily
                             font.pixelSize: 13
@@ -563,7 +544,6 @@ PanelWindow {
                     }
                 }
 
-                // High-Pass Extraction Reveal Button
                 Rectangle {
                     id: scanButton
                     anchors.verticalCenter: parent.verticalCenter
@@ -605,7 +585,6 @@ PanelWindow {
                     }
                 }
 
-                // Clear button
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "✕"
@@ -627,7 +606,6 @@ PanelWindow {
         }
     }
 
-    // ---- High-Speed Native ImageMagick High-Pass Revealer --------------------
     function executeHighPassReveal() {
         if (!hasSelection) return;
 
@@ -651,7 +629,6 @@ PanelWindow {
             var outPath = "/tmp/test_fingerprints/REVEALED_LEAK.png";
             cropResult.saveToFile(cropPath);
 
-            // Fast high-pass subtraction with Level 1 compression (lightning speed)
             var cmd = [
                 "sh", "-c",
                 "mkdir -p /tmp/test_fingerprints; " +
@@ -664,7 +641,6 @@ PanelWindow {
         });
     }
 
-    // ---- Deferred grab -------------------------------------------------------
     Timer {
         id: grabTimer
         interval: 24
@@ -688,14 +664,8 @@ PanelWindow {
         onTriggered: root.abortExport()
     }
 
-    // ---- Geometry helpers ----------------------------------------------------
-    function clamp(v, lo, hi) {
-        return Math.max(lo, Math.min(hi, v));
-    }
-
-    function setSel(x, y, w, h) {
-        selX = x; selY = y; selW = w; selH = h;
-    }
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+    function setSel(x, y, w, h) { selX = x; selY = y; selW = w; selH = h; }
 
     function setSelFromPoints(ax, ay, bx, by) {
         ax = clamp(ax, 0, width); bx = clamp(bx, 0, width);
@@ -720,7 +690,6 @@ PanelWindow {
         selH = Math.abs(b - t);
     }
 
-    // ---- Keyboard ------------------------------------------------------------
     function onKey(e) {
         if (watermarkInputField.activeFocus) {
             if (e.key === Qt.Key_Escape || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
@@ -765,11 +734,8 @@ PanelWindow {
         }
     }
 
-    function cancel() {
-        Qt.quit();
-    }
+    function cancel() { Qt.quit(); }
 
-    // ---- Export --------------------------------------------------------------
     function exportRegion(mode) {
         if (!hasSelection || ShotState.finishing)
             return;
@@ -807,6 +773,7 @@ PanelWindow {
         notify("Screenshot failed", "grab timed out — try again", false);
     }
 
+    // Direct immutable MD5 content-hash label generation
     function deliver(result, mode) {
         exportWatchdog.stop();
         if (!result) {
@@ -820,24 +787,79 @@ PanelWindow {
 
         var ok = result.saveToFile(path);
         if (ok && (mode === "copy" || mode === "save")) {
-            var targetName = ShotState.watermarkText ? ShotState.watermarkText.trim() : "";
-            var embedCmd = "";
-            
-            // Ultra-fast single-process ImageMagick embedder with Level 1 PNG speed
-            if (targetName.length > 0) {
-                embedCmd = "magick " + ShotState.shQuote(path) + " " +
-                           "\\( -size 240x220 xc:none -fill 'rgba(100, 0, 255, 0.008)' " +
-                           "-font 'Liberation-Sans-Bold' -pointsize 20 -gravity Center " +
-                           "-annotate +0+0 " + ShotState.shQuote(targetName) + " " +
-                           "-distort ScaleRotateTranslate 30 -write mpr:text +delete \\) " +
-                           "\\( +clone -tile mpr:text -draw 'color 0,0 reset' \\) -compose Over -composite -define png:compression-level=1 " + ShotState.shQuote(path) + " && ";
-            }
-            
-            var actionCmd = (mode === "copy")
-                ? ("wl-copy < " + ShotState.shQuote(path) + " && notify-send -a Quickshot 'Copied to clipboard' 'Watermark: " + (targetName.length > 0 ? targetName : "none") + "'")
-                : ("notify-send -a Quickshot 'Screenshot saved' " + ShotState.shQuote(path));
+            var rawText = ShotState.watermarkText ? ShotState.watermarkText.trim() : "";
+            var names = rawText.split(",").map(function(s) { return s.trim(); }).filter(function(s) { return s.length > 0; });
+            var baseDir = ShotState.saveDir();
+            var ts = ShotState.timestamp();
 
-            Quickshell.execDetached(["sh", "-c", embedCmd + actionCmd]);
+            if (names.length > 1) {
+                var batchPids = "mkdir -p " + ShotState.shQuote(baseDir) + "; mkdir -p /tmp/clipboard_thumbnails; ";
+                var firstSavedPath = "";
+
+                for (var i = names.length - 1; i >= 0; i--) {
+                    var target = names[i];
+                    var safeTarget = target.replace(/[^a-zA-Z0-9_\-]/g, "_");
+                    var outPath = baseDir + "/quickshot_" + ts + "_" + safeTarget + ".png";
+                    if (i === 0) firstSavedPath = outPath;
+
+                    // Embed watermark and save immutable MD5 hash label
+                    batchPids += "magick " + ShotState.shQuote(path) + " " +
+                                 "\\( -size 240x220 xc:none -fill 'rgba(100, 0, 255, 0.008)' " +
+                                 "-font 'Liberation-Sans-Bold' -pointsize 20 -gravity Center " +
+                                 "-annotate +0+0 " + ShotState.shQuote(target) + " " +
+                                 "-distort ScaleRotateTranslate 30 -write mpr:text +delete \\) " +
+                                 "\\( +clone -tile mpr:text -draw 'color 0,0 reset' \\) " +
+                                 "-compose Over -composite -define png:compression-level=1 " + ShotState.shQuote(outPath) + "; " +
+                                 "cliphist store < " + ShotState.shQuote(outPath) + "; " +
+                                 "cid=$(cliphist list | head -n 1 | cut -f1); " +
+                                 "chash=$(md5sum " + ShotState.shQuote(outPath) + " | cut -d' ' -f1); " +
+                                 "echo " + ShotState.shQuote(target) + " > /tmp/clipboard_thumbnails/quickshell_clip_label_${cid}.txt; " +
+                                 "echo " + ShotState.shQuote(target) + " > /tmp/clipboard_thumbnails/label_${chash}.txt; ";
+                }
+
+                var copyAction = "";
+                if (mode === "copy" && firstSavedPath.length > 0) {
+                    copyAction = "wl-copy --type image/png < " + ShotState.shQuote(firstSavedPath) + "; " +
+                                 "sleep 0.15; " +
+                                 "topId=$(cliphist list | head -n 1 | cut -f1); " +
+                                 "firstHash=$(md5sum " + ShotState.shQuote(firstSavedPath) + " | cut -d' ' -f1); " +
+                                 "echo " + ShotState.shQuote(names[0]) + " > /tmp/clipboard_thumbnails/quickshell_clip_label_${topId}.txt; " +
+                                 "echo " + ShotState.shQuote(names[0]) + " > /tmp/clipboard_thumbnails/label_${firstHash}.txt; ";
+                }
+
+                var batchNotify = "notify-send -a Quickshot 'Batch Watermarked (" + names.length + " copies)' " + ShotState.shQuote("Stored in clipboard & ~/Screenshots for: " + names.join(", "));
+                Quickshell.execDetached(["sh", "-c", batchPids + copyAction + batchNotify]);
+            } else if (names.length === 1) {
+                var singleName = names[0];
+                var embedCmd = "mkdir -p /tmp/clipboard_thumbnails; " +
+                               "magick " + ShotState.shQuote(path) + " " +
+                               "\\( -size 240x220 xc:none -fill 'rgba(100, 0, 255, 0.008)' " +
+                               "-font 'Liberation-Sans-Bold' -pointsize 20 -gravity Center " +
+                               "-annotate +0+0 " + ShotState.shQuote(singleName) + " " +
+                               "-distort ScaleRotateTranslate 30 -write mpr:text +delete \\) " +
+                               "\\( +clone -tile mpr:text -draw 'color 0,0 reset' \\) " +
+                               "-compose Over -composite -define png:compression-level=1 " + ShotState.shQuote(path) + "; " +
+                               "cliphist store < " + ShotState.shQuote(path) + "; " +
+                               "cid=$(cliphist list | head -n 1 | cut -f1); " +
+                               "chash=$(md5sum " + ShotState.shQuote(path) + " | cut -d' ' -f1); " +
+                               "echo " + ShotState.shQuote(singleName) + " > /tmp/clipboard_thumbnails/quickshell_clip_label_${cid}.txt; " +
+                               "echo " + ShotState.shQuote(singleName) + " > /tmp/clipboard_thumbnails/label_${chash}.txt; ";
+
+                var actionCmd = (mode === "copy")
+                    ? ("wl-copy --type image/png < " + ShotState.shQuote(path) + "; " +
+                       "sleep 0.15; " +
+                       "topId=$(cliphist list | head -n 1 | cut -f1); " +
+                       "echo " + ShotState.shQuote(singleName) + " > /tmp/clipboard_thumbnails/quickshell_clip_label_${topId}.txt; " +
+                       "notify-send -a Quickshot 'Copied to clipboard' 'Watermark: " + singleName + "'")
+                    : ("notify-send -a Quickshot 'Screenshot saved' " + ShotState.shQuote(path));
+
+                Quickshell.execDetached(["sh", "-c", embedCmd + actionCmd]);
+            } else {
+                var cleanCmd = (mode === "copy")
+                    ? ("wl-copy --type image/png < " + ShotState.shQuote(path) + " && notify-send -a Quickshot 'Copied to clipboard' " + ShotState.shQuote(path))
+                    : ("notify-send -a Quickshot 'Screenshot saved' " + ShotState.shQuote(path));
+                Quickshell.execDetached(["sh", "-c", cleanCmd]);
+            }
         } else if (ok && mode === "ocr") {
             var ocrCmd = [
                 "sh", "-c",
@@ -856,7 +878,6 @@ PanelWindow {
         ]);
     }
 
-    // ---- Color picking logic -------------------------------------------------
     function pickColor(x, y) {
         colorSamplerSource.grabToImage(function (result) {
             if (!result) return;
@@ -966,7 +987,6 @@ PanelWindow {
         }
     }
 
-    // ---- Self-test -----------------------------------------------------------
     function runSelfTest() {
         if (!ShotState.ownsSelection(modelData.name))
             return;
