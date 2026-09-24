@@ -31,22 +31,23 @@ in
     "${super}+q" = "exec ${pkgs.bash}/bin/bash ${scriptsDir}/safekill.sh";
     "${super}+Shift+q" = "kill";
     "${super}+e" = "exec ${explorer}";
-    "${super}+d" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call launcher toggle";
-    "${super}+k" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call clipboard toggle";
+        "${super}+v" = "exec dictate";
+    "${super}+d" = "exec quickshell -p /home/moonburst/nix/hosts/common/programs/quickshell/shell.qml ipc call launcher toggle";
+    "${super}+k" = "exec quickshell -p /home/moonburst/nix/hosts/common/programs/quickshell/shell.qml ipc call clipboard toggle";
     "${super}+Shift+k" = "exec save-replay";
-    "${super}+l" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call lockscreen lock";
-    "${super}+m" = "exec sh -c 'echo toggle > /tmp/magnifier-state'";
-    "${super}+o" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call todo toggle";
+    "${super}+l" = "exec quickshell -p /home/moonburst/nix/hosts/common/programs/quickshell/shell.qml ipc call lockscreen lock";
+    "${super}+m" = "exec quickshell -p /home/moonburst/nix/hosts/common/programs/quickshell/shell.qml ipc call magnifier toggle";
+    "${super}+o" = "exec quickshell -p /home/moonburst/nix/hosts/common/programs/quickshell/shell.qml ipc call todo toggle";
     "${super}+SHIFT+m" = "exec ${pkgs.evolution}/bin/evolution";
 
     # ░█▀▀░█░█░█▀▀░▀█▀░█▀▀░█▄█
     # ░▀▀█░░█░░▀▀█░░█░░█▀▀░█░█
     # ░▀▀▀░░▀░░▀▀▀░░▀░░▀▀▀░▀░▀
-    "${super}+h" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call global_notif toggleHistory";
+    "${super}+h" = "exec quickshell -p /home/moonburst/nix/hosts/common/programs/quickshell/shell.qml ipc call global_notif toggleHistory";
 
 
-        "${super}+Tab"     = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call global_notif jumpToLatest";
-        "${super}+Escape" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call global_notif dismissLatest";
+        "${super}+Tab"     = "exec quickshell -p /home/moonburst/nix/hosts/common/programs/quickshell/shell.qml ipc call global_notif jumpToLatest";
+        "${super}+Escape" = "exec quickshell -p /home/moonburst/nix/hosts/common/programs/quickshell/shell.qml ipc call global_notif dismissLatest";
         "${super}+Shift+minus" = "move scratchpad";
         "${super}+Shift+Equal" = "scratchpad show";
 

@@ -8,10 +8,8 @@ import Quickshell.Services.Pam
 
 import "./modules/bar/unified" as UnifiedMonitor
 import "./modules/overlays/rng" as RNG
-import "./modules/overlays/recording" as Recording
 import "./modules/overlays/magnify" as Magnify
 import "./modules/overlays/notifications" as Notifications
-import "./modules/overlays/quickshot" as Quickshot
 import "./modules/overlays/launcher" as LauncherModule
 import "./modules/bar/tray" as SystemTray
 import "./modules/bar/ram" as RamCapsule
@@ -38,11 +36,15 @@ ShellRoot {
 
     property alias theme: globalTheme
 
-    readonly property var primaryScreen: Quickshell.screens.find(s => s.name === "DP-1")
-    || Quickshell.screens.find(s => s.name.startsWith("eDP"))
-    || Quickshell.screens[0]
+    readonly property var primaryScreen: {
+        const screens = Quickshell.screens;
+        if (!screens || screens.length === 0) return null;
+        return screens.find(s => s.name === "DP-1")
+            ?? screens.find(s => s.name.startsWith("eDP"))
+            ?? screens[0] ?? null;
+    }
 
-    property bool debugNotifications: shell.debug
+    readonly property bool debugNotifications: shell.debug
     property bool showHistoryMode: false
     property bool notificationsEnabled: true
     property int unreadCount: 0
@@ -68,8 +70,10 @@ ShellRoot {
         repeat: true
         running: false
         onTriggered: {
-            if (deferredNotificationsQueue.length > 0) {
-                let mockNotif = deferredNotificationsQueue.shift();
+            if (shell.deferredNotificationsQueue.length > 0) {
+                let mockNotif = shell.deferredNotificationsQueue[0];
+                shell.deferredNotificationsQueue = shell.deferredNotificationsQueue.slice(1);
+
                 if (shell.unreadCount > 0) {
                     shell.unreadCount--;
                 }
@@ -84,25 +88,30 @@ ShellRoot {
 
     property string globalPasswordBuffer: ""
     property int passwordLength: 0
-    property var shellRootRef: this
 
-    function toggleWindow(windowObj) {
+    function toggleWindow(windowObj: PanelWindow): void {
         if (windowObj) {
-            windowObj.visible = !windowObj.visible
+            windowObj.visible = !windowObj.visible;
         }
     }
 
     PanelWindow {
         id: topBarWindow
-        screen: primaryScreen
+        screen: primaryScreen ?? (Quickshell.screens.length > 0 ? Quickshell.screens[0] : null)
         anchors.top: true
         anchors.left: true
         anchors.right: true
-        implicitHeight: shell.theme.globalPadding + 25
+        implicitHeight: shell.theme.globalPadding + 28
         color: "transparent"
 
-        WlrLayershell.layer: WlrLayer.Bottom
+        WlrLayershell.namespace: "quickshell-bar"
+        WlrLayershell.layer: WlrLayer.Top
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+        exclusionMode: ExclusionMode.Auto
+
+        mask: Region {
+            item: mainBarContainer
+        }
 
         Rectangle {
             id: mainBarContainer
@@ -113,11 +122,12 @@ ShellRoot {
             radius: shell.theme.defaultCardRadius
             border.width: shell.theme.globalBorderWidth
             border.color: shell.theme.base03
+            clip: true
 
             readonly property int capsuleHeight: height - (shell.theme.globalBorderWidth * 2) - 8
             readonly property int layoutSpacing: 5
 
-            // LEFT SIDE
+            // LEFT SIDE MODULES
             Item {
                 id: calendarContainer
                 anchors.left: parent.left
@@ -125,6 +135,7 @@ ShellRoot {
                 anchors.verticalCenter: parent.verticalCenter
                 width: 120
                 height: mainBarContainer.capsuleHeight
+
                 CalendarCapsule.Calendar {
                     anchors.fill: parent
                     barWindow: topBarWindow
@@ -138,6 +149,7 @@ ShellRoot {
                 anchors.verticalCenter: parent.verticalCenter
                 width: 200
                 height: mainBarContainer.capsuleHeight
+
                 MusicCapsule.Music {
                     anchors.fill: parent
                     barWindow: topBarWindow
@@ -151,6 +163,7 @@ ShellRoot {
                 anchors.verticalCenter: parent.verticalCenter
                 width: 130
                 height: mainBarContainer.capsuleHeight
+
                 AlarmCapsule.AlarmCapsule {
                     anchors.fill: parent
                     barWindow: topBarWindow
@@ -164,6 +177,7 @@ ShellRoot {
                 anchors.verticalCenter: parent.verticalCenter
                 width: 150
                 height: mainBarContainer.capsuleHeight
+
                 WeatherCapsule.Weather {
                     anchors.fill: parent
                     barWindow: topBarWindow
@@ -177,6 +191,7 @@ ShellRoot {
                 anchors.verticalCenter: parent.verticalCenter
                 width: 125
                 height: mainBarContainer.capsuleHeight
+
                 UnifiedMonitor.UnifiedMonitor {
                     anchors.fill: parent
                     barWindow: topBarWindow
@@ -190,18 +205,20 @@ ShellRoot {
                 anchors.verticalCenter: parent.verticalCenter
                 width: 180
                 height: mainBarContainer.capsuleHeight
+
                 NotifyCapsule.NotifyCapsule {
                     anchors.fill: parent
                     barWindow: topBarWindow
                 }
             }
 
-            // CENTER
+            // CENTER MODULES (Audio -> Clock -> Mic)
             Item {
                 id: clockContainer
                 anchors.centerIn: parent
                 width: 130
                 height: mainBarContainer.capsuleHeight
+
                 ClockCapsule.ClockCapsule {
                     anchors.fill: parent
                     barWindow: topBarWindow
@@ -215,6 +232,7 @@ ShellRoot {
                 anchors.verticalCenter: parent.verticalCenter
                 width: 150
                 height: mainBarContainer.capsuleHeight
+
                 SoundModule.AudioCapsule {
                     anchors.fill: parent
                     barWindow: topBarWindow
@@ -228,13 +246,14 @@ ShellRoot {
                 anchors.verticalCenter: parent.verticalCenter
                 width: 150
                 height: mainBarContainer.capsuleHeight
+
                 SoundModule.MicCapsule {
                     anchors.fill: parent
                     barWindow: topBarWindow
                 }
             }
 
-            // RIGHT SIDE
+            // RIGHT SIDE MODULES (Net -> CPU -> GPU -> RAM -> Tray)
             Item {
                 id: trayContainer
                 anchors.right: parent.right
@@ -242,6 +261,7 @@ ShellRoot {
                 anchors.verticalCenter: parent.verticalCenter
                 width: trayContent.width
                 height: mainBarContainer.capsuleHeight
+
                 SystemTray.Tray {
                     id: trayContent
                     anchors.centerIn: parent
@@ -256,6 +276,7 @@ ShellRoot {
                 anchors.verticalCenter: parent.verticalCenter
                 width: 155
                 height: mainBarContainer.capsuleHeight
+
                 RamCapsule.RamCapsule {
                     anchors.fill: parent
                     barWindow: topBarWindow
@@ -269,6 +290,7 @@ ShellRoot {
                 anchors.verticalCenter: parent.verticalCenter
                 width: 295
                 height: mainBarContainer.capsuleHeight
+
                 GpuCapsule.GpuCapsule {
                     anchors.fill: parent
                     barWindow: topBarWindow
@@ -282,6 +304,7 @@ ShellRoot {
                 anchors.verticalCenter: parent.verticalCenter
                 width: 170
                 height: mainBarContainer.capsuleHeight
+
                 CpuCapsule.CpuCapsule {
                     anchors.fill: parent
                     barWindow: topBarWindow
@@ -295,6 +318,7 @@ ShellRoot {
                 anchors.verticalCenter: parent.verticalCenter
                 width: 260
                 height: mainBarContainer.capsuleHeight
+
                 NetCapsule.NetCapsule {
                     anchors.fill: parent
                     barWindow: topBarWindow
@@ -306,12 +330,14 @@ ShellRoot {
     PanelWindow {
         id: launcherOverlayWindow
         visible: false
-        screen: primaryScreen
+        screen: primaryScreen ?? (Quickshell.screens.length > 0 ? Quickshell.screens[0] : null)
         anchors.top: true
         anchors.left: true
         anchors.right: true
         anchors.bottom: true
         color: "transparent"
+
+        WlrLayershell.namespace: "quickshell-launcher"
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.keyboardFocus: visible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
@@ -321,10 +347,6 @@ ShellRoot {
             shell: shell
             launcherWindow: launcherOverlayWindow
         }
-    }
-
-    Recording.Recording {
-        id: recordingOverlay
     }
 
     Magnify.Magnify {
@@ -345,17 +367,17 @@ ShellRoot {
         config: "quickshell"
         onResponseRequiredChanged: {
             if (responseRequired) {
-                lockPam.respond(shellRootRef.globalPasswordBuffer);
+                lockPam.respond(shell.globalPasswordBuffer);
             }
         }
         onActiveChanged: {
-            if (!active && !messageIsError && shellRootRef.globalPasswordBuffer !== "") {
+            if (!active && !messageIsError && shell.globalPasswordBuffer !== "") {
                 sessionLock.locked = false;
-                shellRootRef.globalPasswordBuffer = "";
-                shellRootRef.passwordLength = 0;
+                shell.globalPasswordBuffer = "";
+                shell.passwordLength = 0;
             } else if (!active && messageIsError) {
-                shellRootRef.globalPasswordBuffer = "";
-                shellRootRef.passwordLength = -1;
+                shell.globalPasswordBuffer = "";
+                shell.passwordLength = -1;
             }
         }
     }
@@ -364,13 +386,13 @@ ShellRoot {
         id: sessionLock
         locked: false
         onLockedChanged: {
-            shellRootRef.globalPasswordBuffer = "";
-            shellRootRef.passwordLength = 0;
+            shell.globalPasswordBuffer = "";
+            shell.passwordLength = 0;
         }
         surface: Component {
             LockScreen {
                 lockSession: sessionLock
-                rootRef: shellRootRef
+                rootRef: shell
             }
         }
     }
@@ -402,7 +424,12 @@ ShellRoot {
     }
 
     IpcHandler {
-        target: "rng"
+        target: "power"
+        function toggle(): void { launcherOverlay.togglePower(); }
+    }
+
+    IpcHandler {
+        target: "rng" 
         function toggle(): void { launcherOverlay.toggleRng(); }
     }
 

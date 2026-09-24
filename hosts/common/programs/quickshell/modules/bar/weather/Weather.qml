@@ -10,6 +10,21 @@ import "../../style"
 
 Item {
     id: weatherCapsule
+
+    Timer {
+        id: bootRetryTimer
+        interval: 15000
+        repeat: false
+        running: false
+        onTriggered: {
+            if (weatherCapsule.weatherStr === "..." || weatherCapsule.weatherTooltipText.indexOf("temporarily") !== -1) {
+                weatherCapsule.dataAccumulatorBuffer = "";
+                forecastFetcher.running = false;
+                forecastFetcher.running = true;
+            }
+        }
+    }
+
     property var barWindow: null
     property bool pinTooltip: false
 
@@ -66,6 +81,7 @@ Item {
             onRead: data => { weatherCapsule.dataAccumulatorBuffer += data; }
         }
         onExited: {
+            if (weatherCapsule.weatherStr === "...") bootRetryTimer.start();
             var rawData = weatherCapsule.dataAccumulatorBuffer.trim();
             weatherCapsule.dataAccumulatorBuffer = "";
 

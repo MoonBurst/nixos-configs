@@ -20,12 +20,28 @@ Item {
     property bool isManualDismiss: false
     property bool isCriticalCard: rulesLoader ? rulesLoader.getIsUrgent(notification) : false
 
-    property color normalBorderColor: isCriticalCard
-    ? shell.theme.base08
-    : (rulesLoader ? rulesLoader.getBorderColor(notification, shell.theme, shell.theme.base05) : shell.theme.base05)
+    // Filter out the generic "default" / "View" action so only real buttons show
+    readonly property var explicitActions: {
+        if (!notification || !notification.actions) return [];
+        var acts = [];
+        for (var i = 0; i < notification.actions.length; i++) {
+            var act = notification.actions[i];
+            if (act && act.identifier !== "default" && act.identifier !== "") {
+                acts.push(act);
+            }
+        }
+        return acts;
+    }
 
-    width: rootItem ? rootItem.cardWidth : 400
-    height: rootItem ? rootItem.cardHeight : 140
+    readonly property bool hasActions: explicitActions.length > 0
+
+    property color normalBorderColor: isCriticalCard
+        ? shell.theme.base08
+        : (rulesLoader ? rulesLoader.getBorderColor(notification, shell.theme, shell.theme.base05) : shell.theme.base05)
+
+    width: rootItem ? rootItem.cardWidth : 420
+    // Only expand height if real action buttons (like Approve/Deny) exist
+    height: hasActions ? (rootItem ? rootItem.cardHeight + 45 : 185) : (rootItem ? rootItem.cardHeight : 140)
     x: hiddenX
     y: targetY
 
@@ -33,8 +49,8 @@ Item {
     property int shownX: 0
 
     z: cardWindow.state === "DISMISSED"
-    ? 1000
-    : (cardWindow.stackIndex === 0 ? 999 : (100 - cardWindow.stackIndex))
+        ? 1000
+        : (cardWindow.stackIndex === 0 ? 999 : (100 - cardWindow.stackIndex))
 
     function getCleanBodyText(rawBody) {
         if (!rawBody) return "";
@@ -62,8 +78,9 @@ Item {
         interval: rootItem ? rootItem.holdDurationMs : 5000
         repeat: false
         running: cardWindow.entryPhaseCompleted
-        && cardWindow.stackIndex === 0
-        && !cardWindow.isCriticalCard
+            && cardWindow.stackIndex === 0
+            && !cardWindow.isCriticalCard
+            && !cardWindow.hasActions
         onTriggered: {
             cardWindow.startExitAnimation();
         }
@@ -94,27 +111,21 @@ Item {
 
             Image {
                 id: notificationIcon
-                width: visible ? 100 : 0
-                height: 100
+                width: visible ? 80 : 0
+                height: 80
                 anchors.verticalCenter: parent.verticalCenter
                 fillMode: Image.PreserveAspectFit
                 smooth: true
                 source: (cardWindow.cachedAvatarPath !== "")
-                ? cardWindow.cachedAvatarPath
-                : (rulesLoader ? rulesLoader.getCustomIcon(notification) : "")
+                    ? cardWindow.cachedAvatarPath
+                    : (rulesLoader ? rulesLoader.getCustomIcon(notification) : "")
                 visible: source !== undefined && source !== null && source !== "" && status !== Image.Error
-
-                onStatusChanged: {
-                    if (status === Image.Error) {
-                        visible = false;
-                    }
-                }
             }
 
             Column {
                 width: parent.width - notificationIcon.width - (notificationIcon.visible ? parent.spacing : 0)
-                height: parent.height
-                spacing: 4
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 6
 
                 Text {
                     id: summaryText
@@ -122,7 +133,7 @@ Item {
                     width: parent.width
                     color: cardWindow.isCriticalCard ? shell.theme.base08 : shell.theme.base05
                     font.bold: true
-                    font.pixelSize: rootItem ? rootItem.textSummarySize : 20
+                    font.pixelSize: rootItem ? rootItem.textSummarySize : 18
                     font.family: shell.theme.fontFamily
                     elide: Text.ElideRight
                 }
@@ -131,12 +142,58 @@ Item {
                     text: notification ? cardWindow.getCleanBodyText(notification.body) : ""
                     width: parent.width
                     color: cardWindow.isCriticalCard ? shell.theme.base08 : shell.theme.base05
-                    font.pixelSize: rootItem ? rootItem.textBodySize : 16
+                    font.pixelSize: rootItem ? rootItem.textBodySize - 2 : 14
                     font.family: shell.theme.fontFamily
                     wrapMode: Text.WordWrap
-                    maximumLineCount: 3
+                    maximumLineCount: cardWindow.hasActions ? 2 : 3
                     elide: Text.ElideRight
-                    textFormat: Text.RichText
+                    textFormat: Text.PlainText
+                }
+
+                // Interactive Action Buttons (ONLY shown for explicit actions like Approve / Deny)
+                Row {
+                    spacing: 10
+                    visible: cardWindow.hasActions
+                    z: 100
+
+                    Repeater {
+                        model: cardWindow.explicitActions
+                        delegate: Rectangle {
+                            id: actBtn
+                            readonly property bool isDeny: modelData.identifier.toLowerCase().indexOf("deny") !== -1
+                            width: actText.implicitWidth + 24
+                            height: 32
+                            radius: 6
+                            color: actMouse.containsMouse 
+                                ? (isDeny ? "#FF0000" : "#04f100") 
+                                : "#1e1e2e"
+                            border.width: 1.5
+                            border.color: isDeny ? "#FF5555" : "#04f100"
+
+                            Text {
+                                id: actText
+                                anchors.centerIn: parent
+                                text: modelData.text || modelData.identifier
+                                font.family: shell.theme ? shell.theme.fontFamily : "monospace"
+                                font.pixelSize: 13
+                                font.bold: true
+                                color: actMouse.containsMouse ? "#000000" : (isDeny ? "#FF5555" : "#04f100")
+                            }
+
+                            MouseArea {
+                                id: actMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    if (modelData && typeof modelData.invoke === "function") {
+                                        modelData.invoke();
+                                    }
+                                    cardWindow.startExitAnimation();
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

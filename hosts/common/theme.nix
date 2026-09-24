@@ -64,7 +64,7 @@ in
     home.file.".local/share/icons/Numix-Light".source = "${inputs.moon-numix.packages.${pkgs.stdenv.hostPlatform.system}.default}/share/icons/Numix-Light";
 
     home.file."nix/hosts/common/programs/quickshell/Theme.qml".text = ''
-      import QtQuick 2.0
+      import QtQuick
 
       QtObject {
           id: theme
@@ -72,26 +72,26 @@ in
           // ============================================================================
           // AUTOMATED STYLIX PALETTE INTERPOLATION (ONE PER LINE)
           // ============================================================================
-          ${lib.concatStringsSep "\n          " (lib.mapAttrsToList (name: value: "property color ${name}: \"${value}\"") colorScheme)}
+          ${lib.concatStringsSep "\n          " (lib.mapAttrsToList (name: value: "readonly property color ${name}: \"${value}\"") colorScheme)}
 
           // ============================================================================
           // CONFIGURATION PROFILES
           // ============================================================================
-          property int globalFontSize: ${toString config.stylix.fonts.sizes.popups}
-          property int globalHeaderSize: ${toString config.stylix.fonts.sizes.popups}
+          readonly property int globalFontSize: ${toString config.stylix.fonts.sizes.popups}
+          readonly property int globalHeaderSize: ${toString config.stylix.fonts.sizes.popups}
 
-          property string fontFamily: "Fira Sans Condensed"
+          readonly property string fontFamily: "Fira Sans Condensed"
 
-          property int defaultCardWidth: 420
-          property int defaultCardHeight: 140
-          property int defaultCardRadius: 10
-          property int globalBorderWidth: 3
-          property int globalPadding: 20
-          property int slantWidth: 20
+          readonly property int defaultCardWidth: 420
+          readonly property int defaultCardHeight: 140
+          readonly property int defaultCardRadius: 10
+          readonly property int globalBorderWidth: 3
+          readonly property int globalPadding: 20
+          readonly property int slantWidth: 20
 
           // CUSTOM BORDER COLOR SLOTS MAP TO LAUNCHER PANELS
-          property color outerBorderColor: base03
-          property color innerBorderColor: base05
+          readonly property color outerBorderColor: base03
+          readonly property color innerBorderColor: base05
 
           function getGlobalTextColor(notification) { return base05 }
       }

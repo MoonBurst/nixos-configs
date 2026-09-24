@@ -49,13 +49,14 @@ Item {
         slantWidth: netBox.slantWidth
     }
 
+    // High efficiency: reads default interface and network bytes in a single awk pass
     Process {
         id: netStatsProc
         running: true
         command: [
-            "sh", "-c",
-            "interface=$(ip route | awk '/default/ {print $5; exit}'); " +
-            "awk -v iface=\"$interface\" '$1 ~ iface {print $2 \":\" $10}' /proc/net/dev"
+            "awk",
+            "$2 == \"00000000\" {iface=$1; exit} END {while((getline line < \"/proc/net/dev\") > 0) {if(line ~ iface) {split(line, a, /[: ]+/); print a[2] \":\" a[10]}}}",
+            "/proc/net/route"
         ]
 
         property real lastDown: 0
@@ -123,7 +124,7 @@ Item {
         command: [
             "sh",
             "-c",
-            "nethogs_bin=$(command -v /run/wrappers/bin/nethogs || command -v nethogs); interface=$(ip route | awk '/default/ {print $5; exit}'); $nethogs_bin -t -c 2 \"$interface\" 2>/dev/null | awk '/Refreshing:/ {cycle++} cycle==2 && $1 != \"Refreshing:\" && $1 != \"PID\" && $1 != \"\" {if (NF == 3) {prog_full = $1; sub(/\\/[^\\/]+\\/[^\\/]+$/, \"\", prog_full); split(prog_full, path, \"/\"); prog = path[length(path)]; if (prog == \"\") prog = prog_full; sent = $2; recv = $3;} else {split($3, path, \"/\"); prog = path[length(path)]; if (prog == \"\") prog = $3; sent = $5; recv = $6;} total = sent + recv; if (prog ~ /^[0-9]+\\.[0-9]+/ || prog ~ /:/) {prog = \"[system/raw]\"} if (prog != \"\") {speeds[prog] += total}} END {for (p in speeds) {tot = speeds[p]; if (tot > 0.01) {speedStr = (tot < 1024.0) ? sprintf(\"%.1f KB/s\", tot) : sprintf(\"%.1f MB/s\", tot/1024.0); printf \"%.2f %-15s   %11s\\n\", tot, substr(p, 1, 15), speedStr}}}' | sort -rn | head -n 10 | cut -d' ' -f2-"
+            "nethogs_bin=$(command -v /run/wrappers/bin/nethogs || command -v nethogs); interface=$(awk '$2 == \"00000000\" {print $1; exit}' /proc/net/route); $nethogs_bin -t -c 2 \"$interface\" 2>/dev/null | awk '/Refreshing:/ {cycle++} cycle==2 && $1 != \"Refreshing:\" && $1 != \"PID\" && $1 != \"\" {if (NF == 3) {prog_full = $1; sub(/\\/[^\\/]+\\/[^\\/]+$/, \"\", prog_full); split(prog_full, path, \"/\"); prog = path[length(path)]; if (prog == \"\") prog = prog_full; sent = $2; recv = $3;} else {split($3, path, \"/\"); prog = path[length(path)]; if (prog == \"\") prog = $3; sent = $5; recv = $6;} total = sent + recv; if (prog ~ /^[0-9]+\\.[0-9]+/ || prog ~ /:/) {prog = \"[system/raw]\"} if (prog != \"\") {speeds[prog] += total}} END {for (p in speeds) {tot = speeds[p]; if (tot > 0.01) {speedStr = (tot < 1024.0) ? sprintf(\"%.1f KB/s\", tot) : sprintf(\"%.1f MB/s\", tot/1024.0); printf \"%.2f %-15s   %11s\\n\", tot, substr(p, 1, 15), speedStr}}}' | sort -rn | head -n 10 | cut -d' ' -f2-"
         ]
         stdout: SplitParser {
             splitMarker: "\n"
@@ -135,7 +136,7 @@ Item {
         }
         onExited: (exitCode) => {
             if (exitCode !== 0) {
-                netBox.topProcessesText = "Failed to run packet sniffer.\n\nVerify that the NixOS security wrapper is set:\n\nsecurity.wrappers.nethogs = {\n  source = \"\${pkgs.nethogs}/bin/nethogs\";\n  capabilities = \"cap_net_admin,cap_net_raw+ep\";\n  owner = \"root\";\n  group = \"root\";\n};"
+                netBox.topProcessesText = "Failed to run packet sniffer.\n\nVerify that the NixOS security wrapper is set:\n\nsecurity.wrappers.nethogs = {\n  source = \"${pkgs.nethogs}/bin/nethogs\";\n  capabilities = \"cap_net_admin,cap_net_raw+ep\";\n  owner = \"root\";\n  group = \"root\";\n};"
             } else if (netBox.textAccumulatorBuffer.trim() === "") {
                 netBox.topProcessesText = "No active network traffic.\n(Waiting for transfers...)"
             } else {

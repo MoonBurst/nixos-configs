@@ -13,7 +13,7 @@ in
       -- in default.nix, so there's no manual dbus-update-activation-environment
       -- call needed here for that.
       hl.exec_cmd("${pkgs.bash}/bin/bash /home/moonburst/nix/hosts/common/scripts/wallpaper.sh daemon")
-      hl.exec_cmd("quickshell ipc lockscreen lock")
+      hl.exec_cmd("quickshell ipc call lockscreen lock")
       hl.exec_cmd("${pkgs.vesktop}/bin/vesktop")
       hl.exec_cmd("${gpu6400} ${pkgs.steam}/bin/steam -nochatui -silent")
       -- This one still needs its own explicit re-export: gnome-keyring

@@ -16,7 +16,7 @@
 
   # 4. Low-Latency Kernel Memory Tuning
   boot.kernel.sysctl = {
-    "vm.swappiness" = 10;             # Uses free physical RAM first
+    "vm.swappiness" = 150;             # Uses free physical RAM first
     "vm.compaction_proactiveness" = 0; # Stops background RAM defrag daemon
     "vm.page-cluster" = 0;             # Single-page swapping for ZRAM
     "vm.watermark_boost_factor" = 0;   # Prevents CPU spikes during memory allocation

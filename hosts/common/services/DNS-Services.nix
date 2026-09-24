@@ -98,7 +98,7 @@ in
     wantedBy = [ "timers.target" ];
     timerConfig = {
       OnBootSec = "2m";         
-      OnUnitActiveSec = "15m";   
+      OnUnitActiveSec = "6h";   
       AccuracySec = "1m";
     };
   };

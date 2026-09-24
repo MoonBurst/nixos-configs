@@ -58,15 +58,15 @@ Item {
         }
     }
 
-    // Decrypts selected file from your custom PASSWORD_STORE_DIR and pipes the password directly to your Wayland clipboard
+    // Decrypts selected file from custom PASSWORD_STORE_DIR and pipes to clipboard
     Process {
         id: decryptProcess
         running: false
         property string keyPath: ""
-        command: ["sh", "-c", "PASSWORD_STORE_DIR=$HOME/.local/share/pass pass show \"" + keyPath + "\" | head -n 1 | wl-copy"]
+        command: ["sh", "-c", "PASSWORD_STORE_DIR=$HOME/.local/share/pass pass show \"" + keyPath + "\" | head -n 1 | tr -d '\\r\\n' | wl-copy"]
     }
 
-    // Asynchronously indexes your custom ~/.local/share/pass directory recursively on startup (Streamlined path variable)
+    // Asynchronously indexes custom ~/.local/share/pass directory recursively on startup
     Process {
         id: listKeysProcess
         running: true
@@ -84,7 +84,7 @@ Item {
         }
     }
 
-    // UI Scrollable List View (Shares your global visual card sizes & border properties)
+    // UI Scrollable List View
     ListView {
         id: passListView
         anchors.fill: parent

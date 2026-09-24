@@ -11,20 +11,13 @@ Item {
     property var notifModel: null
     property var serverInstance: null
 
-    // ============================================================================
-    // HELPER FUNCTIONS (Optimal models/bindings extraction)
-    // ============================================================================
     function getNewest() {
         if (!notifModel || notifModel.count === 0) return null;
         return notifModel.get(notifModel.count - 1);
     }
 
-    // ============================================================================
-    // VISUAL FEEDBACK
-    // ============================================================================
     function highlight(card) {
-        if (!card)
-            return;
+        if (!card) return;
         card.isManualDismiss = true;
         let timer = Qt.createQmlObject(
             'import QtQuick; Timer { interval: 350; repeat: false; }',
@@ -37,12 +30,8 @@ Item {
         timer.start();
     }
 
-    // ============================================================================
-    // DISMISS ACTIONS
-    // ============================================================================
     function dismiss(card) {
-        if (!card)
-            return;
+        if (!card) return;
         card.isManualDismiss = true;
 
         if (card.startExitAnimation) {
@@ -53,22 +42,13 @@ Item {
     }
 
     function dismissLatest() {
-        if (shell.debug) console.log("[IPC DEBUG] dismissLatest triggered. Total active cards in queue:", notifModel.count);
-
         let entry = getNewest();
-        if (!entry) {
-            if (shell.debug) console.log("[IPC DEBUG] No active notification cards found to dismiss.");
-            return;
-        }
-
-        if (shell.debug) console.log("[IPC DEBUG] Manual dismiss targeting oldest (front-most) card -> Index:", (notifModel.count - 1), "Summary:", entry.summary);
+        if (!entry) return;
         let visualCard = entry.cardRef || entry;
         dismiss(visualCard);
     }
 
-    // ============================================================================
-    // AUDIO & TTS
-    // ============================================================================
+    // Audio cue playback
     function playNotificationSound(notification) {
         if (!notification) return;
 
@@ -88,19 +68,11 @@ Item {
         }
 
         if (trackPath.length > 0) {
-            if (shell.debug) console.log("Playing notification audio cue:", trackPath);
             Quickshell.execDetached(["mpv", "--no-video", "--volume=80", trackPath]);
         }
     }
 
-    readonly property var genericSpeechAppNames: ["notify-send", "notification", "notify"]
-
-    readonly property var chatAppNames: [
-        "vesktop", "discord", "element", "cinny", "matrix",
-        "telegram", "signal", "slack", "fluffychat", "nheko",
-        "thunderbird", "gmail", "kmail", "mail"
-    ]
-
+    // Key user whitelist
     readonly property var speechKeywordFilter: [
         "Apogee",
         "Cageheart",
@@ -141,68 +113,56 @@ Item {
         return isMicNotif || isClipboardNotif;
     }
 
-    // Strips room/server/channel names from usernames
-    function extractSenderName(rawSummary) {
-        if (!rawSummary) return "";
-        let sender = rawSummary.trim();
+    // Resolves ONLY the person's name (strips room/channel/server tags)
+    function resolveSenderName(summary, body) {
+        let textToSearch = (summary + " " + body).toLowerCase();
 
-        // 1. Remove parenthesized channels/servers: "User (#general)" -> "User"
-        sender = sender.replace(/\s*\([^)]*\)/g, "");
-
-        // 2. Remove bracketed tags: "User [#general]" -> "User"
-        sender = sender.replace(/\s*\[[^\]]*\]/g, "");
-
-        // 3. Remove "in RoomName": "User in General Chat" -> "User"
-        sender = sender.replace(/\s+in\s+.*$/i, "");
-
-        // 4. Remove Channel prefix if formatted like "#general > User" or "Server > User"
-        if (sender.indexOf(">") !== -1) {
-            let parts = sender.split(">");
-            sender = parts[parts.length - 1];
+        // 1. Direct match against known key user profiles
+        for (let i = 0; i < ipc.speechKeywordFilter.length; i++) {
+            let key = ipc.speechKeywordFilter[i];
+            if (key.toLowerCase() === "urgent") continue;
+            if (textToSearch.includes(key.toLowerCase())) {
+                return key; // Returns clean proper name ("Solar Sonata", "Luster Dawn", etc.)
+            }
         }
 
-        // 5. Remove Channel prefix if formatted like "#channel: User"
-        if (sender.indexOf(":") !== -1 && sender.startsWith("#")) {
-            let parts = sender.split(":");
-            sender = parts[parts.length - 1];
+        // 2. If Discord puts "Sender: message" in the body
+        if (body) {
+            let colonIdx = body.indexOf(":");
+            if (colonIdx > 0 && colonIdx < 30) {
+                let candidate = body.substring(0, colonIdx).trim();
+                if (!candidate.includes("http") && !candidate.includes("/")) {
+                    return candidate;
+                }
+            }
         }
 
-        return sender.trim();
+        // 3. Fallback: Strip room/server parentheses from summary
+        let name = summary ? summary.trim() : "";
+        name = name.replace(/\s*\([^)]*\)/g, ""); // Remove (ServerName) or (#channel)
+        name = name.replace(/\s*\[[^\]]*\]/g, ""); // Remove [tags]
+        name = name.replace(/\s+in\s+.*$/i, "");   // Remove "in ServerName"
+        if (name.indexOf(">") !== -1) {
+            let parts = name.split(">");
+            name = parts[parts.length - 1];
+        }
+        if (name.indexOf(":") !== -1) {
+            let parts = name.split(":");
+            name = parts[parts.length - 1];
+        }
+        return name.trim();
     }
 
     readonly property int dedupWindowMs: 3000
     property string lastSpokenKey: ""
     property double lastSpokenTime: 0
 
-    readonly property int maxSpeechLength: 75
-
-    readonly property var urlRegex: /(https?:\/\/[^\s<]+)/gi
-
-    function cleanSpeechText(text) {
-        let cleaned = text.replace(/<[^>]*>/g, "");
-        cleaned = cleaned.replace(ipc.urlRegex, "Sent a link");
-
-        cleaned = cleaned.replace(/(\*\*|__)(.*?)\1/g, "$2");
-        cleaned = cleaned.replace(/(\*|_)(.*?)\1/g, "$2");
-        cleaned = cleaned.replace(/~~(.*?)~~/g, "$1");
-        cleaned = cleaned.replace(/`([^`]+)`/g, "$1");
-        cleaned = cleaned.replace(/^#{1,6}\s*/gm, "");
-
-        cleaned = cleaned.replace(/\s+/g, " ").trim();
-
-        if (cleaned.length > ipc.maxSpeechLength) {
-            cleaned = cleaned.substring(0, ipc.maxSpeechLength).trim() + "...";
-        }
-
-        return cleaned;
-    }
-
     function speakNotification(notification) {
         if (!notification) return;
 
         let appName = (notification.appName || notification.desktopEntry || "").toLowerCase();
         let rawSummary = notification.summary || "";
-        let body = notification.body || "";
+        let body = (notification.body || "").trim();
 
         if (ipc.isClipboardOrMicNotification(appName, rawSummary, body)) {
             return;
@@ -218,29 +178,17 @@ Item {
             return;
         }
 
+        let name = ipc.resolveSenderName(rawSummary, body);
         let speechText = "";
-        let isChat = false;
 
-        for (let i = 0; i < ipc.chatAppNames.length; i++) {
-            if (appName.includes(ipc.chatAppNames[i])) {
-                isChat = true;
-                break;
-            }
-        }
-
-        // Clean sender name (stripping room/channel tags)
-        let senderName = ipc.extractSenderName(rawSummary);
-
-        if (isChat && senderName.length > 0 && body.length > 0) {
-            speechText = "Message from " + senderName + ": " + body;
-        } else if (isChat && senderName.length > 0) {
-            speechText = "Message from " + senderName;
+        if (name.length > 0) {
+            // Strictly says "Message from <Name>" (no message body, no room name)
+            speechText = "Message from " + name;
+        } else if (rawSummary.toLowerCase().includes("urgent") || body.toLowerCase().includes("urgent")) {
+            speechText = "Urgent notification";
         } else {
-            let appPrefix = ipc.genericSpeechAppNames.includes(appName) ? "" : (appName ? notification.appName + ": " : "");
-            speechText = appPrefix + rawSummary + (body ? ". " + body : "");
+            speechText = "New notification";
         }
-
-        speechText = ipc.cleanSpeechText(speechText);
 
         if (speechText.length > 0) {
             ipc.lastSpokenKey = dedupKey;
@@ -249,12 +197,7 @@ Item {
         }
     }
 
-    // ============================================================================
-    // ACTIVATE INTERFACE (UNIVERSAL APPLICATION JUMP ENGINE)
-    // ============================================================================
     function activate(card, summary, body, appName, directNotificationObject) {
-        if (shell.debug) console.log("ACTIVATE ENTERED");
-
         let summaryStr = summary || "";
         let bodyStr = body || "";
         let appNameStr = appName || "";
@@ -274,8 +217,6 @@ Item {
             let secondaryTarget = desktopHint || appNameStr;
             let baseNameClean = primaryTarget.replace(/-electron/g, "").replace(/-desktop/g, "").replace("vesktop", "discord");
 
-            if (shell.debug) console.log("Dynamic target resolution rule processing for app: " + primaryTarget);
-
             let targets = [primaryTarget, secondaryTarget, baseNameClean];
             let commandParts = [];
 
@@ -288,7 +229,6 @@ Item {
             }
 
             let swayCommand = commandParts.join("; ");
-            if (shell.debug) console.log("Dispatching dynamic Sway selector command: swaymsg " + swayCommand);
             Quickshell.execDetached(["swaymsg", swayCommand]);
         }
 
@@ -303,13 +243,10 @@ Item {
             }
 
             if (!targetAction && liveNotif.actions.length > 0) {
-                let firstActionIndex = 0;
-                targetAction = liveNotif.actions[firstActionIndex];
+                targetAction = liveNotif.actions[0];
             }
 
             if (targetAction && typeof targetAction.invoke === "function") {
-                if (shell.debug) console.log("SUCCESS: Scheduling native C++ action loop invocation over D-Bus -> " + targetAction.identifier);
-
                 let dbusTimer = Qt.createQmlObject(
                     'import QtQuick; Timer { interval: 120; repeat: false; }',
                     ipc
@@ -319,37 +256,25 @@ Item {
                         if (targetAction && typeof targetAction.invoke === "function") {
                             targetAction.invoke();
                         }
-                    } catch (e) {
-                        if (shell.debug) console.log("[IPC DEBUG] Delayed D-Bus invocation skipped: targetAction became invalid: " + e);
-                    }
+                    } catch (e) {}
                     dbusTimer.destroy();
                 });
                 dbusTimer.start();
                 return;
             }
         }
-
-        if (shell.debug) console.log("Warning: Window focus complete, but no valid target action was available to execute.");
     }
 
     function jumpToLatestInternal() {
-        if (shell.debug) console.log("jumpToLatest called");
-
         let entry = getNewest();
-        if (!entry) {
-            if (shell.debug) console.log("No active notifications tracked inside ListModel memory profile.");
-            return;
-        }
+        if (!entry) return;
 
         let visualCard = entry.cardRef;
         let textSummary = entry.summary;
         let textBody = entry.body;
         let textAppName = entry.appName;
 
-        if (!visualCard) {
-            if (shell.debug) console.log("Unable to trace active visual pointer component item target");
-            return;
-        }
+        if (!visualCard) return;
 
         ipc.activate(visualCard, textSummary, textBody, textAppName);
 
@@ -358,16 +283,12 @@ Item {
             ipc
         );
         delayedDismissTimer.triggered.connect(function() {
-            if (shell.debug) console.log("Executing delayed notification card visual clearance routine...");
             ipc.dismiss(visualCard);
             delayedDismissTimer.destroy();
         });
         delayedDismissTimer.start();
     }
 
-    // ============================================================================
-    // IPC HANDLER REGISTRATION LAYER
-    // ============================================================================
     IpcHandler {
         target: "global_notif"
 

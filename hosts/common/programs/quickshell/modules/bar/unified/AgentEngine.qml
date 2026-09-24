@@ -10,22 +10,26 @@ Item {
     property bool isPaused: false
     property string statusLabel: "Idle"
 
-    // Poll status every 1.5 seconds
     Timer {
         id: pollTimer
-        interval: 1500
+        interval: 2000
         running: true
         repeat: true
         triggeredOnStart: true
-        onTriggered: statusChecker.running = true
+        onTriggered: {
+            statusChecker.running = false;
+            statusChecker.running = true;
+        }
     }
 
     Process {
         id: statusChecker
         command: [
             "/run/current-system/sw/bin/bash", "-c",
-            "RUNNING=$(pgrep -f agent-worker >/dev/null && echo 'true' || echo 'false'); " +
-            "PAUSED=$([ -f /home/agent/workspace/.agent_state.json ] && echo 'true' || echo 'false'); " +
+            "RUNNING='false'; " +
+            "if pgrep -f '[a]gent-worker' >/dev/null 2>&1; then RUNNING='true'; fi; " +
+            "PAUSED='false'; " +
+            "if [ \"$RUNNING\" = 'false' ] && [ -f /home/agent/workspace/.agent_state.json ]; then PAUSED='true'; fi; " +
             "echo \"$RUNNING $PAUSED\""
         ]
         stdout: SplitParser {
@@ -33,9 +37,8 @@ Item {
                 let parts = data.trim().split(" ");
                 if (parts.length >= 2) {
                     agentEngine.isRunning = (parts[0] === "true");
-                    // Only considered paused if the checkpoint file exists and process is NOT running
-                    agentEngine.isPaused = (parts[1] === "true") && !agentEngine.isRunning;
-                    
+                    agentEngine.isPaused = (parts[1] === "true");
+
                     if (agentEngine.isRunning) agentEngine.statusLabel = "Working";
                     else if (agentEngine.isPaused) agentEngine.statusLabel = "Paused";
                     else agentEngine.statusLabel = "Idle";

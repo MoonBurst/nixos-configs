@@ -1,9 +1,9 @@
 { ... }: {
   wayland.windowManager.sway.config = {
     assigns = {
-      "1" = [ { class = "vesktop"; } ];
-      "2" = [ { app_id = "edopro"; } ];
-      "5" = [ { class = "Audacious"; } ];
+      "1" = [ { class = "^(vesktop|discord)$"; } { app_id = "^(vesktop|discord)$"; } ];
+      "2" = [ { app_id = "edopro"; } { class = "edopro"; } ];
+      "5" = [ { class = "^(Audacious|audacious)$"; } { app_id = "^(Audacious|audacious)$"; } ];
     };
 
     window.commands = [

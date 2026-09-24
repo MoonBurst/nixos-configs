@@ -35,9 +35,11 @@ in {
     mode = "0444";
     content = ''
       ldap_base_dn = "dc=moonburst,dc=net"
+      http_host = "::"
       http_port = 17170
+      http_url = "https://register.moonburst.net"
+      ldap_host = "::"
       ldap_port = 3890
-      key_file = "/var/lib/lldap/key_file"
       ldap_user_pass_file = "${config.sops.secrets.lldap_admin_password.path}"
       registration_open = true
 
@@ -61,6 +63,18 @@ in {
   };
 
   systemd.services.lldap = {
+    environment = {
+      LLDAP_JWT_SECRET_FILE = "/var/lib/lldap/jwt_secret";
+    };
+
+    preStart = ''
+      mkdir -p /var/lib/lldap
+      if [ ! -f /var/lib/lldap/jwt_secret ]; then
+        ${pkgs.coreutils}/bin/tr -dc 'A-Za-z0-9!#%&()*+,-./:;<=>?@[\]^_{|}~' </dev/urandom | ${pkgs.coreutils}/bin/head -c 64 > /var/lib/lldap/jwt_secret
+        chmod 600 /var/lib/lldap/jwt_secret
+      fi
+    '';
+
     serviceConfig.ExecStart = lib.mkForce "${pkgs.lldap}/bin/lldap run --config-file ${config.sops.templates."lldap_config.toml".path}";
   };
 
@@ -76,7 +90,7 @@ in {
 
     settings = {
       theme = "dark";
-      server.address = "tcp://127.0.0.1:9091";
+      server.address = "tcp://0.0.0.0:9091";
       storage.local.path = "/var/lib/authelia-main/db.sqlite3";
 
       authentication_backend = {
@@ -143,9 +157,9 @@ in {
   };
 
   systemd.services."authelia-main" = {
-    serviceConfig.Environment = [
-      "AUTHELIA_AUTHENTICATION_BACKEND_LDAP_PASSWORD_FILE=${config.sops.secrets.lldap_authelia_bind_password.path}"
-    ];
+    environment = {
+      AUTHELIA_AUTHENTICATION_BACKEND_LDAP_PASSWORD_FILE = config.sops.secrets.lldap_authelia_bind_password.path;
+    };
   };
 
   services.nginx.virtualHosts = {
@@ -154,6 +168,12 @@ in {
       locations."/" = {
         proxyPass = "http://127.0.0.1:9091";
         proxyWebsockets = true;
+        extraConfig = ''
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto https;
+        '';
       };
     };
 
@@ -162,6 +182,12 @@ in {
       locations."/" = {
         proxyPass = "http://127.0.0.1:17170";
         proxyWebsockets = true;
+        extraConfig = ''
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto https;
+        '';
       };
     };
   };

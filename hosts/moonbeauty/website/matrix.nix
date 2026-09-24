@@ -177,7 +177,7 @@ in
     listen = defaultListen;
 
     extraConfig = ''
-      client_max_body_size 50M;
+      client_max_body_size 500M;
       ${commonNginxHeaders}
     '';
 
@@ -227,7 +227,7 @@ in
     listen = defaultListen;
 
     extraConfig = ''
-      client_max_body_size 30M;
+      client_max_body_size 10G;
       ${commonNginxHeaders}
     '';
 

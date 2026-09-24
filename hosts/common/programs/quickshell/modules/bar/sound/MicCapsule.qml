@@ -29,7 +29,7 @@ Item {
         }
     }
 
-    Process { id: micMuteCmd; command: ["/bin/sh", "-c", "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"] }
+    Process { id: micMuteCmd; command: ["wpctl", "set-mute", "@DEFAULT_AUDIO_SOURCE@", "toggle"] }
 
     Process {
         id: micProc

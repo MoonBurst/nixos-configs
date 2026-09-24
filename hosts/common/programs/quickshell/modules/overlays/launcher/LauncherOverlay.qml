@@ -71,7 +71,13 @@ Rectangle {
 
             if (currentMode === "pass") {
                 var query = trimmed;
-                if (trimmed.startsWith("pass ")) {
+                            const pwrTriggers = ["power", "pwr", "session", "sys", "reboot", "restart", "shutdown", "poweroff", "sleep", "suspend", "logout"];
+            if (pwrTriggers.includes(trimmed) || trimmed.startsWith("pwr ") || trimmed.startsWith("power ")) {
+                launcherRoot.mode = "power";
+                return;
+            }
+
+            if (trimmed.startsWith("pass ")) {
                     query = trimmed.substring(5).trim();
                 }
                 ctrl.pass.searchQuery = query;
@@ -144,6 +150,12 @@ Rectangle {
                 return
             }
 
+                        const pwrTriggers = ["power", "pwr", "session", "sys", "reboot", "restart", "shutdown", "poweroff", "sleep", "suspend", "logout"];
+            if (pwrTriggers.includes(trimmed) || trimmed.startsWith("pwr ") || trimmed.startsWith("power ")) {
+                launcherRoot.mode = "power";
+                return;
+            }
+
             if (trimmed.startsWith("pass ")) {
                 launcherRoot.mode = "pass"
                 var query = trimmed.substring(5).trim()
@@ -185,7 +197,7 @@ Rectangle {
             launcherRoot.mode = targetMode;
             searchField.clear();
 
-            if (targetMode === "clipboard") ctrl.clipboard.refreshFilter("");
+            if (targetMode === "clipboard") { ctrl.clipboard.loadClipboard(); ctrl.clipboard.refreshFilter(""); }
             else if (targetMode === "apps") ctrl.appLauncher.refreshFilter("");
             else if (targetMode === "pass") ctrl.pass.searchQuery = "";
 
@@ -204,6 +216,7 @@ Rectangle {
     function toggleLauncher() { toggleOverlayMode("apps"); }
     function toggleClipboard() { toggleOverlayMode("clipboard"); }
     function toggleTodo() { toggleOverlayMode("todo"); }
+    function togglePower() { toggleOverlayMode("power"); }
     function togglePass() { toggleOverlayMode("pass"); }
     function toggleEmail() { if (mode === "Email" && launcherWindow.visible) closeOverlay(); else toggleOverlayMode("Email"); }
     function toggleRng() {
@@ -227,6 +240,8 @@ Rectangle {
             if (up) ctrl.unicodeSearch.moveUp(); else ctrl.unicodeSearch.moveDown();
             unicodeLoader.item.currentIndex = ctrl.unicodeSearch.selectedIndex;
             unicodeLoader.item.positionViewAtIndex(unicodeLoader.item.currentIndex, ListView.Contain);
+        } else if (mode === "power" && powerLoader.item) {
+            if (up) powerLoader.item.selectPrev(); else powerLoader.item.selectNext();
         } else if (mode === "pass" && passLoader.item && passLoader.item.targetListView) {
             if (up) ctrl.pass.selectPrev(); else ctrl.pass.selectNext();
             passLoader.item.targetListView.currentIndex = ctrl.pass.selectedIndex;
@@ -283,6 +298,7 @@ Rectangle {
                     if (currentMode === "clipboard") return "Search clipboard history..."
                         if (currentMode === "unicode") return "Search unicode symbols..."
                             if (currentMode === "dictionary") return "Enter word..."
+                                if (currentMode === "power") return "Choose power action (Enter to confirm)..."
                                 if (currentMode === "pass") return "Search passwords..."
                                     return "Search applications..."
                 }
@@ -555,7 +571,7 @@ Rectangle {
                             highlightResizeDuration: 0
                             flickDeceleration: 10000
 
-                            delegate: Rectangle {
+                                                                                    delegate: Rectangle {
                                 readonly property int itemIndex: index
                                 readonly property string itemText: model.text || ""
                                 readonly property bool itemIsImage: model.isImage || false
@@ -569,31 +585,41 @@ Rectangle {
                                 border.color: ListView.isCurrentItem ? shell.theme.base08 : "transparent"
 
                                 Item {
-                                    anchors.fill: parent; anchors.margins: shell.theme.globalPadding
+                                    anchors.fill: parent
+                                    anchors.margins: shell.theme.globalPadding
 
                                     Image {
                                         id: listEntryImageComponent
                                         visible: itemIsImage
                                         width: 100; height: 100
-                                        anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                                        anchors.left: parent.left
+                                        anchors.verticalCenter: parent.verticalCenter
                                         source: itemIsImage && itemImagePath ? "file://" + itemImagePath : ""
                                         fillMode: Image.PreserveAspectFit
                                         smooth: false
                                     }
 
-Text {
+                                    Text {
                                         anchors.left: itemIsImage ? listEntryImageComponent.right : parent.left
                                         anchors.leftMargin: itemIsImage ? 20 : 0
-                                        anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                                        anchors.right: parent.right
+                                        anchors.verticalCenter: parent.verticalCenter
                                         text: (itemText.startsWith("[Image: ") || !itemIsImage) ? itemText : "[Image Clipboard Entry]"
-                                        wrapMode: Text.NoWrap; elide: Text.ElideRight; color: shell.theme.base05; font.pixelSize: 20; textFormat: Text.PlainText
+                                        wrapMode: Text.NoWrap
+                                        elide: Text.ElideRight
+                                        color: shell.theme.base05
+                                        font.pixelSize: 20
+                                        textFormat: Text.PlainText
                                     }
                                 }
 
                                 MouseArea {
                                     anchors.fill: parent
                                     hoverEnabled: true
-                                    onClicked: { ctrl.clipboard.selectedIndex = itemIndex; ctrl.clipboard.updatePreview(); }
+                                    onClicked: {
+                                        ctrl.clipboard.selectedIndex = itemIndex;
+                                        ctrl.clipboard.updatePreview();
+                                    }
                                 }
                             }
                             ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
@@ -721,6 +747,23 @@ Text {
                 height: active ? parent.contentHeight + 70 : 0
                 source: "Todo.qml"
                 onLoaded: { if (item) item.forceActiveFocus(); }
+            }
+
+            
+            Loader {
+                id: powerLoader
+                active: launcherRoot.mode === "power"
+                visible: active
+                width: parent.width
+                height: active ? parent.contentHeight : 0
+                source: "PowerView.qml"
+                onLoaded: {
+                    if (item) {
+                        item.shell = launcherRoot.shell;
+                        item.searchQuery = Qt.binding(function() { return searchField.text; });
+                        item.actionCompleted.connect(function() { launcherRoot.closeOverlay(); });
+                    }
+                }
             }
 
             Loader {

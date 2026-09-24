@@ -72,7 +72,7 @@ Item {
     Process {
         id: cpuStatsProc
         running: true
-        command: ["sh", "-c", "usage=$(awk '/cpu / {print int(($2+$4)*100/($2+$4+$5))}' /proc/stat); temp=$(cat /sys/class/hwmon/hwmon*/temp*_input 2>/dev/null | head -n 1 || echo '0'); if [ \"$temp\" -gt 0 ]; then temp=$(echo \"scale=0; $temp/1000\" | bc); fi; echo \"$usage%:${temp}°C\""]
+        command: ["sh", "-c", "usage=$(awk '/cpu / {print int(($2+$4)*100/($2+$4+$5))}' /proc/stat); temp=$(awk '{print int($1/1000); exit}' /sys/class/hwmon/hwmon*/temp*_input 2>/dev/null || echo 0); echo \"$usage%:${temp}°C\""]
         stdout: SplitParser {
             onRead: data => {
                 var parts = data.trim().split(":");

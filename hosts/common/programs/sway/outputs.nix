@@ -16,7 +16,7 @@
         pos = "1920 0";
         transform = "180";
         scale = "1.0";
-        adaptive_sync = "off";
+        adaptive_sync = "on";
       };
       "AOC 24G2W1G4 0x0000E8FA" = {
         mode = "1920x1080@144.001Hz";

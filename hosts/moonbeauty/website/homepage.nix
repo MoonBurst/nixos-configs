@@ -28,7 +28,7 @@ pkgs.writeTextFile {
           border-radius: 12px;
           box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
           border: 1px solid #27272a;
-          max-width: 360px;
+          max-width: 380px;
           width: 100%;
         }
         h1 {
@@ -53,7 +53,7 @@ pkgs.writeTextFile {
           color: #f4f4f5;
           text-decoration: none;
           font-weight: 600;
-          padding: 0.8rem 1.5rem;
+          padding: 0.85rem 1.5rem;
           border-radius: 8px;
           border: 1px solid #3f3f46;
           transition: all 0.2s ease-in-out;
@@ -64,20 +64,6 @@ pkgs.writeTextFile {
           border-color: #c084fc;
           transform: translateY(-2px);
         }
-        .btn.disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-          pointer-events: none;
-          background-color: #12131a;
-          border-color: #27272a;
-          color: #71717a;
-        }
-        .btn.disabled:hover {
-          transform: none;
-          background-color: #12131a;
-          border-color: #27272a;
-          color: #71717a;
-        }
       </style>
     </head>
     <body>
@@ -86,10 +72,8 @@ pkgs.writeTextFile {
         <p>Services Portal</p>
         <div class="link-group">
           <a class="btn" href="https://matrix.moonburst.net">Matrix Chat</a>
-          <a class="btn disabled" href="#" aria-disabled="true">Login Portal (Out of Order)</a>
-          <a class="btn disabled" href="#" aria-disabled="true">Fluxer (Out of Order)</a>
-          <!-- <a class="btn" href="https://moonburst.net">Fluxer</a> -->
-
+          <a class="btn" href="https://music.moonburst.net">Music Streamer (FLAC)</a>
+          <a class="btn" href="https://share.moonburst.net">Encrypted Share Drop (24h)</a>
         </div>
       </div>
     </body>

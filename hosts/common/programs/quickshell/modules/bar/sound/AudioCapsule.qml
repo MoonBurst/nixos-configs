@@ -24,7 +24,7 @@ Item {
     Process {
         id: audioFetcher
         running: true
-        command: ["sh", "-c", "wpctl get-volume @DEFAULT_AUDIO_SINK@"]
+        command: ["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"]
 
         stdout: SplitParser {
             onRead: data => {
@@ -65,6 +65,8 @@ Item {
             } else if (wheel.angleDelta.y < 0) {
                 volDownProcess.running = true;
             }
+            audioFetcher.running = false;
+            audioFetcher.running = true;
         }
     }
 
@@ -91,8 +93,8 @@ Item {
         command: ["/home/moonburst/nix/hosts/common/scripts/sound_sink_switcher.sh"]
     }
 
-    Process { id: volUpProcess; running: false; command: ["sh", "-c", "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"] }
-    Process { id: volDownProcess; running: false; command: ["sh", "-c", "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"] }
+    Process { id: volUpProcess; running: false; command: ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "5%+", "--limit", "1.0"] }
+    Process { id: volDownProcess; running: false; command: ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "5%-"] }
     Process { id: mixerOpenProcess; running: false; command: ["pavucontrol"] }
 
     Timer {

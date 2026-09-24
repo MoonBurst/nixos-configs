@@ -43,10 +43,7 @@ Rectangle {
     property bool wasSent: false
 
     // Automated Email Signature
-    property string mailSignature: "\n\n--\nSeekers of light..
-    Believe not in justice...
-    Believe not in truth...
-    For they are empty and inconsistent, as are all things..."
+    property string mailSignature: "\n\n--\nSeekers of light..\nBelieve not in justice...\nBelieve not in truth...\nFor they are empty and inconsistent, as are all things..."
 
     // Exposed alias to let root window file dialog append attachments
     property alias bodyInput: bodyInput

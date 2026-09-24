@@ -33,7 +33,7 @@ Item {
     readonly property color themeBase05: (shell && shell.theme && typeof shell.theme.base05 !== "undefined") ? shell.theme.base05 : "yellow"
 
     // Layout configuration
-    property int tooltipHeight: 500
+    property int tooltipHeight: 520
     property int tooltipCollapsedWidth: 105
     property int tooltipExpandedWidth: 640
     property int tooltipTopOffset: -3
@@ -78,9 +78,14 @@ Item {
     }
 
     // --- INSTANTIATE ENGINES ---
+    RecordingEngine {
+        id: recEngine
+        onIsRecordingChanged: recalculateState()
+        onIsStreamingChanged: recalculateState()
+    }
+
     GameSentinel {
         id: gameSentinel
-        onIsGamingChanged: recalculateState()
         onIsStormHoldChanged: recalculateState()
     }
 
@@ -117,7 +122,27 @@ Item {
         let isWarning = false;
         let isActive = false;
 
-        if (sysHealth.failedCount > 0) {
+        // 1. ACTIVE RECORDING / STREAMING (Top Visual Priority)
+        if (recEngine.isRecording && recEngine.isStreaming) {
+            isActive = true;
+            unifiedBox.activeLabel = "🔴 Rec + Live";
+            lines.push("🔴 CAPTURE ACTIVE: Region Recording + Live Stream");
+            lines.push("  📁 Saving to /mnt/3TBHDD/Recordings | 📡 Streaming to Twitch");
+        }
+        else if (recEngine.isStreaming) {
+            isActive = true;
+            unifiedBox.activeLabel = "🟣 Live Twitch";
+            lines.push("🟣 STREAMING ACTIVE: Live to Twitch");
+            lines.push("  📡 Ingest: rtmp://live.twitch.tv | GPU Hardware Encoder");
+        }
+        else if (recEngine.isRecording) {
+            isActive = true;
+            unifiedBox.activeLabel = "🔴 Recording";
+            lines.push("🔴 REGION RECORDING ACTIVE");
+            lines.push("  📁 Saving MP4 to: /mnt/3TBHDD/Recordings");
+        }
+        // 2. SYSTEM CRITICAL FAILURES
+        else if (sysHealth.failedCount > 0) {
             isError = true;
             let firstFailed = sysHealth.failedUnits[0] || "Unit";
             unifiedBox.activeLabel = "ERR: " + (sysHealth.failedCount === 1 ? firstFailed.replace(".service", "") : sysHealth.failedCount + " Failed");
@@ -125,11 +150,6 @@ Item {
             for (let i = 0; i < sysHealth.failedUnits.length; i++) {
                 lines.push("  • " + sysHealth.failedUnits[i]);
             }
-        }
-        else if (sysHealth.hddBadSectors > 0) {
-            isError = true;
-            unifiedBox.activeLabel = "ERR: HDD Bad";
-            lines.push("❌ HARD DRIVE WARNING: " + sysHealth.hddBadSectors + " Bad Sector(s)!");
         }
         else if (sysHealth.diskWarning) {
             isWarning = true;
@@ -149,19 +169,12 @@ Item {
             unifiedBox.activeLabel = "ERR: Borg";
             lines.push("❌ ATTENTION: Borg Backup Failed!");
         }
-        // Storm Outage Threat Hold
+        // 3. SPECIAL MODES
         else if (gameSentinel.isStormHold) {
             isWarning = true;
             unifiedBox.activeLabel = "⛈️ Storm Hold";
             lines.push("⛈️ SEVERE WEATHER OUTAGE GUARD ACTIVE");
             lines.push("  ⚡ 3TB Drive Parked & Cloud Sync Paused to prevent blackout corruption");
-        }
-        // Gaming Mode Active
-        else if (gameSentinel.isGaming) {
-            isActive = true;
-            unifiedBox.activeLabel = "🎮 Gaming";
-            lines.push("🎮 GAMING MODE ACTIVE");
-            lines.push("  ⚡ Ping Protector: Cloud Sync blocked (0% upload)");
         }
         else if (borgEngine.serviceActive) {
             isActive = true;
@@ -185,7 +198,6 @@ Item {
             lines.push("⏸ CLOUD SYNC PAUSED");
             lines.push("  Remaining: " + borgEngine.remaining);
         }
-        // AI Agent Status
         else if (agentEngine.isRunning) {
             isActive = true;
             unifiedBox.activeLabel = "🤖 AI Working";
@@ -222,12 +234,12 @@ Item {
         }
 
         lines.push("--------------------------------------");
+        lines.push("Screen Capture: " + (recEngine.isRecording ? (recEngine.isStreaming ? "Recording + Streaming" : "Recording") : (recEngine.isStreaming ? "Streaming" : "Idle")));
         lines.push("AI Agent:       " + (agentEngine.isRunning ? "Working (VRAM Active)" : (agentEngine.isPaused ? "Paused (0 MB VRAM)" : "Idle")));
         lines.push("Power Guard:    " + (gameSentinel.isStormHold ? "Storm Hold (Drive Parked)" : "Normal (Grid Stable)"));
-        lines.push("Gaming Sentinel:" + (gameSentinel.isGaming ? "Active (In-Game)" : "Idle (0 Games)"));
+        lines.push("Gaming Sentinel:" + (gameSentinel.isGaming ? "Active (Sync Paused)" : "Idle (0 Games)"));
         lines.push("Booted Kernel:  " + sysHealth.runningKernel);
-        lines.push("Next on Reboot: " + (sysHealth.rebootRequired ? (sysHealth.latestKernel + " (Pending)") : (sysHealth.runningKernel + " (Matches)")));
-        lines.push("Storage Health: Root (" + sysHealth.diskRootPercent + "%) | 3TB HDD (" + sysHealth.diskBackupPercent + "% | " + sysHealth.hddTemp + ")");
+        lines.push("Storage Health: Root (" + sysHealth.diskRootPercent + "%) | 3TB HDD (" + sysHealth.diskBackupPercent + "%)");
         lines.push("Flake Status:   " + (sysHealth.flakeAgeDays > 0 ? (sysHealth.flakeAgeDays + "d old") : "Up-to-date") + " | " + sysHealth.nixGenerations + " profiles");
         lines.push("Borg Offsite:   " + (borgEngine.serviceActive ? "Syncing" : (borgEngine.remaining !== "0 MB" && borgEngine.remaining !== "" ? "Paused" : "Idle")));
         if (borgEngine.isMounted) lines.push("📂 Backups Mounted at: /tmp/borg-mount");
@@ -240,7 +252,24 @@ Item {
         if (twitchEngine.berryClaim.length > 0) lines.push("  Claimed: " + twitchEngine.berryClaim);
 
         unifiedBox.needsAttention = (isError || isWarning);
-        unifiedBox.activeColor = isError ? "#f38ba8" : (isWarning ? "#fab387" : (gameSentinel.isGaming ? "#cba6f7" : (agentEngine.isRunning ? "#89b4fa" : (agentEngine.isPaused ? "#f9e2af" : (isActive ? "#a6e3a1" : (!borgEngine.serviceActive && borgEngine.remaining !== "0 MB" && borgEngine.remaining !== "" ? "#f9e2af" : unifiedBox.themeBase05))))));
+
+        // Color coding
+        if (recEngine.isRecording) {
+            unifiedBox.activeColor = "#ff5555";
+        } else if (recEngine.isStreaming) {
+            unifiedBox.activeColor = "#cba6f7";
+        } else if (isError) {
+            unifiedBox.activeColor = "#f38ba8";
+        } else if (isWarning) {
+            unifiedBox.activeColor = "#fab387";
+        } else if (agentEngine.isRunning) {
+            unifiedBox.activeColor = "#89b4fa";
+        } else if (isActive) {
+            unifiedBox.activeColor = "#a6e3a1";
+        } else {
+            unifiedBox.activeColor = unifiedBox.themeBase05;
+        }
+
         unifiedBox.tooltipLines = lines;
     }
 
@@ -324,11 +353,14 @@ Item {
                 font.family: "monospace"
                 font.pixelSize: themeFontSize - 2
                 color: {
-                    if (unifiedBox.tooltipLines[index].indexOf("❌") !== -1 || unifiedBox.tooltipLines[index].indexOf("•") !== -1) return "#f38ba8";
-                    if (unifiedBox.tooltipLines[index].indexOf("⚠️") !== -1 || unifiedBox.tooltipLines[index].indexOf("⛈️") !== -1 || unifiedBox.tooltipLines[index].indexOf("(Pending)") !== -1) return "#fab387";
-                    if (unifiedBox.tooltipLines[index].indexOf("🎮") !== -1) return "#cba6f7";
-                    if (unifiedBox.tooltipLines[index].indexOf("🤖") !== -1) return "#89b4fa";
-                    if (unifiedBox.tooltipLines[index].indexOf("✔") !== -1) return "#a6e3a1";
+                    let line = unifiedBox.tooltipLines[index];
+                    if (line.indexOf("🔴") !== -1) return "#ff5555";
+                    if (line.indexOf("🟣") !== -1) return "#cba6f7";
+                    if (line.indexOf("❌") !== -1 || line.indexOf("•") !== -1) return "#f38ba8";
+                    if (line.indexOf("⚠️") !== -1 || line.indexOf("⛈️") !== -1 || line.indexOf("(Pending)") !== -1) return "#fab387";
+                    if (line.indexOf("🎮") !== -1) return "#cba6f7";
+                    if (line.indexOf("🤖") !== -1) return "#89b4fa";
+                    if (line.indexOf("✔") !== -1) return "#a6e3a1";
                     return themeBase05;
                 }
                 y: 58 + (index * 18)
@@ -340,6 +372,29 @@ Item {
             spacing: 6
             y: unifiedBox.tooltipHeight - 48
             x: tooltip.slantX(y) + 24
+
+            // 0. Stop Recording Button
+            Rectangle {
+                visible: recEngine.isActive
+                width: 95; height: 26
+                color: stopRecHover.hovered ? "#45475a" : "#181825"
+                border.color: "#ff5555"
+                border.width: 1; radius: 4
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "⏹ Stop Rec"
+                    font.family: "monospace"; font.pixelSize: 11; font.bold: true
+                    color: "#ff5555"
+                }
+
+                HoverHandler { id: stopRecHover }
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: recEngine.stopAll()
+                }
+            }
 
             // 1. Sync Control Button
             Rectangle {
@@ -470,10 +525,8 @@ Item {
                     cursorShape: (agentEngine.isRunning || agentEngine.isPaused) ? Qt.PointingHandCursor : Qt.ArrowCursor
                     onClicked: {
                         if (agentEngine.isRunning) {
-                            // Sends SIGINT to checkpoint state & instantly free 100% VRAM
                             unifiedBox.runCmd("pkill -SIGINT -f agent-worker");
                         } else if (agentEngine.isPaused) {
-                            // Resumes agent in the background with the checkpointed state
                             unifiedBox.runCmd("nohup /run/current-system/sw/bin/agent --resume >/dev/null 2>&1 &");
                         }
                     }

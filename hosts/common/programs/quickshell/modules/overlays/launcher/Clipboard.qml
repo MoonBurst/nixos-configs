@@ -13,8 +13,6 @@ Item {
     property string lastSeenTopId: ""
 
     property var allClipboardItems: []
-    property var deleteQueue: []
-
     property alias filteredClipboardItems: filteredClipboardModel
     signal clipboardCopied(string id)
 
@@ -35,7 +33,7 @@ Item {
         running: true
         repeat: true
         onTriggered: {
-            if (deleteQueue.length === 0 && !deleteProcess.running && !pollCheckWorker.running && !clipboardLoader.running) {
+            if (!deleteProc.running && !pollCheckWorker.running && !clipboardLoader.running) {
                 pollCheckWorker.running = true;
             }
         }
@@ -52,8 +50,6 @@ Item {
 
     function loadClipboard() {
         if (clipboardLoader.running) return;
-        allClipboardItems = [];
-        filteredClipboardModel.clear();
         clipboardLoader.running = true;
     }
 
@@ -79,7 +75,9 @@ Item {
             }
         }
 
-        selectedIndex = 0;
+        if (selectedIndex >= filteredClipboardModel.count) {
+            selectedIndex = Math.max(0, filteredClipboardModel.count - 1);
+        }
         updatePreview();
     }
 
@@ -95,6 +93,7 @@ Item {
             return;
         }
 
+        previewLoader.running = false;
         previewLoader.command = ["sh", "-c", "cliphist decode " + item.id];
         previewLoader.running = true;
     }
@@ -138,50 +137,65 @@ Item {
     function copyItem(item) {
         if (!item) return;
 
+        copyProcess.running = false;
         if (item.isImage && item.imagePath) {
             copyProcess.command = ["sh", "-c", "wl-copy --type image/png < '" + item.imagePath.replace(/'/g, "'\\''") + "'"];
         } else {
             copyProcess.command = ["sh", "-c", "cliphist decode " + item.id + " | wl-copy"];
         }
         copyProcess.running = true;
+        root.clipboardCopied("done");
     }
 
     function deleteSelected() {
-        if (selectedIndex < 0 || selectedIndex >= filteredClipboardModel.count) return;
+        deleteItemAt(selectedIndex);
+    }
 
-        const item = filteredClipboardModel.get(selectedIndex);
+    function deleteItemAt(idx) {
+        if (idx < 0 || idx >= filteredClipboardModel.count) return;
+        const item = filteredClipboardModel.get(idx);
         if (!item) return;
 
-        const targetId = item.id;
-        let allIdx = -1;
+        // CRITICAL FIX: Extract primitive values BEFORE removing from model!
+        const isImage = Boolean(item.isImage);
+        const imagePath = String(item.imagePath || "");
+        const cleanId = String(item.id || "").trim();
+
+        // 1. Remove from memory storage array
         for (let i = 0; i < allClipboardItems.length; i++) {
-            if (allClipboardItems[i].id === targetId) {
-                allIdx = i;
+            if (String(allClipboardItems[i].id).trim() === cleanId) {
+                allClipboardItems.splice(i, 1);
                 break;
             }
         }
-        if (allIdx !== -1) allClipboardItems.splice(allIdx, 1);
 
-        filteredClipboardModel.remove(selectedIndex);
+        // 2. Remove visually from the UI list
+        filteredClipboardModel.remove(idx);
         if (selectedIndex >= filteredClipboardModel.count) {
             selectedIndex = Math.max(0, filteredClipboardModel.count - 1);
         }
         updatePreview();
 
-        if (item.isImage && item.imagePath) {
-            deleteProcess.command = ["sh", "-c", "rm -f '" + item.imagePath + "' '${item.imagePath%.png}.json'"];
-            deleteProcess.running = true;
-        } else if (item.rawLineText) {
-            deleteQueue.push(item.rawLineText);
-            processDeleteQueue();
+        // 3. Execute permanent disk deletion using the preserved variables
+        if (isImage && imagePath.length > 0) {
+            var jsonPath = imagePath.replace(/\.png$/, ".json");
+            deleteProc.running = false;
+            deleteProc.command = [
+                "sh", "-c",
+                "echo '=== [IMAGE DELETE] ===' >> /tmp/clipboard_debug.log; " +
+                "rm -vf '" + imagePath + "' '" + jsonPath + "' >> /tmp/clipboard_debug.log 2>&1"
+            ];
+            deleteProc.running = true;
+        } else if (cleanId.length > 0) {
+            deleteProc.running = false;
+            deleteProc.command = [
+                "sh", "-c",
+                "echo '=== [TEXT DELETE ID: " + cleanId + "] ===' >> /tmp/clipboard_debug.log; " +
+                "printf '%s\\t-\\n' '" + cleanId + "' | cliphist delete >> /tmp/clipboard_debug.log 2>&1; " +
+                "if [ -d /tmp/cliphist_db ]; then printf '%s\\t-\\n' '" + cleanId + "' | CLIPHIST_DB_PATH=/tmp/cliphist_db cliphist delete >> /tmp/clipboard_debug.log 2>&1; fi"
+            ];
+            deleteProc.running = true;
         }
-    }
-
-    function processDeleteQueue() {
-        if (deleteQueue.length === 0 || deleteProcess.running) return;
-        const nextRawText = deleteQueue.shift();
-        deleteProcess.command = ["sh", "-c", "printf '%s\\n' '" + nextRawText.replace(/'/g, "'\\\\''") + "' | cliphist delete"];
-        deleteProcess.running = true;
     }
 
     function wipeHistory() {
@@ -189,10 +203,18 @@ Item {
         filteredClipboardModel.clear();
         selectedIndex = 0;
         updatePreview();
+        wipeProcess.running = false;
         wipeProcess.running = true;
     }
 
-    // Atomic Single-Line Change Watcher (Eliminates the 2-second refresh loop)
+    Process { id: deleteProc }
+    Process { id: copyProcess }
+    Process { 
+        id: wipeProcess 
+        command: ["sh", "-c", "cliphist wipe; if [ -d /tmp/cliphist_db ]; then CLIPHIST_DB_PATH=/tmp/cliphist_db cliphist wipe; fi; rm -rf $HOME/.cache/quickshot_history/*"]
+    }
+
+    // Top-item change watcher
     Process {
         id: pollCheckWorker
         command: [
@@ -210,6 +232,8 @@ Item {
             }
         }
     }
+
+    property var _tempLoadingBuffer: []
 
     Process {
         id: clipboardLoader
@@ -233,6 +257,10 @@ Item {
             "done"
         ]
 
+        onStarted: {
+            root._tempLoadingBuffer = [];
+        }
+
         stdout: SplitParser {
             onRead: data => {
                 const lines = data.split("\n");
@@ -244,33 +272,34 @@ Item {
                     if (parts.length < 3) continue;
 
                     const type = parts[0];
-                    const col1 = parts[1];
+                    const col1 = parts[1].trim(); // Clean numeric ID
                     const col2 = parts[2];
 
                     if (type === "QS_IMG") {
-                        allClipboardItems.push({
+                        root._tempLoadingBuffer.push({
                             id: col2,
                             text: "[Image: " + col1 + "]",
                             searchText: col1.toLowerCase(),
                             isImage: true,
-                            imagePath: col2,
-                            rawLineText: ""
+                            imagePath: col2
                         });
                     } else if (type === "CLIP") {
-                        allClipboardItems.push({
+                        root._tempLoadingBuffer.push({
                             id: col1,
                             text: col2,
                             searchText: col2.toLowerCase(),
                             isImage: false,
-                            imagePath: "",
-                            rawLineText: line
+                            imagePath: ""
                         });
                     }
                 }
             }
         }
 
-        onExited: refreshFilter(currentQuery)
+        onExited: {
+            root.allClipboardItems = root._tempLoadingBuffer;
+            root.refreshFilter(root.currentQuery);
+        }
     }
 
     Process {
@@ -279,22 +308,6 @@ Item {
             onRead: data => { root.previewText += data; }
         }
         onStarted: { root.previewText = ""; }
-    }
-
-    Process {
-        id: copyProcess
-        onExited: { root.clipboardCopied("done"); }
-    }
-
-    Process {
-        id: deleteProcess
-        onExited: { processDeleteQueue(); }
-    }
-
-    Process {
-        id: wipeProcess
-        running: false
-        command: ["sh", "-c", "cliphist wipe; rm -rf $HOME/.cache/quickshot_history/*"]
     }
 
     Component.onCompleted: loadClipboard()

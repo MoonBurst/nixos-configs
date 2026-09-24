@@ -40,16 +40,14 @@ in
     matrixApp
 
     # --- Media & Graphics ---
-    audacious
     krita
     lmstudio
 
     # --- System & Utilities ---
     btrfs-assistant
 
-    # --- Development & Productivity ---
-    kdePackages.kate
-   unstable.protonup-qt
+    # --- Gaming & Compatibility ---
+    unstable.protonup-qt
 
     # --- 3D Printing & CAD ---
     cura-appimage

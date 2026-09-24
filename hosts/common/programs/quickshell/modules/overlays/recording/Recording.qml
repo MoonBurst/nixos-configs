@@ -41,7 +41,7 @@ Scope {
             // Fix: '[r]tmp' prevents pgrep from matching its own sub-shell command
             Process {
                 id: checkProcess
-                command: ["sh", "-c", "pgrep -x wf-recorder >/dev/null || pgrep -f '[r]tmp://live.twitch.tv' >/dev/null"]
+                command: ["pgrep", "-f", "wf-recorder|rtmp://live.twitch.tv"]
                 running: false
 
                 onExited: (code, status) => {

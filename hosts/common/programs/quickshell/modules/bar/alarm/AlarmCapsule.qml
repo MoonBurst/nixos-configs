@@ -74,7 +74,7 @@ Item {
         command: [
             "sh", "-c",
             "SF='/tmp/waybar_alarm_state'; [ ! -f \"$SF\" ] && echo \"No Alarm\" && exit 0; " +
-            "read start total msg < \"$SF\"; cur=$(date +%s); el=$((cur - start)); rem=$((total - el)); " +
+            "read start total msg < \"$SF\"; cur=${EPOCHSECONDS:-$(date +%s)}; el=$((cur - start)); rem=$((total - el)); " +
             "if [ $rem -le 0 ]; then " +
             "  /run/current-system/sw/bin/notify-send -t 10000 \"Alarm Alert\" \"$(echo \"$msg\" | sed 's/\"//g')\"; " +
             "  (timeout 3s pw-play --volume 0.25 ~/Documents/communicator.mp3 || mpv --no-video --volume=25 --end=3 ~/Documents/communicator.mp3 || true) & " +

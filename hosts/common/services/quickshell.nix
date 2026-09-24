@@ -48,7 +48,7 @@
     serviceConfig = {
       ExecStart = "${pkgs.bash}/bin/bash -c 'export PATH=/run/wrappers/bin:/home/moonburst/.nix-profile/bin:/run/current-system/sw/bin:/usr/bin:/bin; exec ${pkgs.quickshell}/bin/quickshell -p /home/moonburst/nix/hosts/common/programs/quickshell/shell.qml'";
       Restart = "always";
-      RestartSec = "2";
+      RestartSec = "1s";
     };
   };
 }

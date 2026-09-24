@@ -6,6 +6,8 @@ ShellRoot {
     id: root
 
     // Starts hidden (active: false)
+    function toggle() { rootState.active = !rootState.active; }
+
     QtObject {
         id: rootState
         property bool active: false
@@ -27,7 +29,7 @@ ShellRoot {
     Timer {
         id: ipcPollTimer
         interval: 150 // Check for commands 6 times a second
-        running: true
+        running: false
         repeat: true
         onTriggered: {
             var xhr = new XMLHttpRequest();
