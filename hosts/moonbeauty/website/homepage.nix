@@ -73,6 +73,7 @@ pkgs.writeTextFile {
         <div class="link-group">
           <a class="btn" href="https://matrix.moonburst.net">Matrix Chat</a>
           <a class="btn" href="https://music.moonburst.net">Music Streamer (FLAC)</a>
+          <a class="btn" href="https://audiobooks.moonburst.net">Audiobooks & Podcasts</a>
           <a class="btn" href="https://share.moonburst.net">Encrypted Share Drop (24h)</a>
         </div>
       </div>

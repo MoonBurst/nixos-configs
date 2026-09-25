@@ -1,25 +1,85 @@
 { config, pkgs, lib, ... }:
 
 let
-  shareDomain = "share.moonburst.net";
+  # =====================================================================
+  # GLOBAL DECLARATIVE THEME & SETTINGS VARIABLES
+  # =====================================================================
+  shareDomain       = "share.moonburst.net";
+  storageDir        = "/mnt/3TBHDD/microbin-storage";
+  tmpDir            = "/mnt/3TBHDD/microbin-tmp";
 
-  # Storage Daemon: Native 7z AES-256 Encrypted Zip (Same password for web & zip)
+  accentBlue        = "#003399";
+  accentYellow      = "#F7F700";
+  accentGold        = "#FABD2F";
+  darkBg            = "#0F0F0F";
+  cardBg            = "#12131c";
+  dangerRed         = "#f87171";
+
+  # Border & Hover Variables (12px test)
+  borderThickness   = "5px";
+  borderRadius      = "8px";
+  baseBorderColor   = accentBlue;
+  hoverBorderColor  = accentYellow;
+
+  hoverGlow         = "0 0 25px 6px rgba(247, 247, 0, 0.75)";
+  # =====================================================================
+
   chunkUploaderScript = pkgs.writeText "microbin-chunk-uploader.py" ''
 import os
 import sys
+import time
 import shutil
 import subprocess
-import hashlib
+import threading
 import json
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-DATA_DIR = "/mnt/3TBHDD/microbin-storage"
-UPLOAD_TMP_DIR = "/mnt/3TBHDD/microbin-tmp"
+DATA_DIR = "${storageDir}"
+UPLOAD_TMP_DIR = "${tmpDir}"
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(UPLOAD_TMP_DIR, exist_ok=True)
 
-def hash_pw(pw, salt):
-    return hashlib.sha256((pw + salt).encode()).hexdigest()
+EXPIRY_MAP = {
+    "1hour": 3600,
+    "6hours": 21600,
+    "24hours": 86400,
+    "1week": 604800
+}
+
+def expiry_cleaner_loop():
+    while True:
+        try:
+            now = time.time()
+            if os.path.exists(DATA_DIR):
+                for sid in os.listdir(DATA_DIR):
+                    sdir = os.path.join(DATA_DIR, sid)
+                    if not os.path.isdir(sdir):
+                        continue
+                    mpath = os.path.join(sdir, "meta.json")
+                    ttl = 86400
+                    ctime = os.path.getmtime(sdir)
+                    if os.path.exists(mpath):
+                        try:
+                            with open(mpath, "r") as mf:
+                                m = json.load(mf)
+                            ctime = m.get("created_at", os.path.getmtime(mpath))
+                            exp_str = m.get("expiry", "24hours")
+                            ttl = EXPIRY_MAP.get(exp_str, 86400)
+                        except Exception:
+                            pass
+                    if now - ctime >= ttl:
+                        shutil.rmtree(sdir, ignore_errors=True)
+
+            if os.path.exists(UPLOAD_TMP_DIR):
+                for tid in os.listdir(UPLOAD_TMP_DIR):
+                    tdir = os.path.join(UPLOAD_TMP_DIR, tid)
+                    if os.path.isdir(tdir) and now - os.path.getmtime(tdir) > 14400:
+                        shutil.rmtree(tdir, ignore_errors=True)
+        except Exception:
+            pass
+        time.sleep(30)
+
+threading.Thread(target=expiry_cleaner_loop, daemon=True).start()
 
 class StorageHandler(BaseHTTPRequestHandler):
     def do_POST(self):
@@ -52,7 +112,10 @@ class StorageHandler(BaseHTTPRequestHandler):
             meta = json.loads(body)
             upload_id = meta.get("upload_id")
             filename = meta.get("filename", "archive.zip")
-            password = meta.get("password", "").strip()
+            is_encrypted = meta.get("is_encrypted", False)
+            auth_hash = meta.get("auth_hash", "")
+            salt = meta.get("salt", "")
+            expiry = meta.get("expiry", "24hours")
             files_manifest = meta.get("files", [])
 
             session_dir = os.path.join(UPLOAD_TMP_DIR, upload_id)
@@ -69,18 +132,6 @@ class StorageHandler(BaseHTTPRequestHandler):
                         shutil.copyfileobj(infile, outfile)
                     os.remove(part_path)
 
-            staging_dir = os.path.join(session_dir, "staging")
-            os.makedirs(staging_dir, exist_ok=True)
-
-            if len(files_manifest) <= 1:
-                real_name = files_manifest[0] if files_manifest else filename
-                target_inside = os.path.join(staging_dir, real_name)
-                shutil.move(temp_raw_file, target_inside)
-            else:
-                subprocess.run(["${pkgs.p7zip}/bin/7z", "x", temp_raw_file, f"-o{staging_dir}", "-y"], check=False)
-                if os.path.exists(temp_raw_file):
-                    os.remove(temp_raw_file)
-
             share_id = os.urandom(8).hex()
             file_dest_dir = os.path.join(DATA_DIR, share_id)
             os.makedirs(file_dest_dir, exist_ok=True)
@@ -88,20 +139,32 @@ class StorageHandler(BaseHTTPRequestHandler):
             final_filename = filename if filename.endswith(".zip") else filename + ".zip"
             final_file_path = os.path.join(file_dest_dir, final_filename)
 
-            # Build standard AES-256 encrypted zip using 7z
-            cmd = ["${pkgs.p7zip}/bin/7z", "a", "-tzip", final_file_path, os.path.join(staging_dir, "*"), "-y"]
-            if password:
-                cmd.append(f"-p{password}")
-                cmd.append("-mem=AES256") # Universal standard AES-256 zip encryption
-            subprocess.run(cmd, check=True)
+            if is_encrypted:
+                shutil.move(temp_raw_file, final_file_path)
+            else:
+                staging_dir = os.path.join(session_dir, "staging")
+                os.makedirs(staging_dir, exist_ok=True)
+                if len(files_manifest) > 1:
+                    subprocess.run(["${pkgs.p7zip}/bin/7z", "x", temp_raw_file, f"-o{staging_dir}", "-y"], check=False)
+                    if os.path.exists(temp_raw_file):
+                        os.remove(temp_raw_file)
+                    cmd = ["${pkgs.p7zip}/bin/7z", "a", "-tzip", final_file_path, os.path.join(staging_dir, "*"), "-y"]
+                    subprocess.run(cmd, check=True)
+                else:
+                    real_name = files_manifest[0] if files_manifest else filename
+                    target_inside = os.path.join(staging_dir, real_name)
+                    shutil.move(temp_raw_file, target_inside)
+                    cmd = ["${pkgs.p7zip}/bin/7z", "a", "-tzip", final_file_path, target_inside, "-y"]
+                    subprocess.run(cmd, check=True)
 
-            salt = os.urandom(16).hex()
             metadata = {
                 "filename": final_filename,
                 "size": os.path.getsize(final_file_path),
-                "has_password": bool(password),
-                "password_hash": hash_pw(password, salt) if password else None,
-                "salt": salt if password else None
+                "is_encrypted": is_encrypted,
+                "auth_hash": auth_hash if is_encrypted else None,
+                "salt": salt if is_encrypted else None,
+                "created_at": time.time(),
+                "expiry": expiry
             }
 
             with open(os.path.join(file_dest_dir, "meta.json"), "w") as mf:
@@ -129,12 +192,10 @@ class StorageHandler(BaseHTTPRequestHandler):
 
             body = self.rfile.read(content_length).decode()
             req_data = json.loads(body) if body else {}
-            provided_pw = req_data.get("password", "").strip()
+            provided_hash = req_data.get("auth_hash", "")
 
-            if meta.get("has_password"):
-                expected_hash = meta.get("password_hash")
-                salt = meta.get("salt")
-                if hash_pw(provided_pw, salt) != expected_hash:
+            if meta.get("is_encrypted"):
+                if provided_hash != meta.get("auth_hash"):
                     self.send_response(401)
                     self.send_header("Content-Type", "application/json")
                     self.end_headers()
@@ -169,7 +230,7 @@ class StorageHandler(BaseHTTPRequestHandler):
             filepath = os.path.join(file_dest_dir, filename)
 
             self.send_response(200)
-            self.send_header("Content-Type", "application/zip")
+            self.send_header("Content-Type", "application/octet-stream")
             self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
             self.send_header("Content-Length", str(os.path.getsize(filepath)))
             self.end_headers()
@@ -192,10 +253,11 @@ class StorageHandler(BaseHTTPRequestHandler):
 
             filename = meta["filename"]
             size_mb = f"{meta['size'] / (1024 * 1024):.1f} MB"
-            has_pw = meta["has_password"]
-            enc_tag = "(Password Protected .zip)" if has_pw else ""
-            input_html = "<input type=\"password\" id=\"pw\" class=\"pw-input\" placeholder=\"Enter password to unlock and download...\" />" if has_pw else ""
-            icon = "🔒" if has_pw else "📁"
+            is_encrypted = meta["is_encrypted"]
+            salt = meta.get("salt", "")
+            enc_tag = "(Zero-Knowledge E2EE)" if is_encrypted else ""
+            input_html = "<input type=\"password\" id=\"pw\" class=\"pw-input\" placeholder=\"Enter password to decrypt and download...\" />" if is_encrypted else ""
+            icon = "🔒" if is_encrypted else "📁"
 
             html = f"""<!DOCTYPE html>
 <html>
@@ -204,86 +266,144 @@ class StorageHandler(BaseHTTPRequestHandler):
   <title>Download {filename}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
+    *, *::before, *::after {{
+      box-sizing: border-box !important;
+    }}
     body {{
-      background-color: #0F0F0F;
-      color: #F7F700;
+      background-color: ${darkBg};
+      color: ${accentYellow};
       font-family: system-ui, sans-serif;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       min-height: 100vh;
       margin: 0;
+      gap: 16px;
     }}
     .card {{
-      background-color: #12131c;
-      border: 2px solid #003399;
-      border-radius: 12px;
+      background-color: ${cardBg};
+      box-shadow: 0 0 0 ${borderThickness} ${baseBorderColor} !important;
+      border-radius: ${borderRadius} !important;
       padding: 32px;
       max-width: 480px;
       width: 90%;
       text-align: center;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      border: none !important;
     }}
     .filename {{
       font-size: 20px;
       font-weight: bold;
-      color: #FABD2F;
+      color: ${accentGold};
       word-break: break-all;
-      margin-bottom: 8px;
     }}
     .size {{
       font-size: 14px;
       color: #888;
-      margin-bottom: 24px;
+      margin-bottom: 4px;
     }}
     .pw-input {{
+      all: unset !important;
+      box-sizing: border-box !important;
       width: 100%;
-      height: 48px;
-      padding: 10px 14px;
-      border-radius: 8px;
-      background-color: #0F0F0F;
-      border: 1px solid #003399;
-      color: #F7F700;
-      font-size: 16px;
-      box-sizing: border-box;
-      margin-bottom: 16px;
+      height: 60px;
+      padding: 10px 16px;
+      border-radius: ${borderRadius} !important;
+      background-color: ${darkBg} !important;
+      box-shadow: 0 0 0 ${borderThickness} ${baseBorderColor} !important;
+      color: ${accentYellow};
+      font-size: 15px;
+      outline: none;
+      transition: box-shadow 0.15s ease-in-out;
     }}
-    .download-btn {{
-      background-color: #04f100;
-      color: #000;
-      border: none;
-      padding: 14px 28px;
-      border-radius: 8px;
-      font-size: 16px;
+    .pw-input:hover, .pw-input:focus {{
+      box-shadow: 0 0 0 ${borderThickness} ${hoverBorderColor}, ${hoverGlow} !important;
+    }}
+    .download-btn, .back-btn {{
+      all: unset !important;
+      box-sizing: border-box !important;
+      background-color: ${darkBg} !important;
+      color: ${accentYellow} !important;
+      box-shadow: 0 0 0 ${borderThickness} ${baseBorderColor} !important;
+      border-radius: ${borderRadius} !important;
+      padding: 14px 24px;
+      font-size: 15px;
       font-weight: bold;
       cursor: pointer;
+      display: block;
+      text-align: center;
       width: 100%;
-      transition: all 0.15s ease-in-out;
+      outline: none;
+      transition: box-shadow 0.15s ease-in-out;
     }}
-    .download-btn:hover {{
-      background-color: #02c000;
+    .download-btn:hover, .download-btn:focus,
+    .back-btn:hover, .back-btn:focus {{
+      box-shadow: 0 0 0 ${borderThickness} ${hoverBorderColor}, ${hoverGlow} !important;
+      color: ${accentYellow} !important;
       transform: scale(1.01);
     }}
     .error-msg {{
-      color: #ff4444;
+      color: ${dangerRed};
       font-size: 14px;
       font-weight: bold;
-      margin-bottom: 16px;
       display: none;
     }}
   </style>
 </head>
 <body>
   <div class="card">
-    <div style="font-size: 40px; margin-bottom: 12px;">{icon}</div>
+    <div style="font-size: 40px;">{icon}</div>
     <div class="filename">{filename}</div>
     <div class="size">Size: {size_mb} {enc_tag}</div>
     <div id="error" class="error-msg">❌ Incorrect password. Please try again.</div>
     {input_html}
     <button type="button" id="dl-btn" class="download-btn" onclick="requestDownload()">⬇️ Download File</button>
+    <button type="button" class="back-btn" onclick="window.location.href='/'">⬅️ Upload Another File</button>
   </div>
 
   <script>
+    async function computeHash(password, salt) {{
+      const enc = new TextEncoder();
+      const data = enc.encode(password + salt);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+      return Array.from(new Uint8Array(hashBuffer)).map(function(b) {{ return b.toString(16).padStart(2, "0"); }}).join("");
+    }}
+
+    async function decryptZipBlob(encryptedBlob, password, saltStr) {{
+      const buffer = await encryptedBlob.arrayBuffer();
+      const iv = buffer.slice(0, 12);
+      const data = buffer.slice(12);
+
+      const enc = new TextEncoder();
+      const keyMaterial = await crypto.subtle.importKey(
+        "raw", enc.encode(password), {{ name: "PBKDF2" }}, false, ["deriveKey"]
+      );
+
+      const key = await crypto.subtle.deriveKey(
+        {{
+          name: "PBKDF2",
+          salt: enc.encode(saltStr),
+          iterations: 100000,
+          hash: "SHA-256"
+        }},
+        keyMaterial,
+        {{ name: "AES-GCM", length: 256 }},
+        false,
+        ["decrypt"]
+      );
+
+      const decrypted = await crypto.subtle.decrypt(
+        {{ name: "AES-GCM", iv: iv }},
+        key,
+        data
+      );
+
+      return new Blob([decrypted], {{ type: "application/zip" }});
+    }}
+
     async function requestDownload() {{
       const errorEl = document.getElementById("error");
       const btn = document.getElementById("dl-btn");
@@ -291,14 +411,15 @@ class StorageHandler(BaseHTTPRequestHandler):
       const pwInput = document.getElementById("pw");
       const password = pwInput ? pwInput.value.trim() : "";
 
-      if ("{has_pw}" === "True") {{
+      if ("{is_encrypted}" === "True") {{
         btn.disabled = true;
         btn.textContent = "Verifying password...";
+        const authHash = await computeHash(password, "{salt}");
 
         const verifyRes = await fetch("/api/verify-download/{share_id}", {{
           method: "POST",
           headers: {{ "Content-Type": "application/json" }},
-          body: JSON.stringify({{ password: password }})
+          body: JSON.stringify({{ auth_hash: authHash }})
         }});
 
         if (!verifyRes.ok) {{
@@ -308,13 +429,32 @@ class StorageHandler(BaseHTTPRequestHandler):
           if (pwInput) {{ pwInput.value = ""; pwInput.focus(); }}
           return;
         }}
-      }}
 
-      // Downloads the actual AES-256 encrypted zip file
-      window.location.href = "/download-file/{share_id}";
-      btn.disabled = false;
-      btn.textContent = "Downloading...";
-      setTimeout(function() {{ btn.textContent = "⬇️ Download File"; }}, 3000);
+        btn.textContent = "Decrypting locally (E2EE)...";
+        const fileRes = await fetch("/download-file/{share_id}");
+        const encryptedBlob = await fileRes.blob();
+
+        try {{
+          const decryptedBlob = await decryptZipBlob(encryptedBlob, password, "{salt}");
+          const url = URL.createObjectURL(decryptedBlob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "{filename}";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          btn.disabled = false;
+          btn.textContent = "Complete!";
+          setTimeout(function() {{ btn.textContent = "⬇️ Download File"; }}, 3000);
+        }} catch(err) {{
+          errorEl.textContent = "Decryption error: Failed to decrypt payload.";
+          errorEl.style.display = "block";
+          btn.disabled = false;
+          btn.textContent = "⬇️ Download File";
+        }}
+      }} else {{
+        window.location.href = "/download-file/{share_id}";
+      }}
     }}
 
     const pwInput = document.getElementById("pw");
@@ -338,27 +478,30 @@ server.serve_forever()
   '';
 
   customCss = pkgs.writeText "custom-microbin.css" ''
+    *, *::before, *::after {
+      box-sizing: border-box !important;
+    }
+
+    /* PRE-RENDER CLOAK */
+    #pasta-form, form {
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.15s ease-in-out;
+    }
+
     body, main, #main, form, #pasta-form {
       max-width: 980px !important;
       width: 100% !important;
       margin: 0 auto !important;
       display: flex !important;
       flex-direction: column !important;
-      gap: 1.25rem !important;
+      gap: 1.5rem !important;
     }
 
-    header, nav, .header, .navbar, .logo, a.logo, a[href="/"], a[href*="upload"], .nav-links {
-      display: none !important;
-    }
-
-    footer, .footer, div:has(> a[href*="microbin.eu"]), p:has(> a[href*="microbin.eu"]), small:has(> a[href*="microbin.eu"]) {
-      display: none !important;
-    }
-
-    a[href*="/list"], a[href*="/guide"], a[href$="/list"], a[href$="/guide"] {
+    header, nav, .header, .navbar, .logo, a.logo, a[href="/"], a[href*="upload"], .nav-links,
+    footer, .footer, a[href*="/list"], a[href*="/guide"], a[href$="/list"], a[href$="/guide"] {
       display: none !important;
       visibility: hidden !important;
-      pointer-events: none !important;
     }
 
     #content-input, textarea, #file, #attach-file-button, label[for="file"] {
@@ -375,6 +518,7 @@ server.serve_forever()
       flex-direction: row !important;
       gap: 24px !important;
       width: 100% !important;
+      align-items: flex-end !important;
     }
 
     .form-col {
@@ -384,99 +528,234 @@ server.serve_forever()
       min-width: 0 !important;
     }
 
+    .field-header-box {
+      height: 46px !important;
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: flex-end !important;
+      margin-bottom: 8px !important;
+    }
+
     .field-label {
       font-weight: bold !important;
-      margin-bottom: 6px !important;
-      display: block !important;
-      color: #F7F700 !important;
+      color: ${accentYellow} !important;
       font-size: 15px !important;
+      line-height: 1.2 !important;
+      margin: 0 !important;
     }
 
     .sub-label {
       font-weight: normal !important;
       font-size: 12px !important;
-      opacity: 0.8 !important;
-      color: #FABD2F !important;
+      opacity: 0.85 !important;
+      color: ${accentGold} !important;
+      margin-top: 4px !important;
+      line-height: 1.2 !important;
     }
 
+    /* ====================================================================
+       ALL: UNSET & BORDER SHIFT (BYPASSES LINUX GTK WIDGET ENGINE COMPLETELY)
+       ==================================================================== */
+    button,
+    select,
+    input,
+    .file-select-btn,
+    .action-btn-main,
+    .clear-history-btn,
+    .history-open-btn,
+    .copy-link-btn,
+    .zip-name-box,
+    .modal-input,
+    .modal-submit-btn,
+    .modal-cancel-btn {
+      all: unset !important;
+      box-sizing: border-box !important;
+      font-family: system-ui, sans-serif !important;
+      border: none !important;
+    }
+
+    /* ====================================================================
+       UNIVERSAL BASE BORDER (USES BOX-SHADOW TO GUARANTEE 12PX IN ALL BROWSERS)
+       ==================================================================== */
+    .history-card,
+    .file-select-btn,
+    .action-btn-main,
+    .clear-history-btn,
+    .history-open-btn,
+    .copy-link-btn,
+    .zip-name-box,
+    .modal-card,
+    .modal-input,
+    .modal-submit-btn,
+    .modal-cancel-btn,
+    button,
+    select,
+    input {
+      box-shadow: 0 0 0 ${borderThickness} ${baseBorderColor} !important;
+      border-radius: ${borderRadius} !important;
+      outline: none !important;
+      border: none !important;
+      background-color: ${darkBg} !important;
+      color: ${accentYellow} !important;
+      transition: box-shadow 0.15s ease-in-out !important;
+    }
+
+    /* Select Dropdown */
+    select, #expiration, .form-col select {
+      display: block !important;
+      cursor: pointer !important;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23F7F700' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
+      background-repeat: no-repeat !important;
+      background-position: right 16px center !important;
+      padding-right: 42px !important;
+    }
+
+    /* Form Fields */
     .form-col input, .form-col select {
       width: 100% !important;
-      height: 48px !important;
-      padding: 10px 14px !important;
-      border-radius: 8px !important;
-      background-color: #0F0F0F !important;
-      border: 1px solid #003399 !important;
-      color: #F7F700 !important;
-      font-size: 15px !important;
-      box-sizing: border-box !important;
+      height: 60px !important;
+      padding: 0 16px !important;
+      display: block !important;
     }
 
-    .file-drop-area {
-      border: 2px dashed #003399 !important;
-      border-radius: 8px !important;
-      padding: 24px !important;
-      text-align: center !important;
-      background-color: #0d0e15 !important;
-      cursor: pointer !important;
-      transition: all 0.2s ease-in-out !important;
-    }
-
-    .file-drop-area.dragover {
-      border-color: #04f100 !important;
-      background-color: #16201a !important;
-    }
-
+    /* Buttons */
     .file-select-btn {
-      background-color: #003399 !important;
-      color: #F7F700 !important;
-      border: 1.5px solid #F7F700 !important;
-      padding: 10px 20px !important;
-      border-radius: 6px !important;
-      cursor: pointer !important;
+      padding: 10px 24px !important;
       font-weight: bold !important;
-      font-size: 16px !important;
+      font-size: 15px !important;
+      cursor: pointer !important;
       display: inline-block !important;
-      margin-top: 8px !important;
-      transition: all 0.15s ease-in-out !important;
-    }
-
-    .file-select-btn:hover {
-      background-color: #04f100 !important;
-      color: #000 !important;
-      border-color: #04f100 !important;
+      margin-top: 10px !important;
+      text-align: center !important;
     }
 
     .action-btn-main {
-      background-color: #04f100 !important;
-      color: #000000 !important;
-      border: none !important;
-      padding: 14px 24px !important;
-      border-radius: 8px !important;
+      padding: 10px 24px !important;
       font-weight: bold !important;
       font-size: 16px !important;
       cursor: pointer !important;
-      margin-top: 12px !important;
-      transition: all 0.15s ease-in-out !important;
+      margin-top: 6px !important;
       width: 100% !important;
-      box-sizing: border-box !important;
+      height: 64px !important;
       display: block !important;
       text-align: center !important;
+      line-height: 40px !important;
     }
 
     .action-btn-main:hover {
-      background-color: #02c000 !important;
       transform: scale(1.005) !important;
+    }
+
+    .clear-history-btn {
+      padding: 8px 18px !important;
+      font-size: 13px !important;
+      font-weight: bold !important;
+      cursor: pointer !important;
+      display: inline-block !important;
+    }
+
+    .history-open-btn,
+    .copy-link-btn {
+      padding: 0 18px !important;
+      font-size: 13px !important;
+      font-weight: bold !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      height: 48px !important;
+      margin: 0 !important;
+      cursor: pointer !important;
+    }
+
+    /* ====================================================================
+       UNIVERSAL HOVER & FOCUS (TURNS YELLOW AND GLOWS)
+       ==================================================================== */
+    .file-select-btn:hover, .file-select-btn:focus,
+    .action-btn-main:hover, .action-btn-main:focus,
+    .clear-history-btn:hover, .clear-history-btn:focus,
+    .history-open-btn:hover, .history-open-btn:focus,
+    .copy-link-btn:hover, .copy-link-btn:focus,
+    .zip-name-box:hover, .zip-name-box:focus,
+    .modal-input:hover, .modal-input:focus,
+    .modal-submit-btn:hover, .modal-submit-btn:focus,
+    .modal-cancel-btn:hover, .modal-cancel-btn:focus,
+    button:hover, button:focus,
+    select:hover, select:focus,
+    input:hover, input:focus {
+      box-shadow: 0 0 0 ${borderThickness} ${hoverBorderColor}, ${hoverGlow} !important;
+    }
+
+    /* Dotted Upload Box */
+    .file-drop-area {
+      border: ${borderThickness} dashed ${baseBorderColor} !important;
+      border-radius: ${borderRadius} !important;
+      padding: 28px !important;
+      text-align: center !important;
+      background-color: ${cardBg} !important;
+      cursor: pointer !important;
+      transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out !important;
+      box-sizing: border-box !important;
+      box-shadow: none !important;
+    }
+
+    .file-drop-area:hover,
+    .file-drop-area.dragover {
+      border: ${borderThickness} dashed ${hoverBorderColor} !important;
+      box-shadow: ${hoverGlow} !important;
     }
 
     .zip-name-box {
       width: 100% !important;
-      height: 44px !important;
-      padding: 8px 12px !important;
-      border-radius: 6px !important;
-      background-color: #0F0F0F !important;
-      border: 1px solid #3f3f46 !important;
-      color: #F7F700 !important;
-      box-sizing: border-box !important;
+      height: 60px !important;
+      padding: 0 16px !important;
+      display: block !important;
+    }
+
+    .history-card {
+      background-color: ${cardBg} !important;
+      padding: 20px !important;
+      margin-top: 10px !important;
+      border: none !important;
+    }
+
+    .history-title {
+      font-size: 16px !important;
+      font-weight: bold !important;
+      color: ${accentGold} !important;
+      margin-bottom: 14px !important;
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: center !important;
+    }
+
+    .history-table {
+      width: 100% !important;
+      border-collapse: separate !important;
+      border-spacing: 0 !important;
+    }
+
+    .history-table th {
+      text-align: left !important;
+      color: ${accentYellow} !important;
+      padding: 10px 12px !important;
+      border-bottom: ${borderThickness} solid ${baseBorderColor} !important;
+      font-size: 13px !important;
+    }
+
+    .history-table td {
+      padding: 12px !important;
+      border-bottom: 1px solid #1a1b26 !important;
+      font-size: 14px !important;
+      color: #eee !important;
+      vertical-align: middle !important;
+    }
+
+    .action-btn-cell {
+      display: inline-flex !important;
+      flex-direction: row !important;
+      gap: 12px !important;
+      align-items: center !important;
+      white-space: nowrap !important;
     }
 
     .modal-overlay {
@@ -491,34 +770,29 @@ server.serve_forever()
     }
 
     .modal-card {
-      background-color: #12131c;
-      border: 2px solid #FABD2F;
-      border-radius: 12px;
+      background-color: ${cardBg};
       padding: 24px;
       width: 90%;
       max-width: 520px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.8);
       display: flex;
       flex-direction: column;
       gap: 16px;
+      border: none !important;
     }
 
     .modal-title {
       font-size: 18px;
       font-weight: bold;
-      color: #FABD2F;
+      color: ${accentGold};
     }
 
     .modal-input {
       width: 100%;
-      height: 44px;
-      padding: 10px 14px;
-      border-radius: 6px;
-      background-color: #0a0a0f;
-      border: 1px solid #003399;
-      color: #F7F700;
+      height: 60px;
+      padding: 0 16px;
+      background-color: #0a0a0f !important;
       font-size: 15px;
-      box-sizing: border-box;
+      display: block !important;
     }
 
     .modal-btn-row {
@@ -528,91 +802,30 @@ server.serve_forever()
     }
 
     .modal-submit-btn {
-      background-color: #003399;
-      color: #F7F700;
-      border: 1.5px solid #F7F700;
-      padding: 10px 18px;
-      border-radius: 6px;
-      font-weight: bold;
-      cursor: pointer;
+      padding: 10px 20px !important;
       font-size: 14px;
-    }
-
-    .modal-submit-btn:hover {
-      background-color: #04f100;
-      color: #000;
-      border-color: #04f100;
+      font-weight: bold;
+      cursor: pointer !important;
+      display: inline-block !important;
     }
 
     .modal-cancel-btn {
-      background-color: #222;
-      color: #bbb;
-      border: 1px solid #444;
-      padding: 10px 16px;
-      border-radius: 6px;
-      cursor: pointer;
+      background-color: #222 !important;
+      color: #bbb !important;
+      padding: 10px 18px !important;
       font-size: 14px;
-    }
-
-    .history-card {
-      background-color: #10111a !important;
-      border: 1px solid #003399 !important;
-      border-radius: 8px !important;
-      padding: 16px 20px !important;
-      margin-top: 25px !important;
-    }
-
-    .history-title {
-      font-size: 16px !important;
-      font-weight: bold !important;
-      color: #FABD2F !important;
-      margin-bottom: 12px !important;
-      display: flex !important;
-      justify-content: space-between !important;
-      align-items: center !important;
-    }
-
-    .history-table {
-      width: 100% !important;
-      border-collapse: collapse !important;
-    }
-
-    .history-table th {
-      text-align: left !important;
-      color: #F7F700 !important;
-      padding: 8px 10px !important;
-      border-bottom: 1px solid #003399 !important;
-      font-size: 13px !important;
-    }
-
-    .history-table td {
-      padding: 10px !important;
-      border-bottom: 1px solid #1a1b26 !important;
-      font-size: 14px !important;
-      color: #eee !important;
-    }
-
-    .history-link {
-      color: #04f100 !important;
-      font-weight: bold !important;
-      text-decoration: underline !important;
-    }
-
-    .copy-link-btn {
-      background-color: #003399 !important;
-      color: #F7F700 !important;
-      border: none !important;
-      border-radius: 4px !important;
-      padding: 4px 8px !important;
       cursor: pointer !important;
-      font-size: 12px !important;
-      margin-left: 8px !important;
+      display: inline-block !important;
     }
 
     @media (max-width: 700px) {
       .form-row-duo {
         flex-direction: column !important;
-        gap: 12px !important;
+        gap: 14px !important;
+        align-items: stretch !important;
+      }
+      .field-header-box {
+        height: auto !important;
       }
     }
   '';
@@ -664,8 +877,9 @@ server.serve_forever()
       if (!encPass) {
         encPass = document.createElement("input");
         encPass.type = "password";
-        encPass.id = "custom-password-field";
       }
+      encPass.id = "custom-password-field";
+      encPass.setAttribute("autocomplete", "new-password");
 
       if (!form) return;
 
@@ -696,37 +910,47 @@ server.serve_forever()
       var cleanContainer = document.createElement("div");
       cleanContainer.id = "custom-form-layout";
 
-      // Row 1: Expiration Time & Password
       var row1 = document.createElement("div");
       row1.className = "form-row-duo";
 
       var colExp = document.createElement("div");
       colExp.className = "form-col";
-      colExp.innerHTML = "<label class=\"field-label\">Expiration Time</label>";
+      colExp.innerHTML = `
+        <div class="field-header-box">
+          <label class="field-label">Expiration Time</label>
+        </div>
+      `;
       if (expSelect) colExp.appendChild(expSelect);
 
       var colEnc = document.createElement("div");
       colEnc.className = "form-col";
-      colEnc.innerHTML = "<label class=\"field-label\">🔒 Password Protection <span class=\"sub-label\">(optional, AES-256 zip encryption. Using this will require a password to unzip) </span></label>";
-      encPass.placeholder = "Leave blank for no password...";
+      colEnc.innerHTML = `
+        <div class="field-header-box">
+          <label class="field-label">🔒 Password Protection</label>
+          <span class="sub-label">(optional, zero-knowledge AES-256; required for recipient to decrypt and unzip)</span>
+        </div>
+      `;
+      encPass.placeholder = "Leave blank for no password";
       colEnc.appendChild(encPass);
 
       row1.appendChild(colExp);
       row1.appendChild(colEnc);
       cleanContainer.appendChild(row1);
 
-      // Row 2: Dedicated File Drop & Upload Area
       var rowFile = document.createElement("div");
       rowFile.className = "form-col";
       rowFile.innerHTML = `
-        <label class="field-label">📁 File Upload <span class="sub-label">(drag & drop or browse)</span></label>
+        <div class="field-header-box" style="height: auto; margin-bottom: 8px;">
+          <label class="field-label">📁 File Upload</label>
+          <span class="sub-label">(drag & drop or browse)</span>
+        </div>
         <div id="drop-zone" class="file-drop-area">
-          <div id="file-status-text" style="color: #FABD2F; font-size: 15px; margin-bottom: 8px;">
+          <div id="file-status-text" style="color: ${accentGold}; font-size: 15px; margin-bottom: 8px;">
             Drag files here or click to select
           </div>
           <button type="button" id="browse-btn" class="file-select-btn">Choose File(s)</button>
         </div>
-        <div id="zip-name-container" style="display: none; margin-top: 10px;">
+        <div id="zip-name-container" style="display: none; margin-top: 12px;">
           <label class="field-label">📦 Archive Name <span class="sub-label">(what the zip will be called)</span></label>
           <input type="text" id="zip-name-input" class="zip-name-box" placeholder="e.g. project-assets, photos-vacation" />
         </div>
@@ -762,7 +986,7 @@ server.serve_forever()
       historyBox.innerHTML = `
         <div class="history-title">
           <span>📁 Your Recent Uploads <span style="font-size:12px; opacity:0.8; font-weight:normal;">(Stored locally on your browser only)</span></span>
-          <button type="button" id="clear-history-btn" style="background:none; border:none; color:#f87171; cursor:pointer; font-size:12px;">Clear History</button>
+          <button type="button" id="clear-history-btn" class="clear-history-btn">Clear History</button>
         </div>
         <div id="history-content"></div>
       `;
@@ -784,8 +1008,10 @@ server.serve_forever()
             "<td><strong>" + item.name + "</strong></td>" +
             "<td>" + item.size + "</td>" +
             "<td>" + item.date + "</td>" +
-            "<td><a href=\"" + item.url + "\" class=\"history-link\" target=\"_blank\">Open Link</a>" +
-            "<button type=\"button\" class=\"copy-link-btn\" onclick=\"window.copyUrlToClipboard(this, '" + item.url + "')\">Copy</button></td>" +
+            "<td><div class=\"action-btn-cell\">" +
+            "<button type=\"button\" class=\"history-open-btn\" onclick=\"window.open('" + item.url + "', '_blank')\">Open Link</button>" +
+            "<button type=\"button\" class=\"copy-link-btn\" onclick=\"window.copyUrlToClipboard(this, '" + item.url + "')\">Copy Link</button>" +
+            "</div></td>" +
             "</tr>";
         });
         html += "</tbody></table>";
@@ -793,6 +1019,9 @@ server.serve_forever()
       }
 
       renderLocalHistory();
+
+      form.style.setProperty("visibility", "visible", "important");
+      form.style.setProperty("opacity", "1", "important");
 
       var clearBtn = document.getElementById("clear-history-btn");
       if (clearBtn) {
@@ -808,11 +1037,11 @@ server.serve_forever()
       modalOverlay.innerHTML = `
         <div class="modal-card">
           <div class="modal-title">⚠️ Large Upload Approval Required</div>
-          <div style="color: #FABD2F; font-size: 14px; line-height: 1.4;">
+          <div style="color: ${accentGold}; font-size: 14px; line-height: 1.4;">
             Your upload exceeds the 50 MB limit. Moonburst needs to approve it to unlock up to 10 GB.
           </div>
           <input type="text" id="popup-reason-input" class="modal-input" placeholder="Who are you / what is this file for?..." />
-          <div id="modal-status-text" style="color: #04f100; font-size: 14px; display: none;"></div>
+          <div id="modal-status-text" style="color: ${accentYellow}; font-size: 14px; display: none;"></div>
           <div class="modal-btn-row">
             <button type="button" id="modal-cancel-btn" class="modal-cancel-btn">Cancel</button>
             <button type="button" id="modal-confirm-btn" class="modal-submit-btn">Request Approval</button>
@@ -896,7 +1125,7 @@ server.serve_forever()
         });
       }
 
-      async function uploadFileChunked(fileBlob, filename, displayName, displaySize, manifest, password) {
+      async function uploadFileChunked(fileBlob, filename, displayName, displaySize, manifest, isEncrypted, authHash, salt) {
         mainActionBtn.disabled = true;
         var uploadId = "up_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
         var totalChunks = Math.ceil(fileBlob.size / CHUNK_SIZE);
@@ -928,7 +1157,7 @@ server.serve_forever()
           }
         }
 
-        mainActionBtn.textContent = password ? "Encrypting with AES-256 on server..." : "Finalizing upload on server...";
+        mainActionBtn.textContent = isEncrypted ? "Saving E2EE encrypted blob on server..." : "Finalizing upload...";
 
         var exp = expSelect ? expSelect.value : "24hours";
 
@@ -938,7 +1167,10 @@ server.serve_forever()
           body: JSON.stringify({
             upload_id: uploadId,
             filename: filename,
-            password: password,
+            is_encrypted: isEncrypted,
+            auth_hash: authHash,
+            salt: salt,
+            expiry: exp,
             files: manifest
           })
         });
@@ -957,6 +1189,48 @@ server.serve_forever()
           mainActionBtn.disabled = false;
           mainActionBtn.textContent = "🚀 Send / Upload";
         }
+      }
+
+      async function encryptZipBlob(zipBlob, password, salt) {
+        const enc = new TextEncoder();
+        const rawBuffer = await zipBlob.arrayBuffer();
+
+        const keyMaterial = await crypto.subtle.importKey(
+          "raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveKey"]
+        );
+
+        const key = await crypto.subtle.deriveKey(
+          {
+            name: "PBKDF2",
+            salt: enc.encode(salt),
+            iterations: 100000,
+            hash: "SHA-256"
+          },
+          keyMaterial,
+          { name: "AES-GCM", length: 256 },
+          false,
+          ["encrypt"]
+        );
+
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const encryptedContent = await crypto.subtle.encrypt(
+          { name: "AES-GCM", iv: iv },
+          key,
+          rawBuffer
+        );
+
+        const combined = new Uint8Array(iv.length + encryptedContent.byteLength);
+        combined.set(iv, 0);
+        combined.set(new Uint8Array(encryptedContent), iv.length);
+
+        return new Blob([combined], { type: "application/octet-stream" });
+      }
+
+      async function computeHash(password, salt) {
+        const enc = new TextEncoder();
+        const data = enc.encode(password + salt);
+        const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+        return Array.from(new Uint8Array(hashBuffer)).map(function(b) { return b.toString(16).padStart(2, "0"); }).join("");
       }
 
       window.triggerFinalUpload = async function() {
@@ -981,18 +1255,23 @@ server.serve_forever()
         }
 
         mainActionBtn.disabled = true;
-        mainActionBtn.textContent = "Packaging...";
+        mainActionBtn.textContent = "Packaging archive...";
 
-        if (activeFiles.length > 1) {
-          var zip = new JSZip();
-          activeFiles.forEach(function(f) { zip.file(f.name, f); });
-          var manifest = activeFiles.map(function(f) { return f.name; });
+        var zip = new JSZip();
+        activeFiles.forEach(function(f) { zip.file(f.name, f); });
+        var manifest = activeFiles.map(function(f) { return f.name; });
 
-          var rawZipBlob = await zip.generateAsync({ type: "blob", compression: "STORE" });
-          uploadFileChunked(rawZipBlob, customZipName, displayName, displaySize, manifest, pwd);
+        var rawZipBlob = await zip.generateAsync({ type: "blob", compression: "STORE" });
+
+        if (pwd) {
+          mainActionBtn.textContent = "Encrypting (Client-Side AES-256)...";
+          var salt = Array.from(crypto.getRandomValues(new Uint8Array(16))).map(function(b) { return b.toString(16).padStart(2, "0"); }).join("");
+          var authHash = await computeHash(pwd, salt);
+          var encryptedBlob = await encryptZipBlob(rawZipBlob, pwd, salt);
+
+          uploadFileChunked(encryptedBlob, displayName.replace(" 🔒", ""), displayName, displaySize, manifest, true, authHash, salt);
         } else {
-          var manifest = [activeFiles[0].name];
-          uploadFileChunked(activeFiles[0], displayName.replace(" 🔒", ""), displayName, displaySize, manifest, pwd);
+          uploadFileChunked(rawZipBlob, displayName, displayName, displaySize, manifest, false, null, null);
         }
       };
 
@@ -1014,7 +1293,7 @@ server.serve_forever()
         modalConfirmBtn.disabled = true;
         modalCancelBtn.style.display = "none";
         modalStatus.style.display = "block";
-        modalStatus.style.color = "#FABD2F";
+        modalStatus.style.color = "${accentGold}";
         modalStatus.innerText = "⏳ Waiting for Moonburst's approval on desktop...";
 
         fetch("/request-approval", {
@@ -1032,7 +1311,7 @@ server.serve_forever()
               if (res.status === "approved") {
                 clearInterval(poll);
                 isApproved = true;
-                modalStatus.style.color = "#04f100";
+                modalStatus.style.color = "${accentYellow}";
                 modalStatus.innerText = "✅ Approved! Starting upload now...";
                 setTimeout(function() {
                   modalOverlay.style.display = "none";
@@ -1042,7 +1321,7 @@ server.serve_forever()
                 clearInterval(poll);
                 modalConfirmBtn.disabled = false;
                 modalCancelBtn.style.display = "inline-block";
-                modalStatus.style.color = "#ff4444";
+                modalStatus.style.color = "${dangerRed}";
                 modalStatus.innerText = "❌ Request Denied by Moonburst";
               }
             });
@@ -1080,7 +1359,7 @@ server.serve_forever()
 in
 {
   systemd.services.microbin-chunk-uploader = {
-    description = "Microbin Storage & AES-256 Zip Daemon";
+    description = "Microbin Zero-Knowledge Storage Daemon";
     wantedBy = [ "multi-user.target" ];
     after = [ "network.target" "microbin.service" ];
     path = [ pkgs.p7zip ];
@@ -1099,10 +1378,6 @@ in
       MICROBIN_PUBLIC_PATH = "https://${shareDomain}/";
       MICROBIN_DEFAULT_EXPIRY = "24hours";
       MICROBIN_ENABLE_FILE_UPLOADS = "true";
-      MICROBIN_ENCRYPTION_SERVER_SIDE = "false";
-      MICROBIN_ENCRYPTION_CLIENT_SIDE = "false";
-      MICROBIN_MAX_FILE_SIZE_UNENCRYPTED_MB = "10240";
-      MICROBIN_MAX_FILE_SIZE_ENCRYPTED_MB = "10240";
       MICROBIN_QR = "true";
       MICROBIN_HIGHLIGHT_SYNTAX = "true";
       MICROBIN_HIDE_PASTA_LIST = "true";
@@ -1121,21 +1396,32 @@ in
         proxy_send_timeout 1800s;
         proxy_hide_header Content-Security-Policy;
         sub_filter_once on;
-        sub_filter '</head>' '<link rel="stylesheet" href="/custom-microbin.css?v=800"><script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script><script src="/custom-microbin.js?v=800"></script></head>';
+        sub_filter '</head>' '<link rel="stylesheet" href="/custom-microbin.css?v=20261027_universal_shadow"><script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script><script src="/custom-microbin.js?v=20261027_universal_shadow"></script></head>';
       '';
 
       locations."= /list" = {
         return = "404";
       };
 
+      locations."~* /(static/)?water.*\.css" = {
+        return = "200 \"\"";
+        extraConfig = "default_type text/css;";
+      };
+
       locations."= /custom-microbin.css" = {
         alias = "${customCss}";
-        extraConfig = "default_type text/css;";
+        extraConfig = ''
+          default_type text/css;
+          add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+        '';
       };
 
       locations."= /custom-microbin.js" = {
         alias = "${customJs}";
-        extraConfig = "default_type application/javascript;";
+        extraConfig = ''
+          default_type application/javascript;
+          add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+        '';
       };
 
       locations."= /request-approval" = {
@@ -1149,17 +1435,6 @@ in
 
       locations."~ ^/(upload-chunk|assemble-chunk|d/|download-file/|api/)" = {
         proxyPass = "http://127.0.0.1:8087";
-        extraConfig = ''
-          proxy_request_buffering off;
-          proxy_set_header Host $host;
-          proxy_set_header X-Real-IP $remote_addr;
-          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        '';
-      };
-
-      locations."= /upload" = {
-        proxyPass = "http://127.0.0.1:8086/upload";
-        proxyWebsockets = true;
         extraConfig = ''
           proxy_request_buffering off;
           proxy_set_header Host $host;

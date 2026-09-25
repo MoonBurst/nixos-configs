@@ -4,6 +4,8 @@
     ./navidrome.nix
     ./microbin.nix
     ./share-approver.nix
+    ./audiobookshelf.nix
+    ./authentik.nix
   ];
 
   services.postgresql = {
@@ -13,10 +15,12 @@
 
     ensureDatabases = [
       "mautrix-discord"
+      "authentik"
     ];
 
     ensureUsers = [
       { name = "mautrix-discord"; ensureDBOwnership = true; }
+      { name = "authentik"; ensureDBOwnership = true; }
     ];
 
     authentication = pkgs.lib.mkForce ''
@@ -31,9 +35,10 @@
     };
   };
 
-  # Set global Nginx upload capacity to 10 GB (eliminates 413 errors system-wide)
+  # Set global Nginx upload capacity & proxy defaults
   services.nginx = {
     enable = true;
     clientMaxBodySize = "10G";
+    recommendedProxySettings = true;
   };
 }
