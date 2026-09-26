@@ -1,4 +1,3 @@
-// modules/overlays/launcher/LauncherOverlay.qml
 import QtQuick
 import QtQuick.Controls
 import Quickshell
@@ -55,6 +54,7 @@ Rectangle {
             const trimmed = pendingText
             const currentMode = launcherRoot.mode
 
+            // Do not hijack typing while in gemini mode
             if (currentMode === "gemini") {
                 return;
             }
@@ -76,13 +76,13 @@ Rectangle {
 
             if (currentMode === "pass") {
                 var query = trimmed;
-                            const pwrTriggers = ["power", "pwr", "session", "sys", "reboot", "restart", "shutdown", "poweroff", "sleep", "suspend", "logout"];
-            if (pwrTriggers.includes(trimmed) || trimmed.startsWith("pwr ") || trimmed.startsWith("power ")) {
-                launcherRoot.mode = "power";
-                return;
-            }
+                const pwrTriggers = ["power", "pwr", "session", "sys", "reboot", "restart", "shutdown", "poweroff", "sleep", "suspend", "logout"];
+                if (pwrTriggers.includes(trimmed) || trimmed.startsWith("pwr ") || trimmed.startsWith("power ")) {
+                    launcherRoot.mode = "power";
+                    return;
+                }
 
-            if (trimmed.startsWith("pass ")) {
+                if (trimmed.startsWith("pass ")) {
                     query = trimmed.substring(5).trim();
                 }
                 ctrl.pass.searchQuery = query;
@@ -155,7 +155,7 @@ Rectangle {
                 return
             }
 
-                        const pwrTriggers = ["power", "pwr", "session", "sys", "reboot", "restart", "shutdown", "poweroff", "sleep", "suspend", "logout"];
+            const pwrTriggers = ["power", "pwr", "session", "sys", "reboot", "restart", "shutdown", "poweroff", "sleep", "suspend", "logout"];
             if (pwrTriggers.includes(trimmed) || trimmed.startsWith("pwr ") || trimmed.startsWith("power ")) {
                 launcherRoot.mode = "power";
                 return;
@@ -181,11 +181,12 @@ Rectangle {
                 return;
             }
 
-            launcherRoot.mode = "apps"
             if (trimmed.startsWith("ai ") || trimmed.startsWith("gemini ")) {
                 launcherRoot.mode = "gemini";
                 return;
             }
+
+            launcherRoot.mode = "apps"
             launcherRoot.ctrl.appLauncher.refreshFilter(trimmed)
         }
     }
@@ -233,6 +234,7 @@ Rectangle {
         closeOverlay();
         if (ctrl.rng) ctrl.rng.toggleWindow();
     }
+
     function openDictionary(word) {
         launcherRoot.mode = "dictionary"
         searchField.text = word || ""
@@ -304,14 +306,14 @@ Rectangle {
                 placeholderTextColor: shell.theme.base05
 
                 placeholderText: {
-                    if (launcherRoot.mode === "gemini") return "Ask Gemini... (Enter to send, Tab to clear context)";
                     const currentMode = launcherRoot.mode
-                    if (currentMode === "clipboard") return "Search clipboard history..."
-                        if (currentMode === "unicode") return "Search unicode symbols..."
-                            if (currentMode === "dictionary") return "Enter word..."
-                                if (currentMode === "power") return "Choose power action (Enter to confirm)..."
-                                if (currentMode === "pass") return "Search passwords..."
-                                    return "Search applications..."
+                    if (currentMode === "gemini") return "Ask Gemini... (Enter to send, Tab to clear context)"
+                        if (currentMode === "clipboard") return "Search clipboard history..."
+                            if (currentMode === "unicode") return "Search unicode symbols..."
+                                if (currentMode === "dictionary") return "Enter word..."
+                                    if (currentMode === "power") return "Choose power action (Enter to confirm)..."
+                                        if (currentMode === "pass") return "Search passwords..."
+                                            return "Search applications..."
                 }
 
                 background: Rectangle {
@@ -398,7 +400,8 @@ Rectangle {
                 }
 
                 Keys.onReturnPressed: {
-                    if (launcherRoot.mode === "gemini" && geminiLoader.item) {
+                    const currentMode = launcherRoot.mode
+                    if (currentMode === "gemini" && geminiLoader.item) {
                         var prompt = searchField.text;
                         if (prompt.startsWith("ai ")) prompt = prompt.substring(3).trim();
                         if (prompt.startsWith("gemini ")) prompt = prompt.substring(7).trim();
@@ -406,7 +409,6 @@ Rectangle {
                         searchField.clear();
                         return;
                     }
-                    const currentMode = launcherRoot.mode
                     if (currentMode === "dictionary") { ctrl.dictionary.copySelected(); launcherRoot.closeOverlay(); }
                     else if (currentMode === "unicode") { ctrl.unicodeSearch.copySelected(); launcherRoot.closeOverlay(); }
                     else if (currentMode === "clipboard") { ctrl.clipboard.copySelected(); launcherRoot.closeOverlay(); }
@@ -421,12 +423,13 @@ Rectangle {
                 }
             }
 
+            // GEMINI LOADER (Persistent in RAM, but takes 0 height when not in gemini mode)
             Loader {
                 id: geminiLoader
                 active: true
-                visible: active
+                visible: launcherRoot.mode === "gemini"
                 width: parent.width
-                height: active ? parent.contentHeight : 0
+                height: launcherRoot.mode === "gemini" ? parent.contentHeight : 0
                 source: "GeminiPanel.qml"
                 onLoaded: {
                     if (item) {
@@ -521,7 +524,7 @@ Rectangle {
                 active: true
                 visible: launcherRoot.mode === "apps" || launcherRoot.mode === ""
                 width: parent.width
-                height: active ? parent.contentHeight : 0
+                height: visible ? parent.contentHeight : 0
                 sourceComponent: Component {
                     ListView {
                         id: appsListView
@@ -610,7 +613,7 @@ Rectangle {
                             highlightResizeDuration: 0
                             flickDeceleration: 10000
 
-                                                                                    delegate: Rectangle {
+                            delegate: Rectangle {
                                 readonly property int itemIndex: index
                                 readonly property string itemText: model.text || ""
                                 readonly property bool itemIsImage: model.isImage || false
@@ -788,7 +791,6 @@ Rectangle {
                 onLoaded: { if (item) item.forceActiveFocus(); }
             }
 
-            
             Loader {
                 id: powerLoader
                 active: launcherRoot.mode === "power"
