@@ -1,0 +1,2638 @@
+==> /home/moonburst/nix/hosts/moonbeauty/website/fluxer.nix <==
+{ config, pkgs, ... }:
+
+let
+  baseDomain = "fluxer.moonburst.net";
+in
+{
+  # 1. Open Firewall Ports for LiveKit Multiplexed Audio/Video
+  networking.firewall.allowedTCPPorts = [ 7881 ];
+  networking.firewall.allowedUDPPorts = [ 7882 ];
+
+  # 2. Enable Podman and its local Docker socket compatibility
+  virtualisation.podman = {
+    enable = true;
+    dockerSocket.enable = true; # Exposes the podman socket at /run/podman/podman.sock
+    dockerCompat = true;       # Emulates the 'docker' command using podman
+  };
+
+  # Configure Podman system-wide settings to remain quiet
+  virtualisation.containers.containersConf.settings = {
+    containers = {
+      events_logger = "none";
+      log_level = "warning"; # Silences info-level healthcheck execution logs in journalctl
+    };
+  };
+
+  # Define sops-nix secrets mapping
+  sops.secrets = {
+    fluxer_postgres_password = { };
+    fluxer_meili_master_key = { };
+    fluxer_s3_secret_key = { };
+    fluxer_sudo_mode_secret = { };
+    fluxer_connection_initiation_secret = { };
+    fluxer_gateway_rpc_auth_token = { };
+    fluxer_media_proxy_secret_key = { };
+    fluxer_media_proxy_upload_relay_secret_base64 = { };
+    fluxer_admin_secret_key_base = { };
+    fluxer_admin_oauth_client_secret = { };
+    fluxer_vapid_public_key = { };
+    fluxer_vapid_private_key = { };
+    fluxer_livekit_api_secret = { };
+  };
+
+  # 3. Configuration Generation and File Patching Service
+  systemd.services.fluxer-config-prep = {
+    description = "Generate decrypted Fluxer env and patch ports in docker-compose";
+    requiredBy = [ "fluxer-stack.service" ];
+    before = [ "fluxer-stack.service" ];
+    after = [ "sops-install-secrets.service" ];
+    path = [ pkgs.git pkgs.gnused ]; # Ensure git and sed are available to the service
+
+    # Provide the HOME environment variable so Git can find /root/.gitconfig
+    environment = {
+      HOME = "/root";
+    };
+
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      # Ensure working directory exists
+      mkdir -p /srv/fluxer/fluxer/deploy/self-hosting
+
+      cd /srv/fluxer/fluxer
+
+      # Safely replace all duplicate Git safe.directory entries to prevent overwrite errors
+      git config --global --replace-all safe.directory /srv/fluxer/fluxer
+
+      # A. Revert any previous local edits to docker-compose.yml to ensure a clean slate
+      git checkout -- deploy/self-hosting/docker-compose.yml
+
+      # B. Fresh override file to inject rate-limit bypasses (no health check overrides to prevent parser crashes)
+      cat << 'EOF_OVERRIDE' > deploy/self-hosting/docker-compose.override.yml
+      version: '3'
+      services:
+        api:
+          logging:
+            driver: "none"
+          environment:
+            - FLUXER_DISABLE_RATE_LIMITS=true
+            - FLUXER_ABUSE_THRESHOLD_DATACENTER=999999
+            - FLUXER_ABUSE_THRESHOLD_ANONYMOUS=999999
+            - FLUXER_ABUSE_THRESHOLD_MOBILE=999999
+            - FLUXER_ABUSE_THRESHOLD_RESIDENTIAL=999999
+            - FLUXER_ABUSE_TOKEN_DIVERSITY_DATACENTER=999999
+            - FLUXER_ABUSE_TOKEN_DIVERSITY_ANONYMOUS=999999
+            - FLUXER_ABUSE_TOKEN_DIVERSITY_MOBILE=999999
+            - FLUXER_ABUSE_TOKEN_DIVERSITY_RESIDENTIAL=999999
+        worker:
+          logging:
+            driver: "none"
+          environment:
+            - FLUXER_DISABLE_RATE_LIMITS=true
+            - FLUXER_ABUSE_THRESHOLD_DATACENTER=999999
+            - FLUXER_ABUSE_THRESHOLD_ANONYMOUS=999999
+            - FLUXER_ABUSE_THRESHOLD_MOBILE=999999
+            - FLUXER_ABUSE_THRESHOLD_RESIDENTIAL=999999
+            - FLUXER_ABUSE_TOKEN_DIVERSITY_DATACENTER=999999
+            - FLUXER_ABUSE_TOKEN_DIVERSITY_ANONYMOUS=999999
+            - FLUXER_ABUSE_TOKEN_DIVERSITY_MOBILE=999999
+            - FLUXER_ABUSE_TOKEN_DIVERSITY_RESIDENTIAL=999999
+        gateway:
+          logging:
+            driver: "none"
+          environment:
+            - FLUXER_DISABLE_RATE_LIMITS=true
+        livekit:
+          logging:
+            driver: "none"
+      EOF_OVERRIDE
+      chmod 644 deploy/self-hosting/docker-compose.override.yml
+
+      # C. Patch Caddy ports directly in the base docker-compose.yml file
+      sed -i 's/- "80:80"/- "127.0.0.1:8085:80"/g' deploy/self-hosting/docker-compose.yml
+      sed -i '/- "443:443"/d' deploy/self-hosting/docker-compose.yml
+
+      # D. Generate the .env file using decrypted secrets
+      cat << EOF > deploy/self-hosting/.env
+      FLUXER_DOMAIN=${baseDomain}
+      FLUXER_PUBLIC_SCHEME=https
+      FLUXER_PUBLIC_PORT=443
+      FLUXER_CADDY_SITE_ADDRESS=http://${baseDomain}
+
+      FLUXER_REGISTRY_OWNER=fluxerapp
+      FLUXER_REGISTRY=ghcr.io/fluxerapp
+      FLUXER_IMAGE_TAG=v1
+
+      POSTGRES_PASSWORD=$(cat ${config.sops.secrets.fluxer_postgres_password.path})
+      MEILI_MASTER_KEY=$(cat ${config.sops.secrets.fluxer_meili_master_key.path})
+      FLUXER_S3_ACCESS_KEY=fluxer
+      FLUXER_S3_SECRET_KEY=$(cat ${config.sops.secrets.fluxer_s3_secret_key.path})
+
+      FLUXER_SUDO_MODE_SECRET=$(cat ${config.sops.secrets.fluxer_sudo_mode_secret.path})
+      FLUXER_CONNECTION_INITIATION_SECRET=$(cat ${config.sops.secrets.fluxer_connection_initiation_secret.path})
+      FLUXER_GATEWAY_RPC_AUTH_TOKEN=$(cat ${config.sops.secrets.fluxer_gateway_rpc_auth_token.path})
+      FLUXER_MEDIA_PROXY_SECRET_KEY=$(cat ${config.sops.secrets.fluxer_media_proxy_secret_key.path})
+      FLUXER_MEDIA_PROXY_UPLOAD_RELAY_SECRET_BASE64=$(cat ${config.sops.secrets.fluxer_media_proxy_upload_relay_secret_base64.path})
+      FLUXER_ADMIN_SECRET_KEY_BASE=$(cat ${config.sops.secrets.fluxer_admin_secret_key_base.path})
+      FLUXER_ADMIN_OAUTH_CLIENT_SECRET=$(cat ${config.sops.secrets.fluxer_admin_oauth_client_secret.path})
+
+      FLUXER_VAPID_PUBLIC_KEY=$(cat ${config.sops.secrets.fluxer_vapid_public_key.path})
+      FLUXER_VAPID_PRIVATE_KEY=$(cat ${config.sops.secrets.fluxer_vapid_private_key.path})
+      FLUXER_VAPID_EMAIL=admin@${baseDomain}
+
+      LIVEKIT_API_KEY=fluxer
+      LIVEKIT_API_SECRET=$(cat ${config.sops.secrets.fluxer_livekit_api_secret.path})
+
+      FLUXER_KLIPY_API_KEY=
+
+      FLUXER_EMAIL_ENABLED=false
+      FLUXER_EMAIL_PROVIDER=none
+      FLUXER_EMAIL_FROM_EMAIL=noreply@${baseDomain}
+      FLUXER_EMAIL_FROM_NAME=Fluxer
+      FLUXER_EMAIL_SMTP_HOST=
+      FLUXER_EMAIL_SMTP_PORT=587
+      FLUXER_EMAIL_SMTP_USERNAME=
+      FLUXER_EMAIL_SMTP_PASSWORD=
+      FLUXER_EMAIL_SMTP_SECURE=true
+
+      FLUXER_CAPTCHA_ENABLED=false
+      FLUXER_CAPTCHA_PROVIDER=none
+      FLUXER_DISCOVERY_ENABLED=true
+      FLUXER_DISABLE_RATE_LIMITS=true
+      EOF
+      chmod 600 deploy/self-hosting/.env
+    '';
+  };
+
+  # 4. Standard Docker Compose Service on top of Podman
+  systemd.services.fluxer-stack = {
+    description = "Fluxer Docker Compose Stack (via Podman)";
+    after = [ "network.target" "podman.socket" ];
+    requires = [ "podman.socket" ];
+    wantedBy = [ "multi-user.target" ];
+    path = [ pkgs.docker-compose pkgs.podman ];
+
+    environment = {
+      DOCKER_HOST = "unix:///run/podman/podman.sock";
+    };
+
+    serviceConfig = {
+      Type = "simple";
+      WorkingDirectory = "/srv/fluxer/fluxer/deploy/self-hosting";
+      ExecStart = "${pkgs.docker-compose}/bin/docker-compose up";
+      ExecStop = "${pkgs.docker-compose}/bin/docker-compose down";
+      Restart = "always";
+
+      # Removed 'StandardOutput/Error = null' overrides to prevent compose startup crashes.
+      # The container log dampening is handled securely at the compose override layer.
+    };
+  };
+
+  # 5. Host Nginx Setup with Header Alteration Map
+  services.nginx = {
+    enable = true;
+    recommendedProxySettings = true;
+    recommendedTlsSettings = true;
+
+    # Global HTTP configuration mapping to append 'unsafe-eval' to the incoming CSP header.
+    # Added 'log_not_found off;' globally to prevent Nginx from logging 404 bot scans.
+    commonHttpConfig = ''
+      log_not_found off;
+
+      map $upstream_http_content_security_policy $altered_csp {
+          ~*^(.*script-src\s)(.*)$ "$1'unsafe-eval' $2";
+          default $upstream_http_content_security_policy;
+      }
+    '';
+
+    virtualHosts."${baseDomain}" = {
+      # Disable Let's Encrypt / local SSL for this subdomain
+      # because SSL is terminated cleanly by Cloudflare's edge.
+      addSSL = false;
+      forceSSL = false;
+      enableACME = false;
+
+      extraConfig = ''
+        location = /sw.js {
+            return 404;
+        }
+        location = /service-worker.js {
+            return 404;
+        }
+      '';
+
+      locations."/" = {
+        proxyPass = "http://127.0.0.1:8085";
+        proxyWebsockets = true;
+
+        # Override the application's CSP header with our relaxed version
+        extraConfig = ''
+          proxy_hide_header Content-Security-Policy;
+          add_header Content-Security-Policy $altered_csp always;
+        '';
+      };
+    };
+  };
+}
+
+==> /home/moonburst/nix/hosts/moonbeauty/website/sso.nix <==
+{ config, pkgs, lib, ... }:
+
+let
+  domain = "moonburst.net";
+  ssoDomain = "login.moonburst.net";
+  registerDomain = "register.moonburst.net";
+in {
+  sops.secrets = {
+    authelia_jwt_secret = { owner = "authelia-main"; };
+    authelia_session_secret = { owner = "authelia-main"; };
+    authelia_storage_key = { owner = "authelia-main"; };
+    authelia_oidc_hmac_secret = { owner = "authelia-main"; };
+    authelia_oidc_private_key = { owner = "authelia-main"; };
+
+    lldap_admin_password = {
+      owner = "root";
+      group = "root";
+      mode = "0444";
+    };
+
+    lldap_smtp_password = {
+      owner = "root";
+      key = "lldap_smtp_password";
+    };
+
+    lldap_authelia_bind_password = {
+      owner = "authelia-main";
+      key = "lldap_admin_password";
+    };
+  };
+
+  sops.templates."lldap_config.toml" = {
+    owner = "root";
+    group = "root";
+    mode = "0444";
+    content = ''
+      ldap_base_dn = "dc=moonburst,dc=net"
+      http_host = "::"
+      http_port = 17170
+      http_url = "https://register.moonburst.net"
+      ldap_host = "::"
+      ldap_port = 3890
+      ldap_user_pass_file = "${config.sops.secrets.lldap_admin_password.path}"
+      registration_open = true
+
+      [smtp_options]
+      smtp_encryption = "TLS"
+      host = "smtp.gmail.com"
+      port = 465
+      user = "moonburstplays@gmail.com"
+      from = "moonburstplays@gmail.com"
+      password = "${config.sops.placeholder.lldap_smtp_password}"
+    '';
+  };
+
+  services.lldap = {
+    enable = true;
+    silenceForceUserPassResetWarning = true;
+    settings = {
+      ldap_base_dn = "dc=moonburst,dc=net";
+      ldap_user_pass_file = config.sops.secrets.lldap_admin_password.path;
+    };
+  };
+
+  systemd.services.lldap = {
+    environment = {
+      LLDAP_JWT_SECRET_FILE = "/var/lib/lldap/jwt_secret";
+    };
+
+    preStart = ''
+      mkdir -p /var/lib/lldap
+      if [ ! -f /var/lib/lldap/jwt_secret ]; then
+        ${pkgs.coreutils}/bin/tr -dc 'A-Za-z0-9!#%&()*+,-./:;<=>?@[\]^_{|}~' </dev/urandom | ${pkgs.coreutils}/bin/head -c 64 > /var/lib/lldap/jwt_secret
+        chmod 600 /var/lib/lldap/jwt_secret
+      fi
+    '';
+
+    serviceConfig.ExecStart = lib.mkForce "${pkgs.lldap}/bin/lldap run --config-file ${config.sops.templates."lldap_config.toml".path}";
+  };
+
+  services.authelia.instances.main = {
+    enable = true;
+    secrets = {
+      jwtSecretFile = config.sops.secrets.authelia_jwt_secret.path;
+      sessionSecretFile = config.sops.secrets.authelia_session_secret.path;
+      storageEncryptionKeyFile = config.sops.secrets.authelia_storage_key.path;
+      oidcHmacSecretFile = config.sops.secrets.authelia_oidc_hmac_secret.path;
+      oidcIssuerPrivateKeyFile = config.sops.secrets.authelia_oidc_private_key.path;
+    };
+
+    settings = {
+      theme = "dark";
+      server.address = "tcp://0.0.0.0:9091";
+      storage.local.path = "/var/lib/authelia-main/db.sqlite3";
+
+      authentication_backend = {
+        ldap = {
+          address = "ldap://127.0.0.1:3890";
+          implementation = "custom";
+          base_dn = "dc=moonburst,dc=net";
+          additional_users_dn = "ou=people";
+          users_filter = "(&(|({username_attribute}={input})({mail_attribute}={input}))(objectClass=person))";
+          additional_groups_dn = "ou=groups";
+          groups_filter = "(member={dn})";
+          attributes = {
+            username = "uid";
+            display_name = "displayName";
+            mail = "mail";
+            group_name = "cn";
+          };
+          user = "cn=admin,ou=people,dc=moonburst,dc=net";
+        };
+      };
+
+      session = {
+        cookies = [
+          {
+            domain = "moonburst.net";
+            authelia_url = "https://login.moonburst.net";
+          }
+        ];
+      };
+
+      notifier.filesystem.filename = "/var/lib/authelia-main/notification.txt";
+
+      access_control = {
+        default_policy = "deny";
+        rules = [
+          {
+            domain = [ "${ssoDomain}" ];
+            policy = "bypass";
+          }
+          {
+            domain = [ "*.${domain}" ];
+            policy = "one_factor";
+          }
+        ];
+      };
+
+      identity_providers.oidc = {
+        clients = [
+          {
+            client_id = "conduwuit";
+            client_name = "Conduwuit Matrix";
+            client_secret = "$pbkdf2-sha512$310000$c2FsdHNhbHQ$...";
+            public = false;
+            authorization_policy = "one_factor";
+            scopes = [ "openid" "profile" "email" ];
+            redirect_uris = [
+              "https://moonburst.net/_matrix/client/unstable/org.matrix.msc2965/auth_issuer/response"
+            ];
+            userinfo_signed_response_alg = "none";
+          }
+        ];
+      };
+    };
+  };
+
+  systemd.services."authelia-main" = {
+    environment = {
+      AUTHELIA_AUTHENTICATION_BACKEND_LDAP_PASSWORD_FILE = config.sops.secrets.lldap_authelia_bind_password.path;
+    };
+  };
+
+  services.nginx.virtualHosts = {
+    "${ssoDomain}" = {
+      listen = [ { addr = "0.0.0.0"; port = 80; } { addr = "[::]"; port = 80; } ];
+      locations."/" = {
+        proxyPass = "http://127.0.0.1:9091";
+        proxyWebsockets = true;
+        extraConfig = ''
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto https;
+        '';
+      };
+    };
+
+    "${registerDomain}" = {
+      listen = [ { addr = "0.0.0.0"; port = 80; } { addr = "[::]"; port = 80; } ];
+      locations."/" = {
+        proxyPass = "http://127.0.0.1:17170";
+        proxyWebsockets = true;
+        extraConfig = ''
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto https;
+        '';
+      };
+    };
+  };
+}
+
+==> /home/moonburst/nix/hosts/moonbeauty/website/matrix.nix <==
+{ config, pkgs, lib, ... }@args:
+
+let
+  unstablePkgs = if args ? inputs.nixpkgs-unstable
+  then import args.inputs.nixpkgs-unstable {
+    system = pkgs.stdenv.hostPlatform.system;
+    config.permittedInsecurePackages = [ "olm-3.2.16" ];
+  }
+  else pkgs;
+
+  enableVerboseLogging = false;
+
+  registrationPath = "/run/discord-registration.yaml";
+  bridgeConfigPath = "/var/lib/mautrix-discord/bridge-config.yaml";
+  puppetSecretPath = config.sops.secrets.matrix_double_puppet_secret.path;
+  discordEnvPath = config.sops.templates."discord-env".path;
+
+  homepage = import ./homepage.nix { inherit pkgs; };
+
+  # Reusable Nginx configuration blocks
+  defaultListen = [
+    { addr = "0.0.0.0"; port = 80; }
+    { addr = "[::]"; port = 80; }
+  ];
+
+  commonNginxHeaders = ''
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+    ${if enableVerboseLogging then "" else "access_log off;"}
+    log_not_found off;
+  '';
+
+  matrixProxyConfig = ''
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_pass_header Authorization;
+    proxy_pass_header Content-Type;
+    proxy_read_timeout 600s;
+    proxy_send_timeout 600s;
+  '';
+in
+
+{
+  nixpkgs.config.permittedInsecurePackages = [
+    "olm-3.2.16"
+  ];
+
+  environment.systemPackages = [
+    unstablePkgs.cloudflared
+  ];
+
+  sops.secrets = {
+    "matrix_as_token" = { owner = "mautrix-discord"; };
+    "matrix_hs_token" = { owner = "mautrix-discord"; };
+    "discord_bot_token" = { owner = "mautrix-discord"; };
+    "matrix_macaroon_secret" = { owner = "continuwuity"; };
+    "matrix_registration_secret" = { owner = "continuwuity"; };
+    "matrix_double_puppet_secret" = { owner = "continuwuity"; };
+    "cloudflare_token" = { owner = "continuwuity"; };
+  };
+
+  sops.templates."mautrix-discord-config" = {
+    path = bridgeConfigPath;
+    owner = "mautrix-discord";
+    content = ''
+      homeserver:
+        address: http://127.0.0.1:6167
+        domain: moonburst.net
+        verify_ssl: false
+      appservice:
+        address: http://127.0.0.1:29334
+        port: 29334
+        database:
+          type: postgres
+          uri: postgres:///mautrix-discord?host=/run/postgresql
+        id: discord-bridge
+        as_token: ${config.sops.placeholder.matrix_as_token}
+        hs_token: ${config.sops.placeholder.matrix_hs_token}
+        bot:
+          username: discordbot
+          displayname: Discord Bridge
+      bridge:
+        username_template: "discord_{{.}}"
+        displayname_template: "{{.DisplayName}}"
+        sync_with_custom_puppets: true
+        get_embeds: true
+        media_h_f_v: true
+        disable_discord_reply_mention: false
+        private_chat_portal_meta: true
+        double_puppet_server_map:
+          "moonburst.net": "http://127.0.0.1:6167"
+        login_shared_secret_file:
+          "moonburst.net": ${puppetSecretPath}
+        permissions:
+          "moonburst.net": "user"
+          "@moonburst:moonburst.net": "admin"
+      logging:
+        print_level: debug
+    '';
+  };
+
+  sops.templates."discord-env" = {
+    owner = "mautrix-discord";
+    content = "MAUTRIX_DISCORD_DISCORD_TOKEN=${config.sops.placeholder.discord_bot_token}";
+  };
+
+  sops.templates."discord-registration.yaml" = {
+    path = registrationPath;
+    owner = "continuwuity";
+    content = ''
+      id: discord-bridge
+      as_token: ${config.sops.placeholder.matrix_as_token}
+      hs_token: ${config.sops.placeholder.matrix_hs_token}
+      namespaces:
+        users:
+          - exclusive: true
+            regex: "@discord_.*:moonburst.net"
+          - exclusive: true
+            regex: "@discordbot:moonburst.net"
+        aliases: [{ exclusive: true, regex: "#discord_.*:moonburst.net" }]
+      url: "http://127.0.0.1:29334"
+      sender_localpart: discordbot
+      rate_limited: true
+    '';
+  };
+
+  services.matrix-continuwuity = {
+    enable = true;
+    package = unstablePkgs.matrix-continuwuity;
+    settings = {
+      global = {
+        server_name = "moonburst.net";
+        port = [ 6167 ];
+        address = [ "127.0.0.1" ];
+        max_request_size = 800000000;
+        allow_registration = true;
+        registration_token_file = config.sops.secrets.matrix_registration_secret.path;
+        login_shared_secret_file = puppetSecretPath;
+        url_preview = true;
+        url_preview_ip_range_blacklist = [ "127.0.0.0/8" "10.0.0.0/8" "172.16.0.0/12" "192.168.0.0/16" "::1/128" ];
+      };
+      appservice.config_files = [ registrationPath ];
+    };
+  };
+
+  systemd.services.continuwuity.serviceConfig = {
+    DynamicUser = lib.mkForce false;
+    User = "continuwuity";
+    Group = "continuwuity";
+    StateDirectory = "continuwuity";
+    ReadWritePaths = [ "/var/lib/continuwuity" ];
+    LogLevelMax = lib.mkIf (!enableVerboseLogging) "err";
+  };
+
+  services.mautrix-discord = {
+    enable = true;
+    package = unstablePkgs.mautrix-discord;
+    registerToSynapse = false;
+    environmentFile = discordEnvPath;
+    settings = {
+      homeserver = { address = "http://127.0.0.1:6167"; domain = "moonburst.net"; };
+      appservice.database.type = "postgres";
+    };
+  };
+
+  systemd.services.mautrix-discord = {
+    after = [ "postgresql.service" ];
+    serviceConfig = {
+      ExecStart = lib.mkForce "${unstablePkgs.mautrix-discord}/bin/mautrix-discord --config=${bridgeConfigPath}";
+      SupplementaryGroups = [ "continuwuity" "postgres" ];
+      LogLevelMax = lib.mkIf (!enableVerboseLogging) "err";
+    };
+  };
+
+  services.nginx.virtualHosts."moonburst.net" = {
+    listen = defaultListen;
+
+    extraConfig = ''
+      client_max_body_size 500M;
+      ${commonNginxHeaders}
+    '';
+
+    locations = {
+      "= /.well-known/matrix/server".extraConfig = ''
+        add_header Content-Type application/json;
+        add_header Access-Control-Allow-Origin *;
+        return 200 '{"m.server":"moonburst.net:443"}';
+      '';
+      "= /.well-known/matrix/client".extraConfig = ''
+        add_header Content-Type application/json;
+        add_header Access-Control-Allow-Origin *;
+        return 200 "{\"m.homeserver\":{\"base_url\":\"https://moonburst.net\"},\"org.matrix.msc4143.rtc_foci\":[{\"type\":\"livekit\",\"livekit_service_url\":\"https://matrix.org\"}]}";
+      '';
+
+      # RFC 9116 security.txt configuration
+      "= /.well-known/security.txt".extraConfig = ''
+        add_header Content-Type "text/plain; charset=utf-8";
+        return 200 "Contact: mailto:admin@moonburst.net\nExpires: 2026-12-31T23:59:59Z\nPreferred-Languages: en\n";
+      '';
+      "= /security.txt".extraConfig = ''
+        return 301 /.well-known/security.txt;
+      '';
+
+      "/_matrix/media" = {
+        proxyPass = "http://127.0.0.1:6167";
+        proxyWebsockets = true;
+        extraConfig = ''
+          ${matrixProxyConfig}
+          proxy_buffering off;
+        '';
+      };
+
+      "/_matrix" = {
+        proxyPass = "http://127.0.0.1:6167";
+        proxyWebsockets = true;
+        extraConfig = matrixProxyConfig;
+      };
+
+      "/" = {
+        root = homepage;
+      };
+    };
+  };
+
+  services.nginx.virtualHosts."matrix.moonburst.net" = {
+    listen = defaultListen;
+
+    extraConfig = ''
+      client_max_body_size 10G;
+      ${commonNginxHeaders}
+    '';
+
+    locations = {
+      "= /config.json".extraConfig = ''
+        default_type application/json;
+        add_header Access-Control-Allow-Origin *;
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0";
+        return 200 '${builtins.toJSON {
+          defaultHomeserver = 0;
+          homeserverList = [
+            "moonburst.net"
+          ];
+        }}';
+      '';
+
+      "/" = {
+        extraConfig = ''
+          resolver 1.1.1.1;
+          set $sable_upstream app.sable.moe;
+          proxy_pass https://$sable_upstream;
+          proxy_set_header Host $sable_upstream;
+          proxy_ssl_server_name on;
+        '';
+        proxyWebsockets = true;
+      };
+    };
+  };
+
+  systemd.services.cloudflared-tunnel = {
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      EnvironmentFile = config.sops.secrets.cloudflare_token.path;
+
+      ExecStart = lib.mkForce ''
+        ${unstablePkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate --loglevel warn run \
+          --protocol quic \
+          --http2-origin \
+          --origin-server-name moonburst.net
+      '';
+      Restart = "always";
+      RestartSec = "5s";
+      User = "continuwuity";
+    };
+  };
+
+  users.groups.continuwuity = {};
+  users.users.continuwuity = {
+    isSystemUser = true;
+    group = "continuwuity";
+    extraGroups = [ "mautrix-discord" ];
+  };
+
+  systemd.tmpfiles.rules = [
+    "d /var/lib/mautrix-discord 0750 mautrix-discord mautrix-discord -"
+    "d /var/lib/continuwuity 0700 continuwuity continuwuity -"
+    "d /var/lib/continuwuity/media 0700 continuwuity continuwuity -"
+  ];
+}
+
+==> /home/moonburst/nix/hosts/moonbeauty/website/share-approver.nix <==
+{ config, pkgs, lib, ... }:
+
+let
+  approverScript = pkgs.writeScriptBin "share-approver" ''#!${pkgs.python3}/bin/python3
+import os
+import sys
+import json
+import time
+import uuid
+import threading
+import subprocess
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+from urllib.parse import parse_qs, urlparse
+
+HOST = "127.0.0.1"
+PORT = 8088
+
+PENDING = {}
+APPROVED_TOKENS = {}
+LOCK = threading.Lock()
+
+def cleanup_tokens():
+    now = time.time()
+    with LOCK:
+        expired = [t for t, exp in APPROVED_TOKENS.items() if now > exp]
+        for t in expired:
+            del APPROVED_TOKENS[t]
+
+def handle_desktop_notification(req_id, size_str, filename, reason_str, expiry_str, ip_str):
+    summary = f"🔔 Large Upload Request ({size_str})"
+    body = f"From: {reason_str}\nFile: {filename}\nRequested Expiration: {expiry_str}\nIP: {ip_str}\nAllow upload up to 10 GB?"
+    
+    cmd = [
+        "${pkgs.libnotify}/bin/notify-send",
+        "-a", "Share Drop",
+        "-i", "folder-download",
+        "-u", "critical",
+        summary, body,
+        "--action=approve=Approve",
+        "--action=deny=Deny"
+    ]
+    
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        action = proc.stdout.strip()
+        
+        with LOCK:
+            if action == "approve":
+                token = str(uuid.uuid4())
+                APPROVED_TOKENS[token] = time.time() + 86400
+                PENDING[req_id] = {"status": "approved", "token": token}
+            else:
+                PENDING[req_id] = {"status": "denied"}
+    except Exception:
+        with LOCK:
+            PENDING[req_id] = {"status": "timeout"}
+
+class RequestHandler(BaseHTTPRequestHandler):
+    def log_message(self, format, *args):
+        return
+
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "*")
+        self.end_headers()
+
+    def do_POST(self):
+        cleanup_tokens()
+        parsed = urlparse(self.path)
+        
+        if parsed.path == "/request-approval":
+            length = int(self.headers.get("Content-Length", 0))
+            raw_body = self.rfile.read(length).decode("utf-8")
+            try:
+                data = json.loads(raw_body)
+            except Exception:
+                data = {}
+
+            size_str = data.get("size", "Unknown Size")
+            filename = data.get("filename", "Unknown File")
+            reason_str = data.get("reason", "No reason provided")
+            expiry_str = data.get("expiry", "24 Hours")
+            ip_str = self.headers.get("X-Forwarded-For", self.client_address[0]).split(",")[0].strip()
+
+            req_id = str(uuid.uuid4())
+            with LOCK:
+                PENDING[req_id] = {"status": "pending"}
+
+            t = threading.Thread(target=handle_desktop_notification, args=(req_id, size_str, filename, reason_str, expiry_str, ip_str))
+            t.daemon = True
+            t.start()
+
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"request_id": req_id}).encode())
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def do_GET(self):
+        cleanup_tokens()
+        parsed = urlparse(self.path)
+        
+        if parsed.path == "/check-approval":
+            params = parse_qs(parsed.query)
+            req_id = params.get("id", [""])[0]
+            
+            with LOCK:
+                res = PENDING.get(req_id, {"status": "not_found"})
+
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(res).encode())
+
+        elif parsed.path == "/verify-auth":
+            try:
+                upload_bytes = int(self.headers.get("X-Upload-Size", 0))
+            except Exception:
+                upload_bytes = 0
+
+            # Public limit 50MB
+            if upload_bytes <= 52428800:
+                self.send_response(200)
+                self.end_headers()
+                return
+
+            header_token = self.headers.get("X-Approval-Token", "").strip()
+            with LOCK:
+                if header_token and (header_token in APPROVED_TOKENS):
+                    if time.time() < APPROVED_TOKENS[header_token]:
+                        self.send_response(200)
+                        self.end_headers()
+                        return
+
+            self.send_response(403)
+            self.end_headers()
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+if __name__ == "__main__":
+    # Multi-threaded server prevents any request queue deadlocks
+    server = ThreadingHTTPServer((HOST, PORT), RequestHandler)
+    server.serve_forever()
+  '';
+in
+{
+  systemd.user.services.share-approver = {
+    description = "Interactive Desktop Approval Daemon for Large File Uploads";
+    wantedBy = [ "graphical-session.target" ];
+    partOf = [ "graphical-session.target" ];
+    serviceConfig = {
+      ExecStart = "${approverScript}/bin/share-approver";
+      Restart = "always";
+      RestartSec = 3;
+    };
+  };
+}
+
+==> /home/moonburst/nix/hosts/moonbeauty/website/navidrome.nix <==
+{ config, pkgs, lib, ... }:
+
+let
+  musicDomain = "music.moonburst.net";
+in
+{
+  services.navidrome = {
+    enable = true;
+    settings = {
+      Address = "0.0.0.0";
+      Port = 4533;
+      MusicFolder = "/home/moonburst/Music";
+      LogLevel = "INFO";
+      DefaultTheme = "Dark";
+      EnableCoverAnimation = true;
+      EnableTranscodingConfig = true;
+      EnableSharing = true;
+
+      # Tell Navidrome to trust the proxy and accept the guest header
+      ReverseProxyUserHeader = "Remote-User";
+      ReverseProxyWhitelist = "127.0.0.1/32,::1/128";
+      "ExtAuth.UserHeader" = "Remote-User";
+      "ExtAuth.TrustedSources" = "127.0.0.1/32,::1/128";
+    };
+  };
+
+  systemd.services.navidrome.serviceConfig = {
+    DynamicUser = lib.mkForce false;
+    User = lib.mkForce "moonburst";
+    Group = lib.mkForce "users";
+    ProtectHome = lib.mkForce false;
+    ProtectSystem = lib.mkForce false;
+    PrivateUsers = lib.mkForce false;
+  };
+
+  systemd.tmpfiles.rules = [
+    "Z /var/lib/navidrome 0755 moonburst users -"
+  ];
+
+  services.nginx.virtualHosts."${musicDomain}" = {
+    listen = [ { addr = "0.0.0.0"; port = 80; } { addr = "[::]"; port = 80; } ];
+    locations."/" = {
+      proxyPass = "http://127.0.0.1:4533";
+      proxyWebsockets = true;
+      extraConfig = ''
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+
+        # Automatically authenticates every visitor as guest without a password
+        proxy_set_header Remote-User "guest";
+        add_header X-Robots-Tag "noindex, nofollow, noarchive" always;
+      '';
+    };
+  };
+}
+
+==> /home/moonburst/nix/hosts/moonbeauty/website/audiobookshelf.nix <==
+{ config, pkgs, lib, ... }: {
+  services.audiobookshelf = {
+    enable = true;
+    host = "127.0.0.1";
+    port = 8000;
+  };
+
+  # Allow audiobookshelf to trust reverse proxy SSL headers
+  systemd.services.audiobookshelf.environment = {
+    ROUTER_BASE_PATH = "/audiobookshelf";
+  };
+
+  systemd.services.audiobookshelf.serviceConfig = {
+    SupplementaryGroups = [ "users" ];
+  };
+
+  services.nginx.virtualHosts."audiobooks.moonburst.net" = {
+    locations."/" = {
+      proxyPass = "http://127.0.0.1:${toString config.services.audiobookshelf.port}";
+      proxyWebsockets = true;
+      extraConfig = ''
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port 443;
+        proxy_buffering off;
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+      '';
+    };
+  };
+}
+
+==> /home/moonburst/nix/hosts/moonbeauty/website/homepage.nix <==
+{ pkgs }:
+
+pkgs.writeTextFile {
+  name = "homepage-webroot";
+  destination = "/index.html";
+  text = ''
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Moon Burst's Page</title>
+      <style>
+        body {
+          font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+          background-color: #0d0e15;
+          color: #f4f4f5;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          height: 100vh;
+          margin: 0;
+        }
+        .card {
+          text-align: center;
+          background: #161722;
+          padding: 3rem;
+          border-radius: 12px;
+          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+          border: 1px solid #27272a;
+          max-width: 380px;
+          width: 100%;
+        }
+        h1 {
+          color: #c084fc;
+          font-size: 2.5rem;
+          margin-top: 0;
+          margin-bottom: 0.5rem;
+        }
+        p {
+          color: #a1a1aa;
+          font-size: 1.1rem;
+          margin-bottom: 2rem;
+        }
+        .link-group {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+        .btn {
+          display: block;
+          background-color: #1f202e;
+          color: #f4f4f5;
+          text-decoration: none;
+          font-weight: 600;
+          padding: 0.85rem 1.5rem;
+          border-radius: 8px;
+          border: 1px solid #3f3f46;
+          transition: all 0.2s ease-in-out;
+        }
+        .btn:hover {
+          background-color: #c084fc;
+          color: #0d0e15;
+          border-color: #c084fc;
+          transform: translateY(-2px);
+        }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <h1>Moonburst</h1>
+        <p>Services Portal</p>
+        <div class="link-group">
+          <a class="btn" href="https://matrix.moonburst.net">Matrix Chat</a>
+          <a class="btn" href="https://music.moonburst.net">Music Streamer (FLAC)</a>
+          <a class="btn" href="https://audiobooks.moonburst.net">Audiobooks & Podcasts</a>
+          <a class="btn" href="https://share.moonburst.net">Encrypted Share Drop (24h)</a>
+        </div>
+      </div>
+    </body>
+    </html>
+  '';
+}
+
+==> /home/moonburst/nix/hosts/moonbeauty/website/default.nix <==
+{ config, pkgs, lib, ... }: {
+  imports = [
+    ./matrix.nix
+    ./navidrome.nix
+    ./microbin.nix
+    ./share-approver.nix
+    ./audiobookshelf.nix
+    ./authentik.nix
+  ];
+
+  services.postgresql = {
+    enable = true;
+    package = pkgs.postgresql_16;
+    enableTCPIP = true;
+
+    ensureDatabases = [
+      "mautrix-discord"
+      "authentik"
+    ];
+
+    ensureUsers = [
+      { name = "mautrix-discord"; ensureDBOwnership = true; }
+      { name = "authentik"; ensureDBOwnership = true; }
+    ];
+
+    authentication = pkgs.lib.mkForce ''
+      local   all             all                                     trust
+      host    all             all             127.0.0.1/32            trust
+      host    all             all             ::1/128                 trust
+    '';
+
+    settings = {
+      log_checkpoints = false;
+      log_min_messages = "error";
+    };
+  };
+
+  # Set global Nginx upload capacity & proxy defaults
+  services.nginx = {
+    enable = true;
+    clientMaxBodySize = "10G";
+    recommendedProxySettings = true;
+  };
+}
+
+==> /home/moonburst/nix/hosts/moonbeauty/website/authentik.nix <==
+{ config, pkgs, lib, ... }: {
+  virtualisation.podman.enable = true;
+  virtualisation.oci-containers.backend = "podman";
+
+  services.redis.servers."authentik" = {
+    enable = true;
+    port = 6379;
+    bind = "127.0.0.1";
+  };
+
+  virtualisation.oci-containers.containers = {
+    authentik-server = {
+      image = "ghcr.io/goauthentik/server:2024.12.3";
+      cmd = [ "server" ];
+      environment = {
+        AUTHENTIK_REDIS__HOST = "127.0.0.1";
+        AUTHENTIK_POSTGRESQL__HOST = "127.0.0.1";
+        AUTHENTIK_POSTGRESQL__NAME = "authentik";
+        AUTHENTIK_POSTGRESQL__USER = "authentik";
+        AUTHENTIK_LISTEN__HTTP = "127.0.0.1:9000";
+        AUTHENTIK_HOST = "https://auth.moonburst.net";
+      };
+      environmentFiles = [ "/var/lib/authentik/authentik.env" ];
+      volumes = [
+        "/var/lib/authentik/media:/media"
+        "/var/lib/authentik/custom-templates:/templates"
+      ];
+      extraOptions = [ "--network=host" ];
+    };
+
+    authentik-worker = {
+      image = "ghcr.io/goauthentik/server:2024.12.3";
+      cmd = [ "worker" ];
+      environment = {
+        AUTHENTIK_REDIS__HOST = "127.0.0.1";
+        AUTHENTIK_POSTGRESQL__HOST = "127.0.0.1";
+        AUTHENTIK_POSTGRESQL__NAME = "authentik";
+        AUTHENTIK_POSTGRESQL__USER = "authentik";
+        AUTHENTIK_HOST = "https://auth.moonburst.net";
+      };
+      environmentFiles = [ "/var/lib/authentik/authentik.env" ];
+      volumes = [
+        "/var/lib/authentik/media:/media"
+        "/var/lib/authentik/custom-templates:/templates"
+      ];
+      extraOptions = [ "--network=host" ];
+    };
+  };
+
+  services.nginx.virtualHosts."auth.moonburst.net" = {
+    locations."/" = {
+      proxyPass = "http://127.0.0.1:9000";
+      proxyWebsockets = true;
+      extraConfig = ''
+        proxy_set_header X-Forwarded-Proto https;
+      '';
+    };
+  };
+}
+
+==> /home/moonburst/nix/hosts/moonbeauty/website/microbin.nix <==
+{ config, pkgs, lib, ... }:
+
+let
+  # =====================================================================
+  # GLOBAL DECLARATIVE THEME & SETTINGS VARIABLES
+  # =====================================================================
+  shareDomain       = "share.moonburst.net";
+  storageDir        = "/mnt/3TBHDD/microbin-storage";
+  tmpDir            = "/mnt/3TBHDD/microbin-tmp";
+
+  accentBlue        = "#003399";
+  accentYellow      = "#F7F700";
+  accentGold        = "#FABD2F";
+  darkBg            = "#0F0F0F";
+  cardBg            = "#12131c";
+  dangerRed         = "#f87171";
+
+  # Border & Hover Variables (12px test)
+  borderThickness   = "5px";
+  borderRadius      = "8px";
+  baseBorderColor   = accentBlue;
+  hoverBorderColor  = accentYellow;
+
+  hoverGlow         = "0 0 25px 6px rgba(247, 247, 0, 0.75)";
+  # =====================================================================
+
+  chunkUploaderScript = pkgs.writeText "microbin-chunk-uploader.py" ''
+import os
+import sys
+import time
+import shutil
+import subprocess
+import threading
+import json
+from http.server import HTTPServer, BaseHTTPRequestHandler
+
+DATA_DIR = "${storageDir}"
+UPLOAD_TMP_DIR = "${tmpDir}"
+os.makedirs(DATA_DIR, exist_ok=True)
+os.makedirs(UPLOAD_TMP_DIR, exist_ok=True)
+
+EXPIRY_MAP = {
+    "1hour": 3600,
+    "6hours": 21600,
+    "24hours": 86400,
+    "1week": 604800
+}
+
+def expiry_cleaner_loop():
+    while True:
+        try:
+            now = time.time()
+            if os.path.exists(DATA_DIR):
+                for sid in os.listdir(DATA_DIR):
+                    sdir = os.path.join(DATA_DIR, sid)
+                    if not os.path.isdir(sdir):
+                        continue
+                    mpath = os.path.join(sdir, "meta.json")
+                    ttl = 86400
+                    ctime = os.path.getmtime(sdir)
+                    if os.path.exists(mpath):
+                        try:
+                            with open(mpath, "r") as mf:
+                                m = json.load(mf)
+                            ctime = m.get("created_at", os.path.getmtime(mpath))
+                            exp_str = m.get("expiry", "24hours")
+                            ttl = EXPIRY_MAP.get(exp_str, 86400)
+                        except Exception:
+                            pass
+                    if now - ctime >= ttl:
+                        shutil.rmtree(sdir, ignore_errors=True)
+
+            if os.path.exists(UPLOAD_TMP_DIR):
+                for tid in os.listdir(UPLOAD_TMP_DIR):
+                    tdir = os.path.join(UPLOAD_TMP_DIR, tid)
+                    if os.path.isdir(tdir) and now - os.path.getmtime(tdir) > 14400:
+                        shutil.rmtree(tdir, ignore_errors=True)
+        except Exception:
+            pass
+        time.sleep(30)
+
+threading.Thread(target=expiry_cleaner_loop, daemon=True).start()
+
+class StorageHandler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        content_length = int(self.headers.get("Content-Length", 0))
+        path = self.path
+
+        if path == "/upload-chunk":
+            upload_id = self.headers.get("X-Upload-ID")
+            chunk_index = int(self.headers.get("X-Chunk-Index", 0))
+
+            if not upload_id:
+                self.send_error(400, "Missing X-Upload-ID")
+                return
+
+            session_dir = os.path.join(UPLOAD_TMP_DIR, upload_id)
+            os.makedirs(session_dir, exist_ok=True)
+
+            chunk_file = os.path.join(session_dir, f"chunk_{chunk_index:05d}")
+            chunk_data = self.rfile.read(content_length)
+            with open(chunk_file, "wb") as f:
+                f.write(chunk_data)
+
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "chunk_received", "index": chunk_index}).encode())
+
+        elif path == "/assemble-chunk":
+            body = self.rfile.read(content_length).decode()
+            meta = json.loads(body)
+            upload_id = meta.get("upload_id")
+            filename = meta.get("filename", "archive.zip")
+            is_encrypted = meta.get("is_encrypted", False)
+            auth_hash = meta.get("auth_hash", "")
+            salt = meta.get("salt", "")
+            expiry = meta.get("expiry", "24hours")
+            files_manifest = meta.get("files", [])
+
+            session_dir = os.path.join(UPLOAD_TMP_DIR, upload_id)
+            if not os.path.exists(session_dir):
+                self.send_error(404, "Upload session not found")
+                return
+
+            temp_raw_file = os.path.join(session_dir, "raw_stream.bin")
+            chunk_files = sorted([f for f in os.listdir(session_dir) if f.startswith("chunk_")])
+            with open(temp_raw_file, "wb") as outfile:
+                for cf in chunk_files:
+                    part_path = os.path.join(session_dir, cf)
+                    with open(part_path, "rb") as infile:
+                        shutil.copyfileobj(infile, outfile)
+                    os.remove(part_path)
+
+            share_id = os.urandom(8).hex()
+            file_dest_dir = os.path.join(DATA_DIR, share_id)
+            os.makedirs(file_dest_dir, exist_ok=True)
+
+            final_filename = filename if filename.endswith(".zip") else filename + ".zip"
+            final_file_path = os.path.join(file_dest_dir, final_filename)
+
+            if is_encrypted:
+                shutil.move(temp_raw_file, final_file_path)
+            else:
+                staging_dir = os.path.join(session_dir, "staging")
+                os.makedirs(staging_dir, exist_ok=True)
+                if len(files_manifest) > 1:
+                    subprocess.run(["${pkgs.p7zip}/bin/7z", "x", temp_raw_file, f"-o{staging_dir}", "-y"], check=False)
+                    if os.path.exists(temp_raw_file):
+                        os.remove(temp_raw_file)
+                    cmd = ["${pkgs.p7zip}/bin/7z", "a", "-tzip", final_file_path, os.path.join(staging_dir, "*"), "-y"]
+                    subprocess.run(cmd, check=True)
+                else:
+                    real_name = files_manifest[0] if files_manifest else filename
+                    target_inside = os.path.join(staging_dir, real_name)
+                    shutil.move(temp_raw_file, target_inside)
+                    cmd = ["${pkgs.p7zip}/bin/7z", "a", "-tzip", final_file_path, target_inside, "-y"]
+                    subprocess.run(cmd, check=True)
+
+            metadata = {
+                "filename": final_filename,
+                "size": os.path.getsize(final_file_path),
+                "is_encrypted": is_encrypted,
+                "auth_hash": auth_hash if is_encrypted else None,
+                "salt": salt if is_encrypted else None,
+                "created_at": time.time(),
+                "expiry": expiry
+            }
+
+            with open(os.path.join(file_dest_dir, "meta.json"), "w") as mf:
+                json.dump(metadata, mf)
+
+            shutil.rmtree(session_dir, ignore_errors=True)
+
+            download_url = f"https://${shareDomain}/d/{share_id}"
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "complete", "url": download_url}).encode())
+
+        elif path.startswith("/api/verify-download/"):
+            share_id = path.split("/")[-1]
+            file_dest_dir = os.path.join(DATA_DIR, share_id)
+            meta_path = os.path.join(file_dest_dir, "meta.json")
+
+            if not os.path.exists(meta_path):
+                self.send_error(404, "File not found")
+                return
+
+            with open(meta_path, "r") as mf:
+                meta = json.load(mf)
+
+            body = self.rfile.read(content_length).decode()
+            req_data = json.loads(body) if body else {}
+            provided_hash = req_data.get("auth_hash", "")
+
+            if meta.get("is_encrypted"):
+                if provided_hash != meta.get("auth_hash"):
+                    self.send_response(401)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"error": "Incorrect password. Please try again."}).encode())
+                    return
+
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "ok"}).encode())
+
+        else:
+            self.send_error(404)
+
+    def do_GET(self):
+        path = self.path
+
+        if path.startswith("/download-file/"):
+            parts = path.split("/")
+            share_id = parts[2]
+            file_dest_dir = os.path.join(DATA_DIR, share_id)
+            meta_path = os.path.join(file_dest_dir, "meta.json")
+
+            if not os.path.exists(meta_path):
+                self.send_error(404, "File not found")
+                return
+
+            with open(meta_path, "r") as mf:
+                meta = json.load(mf)
+
+            filename = meta["filename"]
+            filepath = os.path.join(file_dest_dir, filename)
+
+            self.send_response(200)
+            self.send_header("Content-Type", "application/octet-stream")
+            self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
+            self.send_header("Content-Length", str(os.path.getsize(filepath)))
+            self.end_headers()
+
+            with open(filepath, "rb") as f:
+                shutil.copyfileobj(f, self.wfile)
+            return
+
+        if path.startswith("/d/"):
+            share_id = path.split("/")[2]
+            file_dest_dir = os.path.join(DATA_DIR, share_id)
+            meta_path = os.path.join(file_dest_dir, "meta.json")
+
+            if not os.path.exists(meta_path):
+                self.send_error(404, "Download link expired or not found.")
+                return
+
+            with open(meta_path, "r") as mf:
+                meta = json.load(mf)
+
+            filename = meta["filename"]
+            size_mb = f"{meta['size'] / (1024 * 1024):.1f} MB"
+            is_encrypted = meta["is_encrypted"]
+            salt = meta.get("salt", "")
+            enc_tag = "(Zero-Knowledge E2EE)" if is_encrypted else ""
+            input_html = "<input type=\"password\" id=\"pw\" class=\"pw-input\" placeholder=\"Enter password to decrypt and download...\" />" if is_encrypted else ""
+            icon = "🔒" if is_encrypted else "📁"
+
+            html = f"""<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Download {filename}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    *, *::before, *::after {{
+      box-sizing: border-box !important;
+    }}
+    body {{
+      background-color: ${darkBg};
+      color: ${accentYellow};
+      font-family: system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      gap: 16px;
+    }}
+    .card {{
+      background-color: ${cardBg};
+      box-shadow: 0 0 0 ${borderThickness} ${baseBorderColor} !important;
+      border-radius: ${borderRadius} !important;
+      padding: 32px;
+      max-width: 480px;
+      width: 90%;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      border: none !important;
+    }}
+    .filename {{
+      font-size: 20px;
+      font-weight: bold;
+      color: ${accentGold};
+      word-break: break-all;
+    }}
+    .size {{
+      font-size: 14px;
+      color: #888;
+      margin-bottom: 4px;
+    }}
+    .pw-input {{
+      all: unset !important;
+      box-sizing: border-box !important;
+      width: 100%;
+      height: 60px;
+      padding: 10px 16px;
+      border-radius: ${borderRadius} !important;
+      background-color: ${darkBg} !important;
+      box-shadow: 0 0 0 ${borderThickness} ${baseBorderColor} !important;
+      color: ${accentYellow};
+      font-size: 15px;
+      outline: none;
+      transition: box-shadow 0.15s ease-in-out;
+    }}
+    .pw-input:hover, .pw-input:focus {{
+      box-shadow: 0 0 0 ${borderThickness} ${hoverBorderColor}, ${hoverGlow} !important;
+    }}
+    .download-btn, .back-btn {{
+      all: unset !important;
+      box-sizing: border-box !important;
+      background-color: ${darkBg} !important;
+      color: ${accentYellow} !important;
+      box-shadow: 0 0 0 ${borderThickness} ${baseBorderColor} !important;
+      border-radius: ${borderRadius} !important;
+      padding: 14px 24px;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+      display: block;
+      text-align: center;
+      width: 100%;
+      outline: none;
+      transition: box-shadow 0.15s ease-in-out;
+    }}
+    .download-btn:hover, .download-btn:focus,
+    .back-btn:hover, .back-btn:focus {{
+      box-shadow: 0 0 0 ${borderThickness} ${hoverBorderColor}, ${hoverGlow} !important;
+      color: ${accentYellow} !important;
+      transform: scale(1.01);
+    }}
+    .error-msg {{
+      color: ${dangerRed};
+      font-size: 14px;
+      font-weight: bold;
+      display: none;
+    }}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div style="font-size: 40px;">{icon}</div>
+    <div class="filename">{filename}</div>
+    <div class="size">Size: {size_mb} {enc_tag}</div>
+    <div id="error" class="error-msg">❌ Incorrect password. Please try again.</div>
+    {input_html}
+    <button type="button" id="dl-btn" class="download-btn" onclick="requestDownload()">⬇️ Download File</button>
+    <button type="button" class="back-btn" onclick="window.location.href='/'">⬅️ Upload Another File</button>
+  </div>
+
+  <script>
+    async function computeHash(password, salt) {{
+      const enc = new TextEncoder();
+      const data = enc.encode(password + salt);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+      return Array.from(new Uint8Array(hashBuffer)).map(function(b) {{ return b.toString(16).padStart(2, "0"); }}).join("");
+    }}
+
+    async function decryptZipBlob(encryptedBlob, password, saltStr) {{
+      const buffer = await encryptedBlob.arrayBuffer();
+      const iv = buffer.slice(0, 12);
+      const data = buffer.slice(12);
+
+      const enc = new TextEncoder();
+      const keyMaterial = await crypto.subtle.importKey(
+        "raw", enc.encode(password), {{ name: "PBKDF2" }}, false, ["deriveKey"]
+      );
+
+      const key = await crypto.subtle.deriveKey(
+        {{
+          name: "PBKDF2",
+          salt: enc.encode(saltStr),
+          iterations: 100000,
+          hash: "SHA-256"
+        }},
+        keyMaterial,
+        {{ name: "AES-GCM", length: 256 }},
+        false,
+        ["decrypt"]
+      );
+
+      const decrypted = await crypto.subtle.decrypt(
+        {{ name: "AES-GCM", iv: iv }},
+        key,
+        data
+      );
+
+      return new Blob([decrypted], {{ type: "application/zip" }});
+    }}
+
+    async function requestDownload() {{
+      const errorEl = document.getElementById("error");
+      const btn = document.getElementById("dl-btn");
+      errorEl.style.display = "none";
+      const pwInput = document.getElementById("pw");
+      const password = pwInput ? pwInput.value.trim() : "";
+
+      if ("{is_encrypted}" === "True") {{
+        btn.disabled = true;
+        btn.textContent = "Verifying password...";
+        const authHash = await computeHash(password, "{salt}");
+
+        const verifyRes = await fetch("/api/verify-download/{share_id}", {{
+          method: "POST",
+          headers: {{ "Content-Type": "application/json" }},
+          body: JSON.stringify({{ auth_hash: authHash }})
+        }});
+
+        if (!verifyRes.ok) {{
+          errorEl.style.display = "block";
+          btn.disabled = false;
+          btn.textContent = "⬇️ Download File";
+          if (pwInput) {{ pwInput.value = ""; pwInput.focus(); }}
+          return;
+        }}
+
+        btn.textContent = "Decrypting locally (E2EE)...";
+        const fileRes = await fetch("/download-file/{share_id}");
+        const encryptedBlob = await fileRes.blob();
+
+        try {{
+          const decryptedBlob = await decryptZipBlob(encryptedBlob, password, "{salt}");
+          const url = URL.createObjectURL(decryptedBlob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "{filename}";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          btn.disabled = false;
+          btn.textContent = "Complete!";
+          setTimeout(function() {{ btn.textContent = "⬇️ Download File"; }}, 3000);
+        }} catch(err) {{
+          errorEl.textContent = "Decryption error: Failed to decrypt payload.";
+          errorEl.style.display = "block";
+          btn.disabled = false;
+          btn.textContent = "⬇️ Download File";
+        }}
+      }} else {{
+        window.location.href = "/download-file/{share_id}";
+      }}
+    }}
+
+    const pwInput = document.getElementById("pw");
+    if (pwInput) {{
+      pwInput.addEventListener("keydown", function(e) {{
+        if (e.key === "Enter") requestDownload();
+      }});
+    }}
+  </script>
+</body>
+</html>"""
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.end_headers()
+            self.wfile.write(html.encode())
+        else:
+            self.send_error(404)
+
+server = HTTPServer(("127.0.0.1", 8087), StorageHandler)
+server.serve_forever()
+  '';
+
+  customCss = pkgs.writeText "custom-microbin.css" ''
+    *, *::before, *::after {
+      box-sizing: border-box !important;
+    }
+
+    /* PRE-RENDER CLOAK */
+    #pasta-form, form {
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.15s ease-in-out;
+    }
+
+    body, main, #main, form, #pasta-form {
+      max-width: 980px !important;
+      width: 100% !important;
+      margin: 0 auto !important;
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 1.5rem !important;
+    }
+
+    header, nav, .header, .navbar, .logo, a.logo, a[href="/"], a[href*="upload"], .nav-links,
+    footer, .footer, a[href*="/list"], a[href*="/guide"], a[href$="/list"], a[href$="/guide"] {
+      display: none !important;
+      visibility: hidden !important;
+    }
+
+    #content-input, textarea, #file, #attach-file-button, label[for="file"] {
+      display: none !important;
+      visibility: hidden !important;
+      height: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+    }
+
+    .form-row-duo {
+      display: flex !important;
+      flex-direction: row !important;
+      gap: 24px !important;
+      width: 100% !important;
+      align-items: flex-end !important;
+    }
+
+    .form-col {
+      flex: 1 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      min-width: 0 !important;
+    }
+
+    .field-header-box {
+      height: 46px !important;
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: flex-end !important;
+      margin-bottom: 8px !important;
+    }
+
+    .field-label {
+      font-weight: bold !important;
+      color: ${accentYellow} !important;
+      font-size: 15px !important;
+      line-height: 1.2 !important;
+      margin: 0 !important;
+    }
+
+    .sub-label {
+      font-weight: normal !important;
+      font-size: 12px !important;
+      opacity: 0.85 !important;
+      color: ${accentGold} !important;
+      margin-top: 4px !important;
+      line-height: 1.2 !important;
+    }
+
+    /* ====================================================================
+       ALL: UNSET & BORDER SHIFT (BYPASSES LINUX GTK WIDGET ENGINE COMPLETELY)
+       ==================================================================== */
+    button,
+    select,
+    input,
+    .file-select-btn,
+    .action-btn-main,
+    .clear-history-btn,
+    .history-open-btn,
+    .copy-link-btn,
+    .zip-name-box,
+    .modal-input,
+    .modal-submit-btn,
+    .modal-cancel-btn {
+      all: unset !important;
+      box-sizing: border-box !important;
+      font-family: system-ui, sans-serif !important;
+      border: none !important;
+    }
+
+    /* ====================================================================
+       UNIVERSAL BASE BORDER (USES BOX-SHADOW TO GUARANTEE 12PX IN ALL BROWSERS)
+       ==================================================================== */
+    .history-card,
+    .file-select-btn,
+    .action-btn-main,
+    .clear-history-btn,
+    .history-open-btn,
+    .copy-link-btn,
+    .zip-name-box,
+    .modal-card,
+    .modal-input,
+    .modal-submit-btn,
+    .modal-cancel-btn,
+    button,
+    select,
+    input {
+      box-shadow: 0 0 0 ${borderThickness} ${baseBorderColor} !important;
+      border-radius: ${borderRadius} !important;
+      outline: none !important;
+      border: none !important;
+      background-color: ${darkBg} !important;
+      color: ${accentYellow} !important;
+      transition: box-shadow 0.15s ease-in-out !important;
+    }
+
+    /* Select Dropdown */
+    select, #expiration, .form-col select {
+      display: block !important;
+      cursor: pointer !important;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23F7F700' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
+      background-repeat: no-repeat !important;
+      background-position: right 16px center !important;
+      padding-right: 42px !important;
+    }
+
+    /* Form Fields */
+    .form-col input, .form-col select {
+      width: 100% !important;
+      height: 60px !important;
+      padding: 0 16px !important;
+      display: block !important;
+    }
+
+    /* Buttons */
+    .file-select-btn {
+      padding: 10px 24px !important;
+      font-weight: bold !important;
+      font-size: 15px !important;
+      cursor: pointer !important;
+      display: inline-block !important;
+      margin-top: 10px !important;
+      text-align: center !important;
+    }
+
+    .action-btn-main {
+      padding: 10px 24px !important;
+      font-weight: bold !important;
+      font-size: 16px !important;
+      cursor: pointer !important;
+      margin-top: 6px !important;
+      width: 100% !important;
+      height: 64px !important;
+      display: block !important;
+      text-align: center !important;
+      line-height: 40px !important;
+    }
+
+    .action-btn-main:hover {
+      transform: scale(1.005) !important;
+    }
+
+    .clear-history-btn {
+      padding: 8px 18px !important;
+      font-size: 13px !important;
+      font-weight: bold !important;
+      cursor: pointer !important;
+      display: inline-block !important;
+    }
+
+    .history-open-btn,
+    .copy-link-btn {
+      padding: 0 18px !important;
+      font-size: 13px !important;
+      font-weight: bold !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      height: 48px !important;
+      margin: 0 !important;
+      cursor: pointer !important;
+    }
+
+    /* ====================================================================
+       UNIVERSAL HOVER & FOCUS (TURNS YELLOW AND GLOWS)
+       ==================================================================== */
+    .file-select-btn:hover, .file-select-btn:focus,
+    .action-btn-main:hover, .action-btn-main:focus,
+    .clear-history-btn:hover, .clear-history-btn:focus,
+    .history-open-btn:hover, .history-open-btn:focus,
+    .copy-link-btn:hover, .copy-link-btn:focus,
+    .zip-name-box:hover, .zip-name-box:focus,
+    .modal-input:hover, .modal-input:focus,
+    .modal-submit-btn:hover, .modal-submit-btn:focus,
+    .modal-cancel-btn:hover, .modal-cancel-btn:focus,
+    button:hover, button:focus,
+    select:hover, select:focus,
+    input:hover, input:focus {
+      box-shadow: 0 0 0 ${borderThickness} ${hoverBorderColor}, ${hoverGlow} !important;
+    }
+
+    /* Dotted Upload Box */
+    .file-drop-area {
+      border: ${borderThickness} dashed ${baseBorderColor} !important;
+      border-radius: ${borderRadius} !important;
+      padding: 28px !important;
+      text-align: center !important;
+      background-color: ${cardBg} !important;
+      cursor: pointer !important;
+      transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out !important;
+      box-sizing: border-box !important;
+      box-shadow: none !important;
+    }
+
+    .file-drop-area:hover,
+    .file-drop-area.dragover {
+      border: ${borderThickness} dashed ${hoverBorderColor} !important;
+      box-shadow: ${hoverGlow} !important;
+    }
+
+    .zip-name-box {
+      width: 100% !important;
+      height: 60px !important;
+      padding: 0 16px !important;
+      display: block !important;
+    }
+
+    .history-card {
+      background-color: ${cardBg} !important;
+      padding: 20px !important;
+      margin-top: 10px !important;
+      border: none !important;
+    }
+
+    .history-title {
+      font-size: 16px !important;
+      font-weight: bold !important;
+      color: ${accentGold} !important;
+      margin-bottom: 14px !important;
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: center !important;
+    }
+
+    .history-table {
+      width: 100% !important;
+      border-collapse: separate !important;
+      border-spacing: 0 !important;
+    }
+
+    .history-table th {
+      text-align: left !important;
+      color: ${accentYellow} !important;
+      padding: 10px 12px !important;
+      border-bottom: ${borderThickness} solid ${baseBorderColor} !important;
+      font-size: 13px !important;
+    }
+
+    .history-table td {
+      padding: 12px !important;
+      border-bottom: 1px solid #1a1b26 !important;
+      font-size: 14px !important;
+      color: #eee !important;
+      vertical-align: middle !important;
+    }
+
+    .action-btn-cell {
+      display: inline-flex !important;
+      flex-direction: row !important;
+      gap: 12px !important;
+      align-items: center !important;
+      white-space: nowrap !important;
+    }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(0, 0, 0, 0.82);
+      z-index: 99999;
+      justify-content: center;
+      align-items: center;
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-card {
+      background-color: ${cardBg};
+      padding: 24px;
+      width: 90%;
+      max-width: 520px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      border: none !important;
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: bold;
+      color: ${accentGold};
+    }
+
+    .modal-input {
+      width: 100%;
+      height: 60px;
+      padding: 0 16px;
+      background-color: #0a0a0f !important;
+      font-size: 15px;
+      display: block !important;
+    }
+
+    .modal-btn-row {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    .modal-submit-btn {
+      padding: 10px 20px !important;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer !important;
+      display: inline-block !important;
+    }
+
+    .modal-cancel-btn {
+      background-color: #222 !important;
+      color: #bbb !important;
+      padding: 10px 18px !important;
+      font-size: 14px;
+      cursor: pointer !important;
+      display: inline-block !important;
+    }
+
+    @media (max-width: 700px) {
+      .form-row-duo {
+        flex-direction: column !important;
+        gap: 14px !important;
+        align-items: stretch !important;
+      }
+      .field-header-box {
+        height: auto !important;
+      }
+    }
+  '';
+
+  customJs = pkgs.writeText "custom-microbin.js" ''
+    let isApproved = false;
+    let activeFiles = [];
+    const CHUNK_SIZE = 20 * 1024 * 1024;
+
+    function recordLocalUpload(item) {
+      var history = JSON.parse(localStorage.getItem("my_microbin_uploads") || "[]");
+      history.unshift(item);
+      if (history.length > 20) history.pop();
+      localStorage.setItem("my_microbin_uploads", JSON.stringify(history));
+    }
+
+    window.copyUrlToClipboard = function(btn, url) {
+      navigator.clipboard.writeText(url).then(function() {
+        var original = btn.innerText;
+        btn.innerText = "Copied!";
+        setTimeout(function() { btn.innerText = original; }, 1500);
+      });
+    };
+
+    function cleanupHeaderAndFooter() {
+      document.querySelectorAll("header, nav, .header, .navbar, .logo, a.logo, a[href='/'], a[href*='/list'], a[href*='/guide']").forEach(function(el) {
+        el.remove();
+      });
+      document.querySelectorAll("footer, .footer").forEach(function(el) {
+        el.remove();
+      });
+      document.querySelectorAll("p, div, small, span").forEach(function(el) {
+        if (el.textContent && el.textContent.includes("MicroBin by Dániel Szabó")) {
+          el.remove();
+        }
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+      cleanupHeaderAndFooter();
+
+      var form = document.getElementById("pasta-form") || document.querySelector("form");
+      var contentInput = document.getElementById("content-input");
+      var fileInput = document.getElementById("file");
+      var expSelect = document.getElementById("expiration") || document.querySelector("select[name=\"expiration\"]");
+      var privSelect = document.getElementById("privacy") || document.querySelector("select[name=\"privacy\"]");
+      
+      var encPass = document.getElementById("password") || document.getElementById("password_field") || document.querySelector("input[type=\"password\"]");
+      if (!encPass) {
+        encPass = document.createElement("input");
+        encPass.type = "password";
+      }
+      encPass.id = "custom-password-field";
+      encPass.setAttribute("autocomplete", "new-password");
+
+      if (!form) return;
+
+      if (contentInput) {
+        contentInput.style.display = "none";
+        contentInput.removeAttribute("required");
+        contentInput.value = "";
+      }
+
+      var oldSubmit = document.getElementById("submit-button") || document.querySelector("button[type=\"submit\"]");
+      if (oldSubmit) oldSubmit.style.display = "none";
+
+      var allNativeLabels = form.querySelectorAll("label[for='file'], #attach-file-button");
+      allNativeLabels.forEach(function(el) { el.style.display = "none"; });
+
+      if (expSelect) {
+        expSelect.innerHTML = 
+          '<option value="1hour">1 Hour</option>' +
+          '<option value="6hours">6 Hours</option>' +
+          '<option value="24hours" selected>24 Hours (Default)</option>' +
+          '<option value="1week">7 Days</option>';
+      }
+
+      if (privSelect) {
+        privSelect.innerHTML = '<option value="private" selected>Private</option>';
+      }
+
+      var cleanContainer = document.createElement("div");
+      cleanContainer.id = "custom-form-layout";
+
+      var row1 = document.createElement("div");
+      row1.className = "form-row-duo";
+
+      var colExp = document.createElement("div");
+      colExp.className = "form-col";
+      colExp.innerHTML = `
+        <div class="field-header-box">
+          <label class="field-label">Expiration Time</label>
+        </div>
+      `;
+      if (expSelect) colExp.appendChild(expSelect);
+
+      var colEnc = document.createElement("div");
+      colEnc.className = "form-col";
+      colEnc.innerHTML = `
+        <div class="field-header-box">
+          <label class="field-label">🔒 Password Protection</label>
+          <span class="sub-label">(optional, zero-knowledge AES-256; required for recipient to decrypt and unzip)</span>
+        </div>
+      `;
+      encPass.placeholder = "Leave blank for no password";
+      colEnc.appendChild(encPass);
+
+      row1.appendChild(colExp);
+      row1.appendChild(colEnc);
+      cleanContainer.appendChild(row1);
+
+      var rowFile = document.createElement("div");
+      rowFile.className = "form-col";
+      rowFile.innerHTML = `
+        <div class="field-header-box" style="height: auto; margin-bottom: 8px;">
+          <label class="field-label">📁 File Upload</label>
+          <span class="sub-label">(drag & drop or browse)</span>
+        </div>
+        <div id="drop-zone" class="file-drop-area">
+          <div id="file-status-text" style="color: ${accentGold}; font-size: 15px; margin-bottom: 8px;">
+            Drag files here or click to select
+          </div>
+          <button type="button" id="browse-btn" class="file-select-btn">Choose File(s)</button>
+        </div>
+        <div id="zip-name-container" style="display: none; margin-top: 12px;">
+          <label class="field-label">📦 Archive Name <span class="sub-label">(what the zip will be called)</span></label>
+          <input type="text" id="zip-name-input" class="zip-name-box" placeholder="e.g. project-assets, photos-vacation" />
+        </div>
+      `;
+      cleanContainer.appendChild(rowFile);
+
+      var child = form.firstElementChild;
+      while (child) {
+        var next = child.nextElementSibling;
+        if (child !== cleanContainer) {
+          child.style.display = "none";
+        }
+        child = next;
+      }
+
+      form.appendChild(cleanContainer);
+
+      if (fileInput) {
+        fileInput.setAttribute("multiple", "multiple");
+        fileInput.style.display = "none";
+      }
+
+      var mainActionBtn = document.createElement("button");
+      mainActionBtn.type = "button";
+      mainActionBtn.id = "main-action-button";
+      mainActionBtn.className = "action-btn-main";
+      mainActionBtn.textContent = "🚀 Send / Upload";
+      form.appendChild(mainActionBtn);
+
+      var historyBox = document.createElement("div");
+      historyBox.id = "user-history-box";
+      historyBox.className = "history-card";
+      historyBox.innerHTML = `
+        <div class="history-title">
+          <span>📁 Your Recent Uploads <span style="font-size:12px; opacity:0.8; font-weight:normal;">(Stored locally on your browser only)</span></span>
+          <button type="button" id="clear-history-btn" class="clear-history-btn">Clear History</button>
+        </div>
+        <div id="history-content"></div>
+      `;
+      form.parentNode.appendChild(historyBox);
+
+      function renderLocalHistory() {
+        var history = JSON.parse(localStorage.getItem("my_microbin_uploads") || "[]");
+        var container = document.getElementById("history-content");
+        if (!container) return;
+
+        if (history.length === 0) {
+          container.innerHTML = "<div style=\"color:#777; font-size:13px; font-style:italic;\">No recent uploads from this browser.</div>";
+          return;
+        }
+
+        var html = "<table class=\"history-table\"><thead><tr><th>Name / File</th><th>Size</th><th>Created</th><th>Direct Link</th></tr></thead><tbody>";
+        history.forEach(function(item) {
+          html += "<tr>" +
+            "<td><strong>" + item.name + "</strong></td>" +
+            "<td>" + item.size + "</td>" +
+            "<td>" + item.date + "</td>" +
+            "<td><div class=\"action-btn-cell\">" +
+            "<button type=\"button\" class=\"history-open-btn\" onclick=\"window.open('" + item.url + "', '_blank')\">Open Link</button>" +
+            "<button type=\"button\" class=\"copy-link-btn\" onclick=\"window.copyUrlToClipboard(this, '" + item.url + "')\">Copy Link</button>" +
+            "</div></td>" +
+            "</tr>";
+        });
+        html += "</tbody></table>";
+        container.innerHTML = html;
+      }
+
+      renderLocalHistory();
+
+      form.style.setProperty("visibility", "visible", "important");
+      form.style.setProperty("opacity", "1", "important");
+
+      var clearBtn = document.getElementById("clear-history-btn");
+      if (clearBtn) {
+        clearBtn.addEventListener("click", function() {
+          localStorage.removeItem("my_microbin_uploads");
+          renderLocalHistory();
+        });
+      }
+
+      var modalOverlay = document.createElement("div");
+      modalOverlay.id = "approval-modal";
+      modalOverlay.className = "modal-overlay";
+      modalOverlay.innerHTML = `
+        <div class="modal-card">
+          <div class="modal-title">⚠️ Large Upload Approval Required</div>
+          <div style="color: ${accentGold}; font-size: 14px; line-height: 1.4;">
+            Your upload exceeds the 50 MB limit. Moonburst needs to approve it to unlock up to 10 GB.
+          </div>
+          <input type="text" id="popup-reason-input" class="modal-input" placeholder="Who are you / what is this file for?..." />
+          <div id="modal-status-text" style="color: ${accentYellow}; font-size: 14px; display: none;"></div>
+          <div class="modal-btn-row">
+            <button type="button" id="modal-cancel-btn" class="modal-cancel-btn">Cancel</button>
+            <button type="button" id="modal-confirm-btn" class="modal-submit-btn">Request Approval</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modalOverlay);
+
+      var dropZone = document.getElementById("drop-zone");
+      var browseBtn = document.getElementById("browse-btn");
+      var fileStatusText = document.getElementById("file-status-text");
+      var zipContainer = document.getElementById("zip-name-container");
+
+      var popupReason = document.getElementById("popup-reason-input");
+      var modalStatus = document.getElementById("modal-status-text");
+      var modalConfirmBtn = document.getElementById("modal-confirm-btn");
+      var modalCancelBtn = document.getElementById("modal-cancel-btn");
+
+      modalCancelBtn.addEventListener("click", function() {
+        modalOverlay.style.display = "none";
+      });
+
+      if (browseBtn && fileInput) {
+        browseBtn.addEventListener("click", function(e) {
+          e.preventDefault();
+          fileInput.click();
+        });
+      }
+
+      function updateFileStats(files) {
+        activeFiles = Array.from(files);
+        var totalBytes = 0;
+        activeFiles.forEach(function(f) { totalBytes += f.size; });
+        var mb = (totalBytes / (1024 * 1024)).toFixed(1);
+
+        if (activeFiles.length === 1) {
+          fileStatusText.innerHTML = "Attached: <strong>" + activeFiles[0].name + "</strong> (" + mb + " MB)";
+          zipContainer.style.display = "none";
+        } else if (activeFiles.length > 1) {
+          fileStatusText.innerHTML = "Attached: <strong>" + activeFiles.length + " files</strong> (" + mb + " MB total) [Auto-Zipping]";
+          zipContainer.style.display = "block";
+        } else {
+          fileStatusText.innerText = "Drag files here or click to select";
+          zipContainer.style.display = "none";
+        }
+      }
+
+      if (fileInput) {
+        fileInput.addEventListener("change", function() {
+          if (fileInput.files) updateFileStats(fileInput.files);
+        });
+      }
+
+      ["dragenter", "dragover"].forEach(function(eventName) {
+        window.addEventListener(eventName, function(e) { e.preventDefault(); }, false);
+        if (dropZone) {
+          dropZone.addEventListener(eventName, function(e) {
+            e.preventDefault();
+            dropZone.classList.add("dragover");
+          }, false);
+        }
+      });
+
+      ["dragleave", "drop"].forEach(function(eventName) {
+        window.addEventListener(eventName, function(e) { e.preventDefault(); }, false);
+        if (dropZone) {
+          dropZone.addEventListener(eventName, function(e) {
+            e.preventDefault();
+            dropZone.classList.remove("dragover");
+          }, false);
+        }
+      });
+
+      if (dropZone) {
+        dropZone.addEventListener("drop", function(e) {
+          if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            e.preventDefault();
+            fileInput.files = e.dataTransfer.files;
+            updateFileStats(e.dataTransfer.files);
+          }
+        });
+      }
+
+      async function uploadFileChunked(fileBlob, filename, displayName, displaySize, manifest, isEncrypted, authHash, salt) {
+        mainActionBtn.disabled = true;
+        var uploadId = "up_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+        var totalChunks = Math.ceil(fileBlob.size / CHUNK_SIZE);
+
+        for (var i = 0; i < totalChunks; i++) {
+          var start = i * CHUNK_SIZE;
+          var end = Math.min(start + CHUNK_SIZE, fileBlob.size);
+          var chunk = fileBlob.slice(start, end);
+
+          var pct = Math.round(((i + 1) / totalChunks) * 100);
+          mainActionBtn.textContent = "Uploading " + pct + "% (Part " + (i + 1) + "/" + totalChunks + ")...";
+
+          var res = await fetch("/upload-chunk", {
+            method: "POST",
+            headers: {
+              "X-Upload-ID": uploadId,
+              "X-Chunk-Index": i.toString(),
+              "X-Total-Chunks": totalChunks.toString(),
+              "Content-Type": "application/octet-stream"
+            },
+            body: chunk
+          });
+
+          if (!res.ok) {
+            alert("Chunk " + (i + 1) + " upload failed.");
+            mainActionBtn.disabled = false;
+            mainActionBtn.textContent = "🚀 Send / Upload";
+            return;
+          }
+        }
+
+        mainActionBtn.textContent = isEncrypted ? "Saving E2EE encrypted blob on server..." : "Finalizing upload...";
+
+        var exp = expSelect ? expSelect.value : "24hours";
+
+        var finishRes = await fetch("/assemble-chunk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            upload_id: uploadId,
+            filename: filename,
+            is_encrypted: isEncrypted,
+            auth_hash: authHash,
+            salt: salt,
+            expiry: exp,
+            files: manifest
+          })
+        });
+
+        if (finishRes.ok) {
+          var data = await finishRes.json();
+          recordLocalUpload({
+            name: displayName,
+            size: displaySize,
+            date: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            url: data.url
+          });
+          window.location.href = data.url;
+        } else {
+          alert("Finalizing upload failed on server.");
+          mainActionBtn.disabled = false;
+          mainActionBtn.textContent = "🚀 Send / Upload";
+        }
+      }
+
+      async function encryptZipBlob(zipBlob, password, salt) {
+        const enc = new TextEncoder();
+        const rawBuffer = await zipBlob.arrayBuffer();
+
+        const keyMaterial = await crypto.subtle.importKey(
+          "raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveKey"]
+        );
+
+        const key = await crypto.subtle.deriveKey(
+          {
+            name: "PBKDF2",
+            salt: enc.encode(salt),
+            iterations: 100000,
+            hash: "SHA-256"
+          },
+          keyMaterial,
+          { name: "AES-GCM", length: 256 },
+          false,
+          ["encrypt"]
+        );
+
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const encryptedContent = await crypto.subtle.encrypt(
+          { name: "AES-GCM", iv: iv },
+          key,
+          rawBuffer
+        );
+
+        const combined = new Uint8Array(iv.length + encryptedContent.byteLength);
+        combined.set(iv, 0);
+        combined.set(new Uint8Array(encryptedContent), iv.length);
+
+        return new Blob([combined], { type: "application/octet-stream" });
+      }
+
+      async function computeHash(password, salt) {
+        const enc = new TextEncoder();
+        const data = enc.encode(password + salt);
+        const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+        return Array.from(new Uint8Array(hashBuffer)).map(function(b) { return b.toString(16).padStart(2, "0"); }).join("");
+      }
+
+      window.triggerFinalUpload = async function() {
+        if (!activeFiles || activeFiles.length === 0) {
+          alert("Please select a file to upload first!");
+          return;
+        }
+
+        var zipNameInput = document.getElementById("zip-name-input");
+        var customZipName = (zipNameInput && zipNameInput.value.trim()) ? zipNameInput.value.trim() : "archive";
+        if (!customZipName.toLowerCase().endsWith(".zip")) {
+          customZipName += ".zip";
+        }
+        
+        var totalBytes = 0;
+        activeFiles.forEach(function(f) { totalBytes += f.size; });
+        var displaySize = (totalBytes / (1024 * 1024)).toFixed(1) + " MB";
+        var pwd = (encPass && encPass.value.trim()) ? encPass.value.trim() : "";
+        var displayName = activeFiles.length > 1 ? customZipName : (activeFiles[0].name.replace(/\.[^/.]+$/, "") + ".zip");
+        if (pwd) {
+          displayName += " 🔒";
+        }
+
+        mainActionBtn.disabled = true;
+        mainActionBtn.textContent = "Packaging archive...";
+
+        var zip = new JSZip();
+        activeFiles.forEach(function(f) { zip.file(f.name, f); });
+        var manifest = activeFiles.map(function(f) { return f.name; });
+
+        var rawZipBlob = await zip.generateAsync({ type: "blob", compression: "STORE" });
+
+        if (pwd) {
+          mainActionBtn.textContent = "Encrypting (Client-Side AES-256)...";
+          var salt = Array.from(crypto.getRandomValues(new Uint8Array(16))).map(function(b) { return b.toString(16).padStart(2, "0"); }).join("");
+          var authHash = await computeHash(pwd, salt);
+          var encryptedBlob = await encryptZipBlob(rawZipBlob, pwd, salt);
+
+          uploadFileChunked(encryptedBlob, displayName.replace(" 🔒", ""), displayName, displaySize, manifest, true, authHash, salt);
+        } else {
+          uploadFileChunked(rawZipBlob, displayName, displayName, displaySize, manifest, false, null, null);
+        }
+      };
+
+      function startApprovalProcess() {
+        var reason = popupReason ? popupReason.value.trim() : "";
+        if (!reason) {
+          alert("Please enter who you are or the reason for the file!");
+          if (popupReason) popupReason.focus();
+          return;
+        }
+
+        var totalBytes = 0;
+        activeFiles.forEach(function(f) { totalBytes += f.size; });
+        var f = activeFiles[0];
+        var fname = activeFiles.length === 1 ? f.name : (activeFiles.length + " files (ZIP)");
+        var mb = (totalBytes / (1024 * 1024)).toFixed(1) + " MB";
+        var exp = expSelect ? expSelect.options[expSelect.selectedIndex].text : "24 Hours";
+
+        modalConfirmBtn.disabled = true;
+        modalCancelBtn.style.display = "none";
+        modalStatus.style.display = "block";
+        modalStatus.style.color = "${accentGold}";
+        modalStatus.innerText = "⏳ Waiting for Moonburst's approval on desktop...";
+
+        fetch("/request-approval", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ filename: fname, size: mb, reason: reason, expiry: exp })
+        })
+        .then(r => r.json())
+        .then(data => {
+          var reqId = data.request_id;
+          var poll = setInterval(function() {
+            fetch("/check-approval?id=" + reqId)
+            .then(r => r.json())
+            .then(res => {
+              if (res.status === "approved") {
+                clearInterval(poll);
+                isApproved = true;
+                modalStatus.style.color = "${accentYellow}";
+                modalStatus.innerText = "✅ Approved! Starting upload now...";
+                setTimeout(function() {
+                  modalOverlay.style.display = "none";
+                  window.triggerFinalUpload();
+                }, 800);
+              } else if (res.status === "denied") {
+                clearInterval(poll);
+                modalConfirmBtn.disabled = false;
+                modalCancelBtn.style.display = "inline-block";
+                modalStatus.style.color = "${dangerRed}";
+                modalStatus.innerText = "❌ Request Denied by Moonburst";
+              }
+            });
+          }, 2000);
+        })
+        .catch(function() {
+          alert("Approval daemon is unreachable.");
+          modalConfirmBtn.disabled = false;
+          modalCancelBtn.style.display = "inline-block";
+          modalStatus.style.display = "none";
+        });
+      }
+
+      modalConfirmBtn.addEventListener("click", startApprovalProcess);
+
+      mainActionBtn.addEventListener("click", function(e) {
+        e.preventDefault();
+        var totalBytes = 0;
+        activeFiles.forEach(function(f) { totalBytes += f.size; });
+
+        if (totalBytes > 50 * 1024 * 1024 && !isApproved) {
+          modalOverlay.style.display = "flex";
+          if (popupReason) popupReason.focus();
+        } else {
+          window.triggerFinalUpload();
+        }
+      });
+
+      form.onsubmit = function(e) {
+        e.preventDefault();
+        mainActionBtn.click();
+      };
+    });
+  '';
+in
+{
+  systemd.services.microbin-chunk-uploader = {
+    description = "Microbin Zero-Knowledge Storage Daemon";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "network.target" "microbin.service" ];
+    path = [ pkgs.p7zip ];
+    serviceConfig = {
+      ExecStart = "${pkgs.python3}/bin/python3 ${chunkUploaderScript}";
+      Restart = "always";
+      RestartSec = "3s";
+    };
+  };
+
+  services.microbin = {
+    enable = true;
+    settings = {
+      MICROBIN_PORT = "8086";
+      MICROBIN_BIND = "0.0.0.0";
+      MICROBIN_PUBLIC_PATH = "https://${shareDomain}/";
+      MICROBIN_DEFAULT_EXPIRY = "24hours";
+      MICROBIN_ENABLE_FILE_UPLOADS = "true";
+      MICROBIN_QR = "true";
+      MICROBIN_HIGHLIGHT_SYNTAX = "true";
+      MICROBIN_HIDE_PASTA_LIST = "true";
+      MICROBIN_HIDE_FOOTER = "true";
+      MICROBIN_HIDE_HEADER = "true";
+    };
+  };
+
+  services.nginx = {
+    enable = true;
+    virtualHosts."${shareDomain}" = {
+      listen = [ { addr = "0.0.0.0"; port = 80; } { addr = "[::]"; port = 80; } ];
+      extraConfig = ''
+        client_max_body_size 10240M;
+        proxy_read_timeout 1800s;
+        proxy_send_timeout 1800s;
+        proxy_hide_header Content-Security-Policy;
+        sub_filter_once on;
+        sub_filter '</head>' '<link rel="stylesheet" href="/custom-microbin.css?v=20261027_universal_shadow"><script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script><script src="/custom-microbin.js?v=20261027_universal_shadow"></script></head>';
+      '';
+
+      locations."= /list" = {
+        return = "404";
+      };
+
+      locations."~* /(static/)?water.*\.css" = {
+        return = "200 \"\"";
+        extraConfig = "default_type text/css;";
+      };
+
+      locations."= /custom-microbin.css" = {
+        alias = "${customCss}";
+        extraConfig = ''
+          default_type text/css;
+          add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+        '';
+      };
+
+      locations."= /custom-microbin.js" = {
+        alias = "${customJs}";
+        extraConfig = ''
+          default_type application/javascript;
+          add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+        '';
+      };
+
+      locations."= /request-approval" = {
+        proxyPass = "http://127.0.0.1:8088/request-approval";
+        extraConfig = "proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;";
+      };
+
+      locations."= /check-approval" = {
+        proxyPass = "http://127.0.0.1:8088/check-approval";
+      };
+
+      locations."~ ^/(upload-chunk|assemble-chunk|d/|download-file/|api/)" = {
+        proxyPass = "http://127.0.0.1:8087";
+        extraConfig = ''
+          proxy_request_buffering off;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        '';
+      };
+
+      locations."/" = {
+        proxyPass = "http://127.0.0.1:8086";
+        proxyWebsockets = true;
+        extraConfig = ''
+          proxy_request_buffering off;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header Accept-Encoding "";
+        '';
+      };
+    };
+  };
+}

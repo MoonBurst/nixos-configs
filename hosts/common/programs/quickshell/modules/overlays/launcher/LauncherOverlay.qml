@@ -19,6 +19,7 @@ Rectangle {
     readonly property bool isEmailOpen: mode === "Email"
     readonly property bool isTodoOpen: mode === "todo"
     readonly property bool isPassOpen: mode === "pass"
+    readonly property bool isGeminiOpen: mode === "gemini"
 
     readonly property var ctrl: LauncherModule.LauncherController
     property var activeController: null
@@ -53,6 +54,10 @@ Rectangle {
         onTriggered: {
             const trimmed = pendingText
             const currentMode = launcherRoot.mode
+
+            if (currentMode === "gemini") {
+                return;
+            }
 
             if (trimmed === "") {
                 if (currentMode === "clipboard") ctrl.clipboard.refreshFilter("");
@@ -177,6 +182,10 @@ Rectangle {
             }
 
             launcherRoot.mode = "apps"
+            if (trimmed.startsWith("ai ") || trimmed.startsWith("gemini ")) {
+                launcherRoot.mode = "gemini";
+                return;
+            }
             launcherRoot.ctrl.appLauncher.refreshFilter(trimmed)
         }
     }
@@ -218,6 +227,7 @@ Rectangle {
     function toggleTodo() { toggleOverlayMode("todo"); }
     function togglePower() { toggleOverlayMode("power"); }
     function togglePass() { toggleOverlayMode("pass"); }
+    function toggleGemini() { toggleOverlayMode("gemini"); }
     function toggleEmail() { if (mode === "Email" && launcherWindow.visible) closeOverlay(); else toggleOverlayMode("Email"); }
     function toggleRng() {
         closeOverlay();
@@ -294,6 +304,7 @@ Rectangle {
                 placeholderTextColor: shell.theme.base05
 
                 placeholderText: {
+                    if (launcherRoot.mode === "gemini") return "Ask Gemini... (Enter to send, Tab to clear context)";
                     const currentMode = launcherRoot.mode
                     if (currentMode === "clipboard") return "Search clipboard history..."
                         if (currentMode === "unicode") return "Search unicode symbols..."
@@ -353,6 +364,12 @@ Rectangle {
                     }
 
                     if (event.key === Qt.Key_Tab) {
+                        if (launcherRoot.mode === "gemini" && geminiLoader.item) {
+                            geminiLoader.item.clearContext();
+                            searchField.clear();
+                            event.accepted = true;
+                            return;
+                        }
                         if (launcherRoot.mode === "pass" && searchSuggestionText.text !== "") {
                             searchField.text = searchSuggestionText.text;
                             searchField.cursorPosition = searchField.text.length;
@@ -381,6 +398,14 @@ Rectangle {
                 }
 
                 Keys.onReturnPressed: {
+                    if (launcherRoot.mode === "gemini" && geminiLoader.item) {
+                        var prompt = searchField.text;
+                        if (prompt.startsWith("ai ")) prompt = prompt.substring(3).trim();
+                        if (prompt.startsWith("gemini ")) prompt = prompt.substring(7).trim();
+                        geminiLoader.item.sendMessage(prompt);
+                        searchField.clear();
+                        return;
+                    }
                     const currentMode = launcherRoot.mode
                     if (currentMode === "dictionary") { ctrl.dictionary.copySelected(); launcherRoot.closeOverlay(); }
                     else if (currentMode === "unicode") { ctrl.unicodeSearch.copySelected(); launcherRoot.closeOverlay(); }
@@ -392,6 +417,20 @@ Rectangle {
                     } else if (currentMode === "startpage" && searchLoader.item) {
                         searchLoader.item.openSearch()
                         launcherRoot.closeOverlay();
+                    }
+                }
+            }
+
+            Loader {
+                id: geminiLoader
+                active: true
+                visible: active
+                width: parent.width
+                height: active ? parent.contentHeight : 0
+                source: "GeminiPanel.qml"
+                onLoaded: {
+                    if (item) {
+                        item.shell = launcherRoot.shell;
                     }
                 }
             }

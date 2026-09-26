@@ -9,6 +9,7 @@ import Quickshell.Services.Pam
 import "./modules/bar/unified" as UnifiedMonitor
 import "./modules/overlays/rng" as RNG
 import "./modules/overlays/magnify" as Magnify
+import ".modules/overlays/geminipanel" as GeminiPanel
 import "./modules/overlays/notifications" as Notifications
 import "./modules/overlays/launcher" as LauncherModule
 import "./modules/bar/tray" as SystemTray
@@ -353,6 +354,8 @@ ShellRoot {
         id: magnifierOverlay
     }
 
+
+
     RNG.DiceRollerWindow {
         id: diceRollerWindowInstance
         shell: shell
@@ -429,8 +432,13 @@ ShellRoot {
     }
 
     IpcHandler {
-        target: "rng" 
+        target: "rng"
         function toggle(): void { launcherOverlay.toggleRng(); }
+    }
+
+    IpcHandler {
+        target: "gemini"
+        function toggle(): void { launcherOverlay.toggleGemini(); }
     }
 
     Notifications.NotificationOverlay {

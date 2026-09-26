@@ -38,6 +38,7 @@ in
     "${super}+l" = "exec quickshell -p /home/moonburst/nix/hosts/common/programs/quickshell/shell.qml ipc call lockscreen lock";
     "${super}+m" = "exec quickshell -p /home/moonburst/nix/hosts/common/programs/quickshell/shell.qml ipc call magnifier toggle";
     "${super}+o" = "exec quickshell -p /home/moonburst/nix/hosts/common/programs/quickshell/shell.qml ipc call todo toggle";
+    "${super}+g" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell ipc call gemini toggle";
     "${super}+SHIFT+m" = "exec ${pkgs.evolution}/bin/evolution";
 
     # ░█▀▀░█░█░█▀▀░▀█▀░█▀▀░█▄█

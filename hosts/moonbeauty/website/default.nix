@@ -35,10 +35,16 @@
     };
   };
 
-  # Set global Nginx upload capacity & proxy defaults
   services.nginx = {
     enable = true;
     clientMaxBodySize = "10G";
     recommendedProxySettings = true;
+
+    # Fix the proxy_headers_hash warning & buffer size
+    commonHttpConfig = ''
+      proxy_headers_hash_max_size 1024;
+      proxy_headers_hash_bucket_size 128;
+      add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+    '';
   };
 }
