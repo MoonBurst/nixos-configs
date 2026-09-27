@@ -150,6 +150,10 @@ in
     Group = "continuwuity";
     StateDirectory = "continuwuity";
     ReadWritePaths = [ "/var/lib/continuwuity" ];
+    Environment = [
+      "MESA_VK_DEVICE_SELECT=1002:743f!"
+      "DRI_PRIME=pci-0000_2b_00_0"
+    ];
     LogLevelMax = lib.mkIf (!enableVerboseLogging) "err";
   };
 

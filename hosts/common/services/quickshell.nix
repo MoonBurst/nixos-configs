@@ -18,7 +18,8 @@
     description = "Horizon Electron Client";
     serviceConfig = {
       # Uses the absolute path you located
-      ExecStart = "/etc/profiles/per-user/moonburst/bin/horizon-electron --password-store=gnome-libsecret";
+      Environment = [ "MESA_VK_DEVICE_SELECT=1002:743f!" "DRI_PRIME=pci-0000_2b_00_0" ];
+      ExecStart = "/etc/profiles/per-user/moonburst/bin/horizon-electron --render-node-override=/dev/dri/renderD129 --password-store=gnome-libsecret";
       Restart = "no";
     };
   };
@@ -43,6 +44,8 @@
     in colorEnv // {
       NIXOS_SWAYMSG_PATH = "${pkgs.sway}/bin/swaymsg";
       NIXOS_DBUSSEND_PATH = "${pkgs.dbus}/bin/dbus-send";
+      MESA_VK_DEVICE_SELECT = "1002:743f!";
+      DRI_PRIME = "pci-0000_2b_00_0";
     };
 
     serviceConfig = {

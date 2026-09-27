@@ -1,10 +1,21 @@
 { config, pkgs, ... }:
 
+let
+  # Wrapped Ghostty targeting the RX 6400
+  ghostty-gpu6400 = pkgs.symlinkJoin {
+    name = "ghostty";
+    paths = [ pkgs.ghostty ];
+    buildInputs = [ pkgs.makeWrapper ];
+    postBuild = ''
+      wrapProgram $out/bin/ghostty \
+        --set DRI_PRIME "1002:743f" \
+        --set GSK_RENDERER "gl"
+    '';
+  };
+in
 {
-  # 1. Install Ghostty inside the user profile context
-  home.packages = [ pkgs.ghostty ];
+  home.packages = [ ghostty-gpu6400 ];
 
-  # 2. Write the main configuration file
   xdg.configFile."ghostty/config".text = ''
     # Font Settings
     font-family = "Roboto Serif"
@@ -25,12 +36,10 @@
     keybind = alt+up=scroll_page_up
 
     # --- Blue Embers Engine ---
-    # Fixed: Replaced ~ with an absolute path so the parser can resolve the engine rules cleanly
     custom-shader = /home/moonburst/.config/ghostty/shaders/blue_embers.glsl
     custom-shader-animation = always
   '';
 
-  # 3. Inline the custom GLSL shader file directly to ensure Pure Evaluation compliance
   xdg.configFile."ghostty/shaders/blue_embers.glsl".text = ''
     #define SMOKE_INTENSITY_MULTIPLIER 0.9
     #define PARTICLES_ALPHA_MOD 0.9
@@ -186,7 +195,6 @@
         vec2 termUV = fragCoord.xy / iResolution.xy;
         vec4 terminalColor = texture(iChannel0, termUV);
 
-        // Aggressively drops off so only absolute near-black gets the background
         float alpha = pow(1.0 - smoothstep(0.0, 0.15, length(terminalColor.rgb)), 4.0);
 
         vec3 blendedColor = mix(terminalColor.rgb, col, alpha);

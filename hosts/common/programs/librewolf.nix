@@ -1,7 +1,6 @@
 { pkgs, config, ... }:
 
 let
-  # Extract your live active Stylix hex strings from the top-level system scope
   stylixColors = config.lib.stylix.colors;
 in
 {
@@ -13,7 +12,6 @@ in
 
   # 2. Consolidated User Home-Manager Profile Target Configuration
   home-manager.users.moonburst = { ... }: {
-    # Ensures native messaging manifests are installed for LibreWolf/Browserpass
     programs.browserpass.enable = true;
 
     programs.librewolf = {
@@ -24,7 +22,6 @@ in
         name = "default";
         isDefault = true;
 
-        # Declarative extension management
         extensions.packages = with pkgs.nur.repos.rycee.firefox-addons; [
           darkreader
           browserpass
@@ -37,7 +34,6 @@ in
           betterttv
         ];
 
-        # Framework engine customization settings
         settings = {
           "browser.startup.page" = 3;
           "browser.sessionstore.resume_from_crash" = true;
@@ -53,10 +49,7 @@ in
           "privacy.resistFingerprinting" = false;
           "extensions.autoDisableScopes" = 0;
           "privacy.fingerprintingProtection" = true;
-
-          # This line tells Firefox to protect everything EXCEPT your local timezone clock
           "privacy.fingerprintingProtection.overrides" = "+AllTargets,-CSSPrefersColorScheme,-JSDateTimeUTC";
-
           "layout.css.prefers-color-scheme.content-override" = 0;
           "ui.systemUsesDarkTheme" = 1;
           "extensions.quarantinedDomains.enabled" = false;
@@ -64,70 +57,73 @@ in
       };
     };
 
-    # =========================================================================
-    # THE NIX WAY: DIRECT USERCONTENT.CSS INJECTION INTO USER PROFILE DIRECTORY
-    # =========================================================================
+    # Override LibreWolf desktop entry to force RX 6400
+    xdg.desktopEntries.librewolf = {
+      name = "LibreWolf";
+      genericName = "Web Browser";
+      exec = "env MESA_VK_DEVICE_SELECT=1002:743f! DRI_PRIME=pci-0000_2b_00_0 librewolf %u";
+      icon = "librewolf";
+      terminal = false;
+      categories = [ "Network" "WebBrowser" ];
+      mimeType = [
+        "text/html"
+        "text/xml"
+        "application/xhtml+xml"
+        "application/vnd.mozilla.xul+xml"
+        "x-scheme-handler/http"
+        "x-scheme-handler/https"
+      ];
+    };
+
     home.file.".librewolf/default/chrome/userContent.css".text = ''
-      /* ==========================================
-       * 1. STYLIX GLOBAL WEB THEME (ALL SITES)
-       * ==========================================
-       */
       @-moz-document regexp("http://.*"), regexp("https://.*") {
           :root {
               color-scheme: dark !important;
           }
 
           body, html, main, #main, #content, div#page-manager, ytd-app {
-              background-color: #'' + stylixColors.base00 + '';
+              background-color: #${stylixColors.base00};
           }
 
           *, h1, h2, h3, h4, h5, h6, p, span, div, yt-formatted-string {
-              color: #'' + stylixColors.base05 + '';
+              color: #${stylixColors.base05};
           }
 
           a, a * {
-              color: #'' + stylixColors.base0D + '' !important;
+              color: #${stylixColors.base0D} !important;
           }
 
           input, textarea, select, button {
-              background-color: #'' + stylixColors.base01 + '' !important;
-              color: #'' + stylixColors.base05 + '' !important;
-              border: 1px solid #'' + stylixColors.base03 + '' !important;
+              background-color: #${stylixColors.base01} !important;
+              color: #${stylixColors.base05} !important;
+              border: 1px solid #${stylixColors.base03} !important;
           }
       }
 
-      /* ==========================================
-       * 2. CUSTOM TUMBLR WIDE TEXT SPACE FIXES (NIX INJECTION PATHWAY)
-       * ==========================================
-       */
       @-moz-document domain("tumblr.com") {
-
-          /* Overwrites custom obfuscated UI properties with your dynamic base0B grey */
           :root, [data-theme], body, html, main, div,
           .CX_9D, .qWqk3, [class*="chat"], [class*="message"] {
-              --content-ui: #'' + stylixColors.base0B + '' !important;
-              --color-accent: #'' + stylixColors.base0B + '' !important;
-              --brand-color: #'' + stylixColors.base0B + '' !important;
-              --accent: #'' + stylixColors.base0B + '' !important;
-              --interactive-accent: #'' + stylixColors.base0B + '' !important;
-              --brand-sky-blue: #'' + stylixColors.base0B + '' !important;
-              --accent-color: #'' + stylixColors.base0B + '' !important;
-              --bubble-bg: #'' + stylixColors.base0B + '' !important;
+              --content-ui: #${stylixColors.base0B} !important;
+              --color-accent: #${stylixColors.base0B} !important;
+              --brand-color: #${stylixColors.base0B} !important;
+              --accent: #${stylixColors.base0B} !important;
+              --interactive-accent: #${stylixColors.base0B} !important;
+              --brand-sky-blue: #${stylixColors.base0B} !important;
+              --accent-color: #${stylixColors.base0B} !important;
+              --bubble-bg: #${stylixColors.base0B} !important;
               --content-text-on-ui: #ffffff !important;
           }
 
-          /* FIXED: Removed the border-color assignments and injected complete outline/shadow squashing blocks */
           .CX_9D, .qWqk3,
           div[style*="0, 184, 255"], div[style*="00b8ff"],
           [class*="chat_"], [class*="bubble_"], [class*="message_"] {
-              background-color: #'' + stylixColors.base0B + '' !important;
+              background-color: #${stylixColors.base0B} !important;
               color: #ffffff !important;
               border: none !important;
               outline: none !important;
               box-shadow: none !important;
           }
 
-          /* HIGH-PRIORITY FONTS: CRITICAL RESIZING SCALE MODIFIED TO 25PX FOR SANDBOX TESTING */
           div.CX_9D, div.qWqk3,
           div.CX_9D *, div.qWqk3 *,
           [class*="chat_"] *, [class*="bubble_"] *, [class*="message_"] *,
@@ -138,7 +134,6 @@ in
               line-height: 1.65 !important;
           }
 
-          /* Target wrapper classes and eliminate vertical spacing gaps */
           .peQ_s, .post-container, .posts-list-item,
           .CxMIf, .stream-container, .main-stream-content, .items-list {
               margin-bottom: 0 !important;
@@ -210,7 +205,6 @@ in
       }
     '';
 
-    # Apply structural interface themes across LibreWolf profile targets
     stylix.targets.librewolf = {
       enable = true;
       profileNames = [ "default" ];

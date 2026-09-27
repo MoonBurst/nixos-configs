@@ -16,7 +16,7 @@ let
                       then config.apps.fileManager
                       else pkgs.nemo;
 
-  term = "${targetTerminal}/bin/${targetTerminal.pname or targetTerminal.name or "ghostty"}";
+  term = "env DRI_PRIME=1002:743f GSK_RENDERER=gl ${targetTerminal}/bin/${targetTerminal.pname or targetTerminal.name or "ghostty"}";
   explorer = "${targetFileManager}/bin/${targetFileManager.pname or targetFileManager.name or "nemo"}";
   music = "${pkgs.audacious}/bin/audacious";
   scriptsDir = ../../scripts;

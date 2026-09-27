@@ -56,16 +56,16 @@ in
   ];
 
   # --- Desktop Entry for Launcher ---
-  xdg.desktopEntries = {
+xdg.desktopEntries = {
     horizon = {
       name = "Horizon";
       genericName = "Horizon Launcher";
-      exec = "${horizon-electron}/bin/horizon-electron %U";
+      exec = "${horizon-electron}/bin/horizon-electron --render-node-override=/dev/dri/renderD129 %U";
       icon = "fchat-horizon";
       terminal = false;
       categories = [ "Game" ];
     };
-
+  };
     matrix-brave = {
       name = "Matrix (Brave)";
       genericName = "Matrix Client";
