@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls 2
 import QtQuick.Layouts
+import QtQuick.LocalStorage
 import Quickshell
 import Quickshell.Io
 
@@ -18,23 +19,54 @@ Item {
     ListModel { id: notesModel }
     ListModel { id: filteredModel }
 
-    readonly property string notesFile: (shell && shell.settingsManager && shell.settingsManager.notesFilePath)
-        ? shell.settingsManager.notesFilePath
-        : (Quickshell.env("HOME") + "/Documents/notes.txt")
-
     onSearchQueryChanged: filterNotes()
 
-    Component.onCompleted: loadNotes()
+    Component.onCompleted: {
+        initDatabase();
+        loadNotes();
+    }
+
+    function getDatabase() {
+        return LocalStorage.openDatabaseSync("QNotesDB", "1.0", "Local Quick Notes Storage", 1000000);
+    }
+
+    function initDatabase() {
+        try {
+            var db = getDatabase();
+            db.transaction(function(tx) {
+                tx.executeSql('CREATE TABLE IF NOT EXISTS notes (id INTEGER PRIMARY KEY AUTOINCREMENT, content TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)');
+                
+                // Auto-migration: check if text file notes exist and import them on first run
+                var checkRs = tx.executeSql('SELECT COUNT(*) AS count FROM notes');
+                if (checkRs.rows.item(0).count === 0) {
+                    notesImporter.running = true;
+                }
+            });
+        } catch (e) {
+            console.error("[Notes DB Init Error]:", e);
+        }
+    }
 
     function loadNotes() {
+        var items = [];
+        try {
+            var db = getDatabase();
+            db.transaction(function(tx) {
+                var rs = tx.executeSql("SELECT id, content, strftime('%Y-%m-%d %H:%M', created_at, 'localtime') as ts FROM notes ORDER BY id DESC");
+                for (var i = 0; i < rs.rows.length; i++) {
+                    var r = rs.rows.item(i);
+                    items.push({ noteId: r.id, content: r.content, timestamp: r.ts || "" });
+                }
+            });
+        } catch (e) {
+            console.error("[Notes DB Load Error]:", e);
+        }
+
         notesModel.clear();
-        notesLoaderProc.running = false;
-        notesLoaderProc.command = [
-            "sh", "-c",
-            'mkdir -p "$(dirname "$1")" && touch "$1" && tac "$1"',
-            "sh", notesRoot.notesFile
-        ];
-        notesLoaderProc.running = true;
+        for (var j = 0; j < items.length; j++) {
+            notesModel.append(items[j]);
+        }
+        filterNotes();
     }
 
     function filterNotes() {
@@ -55,32 +87,33 @@ Item {
     function addNote(text) {
         if (!text || text.trim() === "") return;
         var clean = text.trim();
-
-        addProc.running = false;
-        addProc.command = [
-            "sh", "-c",
-            'mkdir -p "$(dirname "$1")"; ' +
-            'ts=$(date "+%Y-%m-%d %H:%M"); ' +
-            'printf "%s | %s\n" "$ts" "$2" >> "$1"; ' +
-            'notify-send -a Notes -i accessories-text-editor "📝 Note Saved" "$2"',
-            "sh", notesRoot.notesFile, clean
-        ];
-        addProc.running = true;
+        try {
+            var db = getDatabase();
+            db.transaction(function(tx) {
+                tx.executeSql('INSERT INTO notes (content) VALUES (?)', [clean]);
+            });
+            loadNotes();
+            Quickshell.execDetached(["notify-send", "-a", "Notes", "-i", "accessories-text-editor", "📝 Note Saved", clean]);
+        } catch(e) {
+            console.error("[Notes DB Insert Error]:", e);
+        }
     }
 
     function deleteNoteAt(idx) {
         if (idx < 0 || idx >= filteredModel.count) return;
         var item = filteredModel.get(idx);
-        filteredModel.remove(idx);
-        for (var i = 0; i < notesModel.count; i++) { if (notesModel.get(i).rawLine === item.rawLine) { notesModel.remove(i); break; } }
-        for (var i = 0; i < notesModel.count; i++) { if (notesModel.get(i).rawLine === item.rawLine) { notesModel.remove(i); break; } }
-        for (var i = 0; i < notesModel.count; i++) { if (notesModel.get(i).rawLine === item.rawLine) { notesModel.remove(i); break; } }
+        var targetId = item.noteId;
 
-        Quickshell.execDetached([
-            "sh", "-c",
-            'grep -F -v -x "$1" "$2" > "$2.tmp" && mv -f "$2.tmp" "$2"',
-            "sh", item.rawLine, notesRoot.notesFile
-        ]);
+        filteredModel.remove(idx); // Snappy visual feedback
+        try {
+            var db = getDatabase();
+            db.transaction(function(tx) {
+                tx.executeSql('DELETE FROM notes WHERE id = ?', [targetId]);
+            });
+            loadNotes();
+        } catch(e) {
+            console.error("[Notes DB Delete Error]:", e);
+        }
     }
 
     function copySelected() {
@@ -102,25 +135,29 @@ Item {
         if (filteredModel.count > 0) selectedIndex = (selectedIndex - 1 + filteredModel.count) % filteredModel.count;
     }
 
+    // Auto-migration process: loads existing notes from ~/Documents/notes.txt on first launch
     Process {
-        id: notesLoaderProc
+        id: notesImporter
         running: false
+        command: ["sh", "-c", "F=\"$HOME/Documents/notes.txt\"; [ -f \"$F\" ] && cat \"$F\" || true"]
         stdout: SplitParser {
             splitMarker: "\n"
             onRead: line => {
                 var l = (line || "").trim();
                 if (l.length > 0) {
                     var parts = l.split(" | ");
-                    var ts = parts.length > 1 ? parts[0] : "";
                     var txt = parts.length > 1 ? parts.slice(1).join(" | ") : l;
-                    notesModel.append({ timestamp: ts, content: txt, rawLine: l });
+                    try {
+                        var db = notesRoot.getDatabase();
+                        db.transaction(function(tx) {
+                            tx.executeSql('INSERT INTO notes (content) VALUES (?)', [txt.trim()]);
+                        });
+                    } catch(e) {}
                 }
             }
         }
-        onExited: { filterNotes(); }
+        onExited: loadNotes()
     }
-
-    Process { id: addProc; onExited: loadNotes() }
 
     ListView {
         id: notesListView

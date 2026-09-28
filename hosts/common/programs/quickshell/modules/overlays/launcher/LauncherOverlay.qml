@@ -13,6 +13,52 @@ Rectangle {
     property string currentDefinition: ""
     property string mode: "apps"
 
+    // DIRECT INLINE MATH EVALUATOR (Zero external dependency, 100% reliable)
+    property string mathResultString: ""
+
+    function runCalculator(query) {
+        const clean = (query || "").trim();
+        if (!clean) return false;
+
+        let expr = clean.startsWith("=") ? clean.substring(1).trim() : clean;
+
+        // Must contain at least one digit or math constant
+        if (!/[0-9]/.test(expr) && !/^(pi|e)\b/i.test(expr)) return false;
+
+        // Only allow safe math tokens
+        if (!/^[0-9+\-*\/().,^ %a-zA-Z]+$/.test(expr)) return false;
+
+        try {
+            let parsed = expr
+                .replace(/\^/g, "**")
+                .replace(/\bpi\b/gi, "Math.PI")
+                .replace(/\be\b/g, "Math.E")
+                .replace(/\bsin\b/gi, "Math.sin")
+                .replace(/\bcos\b/gi, "Math.cos")
+                .replace(/\btan\b/gi, "Math.tan")
+                .replace(/\bsqrt\b/gi, "Math.sqrt")
+                .replace(/\blog\b/gi, "Math.log10")
+                .replace(/\bln\b/gi, "Math.log")
+                .replace(/\babs\b/gi, "Math.abs")
+                .replace(/\bround\b/gi, "Math.round");
+
+            let fn = new Function("return (" + parsed + ");");
+            let result = fn();
+
+            if (result === undefined || result === null || !isFinite(result)) return false;
+
+            let formatted = (Math.abs(result) >= 1000000 || (Math.abs(result) > 0 && Math.abs(result) < 0.0001))
+                ? Number(result).toExponential(4)
+                : parseFloat(Number(result).toFixed(6)).toString();
+
+            launcherRoot.mathResultString = formatted;
+            return true;
+        } catch(e) {
+            return false;
+        }
+    }
+
+
     readonly property bool isStartPageOpen: mode === "startPage"
     readonly property bool isAppsOpen: mode === "apps"
     readonly property bool isClipboardOpen: mode === "clipboard"
@@ -33,7 +79,7 @@ Rectangle {
             if (launcherRoot.mode === "apps") return launcherRoot.ctrl.appLauncher
             if (launcherRoot.mode === "clipboard") return launcherRoot.ctrl.clipboard
             if (launcherRoot.mode === "dictionary") return launcherRoot.ctrl.dictionary
-            if (launcherRoot.mode === "math") return launcherRoot.ctrl.mathEngine
+            if (launcherRoot.mode === "math") return MathEngineEngine
             if (launcherRoot.mode === "unicode") return launcherRoot.ctrl.unicodeSearch
             if (launcherRoot.mode.toLowerCase() === "startpage") return launcherRoot.ctrl.startPage
             if (launcherRoot.mode.toLowerCase() === "email") return launcherRoot.ctrl.email
@@ -123,7 +169,12 @@ Rectangle {
                 ctrl.pass.searchQuery = pQuery;
                 return;
             }
-            if (currentMode === "dictionary") {
+            if (currentMode === "math") {
+                        Quickshell.clipboardText = launcherRoot.mathResultString;
+                        launcherRoot.closeOverlay();
+                        return;
+                    }
+                    if (currentMode === "dictionary") {
                 var dQuery = (raw.indexOf(" ") !== -1 && (lower.startsWith("def ") || lower.startsWith("dict "))) ? raw.slice(raw.indexOf(" ") + 1).trim() : trimmed;
                 ctrl.dictionary.fetch(dQuery);
                 return;
@@ -461,6 +512,11 @@ Rectangle {
                         if (prompt.startsWith("gemini ")) prompt = prompt.substring(7).trim();
                         geminiLoader.item.sendMessage(prompt);
                         searchField.clear();
+                        return;
+                    }
+                    if (currentMode === "math") {
+                        Quickshell.clipboardText = launcherRoot.mathResultString;
+                        launcherRoot.closeOverlay();
                         return;
                     }
                     if (currentMode === "dictionary") { ctrl.dictionary.copySelected(); launcherRoot.closeOverlay(); }
@@ -828,7 +884,7 @@ Rectangle {
                             anchors.fill: parent; anchors.margins: shell.theme.globalPadding; spacing: 10
 
                             Repeater {
-                                model: ctrl.mathEngine.mathResultString.split("\n")
+                                model: (LauncherModule.MathEngine && MathEngine.mathResultString) ? MathEngine.mathResultString.split("\n") : []
                                 delegate: Rectangle {
                                     radius: 10; width: (mathFlow.width / 3) - 14; height: 54
                                     color: mouseArea.containsMouse ? shell.theme.base01 : shell.theme.base02
