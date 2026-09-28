@@ -1,3 +1,4 @@
+import "../../common/Utils.js" as Utils
 // modules/overlays/notifications/NotificationHistory.qml
 import QtQuick
 import QtQuick.Controls 2
@@ -37,12 +38,8 @@ Item {
     }
 
     // Decoupled URL Extraction Utilities
-    readonly property var urlRegex: /(https?:\/\/[^\s<]+)/
-
     function extractUrl(text) {
-        if (!text) return "";
-        var match = text.match(urlRegex);
-        return match ? match[0] : "";
+        return Utils.extractUrl(text);
     }
 
     // Cleans up trailing long raw URLs from body text inside the history list

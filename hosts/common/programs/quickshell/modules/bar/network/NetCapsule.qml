@@ -1,3 +1,4 @@
+import "../../common/Utils.js" as Utils
 // NetCapsule.qml
 import QtQuick
 import QtQuick.Controls 2
@@ -65,13 +66,7 @@ Item {
         property bool isFirstRun: true
 
         function formatSpeed(bytesDiff) {
-            if (bytesDiff < 1024) return Math.round(bytesDiff) + "B";
-            var kb = bytesDiff / 1024;
-            if (kb < 1024) return Math.round(kb) + "K";
-            var mb = kb / 1024;
-            if (mb < 1024) return mb.toFixed(1) + "M";
-            var gb = mb / 1024;
-            return gb.toFixed(1) + "G";
+            return Utils.formatBytes(bytesDiff, 1).replace(" ", "");
         }
 
         stdout: SplitParser {

@@ -1,8 +1,10 @@
 import QtQuick
+import QtQuick.Layouts 1.15
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 import "." as LauncherModule
+import "../../common/Utils.js" as Utils
 
 Rectangle {
     id: launcherRoot
@@ -14,48 +16,18 @@ Rectangle {
     property string mode: "apps"
 
     // DIRECT INLINE MATH EVALUATOR (Zero external dependency, 100% reliable)
+            // FULL MATH, UNIT & DATA CONVERTER ENGINE
     property string mathResultString: ""
+    property int mathSelectedIndex: 0
+    onMathResultStringChanged: mathSelectedIndex = 0
 
     function runCalculator(query) {
-        const clean = (query || "").trim();
-        if (!clean) return false;
-
-        let expr = clean.startsWith("=") ? clean.substring(1).trim() : clean;
-
-        // Must contain at least one digit or math constant
-        if (!/[0-9]/.test(expr) && !/^(pi|e)\b/i.test(expr)) return false;
-
-        // Only allow safe math tokens
-        if (!/^[0-9+\-*\/().,^ %a-zA-Z]+$/.test(expr)) return false;
-
-        try {
-            let parsed = expr
-                .replace(/\^/g, "**")
-                .replace(/\bpi\b/gi, "Math.PI")
-                .replace(/\be\b/g, "Math.E")
-                .replace(/\bsin\b/gi, "Math.sin")
-                .replace(/\bcos\b/gi, "Math.cos")
-                .replace(/\btan\b/gi, "Math.tan")
-                .replace(/\bsqrt\b/gi, "Math.sqrt")
-                .replace(/\blog\b/gi, "Math.log10")
-                .replace(/\bln\b/gi, "Math.log")
-                .replace(/\babs\b/gi, "Math.abs")
-                .replace(/\bround\b/gi, "Math.round");
-
-            let fn = new Function("return (" + parsed + ");");
-            let result = fn();
-
-            if (result === undefined || result === null || !isFinite(result)) return false;
-
-            let formatted = (Math.abs(result) >= 1000000 || (Math.abs(result) > 0 && Math.abs(result) < 0.0001))
-                ? Number(result).toExponential(4)
-                : parseFloat(Number(result).toFixed(6)).toString();
-
-            launcherRoot.mathResultString = formatted;
+        var res = Utils.evaluate(query, launcherRoot.mode === "math");
+        if (res !== null) {
+            if (res !== "") launcherRoot.mathResultString = res;
             return true;
-        } catch(e) {
-            return false;
         }
+        return false;
     }
 
 
@@ -79,7 +51,7 @@ Rectangle {
             if (launcherRoot.mode === "apps") return launcherRoot.ctrl.appLauncher
             if (launcherRoot.mode === "clipboard") return launcherRoot.ctrl.clipboard
             if (launcherRoot.mode === "dictionary") return launcherRoot.ctrl.dictionary
-            if (launcherRoot.mode === "math") return MathEngineEngine
+            if (launcherRoot.mode === "math") return null
             if (launcherRoot.mode === "unicode") return launcherRoot.ctrl.unicodeSearch
             if (launcherRoot.mode.toLowerCase() === "startpage") return launcherRoot.ctrl.startPage
             if (launcherRoot.mode.toLowerCase() === "email") return launcherRoot.ctrl.email
@@ -152,7 +124,7 @@ Rectangle {
                 return;
             }
 
-            if (trimmed === "") {
+            if (searchField.text.trim() === "") {
                 if (currentMode === "clipboard") ctrl.clipboard.refreshFilter("");
                 else if (currentMode === "pass") ctrl.pass.searchQuery = "";
                 else if (currentMode === "unicode") ctrl.unicodeSearch.refreshFilter("");
@@ -163,63 +135,62 @@ Rectangle {
             }
 
             if (currentMode === "notes") return;
-            if (currentMode === "clipboard") { ctrl.clipboard.refreshFilter(trimmed); return; }
+            if (currentMode === "clipboard") { ctrl.clipboard.refreshFilter(searchField.text.trim()); return; }
             if (currentMode === "pass") {
-                var pQuery = (raw.indexOf(" ") !== -1 && (lower.startsWith("pass ") || lower.startsWith("password "))) ? raw.slice(raw.indexOf(" ") + 1).trim() : trimmed;
+                var pQuery = (raw.indexOf(" ") !== -1 && (lower.startsWith("pass ") || lower.startsWith("password "))) ? raw.slice(raw.indexOf(" ") + 1).trim() : searchField.text.trim();
                 ctrl.pass.searchQuery = pQuery;
                 return;
             }
             if (currentMode === "math") {
-                        Quickshell.clipboardText = launcherRoot.mathResultString;
-                        launcherRoot.closeOverlay();
-                        return;
-                    }
+                runCalculator(searchField.text.trim());
+                return;
+            }
                     if (currentMode === "dictionary") {
-                var dQuery = (raw.indexOf(" ") !== -1 && (lower.startsWith("def ") || lower.startsWith("dict "))) ? raw.slice(raw.indexOf(" ") + 1).trim() : trimmed;
+                var dQuery = (raw.indexOf(" ") !== -1 && (lower.startsWith("def ") || lower.startsWith("dict "))) ? raw.slice(raw.indexOf(" ") + 1).trim() : searchField.text.trim();
                 ctrl.dictionary.fetch(dQuery);
                 return;
             }
             if (currentMode === "Email") {
-                var eQuery = (raw.indexOf(" ") !== -1 && (lower.startsWith("em ") || lower.startsWith("email "))) ? raw.slice(raw.indexOf(" ") + 1).trim() : trimmed;
+                var eQuery = (raw.indexOf(" ") !== -1 && (lower.startsWith("em ") || lower.startsWith("email "))) ? raw.slice(raw.indexOf(" ") + 1).trim() : searchField.text.trim();
                 if (ctrl.email && typeof ctrl.email.refreshFilter === "function") {
                     ctrl.email.refreshFilter(eQuery);
                 }
                 return;
             }
 
-            if (trimmed.length > 1 && trimmed.indexOf("?") === 0) {
+            if (searchField.text.trim().length > 1 && searchField.text.trim().indexOf("?") === 0) {
                 launcherRoot.mode = "startpage";
-                const cleanQuery = trimmed.substring(1).trim();
+                const cleanQuery = searchField.text.trim().substring(1).trim();
                 if (launcherRoot.ctrl.startPage) launcherRoot.ctrl.startPage.updateSearch(cleanQuery);
                 if (searchLoader.item) searchLoader.item.updateSearch(cleanQuery);
                 return;
             }
 
-            if (trimmed.startsWith(".")) {
+            if (searchField.text.trim().startsWith(".")) {
                 launcherRoot.mode = "unicode";
-                const unicodeQuery = trimmed.substring(1).trim();
+                const unicodeQuery = searchField.text.trim().substring(1).trim();
                 launcherRoot.ctrl.unicodeSearch.refreshFilter(unicodeQuery);
                 return;
             }
 
-            if (launcherRoot.ctrl.mathEngineEngine.runCalculator(trimmed)) {
+            if (runCalculator(searchField.text.trim())) {
                 launcherRoot.mode = "math";
                 return;
             }
 
-            if (trimmed === "rng" || trimmed === "dice" || trimmed === "roll" || trimmed === "coin" || trimmed.startsWith("rng ") || trimmed.startsWith("roll ")) {
+            if (searchField.text.trim() === "rng" || searchField.text.trim() === "dice" || searchField.text.trim() === "roll" || searchField.text.trim() === "coin" || searchField.text.trim().startsWith("rng ") || searchField.text.trim().startsWith("roll ")) {
                 launcherRoot.closeOverlay();
                 if (ctrl.rng) ctrl.rng.showWindow();
                 return;
             }
 
-            if (trimmed.startsWith("ai ") || trimmed.startsWith("gemini ")) {
+            if (searchField.text.trim().startsWith("ai ") || searchField.text.trim().startsWith("gemini ")) {
                 launcherRoot.mode = "gemini";
                 return;
             }
 
             launcherRoot.mode = "apps";
-            launcherRoot.ctrl.appLauncher.refreshFilter(trimmed);
+            launcherRoot.ctrl.appLauncher.refreshFilter(searchField.text.trim());
         }
     }
 
@@ -402,18 +373,65 @@ Rectangle {
                 }
 
                 onTextChanged: {
+                    var trimmed = text.trim();
+                    if (runCalculator(trimmed)) {
+                        launcherRoot.mode = "math";
+                        return;
+                    } else if (launcherRoot.mode === "math" && !trimmed) {
+                        launcherRoot.mode = "apps";
+                    }
+
                     if (launcherRoot.mode === "" && text !== "") launcherRoot.mode = "apps";
-                    if (launcherRoot.mode === "apps" || launcherRoot.mode === "") {
+                    var current = launcherRoot.mode;
+                    if (current === "apps" || current === "") {
                         ctrl.appLauncher.refreshFilter(text);
                     }
                     searchDebounceTimer.pendingText = text;
                     searchDebounceTimer.restart();
                 }
 
-                Keys.onDownPressed: launcherRoot.navigateActiveList(false)
-                Keys.onUpPressed: launcherRoot.navigateActiveList(true)
+                Keys.onDownPressed: {
+                    if (launcherRoot.mode === "math" && launcherRoot.mathResultString.indexOf("
+") !== -1) {
+                        var total = launcherRoot.mathResultString.split("
+").length;
+                        launcherRoot.mathSelectedIndex = (launcherRoot.mathSelectedIndex + 3) % total;
+                    } else {
+                        launcherRoot.navigateActiveList(false);
+                    }
+                }
+                Keys.onUpPressed: {
+                    if (launcherRoot.mode === "math" && launcherRoot.mathResultString.indexOf("
+") !== -1) {
+                        var total = launcherRoot.mathResultString.split("
+").length;
+                        launcherRoot.mathSelectedIndex = (launcherRoot.mathSelectedIndex - 3 + total) % total;
+                    } else {
+                        launcherRoot.navigateActiveList(true);
+                    }
+                }
 
                 Keys.onPressed: function(event) {
+                    if (launcherRoot.mode === "math" && launcherRoot.mathResultString.indexOf("\n") !== -1) {
+                        var totalItems = launcherRoot.mathResultString.split("\n").length;
+                        if (event.key === Qt.Key_Right) {
+                            launcherRoot.mathSelectedIndex = (launcherRoot.mathSelectedIndex + 1) % totalItems;
+                            event.accepted = true;
+                            return;
+                        } else if (event.key === Qt.Key_Left) {
+                            launcherRoot.mathSelectedIndex = (launcherRoot.mathSelectedIndex - 1 + totalItems) % totalItems;
+                            event.accepted = true;
+                            return;
+                        } else if (event.key === Qt.Key_Down) {
+                            launcherRoot.mathSelectedIndex = (launcherRoot.mathSelectedIndex + 3) % totalItems;
+                            event.accepted = true;
+                            return;
+                        } else if (event.key === Qt.Key_Up) {
+                            launcherRoot.mathSelectedIndex = (launcherRoot.mathSelectedIndex - 3 + totalItems) % totalItems;
+                            event.accepted = true;
+                            return;
+                        }
+                    }
                     if (event.key === Qt.Key_Escape) {
                         if (searchField.text !== "") {
                             searchField.clear();
@@ -515,10 +533,9 @@ Rectangle {
                         return;
                     }
                     if (currentMode === "math") {
-                        Quickshell.clipboardText = launcherRoot.mathResultString;
-                        launcherRoot.closeOverlay();
-                        return;
-                    }
+                runCalculator(searchField.text.trim());
+                return;
+            }
                     if (currentMode === "dictionary") { ctrl.dictionary.copySelected(); launcherRoot.closeOverlay(); }
                     else if (currentMode === "unicode") { ctrl.unicodeSearch.copySelected(); launcherRoot.closeOverlay(); }
                     else if (currentMode === "clipboard") { ctrl.clipboard.copySelected(); launcherRoot.closeOverlay(); }
@@ -874,28 +891,142 @@ Rectangle {
                 visible: active
                 width: parent.width
                 height: active ? parent.contentHeight : 0
+
                 sourceComponent: Component {
                     Rectangle {
-                        radius: 12; color: shell.theme.base00; border.width: 5; border.color: shell.theme.base03
-                        implicitHeight: mathFlow.implicitHeight + 40
+                        width: mathLoader.width
+                        height: mathLoader.height
+                        color: "transparent"
 
-                        Flow {
-                            id: mathFlow
-                            anchors.fill: parent; anchors.margins: shell.theme.globalPadding; spacing: 10
+                        // Single Big Result (44px)
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 14
+                            color: shell.theme.base00
+                            border.width: 3
+                            border.color: shell.theme.base05
+                            visible: launcherRoot.mathResultString.indexOf("\n") === -1
 
-                            Repeater {
-                                model: (LauncherModule.MathEngine && MathEngine.mathResultString) ? MathEngine.mathResultString.split("\n") : []
-                                delegate: Rectangle {
-                                    radius: 10; width: (mathFlow.width / 3) - 14; height: 54
-                                    color: mouseArea.containsMouse ? shell.theme.base01 : shell.theme.base02
-                                    border.width: 2; border.color: shell.theme.base05
+                            Column {
+                                anchors.centerIn: parent
+                                spacing: 14
 
-                                    Text {
-                                        anchors.centerIn: parent; width: parent.width - 20; text: modelData
-                                        color: shell.theme.base05; font.pixelSize: 22; font.bold: true; font.family: "JetBrains Mono"
-                                        horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; wrapMode: Text.NoWrap; elide: Text.ElideRight
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: launcherRoot.mathResultString
+                                    color: shell.theme.base05
+                                    font.pixelSize: 44
+                                    font.bold: true
+                                    font.family: "JetBrains Mono, monospace"
+                                }
+
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: "Press [Enter] to copy result to clipboard"
+                                    color: (shell && shell.theme && shell.theme.base0C) ? shell.theme.base0C : "#04f100"
+                                    font.pixelSize: 14
+                                    font.family: "monospace"
+                                    opacity: 0.85
+                                }
+                            }
+                        }
+
+                        // Full-Height Currency Terminal Grid (3 columns x 4 rows, 138px tall)
+                        Item {
+                            anchors.fill: parent
+                            visible: launcherRoot.mathResultString.indexOf("\n") !== -1
+
+                            Grid {
+                                anchors.fill: parent
+                                columns: 3
+                                columnSpacing: 12
+                                rowSpacing: 12
+
+                                Repeater {
+                                    model: launcherRoot.mathResultString.split("\n")
+                                    delegate: Rectangle {
+                                        id: cCard
+                                        readonly property var parts: modelData.split("|")
+                                        readonly property string cSym: parts.length > 3 ? parts[0] : ""
+                                        readonly property string cCode: parts.length > 3 ? parts[1] : ""
+                                        readonly property string cName: parts.length > 3 ? parts[2] : ""
+                                        readonly property string cVal: parts.length > 3 ? parts[3] : modelData
+                                        readonly property bool isSelected: index === launcherRoot.mathSelectedIndex
+
+                                        width: Math.floor((parent.width - 24) / 3)
+                                        height: Math.floor((parent.height - 36) / 4)
+                                        radius: 10
+                                        color: isSelected ? shell.theme.base01 : (cHov.hovered ? shell.theme.base01 : shell.theme.base00)
+                                        border.color: isSelected ? ((shell && shell.theme && shell.theme.base0C) ? shell.theme.base0C : "#04f100") : (cHov.hovered ? shell.theme.base05 : shell.theme.base03)
+                                        border.width: isSelected ? 3 : 1.5
+
+                                        Behavior on border.color { ColorAnimation { duration: 100 } }
+
+                                        Column {
+                                            anchors.fill: parent
+                                            anchors.margins: 12
+                                            spacing: 6
+
+                                            // Top Header: CODE & SYMBOL
+                                            Item {
+                                                width: parent.width
+                                                height: 20
+
+                                                Text {
+                                                    text: cCard.cCode
+                                                    font.bold: true
+                                                    font.pixelSize: 15
+                                                    font.family: "monospace"
+                                                    color: isSelected ? ((shell && shell.theme && shell.theme.base0C) ? shell.theme.base0C : "#04f100") : shell.theme.base05
+                                                    anchors.left: parent.left
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                }
+
+                                                Text {
+                                                    text: cCard.cSym
+                                                    font.bold: true
+                                                    font.pixelSize: 16
+                                                    color: (shell && shell.theme && shell.theme.base09) ? shell.theme.base09 : "#fe8019"
+                                                    anchors.right: parent.right
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                }
+                                            }
+
+                                            // Center Value (Large & Bold)
+                                            Text {
+                                                text: cCard.cVal
+                                                font.bold: true
+                                                font.pixelSize: 24
+                                                font.family: "JetBrains Mono, monospace"
+                                                color: isSelected ? ((shell && shell.theme && shell.theme.base0C) ? shell.theme.base0C : "#04f100") : shell.theme.base05
+                                                width: parent.width
+                                                elide: Text.ElideRight
+                                            }
+
+                                            // Subtitle: Country Name
+                                            Text {
+                                                text: cCard.cName
+                                                font.pixelSize: 12
+                                                font.family: "monospace"
+                                                color: shell.theme.base05
+                                                opacity: isSelected ? 0.9 : 0.65
+                                                width: parent.width
+                                                elide: Text.ElideRight
+                                            }
+                                        }
+
+                                        HoverHandler { id: cHov }
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                launcherRoot.mathSelectedIndex = index;
+                                                Quickshell.clipboardText = cCard.cVal + " " + cCard.cCode;
+                                                Quickshell.execDetached(["notify-send", "-a", "Currency", "-i", "dialog-information", "💵 Copied Currency", cCard.cVal + " " + cCard.cCode]);
+                                                launcherRoot.closeOverlay();
+                                            }
+                                        }
                                     }
-                                    MouseArea { id: mouseArea; anchors.fill: parent; hoverEnabled: true }
                                 }
                             }
                         }

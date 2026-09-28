@@ -64,16 +64,11 @@ Item {
         running: true
         command: [
             "sh", "-c",
-            'read -r _ u n s i w x y _ < /proc/stat; ' +
-            'busy=$((u + n + s + w + x + y)); total=$((busy + i)); ' +
-            'f="${XDG_RUNTIME_DIR:-/dev/shm}/qs_cpu_last"; pct=0; ' +
-            'if [ -f "$f" ]; then ' +
-            '  read -r pb pt < "$f"; db=$((busy - pb)); dt=$((total - pt)); ' +
-            '  [ "$dt" -gt 0 ] && pct=$(( (db * 100) / dt )); ' +
-            'fi; ' +
-            'echo "$busy $total" > "$f"; ' +
-            'temp=$(awk \'{print int($1/1000); exit}\' /sys/class/hwmon/hwmon*/temp*_input 2>/dev/null || echo 0); ' +
-            'echo "${pct}%:${temp}°C"'
+            "s1=$(awk '/^cpu / {print $2+$3+$4, $2+$3+$4+$5+$6+$7+$8}' /proc/stat); " +
+            "sleep 0.4; " +
+            "s2=$(awk '/^cpu / {print $2+$3+$4, $2+$3+$4+$5+$6+$7+$8}' /proc/stat); " +
+            "temp=$(awk '{print int($1/1000); exit}' /sys/class/hwmon/hwmon*/temp*_input 2>/dev/null || echo 0); " +
+            "echo \"$s1 $s2 $temp\" | awk '{b=$3-$1; t=$4-$2; pct=(t>0)?int((b*100)/t):0; printf \"%d%%:%d°C\\n\", pct, $5}'"
         ]
         stdout: SplitParser {
             splitMarker: "\n"

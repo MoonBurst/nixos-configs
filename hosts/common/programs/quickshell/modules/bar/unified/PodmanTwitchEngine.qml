@@ -31,23 +31,37 @@ Item {
     Process {
         id: twitchProc
         command: [
-            "/run/current-system/sw/bin/bash", "-c",
-            "MAIN_RUNNING=$(systemctl is-active podman-twitch-miner.service 2>/dev/null | grep -q 'active' && echo 1 || echo 0); " +
-            "BERRY_RUNNING=$(systemctl is-active podman-twitchminer-berrydrop.service 2>/dev/null | grep -q 'active' && echo 1 || echo 0); " +
-            "MAIN_LOGS=\"\"; BERRY_LOGS=\"\"; " +
-            "[ \"$MAIN_RUNNING\" -eq 1 ] && MAIN_LOGS=$(journalctl -u podman-twitch-miner.service -n 15 --no-pager -o cat 2>/dev/null); " +
-            "[ \"$BERRY_RUNNING\" -eq 1 ] && BERRY_LOGS=$(journalctl -u podman-twitchminer-berrydrop.service -n 15 --no-pager -o cat 2>/dev/null); " +
-            "MAIN_FINISHED=$(echo \"$MAIN_LOGS\" | tail -n 8 | grep -iqE \"Exiting|All drops claimed|No active campaigns|No channels available|Idle\" && echo 1 || echo 0); " +
-            "BERRY_FINISHED=$(echo \"$BERRY_LOGS\" | tail -n 8 | grep -iqE \"Exiting|All drops claimed|No active campaigns|No channels available|Idle\" && echo 1 || echo 0); " +
-            "MAIN_WATCHING=$(echo \"$MAIN_LOGS\" | grep -i \"Watching:\" | tail -n 1 | awk '{print $NF}'); " +
-            "BERRY_WATCHING=$(echo \"$BERRY_LOGS\" | grep -i \"Watching:\" | tail -n 1 | awk '{print $NF}'); " +
-            "[ \"$MAIN_FINISHED\" -eq 1 ] && MAIN_WATCHING=\"\"; " +
-            "[ \"$BERRY_FINISHED\" -eq 1 ] && BERRY_WATCHING=\"\"; " +
-            "MAIN_CLAIM=$(echo \"$MAIN_LOGS\" | grep -i \"Claimed drop:\" | tail -n 1 | sed 's/.*Claimed drop: //' | cut -c 1-35); " +
-            "BERRY_CLAIM=$(echo \"$BERRY_LOGS\" | grep -i \"Claimed drop:\" | tail -n 1 | sed 's/.*Claimed drop: //' | cut -c 1-35); " +
-            "MAIN_ERR=$(echo \"$MAIN_LOGS\" | tail -n 5 | grep -iqE \"401 Unauthorized|403 Forbidden|rate limit|integrity check failed\" && echo 1 || echo 0); " +
-            "BERRY_ERR=$(echo \"$BERRY_LOGS\" | tail -n 5 | grep -iqE \"401 Unauthorized|403 Forbidden|rate limit|integrity check failed\" && echo 1 || echo 0); " +
-            "echo '{\"main_running\": '$MAIN_RUNNING', \"berry_running\": '$BERRY_RUNNING', \"main_watching\": \"'$MAIN_WATCHING'\", \"berry_watching\": \"'$BERRY_WATCHING'\", \"main_claim\": \"'$MAIN_CLAIM'\", \"berry_claim\": \"'$BERRY_CLAIM'\", \"main_err\": '$MAIN_ERR', \"berry_err\": '$BERRY_ERR'}'"
+            "python3", "-c",
+            "import subprocess, json, re\n" +
+            "def check_active(unit):\n" +
+            "    try:\n" +
+            "        return subprocess.check_output(['systemctl', 'is-active', unit], stderr=subprocess.DEVNULL).decode().strip() == 'active'\n" +
+            "    except Exception: return False\n" +
+            "def get_logs(unit):\n" +
+            "    try:\n" +
+            "        return subprocess.check_output(['journalctl', '-u', unit, '-n', '15', '--no-pager', '-o', 'cat'], stderr=subprocess.DEVNULL).decode('utf-8', errors='ignore')\n" +
+            "    except Exception: return ''\n" +
+            "def parse_miner(logs):\n" +
+            "    watching, claim, err = '', '', False\n" +
+            "    tail8 = '\\n'.join(logs.splitlines()[-8:])\n" +
+            "    idle = bool(re.search(r'Exiting|All drops claimed|No active campaigns|No channels available|Idle', tail8, re.I))\n" +
+            "    for line in logs.splitlines():\n" +
+            "        if 'Watching:' in line: watching = line.split()[-1]\n" +
+            "        if 'Claimed drop:' in line: claim = line.split('Claimed drop:')[-1].strip()[:35]\n" +
+            "    if idle: watching = ''\n" +
+            "    tail5 = '\\n'.join(logs.splitlines()[-5:])\n" +
+            "    err = bool(re.search(r'401 Unauthorized|403 Forbidden|rate limit|integrity check failed', tail5, re.I))\n" +
+            "    return watching, claim, err\n" +
+            "m_run = check_active('podman-twitch-miner.service')\n" +
+            "b_run = check_active('podman-twitchminer-berrydrop.service')\n" +
+            "m_watch, m_claim, m_err = parse_miner(get_logs('podman-twitch-miner.service')) if m_run else ('', '', False)\n" +
+            "b_watch, b_claim, b_err = parse_miner(get_logs('podman-twitchminer-berrydrop.service')) if b_run else ('', '', False)\n" +
+            "print(json.dumps({\n" +
+            "    'main_running': m_run, 'berry_running': b_run,\n" +
+            "    'main_watching': m_watch, 'berry_watching': b_watch,\n" +
+            "    'main_claim': m_claim, 'berry_claim': b_claim,\n" +
+            "    'main_err': m_err, 'berry_err': b_err\n" +
+            "}))"
         ]
         stdout: SplitParser {
             onRead: data => {

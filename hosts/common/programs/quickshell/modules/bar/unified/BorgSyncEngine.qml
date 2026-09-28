@@ -2,6 +2,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "../../common/Utils.js" as Utils
 
 Item {
     id: borgEngine
@@ -16,19 +17,14 @@ Item {
     property string progressLabel: "Idle"
 
     function formatCompactMb(mbVal) {
-        if (isNaN(mbVal) || mbVal <= 0) return "0M";
-        if (mbVal >= 1024) return (mbVal / 1024).toFixed(1) + "G";
-        return Math.round(mbVal) + "M";
+        return Utils.formatBytes(mbVal * 1048576, 1);
     }
 
     function formatDetailedMb(mbVal) {
-        if (isNaN(mbVal) || mbVal <= 0) return "0 MB";
-        if (mbVal >= 1024) return (mbVal / 1024).toFixed(1) + " GB";
-        return Math.round(mbVal) + " MB";
+        return Utils.formatBytes(mbVal * 1048576, 1);
     }
 
     Timer {
-        // Poll every 10s when idle, ramp to 2s when actively syncing
         interval: borgEngine.serviceActive ? 2000 : 10000
         running: true
         repeat: true

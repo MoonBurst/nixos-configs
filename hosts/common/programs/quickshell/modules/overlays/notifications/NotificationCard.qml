@@ -1,3 +1,4 @@
+import "../../common/Utils.js" as Utils
 // NotificationCard.qml
 import QtQuick
 import QtQuick.Controls 2
@@ -55,9 +56,7 @@ Item {
     function getCleanBodyText(rawBody) {
         if (!rawBody) return "";
         var cleanBody = rawBody.trim();
-        var regex = /(https?:\/\/[^\s<]+)/g;
-        var match = cleanBody.match(regex);
-        var url = match ? match[0] : "";
+        var url = Utils.extractUrl(cleanBody);
         if (cleanBody === url) {
             return "🔗 Shared Link";
         }

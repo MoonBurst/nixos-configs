@@ -21,17 +21,11 @@ Item {
     readonly property int themeFontSize: (shell && shell.theme) ? shell.theme.globalFontSize : 14
     readonly property string themeFontFamily: (shell && shell.theme) ? shell.theme.fontFamily : "monospace"
 
-    Launcher.BatteryEngine { id: batEngine }
+    property string currentProfile: "balanced"
+    property bool hasPowerProfilesDaemon: false
 
-    property string activeProfile: "balanced"
-
-    Process {
-        id: profileGetter
-        running: true
-        command: ["powerprofilesctl", "get"]
-        stdout: SplitParser {
-            onRead: data => { if (data && data.trim()) batBox.activeProfile = data.trim(); }
-        }
+    Launcher.BatteryEngine {
+        id: batEngine
     }
 
     readonly property int numPercent: parseInt(batEngine.percent) || 0
@@ -45,8 +39,7 @@ Item {
         return batBox.themeBase05;
     }
 
-    visible: batEngine.hasBattery
-    implicitWidth: visible ? (batText.implicitWidth + bg.leftPadding + bg.rightPadding + 20) : 0
+    implicitWidth: batText.implicitWidth + bg.leftPadding + bg.rightPadding + 20
     width: implicitWidth
     height: parent ? parent.height : 40
 
@@ -84,10 +77,30 @@ Item {
 
     HoverHandler { id: batHover }
 
+    // Safe detection that never fails if powerprofilesctl is missing
     Process {
-        id: powerProfileProc
-        running: false
-        onExited: profileGetter.running = true
+        id: profileChecker
+        running: true
+        command: ["sh", "-c", "command -v powerprofilesctl >/dev/null 2>&1 && powerprofilesctl get 2>/dev/null || echo ''"]
+        stdout: SplitParser {
+            onRead: data => {
+                var p = (data || "").trim();
+                if (p.length > 0) {
+                    batBox.hasPowerProfilesDaemon = true;
+                    batBox.currentProfile = p;
+                } else {
+                    batBox.hasPowerProfilesDaemon = false;
+                }
+            }
+        }
+    }
+
+    Process { id: powerProfileProc; running: false }
+
+    function setProfile(name) {
+        batBox.currentProfile = name;
+        powerProfileProc.command = ["sh", "-c", "command -v powerprofilesctl >/dev/null 2>&1 && powerprofilesctl set " + name + " || true"];
+        powerProfileProc.running = true;
     }
 
     SlantedTooltip {
@@ -97,90 +110,77 @@ Item {
         tooltipActive: batHover.hovered
         alignSide: "Right"
 
-        tooltipHeight: 180
-        collapsedCoreWidth: 160
+        tooltipHeight: 200
         expandedCoreWidth: 420
         topOffset: -2
         slantLeft: batBox.slantLeft
         slantRight: batBox.slantRight
 
-        Text {
-            y: 20
-            x: batTooltip.slantX(y) + 20
-            text: "⚡ BATTERY & POWER PROFILES"
-            font.family: batBox.themeFontFamily
-            font.pixelSize: Math.max(16, batBox.themeFontSize + 1)
-            font.bold: true
-            color: batBox.themeBase05
-        }
-
-        Text {
-            y: 50
-            x: batTooltip.slantX(y) + 20
-            text: "Status: " + batEngine.status + " | Draw: " + batEngine.power
-            font.family: "monospace"
-            font.pixelSize: Math.max(14, batBox.themeFontSize - 1)
-            color: batBox.themeBase05
-            opacity: 0.85
-        }
-
-        RowLayout {
-            y: 90
-            x: batTooltip.slantX(y) + 20
-            width: batTooltip.effectiveCoreWidth - 40
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 14
             spacing: 8
 
-            // Performance
-            Rectangle {
-                readonly property bool isCurrent: batBox.activeProfile === "performance"
-                Layout.fillWidth: true; height: 36; radius: 4
-                color: isCurrent ? batBox.themeBase08 : (pPerf.containsMouse ? "#2a1e1e" : "#181825")
-                border.color: batBox.themeBase08; border.width: 1.5
-                Text {
-                    anchors.centerIn: parent
-                    text: isCurrent ? "⚡ Perf (On)" : "⚡ Perf"
-                    font.bold: true; font.pixelSize: 12
-                    color: isCurrent ? "#000000" : batBox.themeBase08
-                }
-                MouseArea {
-                    id: pPerf; anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                    onClicked: { powerProfileProc.command = ["powerprofilesctl", "set", "performance"]; powerProfileProc.running = true; }
-                }
+            Text {
+                text: "⚡ BATTERY STATUS"
+                font.family: batBox.themeFontFamily
+                font.pixelSize: batBox.themeFontSize - 1
+                font.bold: true
+                color: batBox.themeBase05
             }
 
-            // Balanced
-            Rectangle {
-                readonly property bool isCurrent: batBox.activeProfile === "balanced"
-                Layout.fillWidth: true; height: 36; radius: 4
-                color: isCurrent ? batBox.themeBase05 : (pBal.containsMouse ? "#2a2818" : "#181825")
-                border.color: batBox.themeBase05; border.width: 1.5
-                Text {
-                    anchors.centerIn: parent
-                    text: isCurrent ? "⚖ Bal (On)" : "⚖ Bal"
-                    font.bold: true; font.pixelSize: 12
-                    color: isCurrent ? "#000000" : batBox.themeBase05
-                }
-                MouseArea {
-                    id: pBal; anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                    onClicked: { powerProfileProc.command = ["powerprofilesctl", "set", "balanced"]; powerProfileProc.running = true; }
-                }
+            Text {
+                text: "Status: " + batEngine.status + " | Power: " + batEngine.power + " | Level: " + batEngine.percent
+                font.family: "monospace"
+                font.pixelSize: 12
+                color: batBox.themeBase05
+                opacity: 0.85
             }
 
-            // Power Saver
-            Rectangle {
-                readonly property bool isCurrent: batBox.activeProfile === "power-saver"
-                Layout.fillWidth: true; height: 36; radius: 4
-                color: isCurrent ? batBox.themeBase0C : (pSav.containsMouse ? "#182a1e" : "#181825")
-                border.color: batBox.themeBase0C; border.width: 1.5
-                Text {
-                    anchors.centerIn: parent
-                    text: isCurrent ? "🍃 Saver (On)" : "🍃 Saver"
-                    font.bold: true; font.pixelSize: 12
-                    color: isCurrent ? "#000000" : batBox.themeBase0C
+            Text {
+                visible: batBox.hasPowerProfilesDaemon
+                text: "Power Profile: " + batBox.currentProfile.toUpperCase()
+                font.family: "monospace"
+                font.pixelSize: 11
+                color: batBox.themeBase0C
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                visible: batBox.hasPowerProfilesDaemon
+
+                // Performance Button
+                Rectangle {
+                    id: pPerfRect
+                    readonly property bool isCurrent: batBox.currentProfile === "performance"
+                    Layout.fillWidth: true; height: 28; radius: 4
+                    color: isCurrent ? batBox.themeBase08 : (pPerf.containsMouse ? "#313244" : "#181825")
+                    border.color: batBox.themeBase08; border.width: isCurrent ? 2 : 1
+                    Text { anchors.centerIn: parent; text: "⚡ Perf"; font.bold: true; font.pixelSize: 11; color: pPerfRect.isCurrent ? "#000000" : batBox.themeBase08 }
+                    MouseArea { id: pPerf; anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: batBox.setProfile("performance") }
                 }
-                MouseArea {
-                    id: pSav; anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                    onClicked: { powerProfileProc.command = ["powerprofilesctl", "set", "power-saver"]; powerProfileProc.running = true; }
+
+                // Balanced Button
+                Rectangle {
+                    id: pBalRect
+                    readonly property bool isCurrent: batBox.currentProfile === "balanced"
+                    Layout.fillWidth: true; height: 28; radius: 4
+                    color: isCurrent ? batBox.themeBase05 : (pBal.containsMouse ? "#313244" : "#181825")
+                    border.color: batBox.themeBase05; border.width: isCurrent ? 2 : 1
+                    Text { anchors.centerIn: parent; text: "⚖ Bal"; font.bold: true; font.pixelSize: 11; color: pBalRect.isCurrent ? "#000000" : batBox.themeBase05 }
+                    MouseArea { id: pBal; anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: batBox.setProfile("balanced") }
+                }
+
+                // Power-Saver Button
+                Rectangle {
+                    id: pSavRect
+                    readonly property bool isCurrent: batBox.currentProfile === "power-saver"
+                    Layout.fillWidth: true; height: 28; radius: 4
+                    color: isCurrent ? batBox.themeBase0C : (pSav.containsMouse ? "#313244" : "#181825")
+                    border.color: batBox.themeBase0C; border.width: isCurrent ? 2 : 1
+                    Text { anchors.centerIn: parent; text: "🍃 Saver"; font.bold: true; font.pixelSize: 11; color: pSavRect.isCurrent ? "#000000" : batBox.themeBase0C }
+                    MouseArea { id: pSav; anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: batBox.setProfile("power-saver") }
                 }
             }
         }

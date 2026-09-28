@@ -1,3 +1,4 @@
+import "../../common/Utils.js" as Utils
 // MusicCapsule.qml
 import QtQuick
 import QtQuick.Controls 2
@@ -80,10 +81,7 @@ Item {
     }
 
     function formatTime(secs) {
-        if (!secs || isNaN(secs) || secs < 0) return "0:00";
-        var m = Math.floor(secs / 60);
-        var s = Math.floor(secs % 60);
-        return m + ":" + (s < 10 ? "0" : "") + s;
+        return Utils.formatDuration(secs, false);
     }
 
     // Direct, zero-fork command dispatcher via stdin

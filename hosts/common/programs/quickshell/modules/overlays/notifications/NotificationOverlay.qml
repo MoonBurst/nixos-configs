@@ -1,3 +1,4 @@
+import "../../common/Utils.js" as Utils
 // modules/overlays/notifications/NotificationOverlay.qml
 import QtQuick
 import QtQuick.Controls 2
@@ -122,12 +123,8 @@ Item {
         }
     }
 
-    readonly property var urlRegex: /(https?:\/\/[^\s<]+)/
-
     function extractUrl(text) {
-        if (!text) return "";
-        var match = text.match(urlRegex);
-        return match ? match[0] : "";
+        return Utils.extractUrl(text);
     }
 
     function extractImageUrl(text) {
