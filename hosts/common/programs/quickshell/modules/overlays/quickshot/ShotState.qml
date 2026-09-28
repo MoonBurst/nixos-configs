@@ -59,6 +59,7 @@ Singleton {
     }
 
     function saveDir() {
+        if (typeof shell !== "undefined" && shell && shell.settingsManager && shell.settingsManager.screenshotSaveDir) return shell.settingsManager.screenshotSaveDir;
         return home() + "/Screenshots";
     }
 

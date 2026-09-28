@@ -13,6 +13,8 @@ Item {
     property var barWindow: null
     property var activeMenu: null
     property bool isExpanded: false
+    property string slantLeft: "Right"
+    property string slantRight: "Right"
 
     width: trayBubbleWrapper.width
     implicitWidth: trayBubbleWrapper.width
@@ -50,8 +52,8 @@ Item {
 
     SlantedBox {
         id: trayBubbleWrapper
-        slantLeft: "Right"
-        slantRight: "Right"
+        slantLeft: trayRoot.slantLeft
+        slantRight: trayRoot.slantRight
 
         width: trayLayoutRow.width + trayBubbleWrapper.leftPadding + trayBubbleWrapper.rightPadding
         height: parent.height
@@ -148,6 +150,8 @@ Item {
 
             PanelWindow {
                 id: menuPopup
+                anchors.top: true
+                anchors.right: true
 
                 screen: {
                     if (barWindow && barWindow.screen) return barWindow.screen;

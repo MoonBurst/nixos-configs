@@ -23,8 +23,7 @@ Item {
 
     Shape {
         anchors.fill: parent
-        layer.enabled: true
-        layer.samples: 4
+        layer.enabled: false
 
         ShapePath {
             strokeColor: root.borderColor

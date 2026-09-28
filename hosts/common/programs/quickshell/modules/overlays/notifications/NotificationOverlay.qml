@@ -13,19 +13,20 @@ Item {
     property bool showHistoryMode: false
     property bool notificationsEnabled: true
 
-    property int overlaysHeightBaseline: 350
+    property int overlaysHeightBaseline: (shell && shell.settingsManager) ? shell.settingsManager.notifBaselineY : 350
     property int cardWidth: shell.theme.defaultCardWidth || 400
     property int cardHeight: shell.theme.defaultCardHeight || 140
     property int defaultCardRadius: shell.theme.defaultCardRadius || 10
     property int globalBorderWidth: shell.theme.globalBorderWidth || 3
     property int globalPadding: shell.theme.globalPadding || 20
 
-    property int overlapOffset: 25
+    property int overlapOffset: (shell && shell.settingsManager && shell.settingsManager.notifStackOverlap !== undefined) ? shell.settingsManager.notifStackOverlap : 25
+    onOverlapOffsetChanged: positionNotificationsDeck()
 
     property int cardBorderWidth: shell.theme.globalBorderWidth || 3
     property int textSummarySize: shell.theme.globalFontSize || 20
     property int textBodySize: shell.theme.globalFontSize || 20
-    property int holdDurationMs: 5000
+    property int holdDurationMs: (shell && shell.settingsManager) ? (shell.settingsManager.notifHoldDurationSec * 1000) : 5000
 
     property color outerBorderColor: shell.theme.base03
     property color innerBorderColor: shell.theme.base05
@@ -175,17 +176,24 @@ Item {
 
     PanelWindow {
         id: mainDisplayCanvas
+        visible: !(typeof sessionLock !== "undefined" && sessionLock && sessionLock.locked)
 
         anchors.top: true
         anchors.right: true
         anchors.bottom: true
         anchors.left: false
 
-        screen: Quickshell.screens.find(s => s.name === "DP-2")
-        || Quickshell.screens.find(s => s.name === "DP-1")
-        || Quickshell.screens.find(s => s.name.startsWith("eDP"))
-        || (Quickshell.screens.length > 0 ? Quickshell.screens[0] : null)
-        || null
+                screen: {
+            if (shell && shell.settingsManager && shell.settingsManager.notifScreenName !== "") {
+                var found = Quickshell.screens.find(s => s.name === shell.settingsManager.notifScreenName);
+                if (found) return found;
+            }
+            return Quickshell.screens.find(s => s.name === "DP-2")
+                || Quickshell.screens.find(s => s.name === "DP-1")
+                || Quickshell.screens.find(s => s.name.startsWith("eDP"))
+                || (Quickshell.screens.length > 0 ? Quickshell.screens[0] : null)
+                || null;
+        }
 
         implicitWidth: root.cardWidth + 100
         color: "transparent"
@@ -262,6 +270,34 @@ Item {
                 }
             }
         }
+    }
+
+    
+    function triggerPreviewNotification(yPos) {
+        if (yPos !== undefined) {
+            root.overlaysHeightBaseline = yPos;
+        }
+
+        const previewCards = [
+            { id: 888881, title: "1. Stacking Base Card", desc: "Offset: " + root.overlapOffset + "px | Base: " + root.overlaysHeightBaseline + "px" },
+            { id: 888882, title: "2. Cascade Middle Card", desc: "Display: " + (mainDisplayCanvas.screen ? mainDisplayCanvas.screen.name : "Default") },
+            { id: 888883, title: "3. Top Active Toast", desc: "Duration: " + (root.holdDurationMs / 1000) + "s (Drag to dismiss)" }
+        ];
+
+        for (let i = 0; i < previewCards.length; i++) {
+            root.handleNotification({
+                id: previewCards[i].id,
+                summary: previewCards[i].title,
+                body: previewCards[i].desc,
+                appName: "Settings",
+                isMock: true,
+                icon: "",
+                image: "",
+                hints: {},
+                actions: []
+            });
+        }
+        root.positionNotificationsDeck();
     }
 
     function handleNotification(notification) {
@@ -386,8 +422,10 @@ Item {
                 "previewSource": previewVal
             });
 
-            notificationIPC.playNotificationSound(notification);
-            notificationIPC.speakNotification(notification);
+            if (!notification.isMock) {
+                notificationIPC.playNotificationSound(notification);
+                notificationIPC.speakNotification(notification);
+            }
             positionNotificationsDeck();
             rulesLoader.handleIncomingNotificationCues(notification);
         }

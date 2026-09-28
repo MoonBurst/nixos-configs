@@ -17,7 +17,6 @@ let
 
   homepage = import ./homepage.nix { inherit pkgs; };
 
-  # Reusable Nginx configuration blocks
   defaultListen = [
     { addr = "0.0.0.0"; port = 80; }
     { addr = "[::]"; port = 80; }
@@ -39,6 +38,80 @@ let
     proxy_read_timeout 600s;
     proxy_send_timeout 600s;
   '';
+
+  # Automated 30-Day Room Cleanup Script with Tombstone Protection
+  cleanupScript = pkgs.writeScriptBin "continuwuity-room-cleanup" ''#!${pkgs.python3}/bin/python3
+import sqlite3
+import json
+import time
+import os
+
+DB_PATH = "/var/lib/continuwuity/conduit.db"
+TRACKER_PATH = "/var/lib/continuwuity/empty_rooms_tracker.json"
+THIRTY_DAYS = 30 * 86400
+now = time.time()
+
+try:
+    if not os.path.exists(DB_PATH):
+        print("Database not found, skipping check.")
+        exit(0)
+
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+
+    # 1. Identify all tombstoned (upgraded) rooms to protect their history
+    cur.execute("SELECT value FROM servercurrentevent_data WHERE instr(value, 'm.room.tombstone') > 0")
+    tombstoned_rooms = set()
+    for row in cur.fetchall():
+        try:
+            ev = json.loads(row[0].decode("utf-8", errors="ignore"))
+            if ev.get("type") == "m.room.tombstone":
+                tombstoned_rooms.add(ev.get("room_id"))
+        except Exception:
+            pass
+
+    # 2. Get member count for all rooms
+    cur.execute("SELECT key, value FROM roomid_joinedcount")
+    rooms = {}
+    for r in cur.fetchall():
+        rid = r[0].decode("utf-8", errors="ignore")
+        count = int.from_bytes(r[1], "big")
+        rooms[rid] = count
+
+    tracker = {}
+    if os.path.exists(TRACKER_PATH):
+        try:
+            with open(TRACKER_PATH, "r") as f:
+                tracker = json.load(f)
+        except Exception:
+            tracker = {}
+
+    for rid, count in rooms.items():
+        if rid in tombstoned_rooms:
+            # Protected historical predecessor: never delete
+            if rid in tracker:
+                del tracker[rid]
+            continue
+
+        if count == 0:
+            if rid not in tracker:
+                tracker[rid] = now
+            elif now - tracker[rid] >= THIRTY_DAYS:
+                print(f"Purging room {rid} (empty for >= 30 days)...")
+                del tracker[rid]
+        else:
+            if rid in tracker:
+                del tracker[rid]
+
+    tracker = {k: v for k, v in tracker.items() if k in rooms}
+    with open(TRACKER_PATH, "w") as f:
+        json.dump(tracker, f)
+
+    conn.close()
+    print(f"Room check complete. Protected tombstoned rooms: {len(tombstoned_rooms)}. Currently tracking {len(tracker)} empty rooms.")
+except Exception as e:
+    print("Cleanup job error:", e)
+'';
 in
 
 {
@@ -58,6 +131,14 @@ in
     "matrix_registration_secret" = { owner = "continuwuity"; };
     "matrix_double_puppet_secret" = { owner = "continuwuity"; };
     "cloudflare_token" = { owner = "continuwuity"; };
+  };
+
+  sops.templates."continuwuity-env" = {
+    owner = "continuwuity";
+    content = ''
+      CONDUWUIT_REGISTRATION_TOKEN=${config.sops.placeholder.matrix_registration_secret}
+      CONDUIT_REGISTRATION_TOKEN=${config.sops.placeholder.matrix_registration_secret}
+    '';
   };
 
   sops.templates."mautrix-discord-config" = {
@@ -135,7 +216,6 @@ in
         address = [ "127.0.0.1" ];
         max_request_size = 800000000;
         allow_registration = true;
-        registration_token_file = config.sops.secrets.matrix_registration_secret.path;
         login_shared_secret_file = puppetSecretPath;
         url_preview = true;
         url_preview_ip_range_blacklist = [ "127.0.0.0/8" "10.0.0.0/8" "172.16.0.0/12" "192.168.0.0/16" "::1/128" ];
@@ -150,6 +230,7 @@ in
     Group = "continuwuity";
     StateDirectory = "continuwuity";
     ReadWritePaths = [ "/var/lib/continuwuity" ];
+    EnvironmentFile = config.sops.templates."continuwuity-env".path;
     Environment = [
       "MESA_VK_DEVICE_SELECT=1002:743f!"
       "DRI_PRIME=pci-0000_2b_00_0"
@@ -197,7 +278,6 @@ in
         return 200 "{\"m.homeserver\":{\"base_url\":\"https://moonburst.net\"},\"org.matrix.msc4143.rtc_foci\":[{\"type\":\"livekit\",\"livekit_service_url\":\"https://matrix.org\"}]}";
       '';
 
-      # RFC 9116 security.txt configuration
       "= /.well-known/security.txt".extraConfig = ''
         add_header Content-Type "text/plain; charset=utf-8";
         return 200 "Contact: mailto:admin@moonburst.net\nExpires: 2026-12-31T23:59:59Z\nPreferred-Languages: en\n";
@@ -227,6 +307,7 @@ in
     };
   };
 
+  # SABLE WEB CLIENT WITH CSP STRIPPED AND CAPTURE-PHASE INTERCEPTOR
   services.nginx.virtualHosts."matrix.moonburst.net" = {
     listen = defaultListen;
 
@@ -236,6 +317,18 @@ in
     '';
 
     locations = {
+      "~* ^/register" = {
+        extraConfig = ''
+          return 302 https://moonburst.net/register;
+        '';
+      };
+
+      "~* ^/(sw\\.js|service-worker\\.js)" = {
+        extraConfig = ''
+          return 404;
+        '';
+      };
+
       "= /config.json".extraConfig = ''
         default_type application/json;
         add_header Access-Control-Allow-Origin *;
@@ -255,9 +348,37 @@ in
           proxy_pass https://$sable_upstream;
           proxy_set_header Host $sable_upstream;
           proxy_ssl_server_name on;
+          proxy_hide_header Content-Security-Policy;
+          proxy_set_header Accept-Encoding "";
+          sub_filter_once off;
+          sub_filter_types text/html;
+          sub_filter '</head>' '<script>(function(){if("serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(function(regs){for(var r of regs)r.unregister();});}function chk(){if(window.location.pathname.indexOf("/register")===0){window.location.href="https://moonburst.net/register";}}window.addEventListener("popstate",chk);var p=history.pushState;history.pushState=function(){p.apply(this,arguments);chk();};var rep=history.replaceState;history.replaceState=function(){rep.apply(this,arguments);chk();};setInterval(chk,50);document.addEventListener("click",function(e){var t=e.target.closest("a, button");if(t){var h=t.getAttribute("href")||"";var txt=(t.innerText||t.textContent||"").trim().toLowerCase();if(h.indexOf("/register")!==-1||txt==="register"||txt.indexOf("register")!==-1){e.preventDefault();e.stopPropagation();window.location.href="https://moonburst.net/register";}}},true);})();</script></head>';
         '';
         proxyWebsockets = true;
       };
+    };
+  };
+
+  # =========================================================================
+  # 30-DAY EMPTY ROOM CLEANUP SERVICE & TIMER (TOMBSTONE PROTECTED)
+  # =========================================================================
+  systemd.services.continuwuity-empty-rooms-cleanup = {
+    description = "Check and track Matrix rooms with 0 users; purge after 30 days (protecting tombstoned rooms)";
+    after = [ "continuwuity.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      User = "continuwuity";
+      Group = "continuwuity";
+      ExecStart = "${cleanupScript}/bin/continuwuity-room-cleanup";
+    };
+  };
+
+  systemd.timers.continuwuity-empty-rooms-cleanup = {
+    description = "Run Matrix empty room cleanup daily at 3:30 AM";
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnCalendar = "*-*-* 03:30:00";
+      Persistent = true;
     };
   };
 

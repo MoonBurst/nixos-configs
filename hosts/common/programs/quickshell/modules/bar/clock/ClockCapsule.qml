@@ -1,433 +1,274 @@
-// ClockCapsule.qml
 import QtQuick
-import QtQuick.Controls 2
-import QtQuick.Layouts 1.15
-import QtQuick.Shapes 1.15
 import Quickshell
-import Quickshell.Wayland
-
 import "../../style"
 
 Item {
     id: clockBox
+    property var barWindow: null
+    property string moduleName: "clock"
+    property string slantLeft: "Left"
+    property string slantRight: "Right"
+    property int slantWidth: (shell && shell.theme && shell.theme.slantWidth) ? shell.theme.slantWidth : 12
 
-    anchors.fill: parent
+    readonly property color themeBase05: (shell && shell.theme) ? shell.theme.base05 : "yellow"
+    readonly property color themeBase00: (shell && shell.theme) ? shell.theme.base00 : "black"
+    readonly property color themeBase02: (shell && shell.theme) ? shell.theme.base02 : "#222222"
+    readonly property int themeFontSize: (shell && shell.theme) ? shell.theme.globalFontSize : 14
+    readonly property string themeFontFamily: (shell && shell.theme) ? shell.theme.fontFamily : "monospace"
 
-    //Theme fallbacks
-    readonly property int themePadding: (shell && shell.theme && typeof shell.theme.globalPadding !== "undefined") ? shell.theme.globalPadding : 12
-    readonly property int themeBorderWidth: (shell && shell.theme && typeof shell.theme.globalBorderWidth !== "undefined") ? shell.theme.globalBorderWidth : 3
-    readonly property real themeHalfB: themeBorderWidth / 2
-    readonly property int themeFontSize: (shell && shell.theme && typeof shell.theme.globalFontSize !== "undefined") ? shell.theme.globalFontSize : 14
-    readonly property string themeFontFamily: (shell && shell.theme && typeof shell.theme.fontFamily !== "undefined") ? shell.theme.fontFamily : "monospace"
-    readonly property color themeBase05: (shell && shell.theme && typeof shell.theme.base05 !== "undefined") ? shell.theme.base05 : "yellow"
-    readonly property color themeBase00: (shell && shell.theme && typeof shell.theme.base00 !== "undefined") ? shell.theme.base00 : "black"
-    readonly property color themeBase02: (shell && shell.theme && typeof shell.theme.base02 !== "undefined") ? shell.theme.base02 : "#222222"
-    // =========================================================================
+    property string dateStr: "12:00 PM"
+
+    implicitWidth: Math.max(180, clockText.implicitWidth + bg.leftPadding + bg.rightPadding + 36)
+    width: implicitWidth
+    height: parent ? parent.height : 40
 
     SlantedBox {
         id: bg
         anchors.fill: parent
-        slantLeft: "Left"
-        slantRight: "Right"
+        slantLeft: clockBox.slantLeft
+        slantRight: clockBox.slantRight
+        slantWidth: clockBox.slantWidth
     }
 
-    property var barWindow: null
-    property string dateStr: "12:00:00 PM"
-
     Timer {
-        id: clockPollerTimer
-        interval: 1000
-        running: true
-        repeat: true
-        triggeredOnStart: true
+        interval: 1000; running: true; repeat: true; triggeredOnStart: true
         onTriggered: {
-            var date = new Date()
-            clockBox.dateStr = date.toLocaleTimeString(Qt.locale(), Locale.ShortFormat)
+            var date = new Date();
+            clockBox.dateStr = date.toLocaleTimeString(Qt.locale(), Locale.ShortFormat);
         }
     }
 
     Text {
         id: clockText
-        anchors.fill: parent
-
-        anchors.leftMargin: bg.leftPadding
-        anchors.rightMargin: bg.rightPadding
-        anchors.topMargin: themePadding
-        anchors.bottomMargin: themePadding
-
+        anchors.centerIn: parent
         color: themeBase05
         font.family: themeFontFamily
-        font.pixelSize: themeFontSize
+        font.pixelSize: themeFontSize + 1
         font.bold: true
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
         text: clockBox.dateStr
+        clip: false
     }
 
-    HoverHandler {
-        id: clockHoverTracker
-    }
+    HoverHandler { id: clockHoverTracker }
 
-    //Timezones tooltip
     SlantedTooltip {
         id: timezoneClockWindow
-
         moduleItem: clockBox
         barWindow: clockBox.barWindow
         tooltipActive: clockHoverTracker.hovered
-
-        //  style configuration
         backgroundStyle: "Hexagon"
         alignSide: "Center"
-
-        tooltipHeight: 520
-        collapsedCoreWidth: 130
-        expandedCoreWidth: 1390
         topOffset: 8
+
+        // Extra wide 1440px viewport for generous outer and inner gaps
+        expandedCoreWidth: 1440
+        tooltipHeight: 650
 
         Item {
             id: popupContent
             anchors.fill: parent
 
-            SystemClock { id: popupTime; precision: SystemClock.Seconds }
-
-            readonly property int systemOffset: popupTime.date ? -Math.round(popupTime.date.getTimezoneOffset() / 60) : -5
-
-            function getTimezoneTime(offsetHours) {
-                if (!popupTime || !popupTime.date) return "--:-- --";
-
-                let localDate = new Date(popupTime.date.getTime());
-                let utc = localDate.getTime() + (localDate.getTimezoneOffset() * 60000);
-                let nd = new Date(utc + (3600000 * offsetHours));
-
-                let hours = nd.getHours();
-                let minutes = nd.getMinutes();
-                let ampm = hours >= 12 ? "PM" : "AM";
-
-                hours = hours % 12;
-                hours = hours ? hours : 12;
-
-                let hh = hours < 10 ? "0" + hours : hours;
-                let mm = minutes < 10 ? "0" + minutes : minutes;
-
-                return hh + ":" + mm + " " + ampm;
+            SystemClock {
+                id: popupTime
+                precision: timezoneClockWindow.visible ? SystemClock.Seconds : SystemClock.Minutes
             }
 
-            Item {
-                id: mainCard
+            // Formats target timezone from UTC timestamp
+            function getTimezoneTime(offsetHours) {
+                if (!popupTime || !popupTime.date) return "--:-- --";
+                var d = popupTime.date;
+                var targetMs = d.getTime() + (offsetHours * 3600000);
+                var targetDate = new Date(targetMs);
+
+                var h = targetDate.getUTCHours();
+                var m = targetDate.getUTCMinutes();
+                var ampm = h >= 12 ? "PM" : "AM";
+                var displayH = h % 12;
+                if (displayH === 0) displayH = 12;
+                var hStr = displayH < 10 ? ("0" + displayH) : ("" + displayH);
+                var mStr = m < 10 ? ("0" + m) : ("" + m);
+                return hStr + ":" + mStr + " " + ampm;
+            }
+
+            // Dynamically checks if this zone matches your actual system time on the bar
+            function isLocalMatch(targetTimeStr) {
+                if (!popupTime || !popupTime.date) return false;
+                var localH = popupTime.date.getHours();
+                var localM = popupTime.date.getMinutes();
+                var ampm = localH >= 12 ? "PM" : "AM";
+                var disH = localH % 12;
+                if (disH === 0) disH = 12;
+                var hStr = disH < 10 ? ("0" + disH) : ("" + disH);
+                var mStr = localM < 10 ? ("0" + localM) : ("" + localM);
+                return targetTimeStr === (hStr + ":" + mStr + " " + ampm);
+            }
+
+            Column {
                 anchors.fill: parent
+                // 36px side margins create an intentional gap from the outer hexagon frame
+                anchors.leftMargin: 36
+                anchors.rightMargin: 36
+                anchors.topMargin: 22
+                anchors.bottomMargin: 24
+                spacing: 16
 
-                readonly property real borderW: themeBorderWidth
-                readonly property real halfB: themeHalfB
-                readonly property color colorBase05: themeBase05
-                readonly property color colorBase02: themeBase02
-                readonly property string fontFamily: themeFontFamily
-                readonly property real sw: 45
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "🌐 GLOBAL TIMEZONE METRIC MATRIX"
+                    font.family: clockBox.themeFontFamily
+                    font.pixelSize: 22
+                    font.bold: true
+                    color: clockBox.themeBase05
+                }
 
-                Column {
-                    anchors.fill: parent
-                    anchors.leftMargin: themePadding + mainCard.sw
-                    anchors.rightMargin: themePadding + mainCard.sw
-                    anchors.topMargin: themePadding
-                    anchors.bottomMargin: themePadding
-                    spacing: 24
+                Row {
+                    width: parent.width
+                    spacing: 18
 
-                    Item {
-                        id: headerBlock
-                        width: parent.width
-                        height: 54
-
-                        readonly property real sw: 12
-
-                        state: timezoneClockWindow.innerLayoutTrigger ? "visible" : "hidden"
-
-                        states: [
-                            State {
-                                name: "hidden"
-                                PropertyChanges { target: headerBlock; opacity: 0; scale: 0.9 }
+                    Repeater {
+                        model: [
+                            {
+                                title: "AMERICAS",
+                                zones: [
+                                    { name: "Hawaii", code: "HST", offset: -10 },
+                                    { name: "Alaska", code: "AKST", offset: -9 },
+                                    { name: "Pacific", code: "PST", offset: -8 },
+                                    { name: "Mountain", code: "MST", offset: -7 },
+                                    { name: "Central", code: "CST", offset: -6 },
+                                    { name: "Eastern", code: "EST", offset: -5 }
+                                ]
                             },
-                            State {
-                                name: "visible"
-                                PropertyChanges { target: headerBlock; opacity: 1; scale: 1.0 }
+                            {
+                                title: "ATLANTIC",
+                                zones: [
+                                    { name: "Atlantic", code: "AST", offset: -4 },
+                                    { name: "Newfoundland", code: "NST", offset: -3.5 },
+                                    { name: "Greenland", code: "WGT", offset: -2 },
+                                    { name: "Mid-Atlantic", code: "CVT", offset: -1 },
+                                    { name: "Azores", code: "AZOT", offset: -1 },
+                                    { name: "UTC / GMT", code: "UTC", offset: 0 }
+                                ]
+                            },
+                            {
+                                title: "EMEA",
+                                zones: [
+                                    { name: "London", code: "GMT", offset: 0 },
+                                    { name: "Paris / Berlin", code: "CET", offset: 1 },
+                                    { name: "Athens / Cairo", code: "EET", offset: 2 },
+                                    { name: "Moscow", code: "MSK", offset: 3 },
+                                    { name: "Dubai", code: "GST", offset: 4 },
+                                    { name: "Karachi", code: "PKT", offset: 5 }
+                                ]
+                            },
+                            {
+                                title: "ASIA PACIFIC",
+                                zones: [
+                                    { name: "Dhaka", code: "BST", offset: 6 },
+                                    { name: "Bangkok", code: "ICT", offset: 7 },
+                                    { name: "Singapore / HK", code: "SGT", offset: 8 },
+                                    { name: "Tokyo / Seoul", code: "JST", offset: 9 },
+                                    { name: "Sydney", code: "AEST", offset: 10 },
+                                    { name: "Auckland", code: "NZST", offset: 12 }
+                                ]
                             }
                         ]
+                        delegate: Item {
+                            id: columnCard
+                            width: (parent.width - (3 * 18)) / 4
+                            height: 520
 
-                        transitions: [
-                            Transition {
-                                from: "hidden"; to: "visible"
-                                ParallelAnimation {
-                                    NumberAnimation { target: headerBlock; properties: "opacity,scale"; duration: 250; easing.type: Easing.OutCubic }
+                            // Dynamically checks if your current system time belongs to this region
+                            readonly property bool isLocalCol: {
+                                for (var z = 0; z < modelData.zones.length; z++) {
+                                    var timeStr = popupContent.getTimezoneTime(modelData.zones[z].offset);
+                                    if (popupContent.isLocalMatch(timeStr)) return true;
                                 }
-                            },
-                            Transition {
-                                from: "visible"; to: "hidden"
-                                NumberAnimation { target: headerBlock; property: "opacity"; duration: 100 }
+                                return false;
                             }
-                        ]
 
-                        Shape {
-                            anchors.fill: parent
-                            layer.enabled: true
-                            layer.samples: 4
-
-                            ShapePath {
-                                strokeColor: mainCard.colorBase05
-                                strokeWidth: mainCard.borderW
-                                fillColor: "transparent"
-                                joinStyle: ShapePath.MiterJoin
-
-                                startX: headerBlock.sw + themeHalfB
-                                startY: themeHalfB
-                                PathLine { x: headerBlock.width - headerBlock.sw - themeHalfB; y: themeHalfB }
-                                PathLine { x: headerBlock.width - themeHalfB; y: headerBlock.height / 2 }
-                                PathLine { x: headerBlock.width - headerBlock.sw - themeHalfB; y: headerBlock.height - themeHalfB }
-                                PathLine { x: headerBlock.sw + themeHalfB; y: headerBlock.height - themeHalfB }
-                                PathLine { x: themeHalfB; y: headerBlock.height / 2 }
-                                PathLine { x: headerBlock.sw + themeHalfB; y: themeHalfB }
-                            }
-                        }
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "🌐 GLOBAL TIMEZONE METRIC MATRIX"
-                            font.family: mainCard.fontFamily
-                            font.pixelSize: 22
-                            font.bold: true
-                            color: mainCard.colorBase05
-                        }
-                    }
-
-                    Row {
-                        id: timezoneGridMatrix
-                        width: parent.width
-                        spacing: 16
-
-                        Repeater {
-                            model: [
-                                {
-                                    title: "AMERICAS",
-                                    zones: [
-                                        { name: "Midway", code: "SST", offset: -11 },
-                                        { name: "Hawaii", code: "HST", offset: -10 },
-                                        { name: "Alaska", code: "AKDT", offset: -8 },
-                                        { name: "Pacific", code: "PDT", offset: -7 },
-                                        { name: "Mountain", code: "MDT", offset: -6 },
-                                        { name: "Central", code: "CDT", offset: -5 }
-                                    ]
-                                },
-                                {
-                                    title: "ATLANTIC & WEST",
-                                    zones: [
-                                        { name: "Eastern", code: "EDT", offset: -4 },
-                                        { name: "Atlantic", code: "AST", offset: -3 },
-                                        { name: "Greenland", code: "WGST", offset: -2 },
-                                        { name: "Mid-Atlantic", code: "EGT", offset: -1 },
-                                        { name: "Azores", code: "AZOST", offset: 0 },
-                                        { name: "UTC / GMT", code: "UTC", offset: 0 }
-                                    ]
-                                },
-                                {
-                                    title: "EMEA & CENTRAL",
-                                    zones: [
-                                        { name: "London", code: "BST", offset: 1 },
-                                        { name: "Central EU", code: "CEST", offset: 2 },
-                                        { name: "Eastern EU", code: "EEST", offset: 3 },
-                                        { name: "Moscow", code: "MSK", offset: 3 },
-                                        { name: "Dubai", code: "GST", offset: 4 },
-                                        { name: "Karachi", code: "PKT", offset: 5 }
-                                    ]
-                                },
-                                {
-                                    title: "ASIA PACIFIC",
-                                    zones: [
-                                        { name: "Dhaka", code: "BST", offset: 6 },
-                                        { name: "Bangkok", code: "ICT", offset: 7 },
-                                        { name: "Beijing / HK", code: "CST", offset: 8 },
-                                        { name: "Tokyo", code: "JST", offset: 9 },
-                                        { name: "Sydney", code: "AEST", offset: 10 },
-                                        { name: "Auckland", code: "NZST", offset: 12 }
-                                    ]
+                            // 45-Degree Hexagonal Chamfer Background
+                            Canvas {
+                                id: cardHexBg
+                                anchors.fill: parent
+                                onPaint: {
+                                    var ctx = getContext("2d");
+                                    ctx.reset();
+                                    ctx.lineWidth = 1.5;
+                                    ctx.strokeStyle = columnCard.isLocalCol ? "#04f100" : clockBox.themeBase05;
+                                    ctx.fillStyle = clockBox.themeBase00;
+                                    var w = width, h = height, c = 16;
+                                    ctx.beginPath();
+                                    ctx.moveTo(c, 1);
+                                    ctx.lineTo(w - c, 1);
+                                    ctx.lineTo(w - 1, c);
+                                    ctx.lineTo(w - 1, h - c);
+                                    ctx.lineTo(w - c, h - 1);
+                                    ctx.lineTo(c, h - 1);
+                                    ctx.lineTo(1, h - c);
+                                    ctx.lineTo(1, c);
+                                    ctx.closePath();
+                                    ctx.fill();
+                                    ctx.stroke();
                                 }
-                            ]
+                                onWidthChanged: requestPaint()
+                                onHeightChanged: requestPaint()
+                            }
 
-                            delegate: Item {
-                                id: categoryCard
+                            Column {
+                                anchors.fill: parent
+                                anchors.margins: 16
+                                spacing: 12
 
-                                width: timezoneGridMatrix.width > 0 ? (timezoneGridMatrix.width - (3 * timezoneGridMatrix.spacing)) / 4 : 0
-                                height: innerColumnLayout ? innerColumnLayout.height + 40 : 0
+                                Text {
+                                    width: parent.width
+                                    text: modelData.title
+                                    font.bold: true
+                                    font.pixelSize: 18
+                                    font.family: clockBox.themeFontFamily
+                                    color: columnCard.isLocalCol ? "#04f100" : clockBox.themeBase05
+                                    horizontalAlignment: Text.AlignHCenter
+                                }
 
-                                readonly property real targetWidth: width
-                                readonly property real targetHeight: height
-                                readonly property real sw: 14
-
-                                Item {
-                                    id: cardContainer
+                                Rectangle { 
+                                    width: parent.width - 16
                                     anchors.horizontalCenter: parent.horizontalCenter
-                                    anchors.top: parent.top
+                                    height: 1 
+                                    color: clockBox.themeBase02 
+                                }
 
-                                    width: animWidth
-                                    height: animHeight
+                                Repeater {
+                                    model: modelData.zones
+                                    delegate: Item {
+                                        width: parent.width
+                                        height: 58
 
-                                    property real animWidth: 40
-                                    property real animHeight: 0
-                                    property real contentOpacity: 0
-
-                                    state: timezoneClockWindow.innerLayoutTrigger ? "visible" : "hidden"
-
-                                    states: [
-                                        State {
-                                            name: "hidden"
-                                            PropertyChanges { target: cardContainer; animHeight: 0; animWidth: 40; contentOpacity: 0 }
-                                        },
-                                        State {
-                                            name: "visible"
-                                            PropertyChanges { target: cardContainer; animHeight: categoryCard.targetHeight; animWidth: categoryCard.targetWidth; contentOpacity: 1 }
-                                        }
-                                    ]
-
-                                    transitions: [
-                                        Transition {
-                                            from: "hidden"; to: "visible"
-                                            SequentialAnimation {
-                                                NumberAnimation {
-                                                    target: cardContainer
-                                                    property: "animHeight"
-                                                    duration: 250
-                                                    easing.type: Easing.OutCubic
-                                                }
-                                                NumberAnimation {
-                                                    target: cardContainer
-                                                    property: "animWidth"
-                                                    duration: 200
-                                                    easing.type: Easing.OutCubic
-                                                }
-                                                NumberAnimation {
-                                                    target: cardContainer
-                                                    property: "contentOpacity"
-                                                    duration: 150
-                                                    easing.type: Easing.OutQuad
-                                                }
-                                            }
-                                        },
-                                        Transition {
-                                            from: "visible"; to: "hidden"
-                                            SequentialAnimation {
-                                                NumberAnimation {
-                                                    target: cardContainer
-                                                    property: "contentOpacity"
-                                                    duration: 100
-                                                    easing.type: Easing.InQuad
-                                                }
-                                                NumberAnimation {
-                                                    target: cardContainer
-                                                    property: "animWidth"
-                                                    duration: 120
-                                                    easing.type: Easing.InCubic
-                                                }
-                                                NumberAnimation {
-                                                    target: cardContainer
-                                                    property: "animHeight"
-                                                    duration: 150
-                                                    easing.type: Easing.InCubic
-                                                }
-                                            }
-                                        }
-                                    ]
-
-                                    Canvas {
-                                        id: cardOutline
-                                        anchors.fill: parent
-
-                                        readonly property real borderW: mainCard.borderW
-                                        readonly property real halfB: themeHalfB
-                                        readonly property color colorBase05: mainCard.colorBase05
-                                        readonly property real sw: categoryCard.sw
-
-                                        onPaint: {
-                                            var ctx = getContext("2d");
-                                            ctx.reset();
-
-                                            ctx.lineWidth = borderW;
-                                            ctx.strokeStyle = colorBase05;
-                                            ctx.fillStyle = "transparent";
-
-                                            var topChamferY = Math.min(height / 2, sw + halfB);
-                                            var bottomChamferY = Math.max(height / 2, height - sw - halfB);
-                                            var bottomY = Math.max(halfB, height - halfB);
-
-                                            ctx.beginPath();
-                                            ctx.moveTo(sw + halfB, halfB);
-                                            ctx.lineTo(width - sw - halfB, halfB);
-                                            ctx.lineTo(width - halfB, topChamferY);
-                                            ctx.lineTo(width - halfB, bottomChamferY);
-                                            ctx.lineTo(width - sw - halfB, bottomY);
-                                            ctx.lineTo(sw + halfB, bottomY);
-                                            ctx.lineTo(halfB, bottomChamferY);
-                                            ctx.lineTo(halfB, topChamferY);
-                                            ctx.closePath();
-
-                                            ctx.fill();
-                                            ctx.stroke();
-                                        }
-
-                                        onWidthChanged: requestPaint()
-                                        onHeightChanged: requestPaint()
-                                    }
-
-                                    Column {
-                                        id: innerColumnLayout
-                                        anchors.centerIn: parent
-                                        width: categoryCard.targetWidth - ((themePadding + categoryCard.sw) * 2)
-                                        spacing: 14
-                                        opacity: cardContainer.contentOpacity
-                                        visible: opacity > 0
+                                        readonly property string formattedTime: popupContent.getTimezoneTime(modelData.offset)
+                                        readonly property bool isMe: popupContent.isLocalMatch(formattedTime)
 
                                         Text {
-                                            width: parent.width
-                                            text: modelData.title
-                                            font.bold: true
-                                            font.pixelSize: 18
-                                            font.family: mainCard.fontFamily
-                                            color: mainCard.colorBase05
-                                            horizontalAlignment: Text.AlignHCenter
+                                            text: modelData.name + " (" + modelData.code + ")"
+                                            anchors.left: parent.left
+                                            anchors.leftMargin: 8
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            font.pixelSize: 15
+                                            font.bold: isMe
+                                            font.family: clockBox.themeFontFamily
+                                            color: isMe ? "#04f100" : clockBox.themeBase05
                                             elide: Text.ElideRight
+                                            width: parent.width - 110
                                         }
 
-                                        Repeater {
-                                            model: modelData.zones
-
-                                            delegate: Item {
-                                                width: parent.width
-                                                height: 34
-
-                                                readonly property bool isLocalZone: modelData.offset === popupContent.systemOffset
-
-                                                Text {
-                                                    id: timeDisplay
-                                                    text: popupContent.getTimezoneTime(modelData.offset)
-                                                    anchors.right: parent.right
-                                                    anchors.verticalCenter: parent.verticalCenter
-
-                                                    font.pixelSize: 25
-                                                    font.bold: parent.isLocalZone
-                                                    font.family: mainCard.fontFamily
-                                                    color: mainCard.colorBase05
-                                                }
-
-                                                Text {
-                                                    text: modelData.name + " (" + modelData.code + ")"
-                                                    anchors.left: parent.left
-                                                    anchors.verticalCenter: parent.verticalCenter
-                                                    anchors.right: timeDisplay.left
-                                                    anchors.rightMargin: themePadding
-                                                    elide: Text.ElideRight
-
-                                                    font.pixelSize: 25
-                                                    font.bold: parent.isLocalZone
-                                                    font.family: mainCard.fontFamily
-                                                    color: mainCard.colorBase05
-                                                }
-                                            }
+                                        Text {
+                                            text: formattedTime
+                                            anchors.right: parent.right
+                                            anchors.rightMargin: 8
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            font.pixelSize: 17
+                                            font.bold: true
+                                            font.family: clockBox.themeFontFamily
+                                            color: isMe ? "#04f100" : clockBox.themeBase05
                                         }
                                     }
                                 }

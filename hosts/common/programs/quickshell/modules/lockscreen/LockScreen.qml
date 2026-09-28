@@ -5,12 +5,22 @@ import Quickshell
 import Quickshell.Wayland
 
 import "../../"
+import "../overlays/launcher" as Launcher
+import Quickshell.Io
 
 WlSessionLockSurface {
     id: windowSurface
 
     property var lockSession: null
     property var rootRef: null
+    property bool isCapsLockActive: false
+    property bool hasBattery: lockBat.hasBattery
+
+    readonly property bool isPrimaryScreen: {
+        if (!windowSurface || !windowSurface.screen) return false;
+        var pScreen = (rootRef && rootRef.primaryScreen) ? rootRef.primaryScreen : (Quickshell.screens[0] || null);
+        return pScreen ? windowSurface.screen.name === pScreen.name : true;
+    }
 
     FocusScope {
         anchors.fill: parent
@@ -20,49 +30,90 @@ WlSessionLockSurface {
             id: stylixTheme
         }
 
+        Launcher.BatteryEngine { id: lockBat }
+
+        Process {
+            id: capslockDetector
+            running: true
+            command: ["sh", "-c", "cat /sys/class/leds/*capslock*/brightness 2>/dev/null | grep -q '1' && echo 1 || echo 0"]
+            stdout: SplitParser {
+                onRead: data => {
+                    windowSurface.isCapsLockActive = (data.trim() === "1");
+                }
+            }
+        }
+
         Rectangle {
             id: secureOverlayBackground
             anchors.fill: parent
             color: "#0a0a0f"
 
+            Rectangle {
+                visible: windowSurface.hasBattery && windowSurface.isPrimaryScreen
+                anchors.top: parent.top
+                anchors.right: parent.right
+                anchors.margins: 32
+                width: batRow.implicitWidth + 24
+                height: 40
+                radius: 8
+                color: "#181825"
+                border.width: 1.5
+                border.color: (parseInt(lockBat.percent) <= 20 && lockBat.status === "Discharging") ? stylixTheme.base08 : stylixTheme.base05
+
+                Row {
+                    id: batRow
+                    anchors.centerIn: parent
+                    spacing: 8
+                    Text {
+                        text: lockBat.status === "Charging" ? "⚡" : (parseInt(lockBat.percent) <= 20 ? "🪫" : "🔋")
+                        font.pixelSize: 16
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                    Text {
+                        text: lockBat.percent + " (" + lockBat.power + ")"
+                        color: (parseInt(lockBat.percent) <= 20 && lockBat.status === "Discharging") ? stylixTheme.base08 : stylixTheme.base05
+                        font.family: stylixTheme.fontFamily
+                        font.pixelSize: 14
+                        font.bold: true
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                }
+            }
+
             Loader {
                 id: interfaceLoader
                 anchors.centerIn: parent
-                // Safe evaluation with try-catch protects against screen disconnect crashes
-                active: {
-                    if (!windowSurface || !windowSurface.screen) return false;
-                    try {
-                        var screenName = windowSurface.screen.name;
-                        return screenName === "DP-1" || screenName === "eDP-1";
-                    } catch (err) {
-                        return false;
-                    }
-                }
+                active: windowSurface.isPrimaryScreen
                 sourceComponent: mainUserInterfaceComponent
             }
         }
 
         Keys.onPressed: (event) => {
+            if (event.key === Qt.Key_CapsLock) {
+                windowSurface.isCapsLockActive = !windowSurface.isCapsLockActive;
+            } else if (event.text !== "" && event.text.length === 1) {
+                var c = event.text;
+                var isShift = (event.modifiers & Qt.ShiftModifier) !== 0;
+                if (c >= 'A' && c <= 'Z' && !isShift) windowSurface.isCapsLockActive = true;
+                else if (c >= 'a' && c <= 'z' && !isShift) windowSurface.isCapsLockActive = false;
+                else if (c >= 'A' && c <= 'Z' && isShift) windowSurface.isCapsLockActive = false;
+            }
+
             if (!windowSurface || !windowSurface.screen || !windowSurface.rootRef) return;
-            try {
-                var screenName = windowSurface.screen.name;
-                if (screenName !== "DP-1" && screenName !== "eDP-1") {
-                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                        lockPam.active = true;
-                    } else if (event.key === Qt.Key_Backspace) {
-                        var str = windowSurface.rootRef.globalPasswordBuffer;
-                        if (str.length > 0) {
-                            windowSurface.rootRef.globalPasswordBuffer = str.substring(0, str.length - 1);
-                            windowSurface.rootRef.passwordLength = windowSurface.rootRef.globalPasswordBuffer.length;
-                        }
-                    } else if (event.text !== "") {
-                        windowSurface.rootRef.globalPasswordBuffer += event.text;
+            if (!windowSurface.isPrimaryScreen) {
+                if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                    lockPam.active = true;
+                } else if (event.key === Qt.Key_Backspace) {
+                    var str = windowSurface.rootRef.globalPasswordBuffer;
+                    if (str.length > 0) {
+                        windowSurface.rootRef.globalPasswordBuffer = str.substring(0, str.length - 1);
                         windowSurface.rootRef.passwordLength = windowSurface.rootRef.globalPasswordBuffer.length;
                     }
-                    event.accepted = true;
+                } else if (event.text !== "") {
+                    windowSurface.rootRef.globalPasswordBuffer += event.text;
+                    windowSurface.rootRef.passwordLength = windowSurface.rootRef.globalPasswordBuffer.length;
                 }
-            } catch (err) {
-                // Ignore errors during screen teardown race conditions
+                event.accepted = true;
             }
         }
     }
@@ -134,7 +185,6 @@ WlSessionLockSurface {
                     horizontalAlignment: TextInput.AlignHCenter
                     focus: true
 
-
                     text: windowSurface.rootRef ? windowSurface.rootRef.globalPasswordBuffer : ""
                     background: Rectangle {
                         implicitWidth: stylixTheme.defaultCardWidth
@@ -170,14 +220,31 @@ WlSessionLockSurface {
                         }
                     }
 
+                    Rectangle {
+                        visible: windowSurface.isCapsLockActive
+                        Layout.alignment: Qt.AlignHCenter
+                        width: capsRow.implicitWidth + 20
+                        height: 28
+                        radius: 6
+                        color: "#332200"
+                        border.color: stylixTheme.base09
+                        border.width: 1
+
+                        Row {
+                            id: capsRow
+                            anchors.centerIn: parent
+                            spacing: 6
+                            Text { text: "⇪"; color: stylixTheme.base09; font.bold: true; font.pixelSize: 13; anchors.verticalCenter: parent.verticalCenter }
+                            Text { text: "CAPS LOCK ACTIVE"; color: stylixTheme.base09; font.bold: true; font.pixelSize: 11; font.family: stylixTheme.fontFamily; anchors.verticalCenter: parent.verticalCenter }
+                        }
+                    }
+
                     onAccepted: {
                         if (passwordField.text === "") return;
-
                         if (windowSurface.rootRef) {
                             windowSurface.rootRef.globalPasswordBuffer = passwordField.text;
                             windowSurface.rootRef.passwordLength = passwordField.text.length;
                         }
-
                         lockPam.active = true;
                     }
                 }

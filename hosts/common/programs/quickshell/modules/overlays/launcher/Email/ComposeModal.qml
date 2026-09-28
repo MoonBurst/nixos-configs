@@ -43,7 +43,13 @@ Rectangle {
     property bool wasSent: false
 
     // Automated Email Signature
-    property string mailSignature: "\n\n--\nSeekers of light..\nBelieve not in justice...\nBelieve not in truth...\nFor they are empty and inconsistent, as are all things..."
+    property string mailSignature: (typeof shell !== "undefined" && shell && shell.settingsManager && shell.settingsManager.emailSignature) ? shell.settingsManager.emailSignature : "
+
+--
+Seekers of light..
+Believe not in justice...
+Believe not in truth...
+For they are empty and inconsistent, as are all things..."
 
     // Exposed alias to let root window file dialog append attachments
     property alias bodyInput: bodyInput
@@ -193,12 +199,12 @@ Rectangle {
     }
 
     function loadContactsDatabase() {
-        var activeUser = "moonburst";
+        var homeDir = Quickshell.env("HOME") || "";
         if (quickshellContext && quickshellContext.env) {
-            activeUser = quickshellContext.env("USER");
+            var activeUser = quickshellContext.env("USER");
         }
         var xhr = new XMLHttpRequest();
-        var contactsUrl = "file:///home/" + activeUser + "/Documents/Contacts";
+        var contactsUrl = "file://" + homeDir + "/Documents/Contacts";
 
         xhr.onreadystatechange = function() {
             if (xhr.readyState === XMLHttpRequest.DONE) {

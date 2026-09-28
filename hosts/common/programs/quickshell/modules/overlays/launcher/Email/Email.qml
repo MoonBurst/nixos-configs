@@ -1,3 +1,4 @@
+import Quickshell
 import QtQuick
 import QtQuick.LocalStorage
 import QtQuick.Dialogs
@@ -22,8 +23,8 @@ Item {
     width: 1500; height: 1000; focus: true
 
     property var quickshellContext: null
-    property string fallbackUsername: "moonburst"
-    property string activeUser: "moonburst"
+    property string fallbackUsername: Quickshell.env("USER") || "user"
+    property string activeUser: Quickshell.env("USER") || "moonburst"
     property double lastDeleteTime: 0
 
     // Property alias to expose the timer to child scopes
@@ -31,7 +32,7 @@ Item {
 
     Component.onCompleted: {
         mailListView.forceActiveFocus();
-        mailController.cacheFilePath = "file:///home/" + rootWindow.activeUser + "/.cache/himalaya/emails.json";
+        mailController.cacheFilePath = "file://" + (Quickshell.env("HOME") || "") + "/.cache/himalaya/emails.json";
         mailController.readMailCache();
     }
 
@@ -358,7 +359,7 @@ Item {
                 onContactRequested: (email) => contactModalOverlay.openContactPrompt(email)
 
                 onDownloadAttachmentsRequested: (msgId, folderLabel) => {
-                    rootWindow.writeToQueue("DOWNLOAD_ATTACHMENTS", msgId, getMaildirFolder(folderLabel), "/home/" + rootWindow.activeUser + "/Downloads");
+                    rootWindow.writeToQueue("DOWNLOAD_ATTACHMENTS", msgId, getMaildirFolder(folderLabel), (Quickshell.env("HOME") + "/Downloads"));
                 }
 
                 // Intercept the spam block signal and perform a cascade block of all past emails from that sender

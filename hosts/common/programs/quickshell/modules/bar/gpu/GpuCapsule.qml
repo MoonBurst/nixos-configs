@@ -10,11 +10,12 @@ import "../../style"
 Item {
     id: gpuBox
     property var barWindow: null
+    property string moduleName: "gpu"
     property bool pinTooltip: false
     property string searchQuery: ""
 
-    // Dynamic GPU Model List: [ { id: "card0", render: "renderD128", name: "RX 7900" }, ... ]
-    property var detectedGpus: []
+    property var detectedGpus: (shell && shell.settingsManager && shell.settingsManager.discoveredGpus.length > 0)
+        ? shell.settingsManager.discoveredGpus : []
     property int selectedGpuIndex: 0
     readonly property var currentGpu: (detectedGpus.length > selectedGpuIndex) ? detectedGpus[selectedGpuIndex] : null
 
@@ -25,16 +26,16 @@ Item {
     readonly property int themeSlantWidth: (shell && shell.theme && typeof shell.theme.slantWidth !== "undefined") ? shell.theme.slantWidth : 12
     readonly property color themeBase00: (shell && shell.theme && typeof shell.theme.base00 !== "undefined") ? shell.theme.base00 : "black"
     readonly property color themeBase02: (shell && shell.theme && typeof shell.theme.base02 !== "undefined") ? shell.theme.base02 : "#222222"
-    readonly property color themeBase05: (shell && shell.theme && typeof shell.theme.base05 !== "undefined") ? shell.theme.base05 : "yellow"
-    readonly property color themeBase08: (shell && shell.theme && typeof shell.theme.base08 !== "undefined") ? shell.theme.base08 : "red"
-    readonly property color themeBase09: (shell && shell.theme && typeof shell.theme.base09 !== "undefined") ? shell.theme.base09 : "orange"
-    readonly property color themeBase0C: (shell && shell.theme && typeof shell.theme.base0C !== "undefined") ? shell.theme.base0C : "green"
+    readonly property color themeBase05: (shell && shell.theme && typeof shell.theme.base05 !== "undefined") ? shell.theme.base05 : "#f7f700"
+    readonly property color themeBase08: (shell && shell.theme && typeof shell.theme.base08 !== "undefined") ? shell.theme.base08 : "#ff0000"
+    readonly property color themeBase09: (shell && shell.theme && typeof shell.theme.base09 !== "undefined") ? shell.theme.base09 : "#fe8019"
+    readonly property color themeBase0C: (shell && shell.theme && typeof shell.theme.base0C !== "undefined") ? shell.theme.base0C : "#04f100"
 
     property int tooltipHeight: 420
     property int tooltipCollapsedWidth: 275
-    property int tooltipExpandedWidth: 440
+    property int tooltipExpandedWidth: 520
     property int tooltipTopOffset: -2
-    property int tooltipRightOffset: 21
+    property int tooltipRightOffset: 0
 
     property string slantLeft: "Right"
     property string slantRight: "Right"
@@ -48,18 +49,15 @@ Item {
     property string textAccumulatorBuffer: ""
 
     readonly property var processLinesArray: topGpuProcessesText.split("\n").filter(line => line.trim() !== "")
-
     readonly property var filteredProcessLinesArray: {
         var lines = processLinesArray;
         if (searchQuery.trim() === "") return lines;
         var q = searchQuery.trim().toLowerCase();
-        return lines.filter(function(line) {
-            return line.toLowerCase().indexOf(q) !== -1;
-        });
+        return lines.filter(function(line) { return line.toLowerCase().indexOf(q) !== -1; });
     }
 
-    width: 175
-    Layout.preferredWidth: 175
+    implicitWidth: Math.max(260, gpuText.implicitWidth + bg.leftPadding + bg.rightPadding + 28)
+    width: implicitWidth
     height: parent ? parent.height : 40
 
     SlantedBox {
@@ -70,125 +68,48 @@ Item {
         slantWidth: gpuBox.slantWidth
     }
 
-    // 1. HARDWARE GPU AUTO-DISCOVERY WITH CLEAN MODEL NUMBER PARSING
-    Process {
-        id: gpuDiscoveryProc
-        running: true
-        command: [
-            "sh", "-c",
-            "python3 -c '\n" +
-            "import os, glob, json, re\n" +
-            "\n" +
-            "# Well-known AMD/Intel/Nvidia PCI Device IDs table for instant resolution\n" +
-            "KNOWN = {\n" +
-            "    \"1002:744c\": \"RX 7900\",\n" +
-            "    \"1002:7448\": \"RX 7900\",\n" +
-            "    \"1002:745e\": \"RX 7800\",\n" +
-            "    \"1002:747e\": \"RX 7700\",\n" +
-            "    \"1002:7480\": \"RX 7600\",\n" +
-            "    \"1002:73bf\": \"RX 6900\",\n" +
-            "    \"1002:73df\": \"RX 6700\",\n" +
-            "    \"1002:73ff\": \"RX 6600\",\n" +
-            "    \"1002:743f\": \"RX 6400\",\n" +
-            "    \"1002:7422\": \"RX 6500\",\n" +
-            "    \"10de:2684\": \"RTX 4090\",\n" +
-            "    \"10de:2704\": \"RTX 4080\",\n" +
-            "    \"8086:56a0\": \"Arc A770\",\n" +
-            "}\n" +
-            "\n" +
-            "gpus = []\n" +
-            "for card in sorted(glob.glob(\"/sys/class/drm/card[0-9]\")):\n" +
-            "    card_name = os.path.basename(card)\n" +
-            "    dev_link = os.path.realpath(f\"{card}/device\")\n" +
-            "    \n" +
-            "    # Match matching /dev/dri/renderD* node\n" +
-            "    render = \"\"\n" +
-            "    for r in glob.glob(\"/sys/class/drm/renderD*\"):\n" +
-            "        if os.path.realpath(f\"{r}/device\") == dev_link:\n" +
-            "            render = os.path.basename(r)\n" +
-            "            break\n" +
-            "            \n" +
-            "    label = card_name.upper()\n" +
-            "    try:\n" +
-            "        with open(f\"{card}/device/vendor\") as f: ven = f.read().strip().replace(\"0x\", \"\").lower()\n" +
-            "        with open(f\"{card}/device/device\") as f: dev = f.read().strip().replace(\"0x\", \"\").lower()\n" +
-            "        dev_key = f\"{ven}:{dev}\"\n" +
-            "        if dev_key in KNOWN:\n" +
-            "            label = KNOWN[dev_key]\n" +
-            "        else:\n" +
-            "            # Search Linux pci.ids database for generic model numbers\n" +
-            "            for pci_path in [\"/run/current-system/sw/share/hwdata/pci.ids\", \"/usr/share/hwdata/pci.ids\", \"/usr/share/misc/pci.ids\"]:\n" +
-            "                if os.path.isfile(pci_path):\n" +
-            "                    with open(pci_path, \"r\", errors=\"ignore\") as pf:\n" +
-            "                        in_ven = False\n" +
-            "                        for line in pf:\n" +
-            "                            if line.startswith(ven):\n" +
-            "                                in_ven = True; continue\n" +
-            "                            elif in_ven and line and not line.startswith(\"\\t\"):\n" +
-            "                                break\n" +
-            "                            if in_ven and line.startswith(f\"\\t{dev}\"):\n" +
-            "                                name = line.split(dev)[-1].strip()\n" +
-            "                                m = re.search(r\"(RX\\s+\\d{4}|RTX\\s+\\d{4}|Arc\\s+[A-Z]\\d{3}|Radeon\\s+\\w+)\", name, re.I)\n" +
-            "                                if m: label = m.group(1)\n" +
-            "                                else: label = name.split()[0]\n" +
-            "                                break\n" +
-            "                    if label != card_name.upper(): break\n" +
-            "    except:\n" +
-            "        pass\n" +
-            "        \n" +
-            "    gpus.append({\"id\": card_name, \"render\": render, \"name\": label})\n" +
-            "print(json.dumps(gpus))\n" +
-            "'"
-        ]
-        stdout: SplitParser {
-            onRead: data => {
-                try {
-                    var parsed = JSON.parse(data.trim());
-                    if (parsed && parsed.length > 0) {
-                        gpuBox.detectedGpus = parsed;
-                    }
-                } catch(e) {}
-            }
-        }
-    }
-
-    // 2. DYNAMIC HARDWARE METRICS READER
+    // Dynamic Hardware Metrics Reader (Outputs FREE VRAM in GiB)
     Process {
         id: gpuStatsProc
         running: true
         command: [
             "sh", "-c",
-            "card_id='" + (gpuBox.currentGpu ? gpuBox.currentGpu.id : "card0") + "'; " +
-            "card_dir=\"/sys/class/drm/$card_id/device\"; " +
-            "[ ! -d \"$card_dir\" ] && echo '0:0:0:0' && exit; " +
-            "usage=$(cat \"$card_dir/gpu_busy_percent\" 2>/dev/null || echo '0'); " +
-            "temp=$(awk '{print int($1/1000)}' \"$card_dir/hwmon\"/hwmon*/temp1_input 2>/dev/null | head -n 1 || echo '0'); " +
-            "power=$(awk '{print int($1/1000000)}' \"$card_dir/hwmon\"/hwmon*/power1_average 2>/dev/null | head -n 1 || echo '0'); " +
-            "total=$(cat \"$card_dir/mem_info_vram_total\" 2>/dev/null || echo '0'); " +
-            "used=$(cat \"$card_dir/mem_info_vram_used\" 2>/dev/null || echo '0'); " +
-            "free_vram=$(awk -v t=\"$total\" -v u=\"$used\" 'BEGIN {printf \"%.0f\", (t-u)/1073741824}'); " +
-            "echo \"$usage:$temp:$power:$free_vram\""
+            'card_id="' + (gpuBox.currentGpu ? gpuBox.currentGpu.id : "card0") + '"; ' +
+            'card_dir="/sys/class/drm/$card_id/device"; ' +
+            '[ ! -d "$card_dir" ] && echo "0:0:0:0" && exit; ' +
+            'usage=$(cat "$card_dir/gpu_busy_percent" 2>/dev/null | tr -dc "0-9"); ' +
+            '[ -z "$usage" ] && usage="0"; ' +
+            'temp=$(awk \'{print int($1/1000); exit}\' "$card_dir/hwmon"/hwmon*/temp*_input 2>/dev/null || echo "0"); ' +
+            'power=$(awk \'{print int($1/1000000); exit}\' "$card_dir/hwmon"/hwmon*/power1_* 2>/dev/null || echo "0"); ' +
+            'total=$(cat "$card_dir/mem_info_vram_total" 2>/dev/null || echo "0"); ' +
+            'used=$(cat "$card_dir/mem_info_vram_used" 2>/dev/null || echo "0"); ' +
+            'if [ "$total" = "0" ] || [ -z "$total" ]; then ' +
+            '  total=$(cat "$card_dir/mem_info_gtt_total" 2>/dev/null || echo "0"); ' +
+            '  used=$(cat "$card_dir/mem_info_gtt_used" 2>/dev/null || echo "0"); ' +
+            'fi; ' +
+            'free_vram=$(awk -v t="$total" -v u="$used" \'BEGIN {if(t>u) printf "%.0f", (t-u)/1073741824; else print "0"}\'); ' +
+            'printf "%s:%s:%s:%s\\n" "$usage" "$temp" "$power" "$free_vram"'
         ]
         stdout: SplitParser {
             onRead: data => {
                 var parts = data.trim().split(":");
                 if (parts.length === 4) {
-                    gpuBox.gpuUsageRaw = parts[0];
-                    gpuBox.gpuTempRaw = parts[1];
-                    gpuBox.gpuPowerRaw = parts[2];
-                    gpuBox.gpuVramFreeRaw = parts[3];
+                    gpuBox.gpuUsageRaw = parts[0].trim();
+                    gpuBox.gpuTempRaw = parts[1].trim();
+                    gpuBox.gpuPowerRaw = parts[2].trim();
+                    gpuBox.gpuVramFreeRaw = parts[3].trim();
                 }
             }
         }
     }
 
-    // 3. DYNAMIC PROCESS SCANNER
+    // Process Scanner for Active GPU Clients
     Process {
         id: gpuProcFetcher
         running: false
         command: [
             "sh", "-c",
-            "target='" + (gpuBox.currentGpu ? gpuBox.currentGpu.render : "renderD128") + "'; " +
+            "target='" + (gpuBox.currentGpu && gpuBox.currentGpu.render ? gpuBox.currentGpu.render : "renderD128") + "'; " +
             "python3 -c '\n" +
             "import os, time, sys\n" +
             "target = sys.argv[1]\n" +
@@ -199,9 +120,7 @@ Item {
             "        fd_dir = f\"/proc/{pid}/fd\"\n" +
             "        fdinfo_dir = f\"/proc/{pid}/fdinfo\"\n" +
             "        try:\n" +
-            "            p_engine = 0\n" +
-            "            p_vram = 0\n" +
-            "            has_target = False\n" +
+            "            p_engine = 0; p_vram = 0; has_target = False\n" +
             "            for fd in os.listdir(fd_dir):\n" +
             "                try:\n" +
             "                    if target in os.readlink(f\"{fd_dir}/{fd}\"):\n" +
@@ -214,17 +133,11 @@ Item {
             "                                    v = int(line.split()[1])\n" +
             "                                    if \"KiB\" in line: v *= 1024\n" +
             "                                    p_vram = max(p_vram, v)\n" +
-            "                except Exception:\n" +
-            "                    continue\n" +
-            "            if has_target:\n" +
-            "                data[pid] = (p_engine, p_vram)\n" +
-            "        except Exception:\n" +
-            "            continue\n" +
+            "                except Exception: continue\n" +
+            "            if has_target: data[pid] = (p_engine, p_vram)\n" +
+            "        except Exception: continue\n" +
             "    return data\n" +
-            "\n" +
-            "s1 = sample()\n" +
-            "time.sleep(0.12)\n" +
-            "s2 = sample()\n" +
+            "s1 = sample(); time.sleep(0.12); s2 = sample()\n" +
             "results = []\n" +
             "for pid, (e2, vram) in s2.items():\n" +
             "    e1 = s1.get(pid, (e2, 0))[0]\n" +
@@ -234,19 +147,12 @@ Item {
             "    try:\n" +
             "        with open(f\"/proc/{pid}/comm\", \"r\") as f: comm = f.read().strip()\n" +
             "    except: comm = \"unknown\"\n" +
-            "    if comm in [\"sway\", \"Xwayland\"]:\n" +
-            "        pct = max(0.1, pct - 0.5)\n" +
             "    mib = vram / (1024 * 1024)\n" +
-            "    if mib >= 1024: vstr = f\"{mib/1024:3.1f}G\"\n" +
-            "    elif mib > 0: vstr = f\"{int(mib):3d}M\"\n" +
-            "    else: vstr = \"   - \"\n" +
+            "    vstr = f\"{mib/1024:3.1f}G\" if mib >= 1024 else (f\"{int(mib):3d}M\" if mib > 0 else \"   - \")\n" +
             "    results.append((pid, comm, vstr, pct))\n" +
             "results.sort(key=lambda x: x[3], reverse=True)\n" +
-            "out = []\n" +
-            "for pid, comm, vstr, pct in results[:10]:\n" +
-            "    out.append(f\"{pid}|{comm[:12]:<12} {vstr:>5} {pct:4.1f}%\")\n" +
-            "if out: print(\"\\n\".join(out))\n" +
-            "else: print(f\"No active GPU clients\")\n" +
+            "out = [f\"{pid}|{comm[:12]:<12} {vstr:>5} {pct:4.1f}%\" for pid, comm, vstr, pct in results[:10]]\n" +
+            "print(\"\\n\".join(out) if out else \"No active GPU clients\")\n" +
             "' \"$target\""
         ]
         stdout: SplitParser {
@@ -267,55 +173,49 @@ Item {
         }
     }
 
-    Timer {
-        id: killRefreshTimer
-        interval: 300
-        repeat: false
-        onTriggered: {
-            gpuBox.textAccumulatorBuffer = "";
-            gpuProcFetcher.running = true;
-        }
-    }
-
-    // Top Bar Pill Display
     Text {
         id: gpuText
         anchors.fill: parent
-        anchors.leftMargin: bg.leftPadding
-        anchors.rightMargin: bg.rightPadding
-        anchors.topMargin: themePadding
-        anchors.bottomMargin: themePadding
+        anchors.leftMargin: bg.leftPadding + 6
+        anchors.rightMargin: bg.rightPadding + 6
+        anchors.topMargin: 2
+        anchors.bottomMargin: 2
 
         textFormat: Text.RichText
         font.family: themeFontFamily
         font.pixelSize: themeFontSize
         font.bold: true
+        color: themeBase05
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
+        clip: true
 
         text: {
+            const usageVal = parseInt(gpuBox.gpuUsageRaw) || 0;
             const currentTemp = parseInt(gpuBox.gpuTempRaw) || 0;
+            const currentPower = parseInt(gpuBox.gpuPowerRaw) || 0;
             const currentFreeVram = parseInt(gpuBox.gpuVramFreeRaw) || 0;
+            const cardId = gpuBox.currentGpu ? gpuBox.currentGpu.id : "card0";
+
+            const _rev = (shell && shell.settingsManager) ? shell.settingsManager.gpuThresholdRevision : 0;
+            const tDanger = (shell && shell.settingsManager) ? shell.settingsManager.getGpuTempDanger(cardId) : 80;
+            const tWarn = (shell && shell.settingsManager) ? shell.settingsManager.getGpuTempWarn(cardId) : 70;
+            const vDanger = (shell && shell.settingsManager) ? shell.settingsManager.getGpuVramDanger(cardId) : 2;
+            const vWarn = (shell && shell.settingsManager) ? shell.settingsManager.getGpuVramWarn(cardId) : 4;
 
             let tempColor = themeBase05.toString();
-            if (currentTemp >= 80) tempColor = themeBase08.toString();
-            else if (currentTemp >= 70) tempColor = themeBase09.toString();
+            if (currentTemp >= tDanger) tempColor = themeBase08.toString();
+            else if (currentTemp >= tWarn) tempColor = themeBase09.toString();
 
             let vramColor = themeBase05.toString();
-            if (currentFreeVram <= 4) vramColor = themeBase08.toString();
-            else if (currentFreeVram <= 12) vramColor = themeBase09.toString();
-
-            function formatStat(rawVal, targetLength, activeColor) {
-                let padCount = targetLength - rawVal.length;
-                let zerosStr = padCount > 0 ? "<font color='" + themeBase00.toString() + "'>" + "0".repeat(padCount) + "</font>" : "";
-                return zerosStr + "<font color='" + activeColor + "'>" + rawVal + "</font>";
-            }
+            if (currentFreeVram <= vDanger) vramColor = themeBase08.toString();
+            else if (currentFreeVram <= vWarn) vramColor = themeBase09.toString();
 
             return "<font color='" + themeBase0C.toString() + "'>GPU:</font> " +
-            formatStat(gpuBox.gpuUsageRaw, 2, themeBase05.toString()) + "<font color='" + themeBase05.toString() + "'>%</font> " +
-                formatStat(gpuBox.gpuTempRaw, 2, tempColor) + "<font color='" + tempColor + "'>°C</font> " +
-                    formatStat(gpuBox.gpuPowerRaw, 3, themeBase05.toString()) + "<font color='" + themeBase05.toString() + "'>W</font> " +
-                        formatStat(gpuBox.gpuVramFreeRaw, 2, vramColor) + "<font color='" + vramColor + "'>GiB</font>";
+                "<font color='" + themeBase05.toString() + "'>" + usageVal + "%</font> " +
+                "<font color='" + tempColor + "'>" + currentTemp + "°C</font> " +
+                "<font color='" + themeBase05.toString() + "'>" + currentPower + "W</font> " +
+                "<font color='" + vramColor + "'>" + currentFreeVram + "GiB</font>";
         }
     }
 
@@ -346,8 +246,7 @@ Item {
         tooltipActive: gpuHoverTracker.hovered
         pin: gpuBox.pinTooltip
 
-        WlrLayershell.keyboardFocus: (gpuBox.pinTooltip || searchInput.activeFocus) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
-
+        keyboardFocus: (gpuBox.pinTooltip || searchInput.activeFocus) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
         readonly property bool isHovered: tooltipHoverTracker.hovered
 
         tooltipHeight: gpuBox.tooltipHeight
@@ -355,62 +254,56 @@ Item {
         expandedCoreWidth: gpuBox.tooltipExpandedWidth
         topOffset: gpuBox.tooltipTopOffset
         rightOffset: gpuBox.tooltipRightOffset
-
         slantLeft: gpuBox.slantLeft
         slantRight: gpuBox.slantRight
 
         Item {
             anchors.fill: parent
-            HoverHandler {
-                id: tooltipHoverTracker
-            }
+            HoverHandler { id: tooltipHoverTracker }
         }
 
-        Text {
-            text: "ACTIVE GPU CLIENTS:"
-            font.family: themeFontFamily
-            font.pixelSize: themeFontSize - 1
-            font.bold: true
-            color: themeBase05
-            y: 20
+        RowLayout {
+            y: 16
             x: gpuTooltip.slantX(y) + 20
-        }
-
-        // Dynamic GPU Tabs
-        Row {
-            y: 13
-            x: gpuTooltip.slantX(y) + 180
             spacing: 8
+
+            Text {
+                text: "GPU:"
+                font.family: themeFontFamily
+                font.pixelSize: themeFontSize - 1
+                font.bold: true
+                color: themeBase05
+            }
 
             Repeater {
                 model: gpuBox.detectedGpus
-                delegate: Item {
-                    width: 82
-                    height: 26
-
-                    SlantedBox {
-                        anchors.fill: parent
-                        slantLeft: gpuBox.slantLeft
-                        slantRight: gpuBox.slantRight
-                        slantWidth: 10
-                        color: gpuBox.selectedGpuIndex === index ? gpuBox.themeBase05 : "transparent"
-                    }
+                delegate: Rectangle {
+                    width: gpuBtnText.implicitWidth + 16
+                    height: 24
+                    radius: 4
+                    color: gpuBox.selectedGpuIndex === index ? themeBase05 : themeBase02
+                    border.width: 1
+                    border.color: themeBase05
 
                     Text {
+                        id: gpuBtnText
                         anchors.centerIn: parent
-                        text: modelData.name
+                        text: (modelData.name || modelData.id)
                         font.family: themeFontFamily
-                        font.pixelSize: gpuBox.themeFontSize - 1
+                        font.pixelSize: 11
                         font.bold: true
-                        color: gpuBox.selectedGpuIndex === index ? gpuBox.themeBase00 : gpuBox.themeBase05
-                        elide: Text.ElideRight
+                        color: gpuBox.selectedGpuIndex === index ? themeBase00 : themeBase05
                     }
 
-                    TapHandler {
-                        onTapped: {
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
                             gpuBox.selectedGpuIndex = index;
                             gpuBox.textAccumulatorBuffer = "";
+                            gpuStatsProc.running = false;
                             gpuStatsProc.running = true;
+                            gpuProcFetcher.running = false;
                             gpuProcFetcher.running = true;
                         }
                     }
@@ -418,7 +311,6 @@ Item {
             }
         }
 
-        // Search Input
         Item {
             id: searchContainer
             y: 48
@@ -446,13 +338,23 @@ Item {
                 selectByMouse: true
                 focus: true
                 activeFocusOnPress: true
-
                 onTextChanged: gpuBox.searchQuery = text
+
+                Keys.onPressed: (event) => {
+                    if (event.key === Qt.Key_Escape) {
+                        if (searchInput.text !== "") {
+                            searchInput.text = "";
+                        } else {
+                            gpuBox.pinTooltip = false;
+                        }
+                        event.accepted = true;
+                    }
+                }
 
                 Text {
                     anchors.fill: parent
                     verticalAlignment: Text.AlignVCenter
-                    text: "Search/Filter processes..."
+                    text: "Search/Filter processes... [Esc to close]"
                     color: gpuBox.themeBase05
                     opacity: 0.4
                     font.family: "monospace"
@@ -462,20 +364,11 @@ Item {
             }
         }
 
-        Rectangle {
-            height: 2
-            color: themeBase02
-            width: 345
-            y: 84
-            x: gpuTooltip.slantX(y) + 20
-        }
-
-        // Process List
         Repeater {
             model: gpuBox.filteredProcessLinesArray.length
             delegate: Item {
                 id: processRow
-                readonly property string rawLine: gpuBox.filteredProcessLinesArray[index]
+                readonly property string rawLine: (index < gpuBox.filteredProcessLinesArray.length) ? gpuBox.filteredProcessLinesArray[index] : ""
                 readonly property var parts: rawLine.split("|")
                 readonly property string pid: parts.length > 1 ? parts[0] : ""
                 readonly property string displayText: parts.length > 1 ? parts[1] : rawLine
@@ -489,21 +382,16 @@ Item {
 
                 SlantedBox {
                     anchors.fill: parent
-                    anchors.topMargin: -2
-                    anchors.bottomMargin: -2
-                    anchors.leftMargin: -4
-                    anchors.rightMargin: -2
-                    slantLeft: gpuBox.slantLeft
-                    slantRight: gpuBox.slantRight
+                    anchors.topMargin: -2; anchors.bottomMargin: -2
+                    anchors.leftMargin: -4; anchors.rightMargin: -2
+                    slantLeft: gpuBox.slantLeft; slantRight: gpuBox.slantRight
                     slantWidth: 12
                     visible: rowHoverTracker.hovered
                 }
 
                 Text {
-                    anchors.left: parent.left
-                    anchors.leftMargin: 6
-                    anchors.right: killBtn.left
-                    anchors.rightMargin: 6
+                    anchors.left: parent.left; anchors.leftMargin: 6
+                    anchors.right: killBtn.left; anchors.rightMargin: 6
                     anchors.verticalCenter: parent.verticalCenter
                     text: processRow.displayText
                     font.family: "monospace"
@@ -522,20 +410,17 @@ Item {
 
                     SlantedBox {
                         anchors.fill: parent
-                        slantLeft: gpuBox.slantLeft
-                        slantRight: gpuBox.slantRight
+                        slantLeft: gpuBox.slantLeft; slantRight: gpuBox.slantRight
                         slantWidth: 10
                     }
 
                     Text {
                         anchors.centerIn: parent
                         text: "✕"
-                        color: killBtnHover.hovered ? gpuBox.themeBase08 : gpuBox.themeBase08
+                        color: gpuBox.themeBase08
                         font.pixelSize: 11
                         font.bold: true
                     }
-
-                    HoverHandler { id: killBtnHover }
 
                     TapHandler {
                         onTapped: {
@@ -551,7 +436,17 @@ Item {
     }
 
     Timer {
-        interval: 2000; running: true; repeat: true; triggeredOnStart: true
+        id: killRefreshTimer
+        interval: 300
+        repeat: false
+        onTriggered: {
+            gpuBox.textAccumulatorBuffer = "";
+            gpuProcFetcher.running = true;
+        }
+    }
+
+    Timer {
+        interval: (shell && shell.settingsManager && shell.settingsManager.hardwarePollInterval > 0) ? shell.settingsManager.hardwarePollInterval : 2000; running: true; repeat: true; triggeredOnStart: true
         onTriggered: {
             gpuStatsProc.running = false;
             gpuStatsProc.running = true;

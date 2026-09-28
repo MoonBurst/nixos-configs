@@ -12,9 +12,9 @@ import "../../style"
 Item {
     id: alarmBox
     property var barWindow: null
+    property string moduleName: "alarm"
     property bool pinTooltip: false
 
-    // Theme Fallbacks
     readonly property int themePadding: (shell && shell.theme && typeof shell.theme.globalPadding !== "undefined") ? shell.theme.globalPadding : 12
     readonly property int themeFontSize: (shell && shell.theme && typeof shell.theme.globalFontSize !== "undefined") ? shell.theme.globalFontSize : 14
     readonly property string themeFontFamily: (shell && shell.theme && typeof shell.theme.fontFamily !== "undefined") ? shell.theme.fontFamily : "monospace"
@@ -24,28 +24,21 @@ Item {
     readonly property color themeBase03: (shell && shell.theme && typeof shell.theme.base03 !== "undefined") ? shell.theme.base03 : "#333333"
     readonly property color themeBase05: (shell && shell.theme && typeof shell.theme.base05 !== "undefined") ? shell.theme.base05 : "yellow"
 
-    // =========================================================================
-    //  EDITABLE TOOLTIP & INPUT LAYOUT CONFIGURATION
-    // =========================================================================
-    property int tooltipHeight: 350
+    property int tooltipHeight: 360
     property int tooltipCollapsedWidth: 110
-    property int tooltipExpandedWidth: 350
+    property int tooltipExpandedWidth: 460
     property int tooltipTopOffset: -2
-    property int tooltipRightOffset: 21
+    property int tooltipRightOffset: 0
 
     property int countdownBlockY: 80
     property int targetTimeBlockY: 200
-
     property int countdownBlockXOffset: 20
     property int targetTimeBlockXOffset: 20
-
     property int blockHeight: 100
     property int fieldHeight: 50
     property int fieldLabelSpacing: 40
-
     property int inputLeftPadding: 50
     property int inputRightPadding: 50
-    // =========================================================================
 
     property string slantLeft: "Left"
     property string slantRight: "Left"
@@ -55,8 +48,8 @@ Item {
     property string stateFile: "/tmp/waybar_alarm_state"
     property bool popupVisible: false
 
-    width: 140
-    Layout.preferredWidth: 140
+    implicitWidth: alarmText.implicitWidth + bg.leftPadding + bg.rightPadding + 20
+    width: implicitWidth
     height: parent ? parent.height : 40
 
     SlantedBox {
@@ -67,7 +60,6 @@ Item {
         slantWidth: alarmBox.slantWidth
     }
 
-    // Alarm state check with Real PipeWire 25% Hardware Attenuation & 3-Second Cut-off
     Process {
         id: alarmFetcher
         running: true
@@ -106,7 +98,6 @@ Item {
             while ((match = regex.exec(rawTimer)) !== null) {
                 var num = parseInt(match[1], 10);
                 var unit = match[2];
-
                 if (unit === 'h') totalSeconds += num * 3600;
                 if (unit === 'm') totalSeconds += num * 60;
                 if (unit === 's') totalSeconds += num;
@@ -148,7 +139,6 @@ Item {
                     if (!ampm && targetHours <= 12 && targetTime.getTime() <= now.getTime()) {
                         var pmHours = (targetHours === 12) ? 0 : targetHours + 12;
                         var pmTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), pmHours, targetMinutes, 0, 0);
-
                         if (pmTime.getTime() > now.getTime()) {
                             targetTime = pmTime;
                         }
@@ -197,12 +187,10 @@ Item {
     Text {
         id: alarmText
         anchors.fill: parent
-
-        anchors.leftMargin: bg.leftPadding
-        anchors.rightMargin: bg.rightPadding
-        anchors.topMargin: themePadding
-        anchors.bottomMargin: themePadding
-
+        anchors.leftMargin: bg.leftPadding + 4
+        anchors.rightMargin: bg.rightPadding + 4
+        anchors.topMargin: 2
+        anchors.bottomMargin: 2
         text: alarmBox.alarmDisplayText
         font.family: themeFontFamily
         font.pixelSize: themeFontSize
@@ -210,6 +198,8 @@ Item {
         color: themeBase05
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
+        elide: Text.ElideRight
+        clip: true
     }
 
     SlantedTooltip {
@@ -217,7 +207,6 @@ Item {
         moduleItem: alarmBox
         barWindow: alarmBox.barWindow
         tooltipActive: alarmBox.popupVisible
-
         alignSide: "Left"
         keyboardFocus: WlrLayershell.Exclusive
 
@@ -226,7 +215,6 @@ Item {
         expandedCoreWidth: alarmBox.tooltipExpandedWidth
         topOffset: alarmBox.tooltipTopOffset
         rightOffset: alarmBox.tooltipRightOffset
-
         slantLeft: alarmBox.slantLeft
         slantRight: alarmBox.slantRight
 
@@ -239,7 +227,6 @@ Item {
         Item {
             id: alarmInputWrapper
             anchors.fill: parent
-
             readonly property real slantRatio: alarmTooltip.tooltipSlantWidth / alarmTooltip.tooltipHeight
 
             Text {
@@ -253,15 +240,6 @@ Item {
                 x: alarmTooltip.slantX(y) + 150
             }
 
-            Rectangle {
-                id: alarmDivider
-                height: 2
-                color: themeBase02
-                width: 360
-                y: 70
-                x: alarmTooltip.slantX(y) + 24
-            }
-
             Item {
                 id: timeInput
                 y: 95
@@ -272,9 +250,7 @@ Item {
                 readonly property string countdownText: countdownField.text
                 readonly property string targetTimeText: targetTimeField.text
 
-                function clearInput() {
-                    countdownField.text = "";
-                }
+                function clearInput() { countdownField.text = ""; }
 
                 function forceInitialFocus() {
                     countdownField.text = "";
@@ -291,29 +267,18 @@ Item {
                 function adjustTimeSegment(isUp) {
                     var parts = targetTimeField.text.split(":");
                     if (parts.length !== 2) return;
-
                     var h = parseInt(parts[0], 10);
                     var m = parseInt(parts[1], 10);
                     if (isNaN(h)) h = 12;
                     if (isNaN(m)) m = 0;
 
                     if (timeInput.editingHours) {
-                        if (isUp) {
-                            h = (h === 12) ? 1 : h + 1;
-                        } else {
-                            h = (h === 1) ? 12 : h - 1;
-                        }
+                        h = isUp ? ((h === 12) ? 1 : h + 1) : ((h === 1) ? 12 : h - 1);
                     } else {
-                        if (isUp) {
-                            m = (m === 59) ? 0 : m + 1;
-                        } else {
-                            m = (m === 0) ? 59 : m - 1;
-                        }
+                        m = isUp ? ((m === 59) ? 0 : m + 1) : ((m === 0) ? 59 : m - 1);
                     }
 
-                    var hStr = String(h);
-                    var mStr = String(m).padStart(2, '0');
-                    targetTimeField.text = hStr + ":" + mStr;
+                    targetTimeField.text = String(h) + ":" + String(m).padStart(2, '0');
                     countdownField.text = "";
                     timeInput.updateTimeSelection();
                 }
@@ -321,12 +286,8 @@ Item {
                 function updateTimeSelection() {
                     var colonIdx = targetTimeField.text.indexOf(":");
                     if (colonIdx === -1) return;
-
-                    if (timeInput.editingHours) {
-                        targetTimeField.select(0, colonIdx);
-                    } else {
-                        targetTimeField.select(colonIdx + 1, targetTimeField.text.length);
-                    }
+                    if (timeInput.editingHours) targetTimeField.select(0, colonIdx);
+                    else targetTimeField.select(colonIdx + 1, targetTimeField.text.length);
                 }
 
                 Item {
@@ -338,7 +299,6 @@ Item {
 
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        y: 0
                         text: "Countdown"
                         color: themeBase05
                         font.family: themeFontFamily
@@ -350,27 +310,21 @@ Item {
                         id: countdownField
                         anchors.horizontalCenter: parent.horizontalCenter
                         y: alarmBox.fieldLabelSpacing
-
                         width: parent.width
                         height: alarmBox.fieldHeight
                         font.family: themeFontFamily
                         font.pixelSize: 22
                         font.bold: true
-
                         color: themeBase05
                         selectionColor: themeBase05
                         selectedTextColor: themeBase00
                         horizontalAlignment: Text.AlignHCenter
-
                         leftPadding: alarmBox.inputLeftPadding
                         rightPadding: alarmBox.inputRightPadding
 
                         onTextChanged: {
-                            if (activeFocus && text.trim() !== "") {
-                                targetTimeField.text = "";
-                            }
+                            if (activeFocus && text.trim() !== "") targetTimeField.text = "";
                         }
-
                         onAccepted: alarmBox.confirmAndSaveAlarm(countdownField.text, targetTimeField.text)
 
                         Keys.onPressed: (event) => {
@@ -378,13 +332,12 @@ Item {
                                 alarmBox.cancelAndClosePopup();
                                 event.accepted = true;
                             } else if (event.key === Qt.Key_Up) {
-                                var cNum = parseInt(countdownField.text, 10);
-                                if (isNaN(cNum)) cNum = 0;
+                                var cNum = parseInt(countdownField.text, 10) || 0;
                                 countdownField.text = String(cNum + 1);
                                 event.accepted = true;
                             } else if (event.key === Qt.Key_Down) {
-                                var cNum2 = parseInt(countdownField.text, 10);
-                                if (isNaN(cNum2) || cNum2 <= 0) cNum2 = 1;
+                                var cNum2 = parseInt(countdownField.text, 10) || 1;
+                                if (cNum2 <= 0) cNum2 = 1;
                                 countdownField.text = String(cNum2 - 1);
                                 event.accepted = true;
                             }
@@ -411,7 +364,6 @@ Item {
 
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        y: 0
                         text: "What time?"
                         color: themeBase05
                         font.family: themeFontFamily
@@ -423,34 +375,23 @@ Item {
                         id: targetTimeField
                         anchors.horizontalCenter: parent.horizontalCenter
                         y: alarmBox.fieldLabelSpacing
-
                         width: parent.width
                         height: alarmBox.fieldHeight
                         font.family: themeFontFamily
                         font.pixelSize: 22
                         font.bold: true
-
                         color: themeBase05
                         selectionColor: themeBase05
                         selectedTextColor: themeBase00
                         horizontalAlignment: Text.AlignHCenter
-
                         leftPadding: alarmBox.inputLeftPadding
                         rightPadding: alarmBox.inputRightPadding
 
                         onTextChanged: {
-                            if (activeFocus && text.trim() !== "") {
-                                countdownField.text = "";
-                            }
+                            if (activeFocus && text.trim() !== "") countdownField.text = "";
                         }
-
                         onAccepted: alarmBox.confirmAndSaveAlarm(countdownField.text, targetTimeField.text)
-
-                        onActiveFocusChanged: {
-                            if (activeFocus) {
-                                timeInput.updateTimeSelection();
-                            }
-                        }
+                        onActiveFocusChanged: if (activeFocus) timeInput.updateTimeSelection()
 
                         Keys.onPressed: (event) => {
                             if (event.key === Qt.Key_Escape) {
@@ -489,7 +430,10 @@ Item {
     }
 
     Timer {
-        interval: 1000; running: true; repeat: true
+        // Sleep for 5s when idle, ramp to 1s when an active countdown is ticking
+        interval: alarmBox.alarmDisplayText === "No Alarm" ? 5000 : 1000
+        running: true
+        repeat: true
         onTriggered: {
             alarmFetcher.running = false;
             alarmFetcher.running = true;

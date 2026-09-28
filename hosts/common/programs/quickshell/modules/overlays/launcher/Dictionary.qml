@@ -1,285 +1,134 @@
 import QtQuick
 import Quickshell
+import Quickshell.Io
 
-QtObject {
+Item {
     id: root
 
-    /*
-     * STATE
-     */
-
     property int selectedIndex: 0
-
     property var definitionEntries: []
-
-    property var activeRequest: null
-
     readonly property int maxDefinitions: 8
-    readonly property int maxSynonyms: 30
-
-    /*
-     * NAVIGATION
-     */
+    property string activeWord: ""
 
     function selectNext() {
-        if (definitionEntries.length === 0)
-            return
-
-            selectedIndex =
-            (selectedIndex + 1) %
-            definitionEntries.length
+        if (definitionEntries.length === 0) return;
+        selectedIndex = (selectedIndex + 1) % definitionEntries.length;
     }
 
     function selectPrev() {
-        if (definitionEntries.length === 0)
-            return
-
-            selectedIndex =
-            (selectedIndex - 1 + definitionEntries.length) %
-            definitionEntries.length
+        if (definitionEntries.length === 0) return;
+        selectedIndex = (selectedIndex - 1 + definitionEntries.length) % definitionEntries.length;
     }
-
-    /*
-     * COPY
-     */
 
     function copySelected() {
-        if (
-            selectedIndex < 0 ||
-            selectedIndex >= definitionEntries.length
-        ) {
-            return
-        }
-
+        if (selectedIndex < 0 || selectedIndex >= definitionEntries.length) return;
         try {
-            Quickshell.clipboardText =
-            definitionEntries[selectedIndex].text
+            Quickshell.clipboardText = definitionEntries[selectedIndex].text;
         } catch (e) {
-            console.log("Clipboard copy failed:", e)
+            console.log("Clipboard copy failed:", e);
         }
     }
-
-    /*
-     * FETCH
-     */
-
-    function fetch(word) {
-        const cleanWord =
-        (word || "").trim()
-
-        if (!cleanWord) {
-            clearData("Enter a word to define.")
-            return
-        }
-
-        clearData(
-            "Loading definition for '" +
-            cleanWord +
-            "'..."
-        )
-
-        if (activeRequest) {
-            activeRequest.abort()
-            activeRequest = null
-        }
-
-        const xhr = new XMLHttpRequest()
-
-        activeRequest = xhr
-
-        xhr.onreadystatechange = function() {
-            if (
-                xhr.readyState !== XMLHttpRequest.DONE
-            ) {
-                return
-            }
-
-            if (xhr !== activeRequest)
-                return
-
-                activeRequest = null
-
-                if (xhr.status !== 200) {
-                    clearData("No definition found.")
-                    return
-                }
-
-                try {
-                    parseResponse(
-                        JSON.parse(xhr.responseText)
-                    )
-                } catch(error) {
-                    clearData(
-                        "Definition parsing failed."
-                    )
-                }
-        }
-
-        xhr.open(
-            "GET",
-            "https://api.dictionaryapi.dev/api/v2/entries/en/" +
-            encodeURIComponent(cleanWord)
-        )
-
-        xhr.send()
-    }
-
-    /*
-     * CLEAR
-     */
 
     function clearData(message) {
-        selectedIndex = 0
-
+        selectedIndex = 0;
         definitionEntries = [{
             type: "status",
             text: message
-        }]
+        }];
     }
 
-    /*
-     * DUPLICATE FILTER
-     */
-
-    function appendUnique(
-        array,
-        value,
-        seen
-    ) {
-        if (!value || seen[value])
-            return
-
-            seen[value] = true
-
-            array.push(value)
+    function stripHtml(htmlStr) {
+        if (!htmlStr) return "";
+        return htmlStr.replace(/<[^>]*>/g, "").replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#39;/g, "'").trim();
     }
-
-    /*
-     * PARSER
-     */
 
     function parseResponse(response) {
-        if (!response || response.length === 0) {
-            clearData("No definition found.")
-            return
+        if (!response || !response.en || !Array.isArray(response.en) || response.en.length === 0) {
+            clearData("No definitions found for '" + root.activeWord + "'.");
+            return;
         }
 
-        /*
-         * SPELLCHECK
-         */
+        var entries = [];
+        var sections = response.en;
 
-        if (
-            response.title &&
-            response.message
-        ) {
-            let suggestion = ""
+        for (var i = 0; i < sections.length; i++) {
+            var sec = sections[i];
+            var pos = sec.partOfSpeech ? ("[" + sec.partOfSpeech.toLowerCase() + "] ") : "";
+            var defs = sec.definitions || [];
 
-            if (response.resolution) {
-                const match =
-                response.resolution.match(
-                    /`([^`]+)`/
-                )
-
-                if (match && match[1]) {
-                    suggestion =
-                    "Did you mean: " +
-                    match[1]
-                }
-            }
-
-            clearData(
-                suggestion || "No definition found."
-            )
-
-            return
-        }
-
-        const entries = []
-
-        const synonymSet = ({})
-
-        const collectedSynonyms = []
-
-        const meanings =
-        response[0].meanings || []
-
-        /*
-         * DEFINITIONS
-         */
-
-        for (
-            let i = 0;
-        i < meanings.length;
-        ++i
-        ) {
-            const meaning = meanings[i]
-
-            const defs =
-            meaning.definitions || []
-
-            for (
-                let j = 0;
-            j < defs.length;
-            ++j
-            ) {
-                const def = defs[j]
-
-                if (
-                    def.definition &&
-                    entries.length <
-                    maxDefinitions
-                ) {
+            for (var j = 0; j < defs.length; j++) {
+                var cleanDef = root.stripHtml(defs[j].definition);
+                if (cleanDef.length > 0 && entries.length < root.maxDefinitions) {
                     entries.push({
                         type: "definition",
-                        text: def.definition
-                    })
-                }
-
-                const defSynonyms =
-                def.synonyms || []
-
-                for (
-                    let k = 0;
-                k < defSynonyms.length;
-                ++k
-                ) {
-                    appendUnique(
-                        collectedSynonyms,
-                        defSynonyms[k],
-                        synonymSet
-                    )
+                        text: pos + cleanDef
+                    });
                 }
             }
         }
 
-        /*
-         * SYNONYMS
-         */
-
-        if (collectedSynonyms.length > 0) {
-            entries.push({
-                type: "synonyms",
-                text:
-                "Synonyms:\n\n" +
-                collectedSynonyms
-                .slice(0, maxSynonyms)
-                .join(", ")
-            })
-        }
-
-        /*
-         * FALLBACK
-         */
-
         if (entries.length === 0) {
-            entries.push({
-                type: "status",
-                text: "No definition found."
-            })
+            clearData("No definition entries found for '" + root.activeWord + "'.");
+            return;
         }
 
-        definitionEntries = entries
+        definitionEntries = entries;
+        selectedIndex = 0;
+    }
 
-        selectedIndex = 0
+    Process {
+        id: dictFetcher
+        running: false
+        onExited: (code) => {
+            if (code !== 0) {
+                root.clearData("Request timed out or network error (code " + code + ").");
+                return;
+            }
+
+            var xhr = new XMLHttpRequest();
+            var cacheBuster = "?t=" + Date.now();
+            xhr.open("GET", "file:///tmp/qs_dict.json" + cacheBuster);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === XMLHttpRequest.DONE) {
+                    if (xhr.status === 200 || xhr.status === 0) {
+                        try {
+                            var parsed = JSON.parse(xhr.responseText);
+                            root.parseResponse(parsed);
+                        } catch(e) {
+                            root.clearData("No definitions found for '" + root.activeWord + "'.");
+                        }
+                    } else {
+                        root.clearData("Failed to read definition cache.");
+                    }
+                }
+            };
+            xhr.send();
+        }
+    }
+
+    function fetch(word) {
+        const cleanWord = (word || "").trim();
+
+        if (!cleanWord) {
+            clearData("Enter a word to define.");
+            return;
+        }
+
+        root.activeWord = cleanWord;
+        clearData("Searching Wiktionary for '" + cleanWord + "'...");
+
+        dictFetcher.running = false;
+        dictFetcher.command = [
+            "curl",
+            "-s",
+            "-L",
+            "--connect-timeout", "3",
+            "--max-time", "5",
+            "-A", "Quickshell-Dictionary/1.0",
+            "https://en.wiktionary.org/api/rest_v1/page/definition/" + encodeURIComponent(cleanWord),
+            "-o",
+            "/tmp/qs_dict.json"
+        ];
+        dictFetcher.running = true;
     }
 }

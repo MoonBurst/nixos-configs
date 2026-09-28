@@ -7,21 +7,25 @@ Item {
     id: notifyBox
 
     property var barWindow: null
+    property string moduleName: "notify"
+    property string slantLeft: "Left"
+    property string slantRight: "Left"
+    property int slantWidth: (shell && shell.theme && shell.theme.slantWidth) ? shell.theme.slantWidth : 12
 
-    // Resolve global states directly from the master shell root scope
     property bool isLocked: (typeof sessionLock !== "undefined" && sessionLock && sessionLock.locked)
     property bool isDisabled: (typeof shell !== "undefined" && shell && !shell.notificationsEnabled)
     property int notifCount: (typeof shell !== "undefined" && shell) ? shell.unreadCount : 0
 
-    width: parent ? parent.width : 200
-    height: parent.height
+    implicitWidth: notifyText.implicitWidth + bg.leftPadding + bg.rightPadding + 20
+    width: implicitWidth
+    height: parent ? parent.height : 40
 
-    // Centralized SlantedBox Background
     SlantedBox {
         id: bg
         anchors.fill: parent
-        slantLeft: "Left"
-        slantRight: "Left"
+        slantLeft: notifyBox.slantLeft
+        slantRight: notifyBox.slantRight
+        slantWidth: notifyBox.slantWidth
 
         borderColor: {
             if (shell && shell.theme) {
@@ -37,19 +41,16 @@ Item {
         id: mouseArea
         anchors.fill: parent
         hoverEnabled: true
-        acceptedButtons: Qt.LeftButton | Qt.RightButton // Handles both left and right clicks
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
         cursorShape: Qt.PointingHandCursor
 
         onClicked: (mouse) => {
-            if (notifyBox.isLocked) return; // Prevent clicks while screen is locked
-
+            if (notifyBox.isLocked) return;
             if (mouse.button === Qt.LeftButton) {
-                // Left-click now toggles the Do Not Disturb (disabled) state on the master scope
                 if (typeof shell !== "undefined" && shell) {
                     shell.notificationsEnabled = !shell.notificationsEnabled;
                 }
             } else if (mouse.button === Qt.RightButton) {
-                // Right-click toggles the history drawer
                 Ipc.call("global_notif", "toggleHistory");
             }
         }
@@ -57,30 +58,16 @@ Item {
 
     Text {
         id: notifyText
-        anchors.centerIn: parent
+        anchors.fill: parent
+        anchors.leftMargin: bg.leftPadding + 4
+        anchors.rightMargin: bg.rightPadding + 4
+        anchors.topMargin: 2
+        anchors.bottomMargin: 2
         textFormat: Text.RichText
 
-        // Dynamically styles text colors and labels to provide instant, high-fidelity visual indicators (ONLY toggles on pause)
         text: {
-            var labelColor = "";
-            var countColor = "";
-
-            if (shell && shell.theme) {
-                if (notifyBox.isLocked) {
-                    labelColor = shell.theme.base04;
-                    countColor = shell.theme.base04;
-                } else if (notifyBox.isDisabled) {
-                    labelColor = shell.theme.base04;
-                    countColor = shell.theme.base08;
-                } else {
-                    labelColor = shell.theme.base05;
-                    countColor = shell.theme.base05;
-                }
-            } else {
-                labelColor = "yellow";
-                countColor = "yellow";
-            }
-
+            var labelColor = (shell && shell.theme) ? (notifyBox.isDisabled ? shell.theme.base04 : shell.theme.base05) : "yellow";
+            var countColor = (shell && shell.theme) ? (notifyBox.isDisabled ? shell.theme.base08 : shell.theme.base05) : "yellow";
             return "<font color='" + labelColor + "'>Notifications:</font> <font color='" + countColor + "'>" + notifyBox.notifCount + "</font>";
         }
 
@@ -88,5 +75,9 @@ Item {
         font.pixelSize: (shell && shell.theme) ? (shell.theme.globalFontSize || 14) : 14
         font.bold: true
         color: (shell && shell.theme) ? (shell.theme.base05 || "yellow") : "yellow"
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
+        elide: Text.ElideRight
+        clip: true
     }
 }

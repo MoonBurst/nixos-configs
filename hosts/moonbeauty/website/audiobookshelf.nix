@@ -5,7 +5,6 @@
     port = 8000;
   };
 
-  # Allow audiobookshelf user to access group-owned files
   systemd.services.audiobookshelf.serviceConfig = {
     SupplementaryGroups = [ "users" ];
   };

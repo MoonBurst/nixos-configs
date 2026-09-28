@@ -441,7 +441,7 @@ PanelWindow {
                 wmEngine.embedAndDeliver(path, ShotState.watermarkText, mode);
             }
         } else if (ok && mode === "ocr") {
-            var ocrCmd = ["sh", "-c", "text=$(tesseract " + ShotState.shQuote(path) + " stdout 2>/dev/null); if [ -n \"$text\" ]; then printf \"%s\" \"$text\" | wl-copy; notify-send -a Quickshot 'Text Copied' \"$text\"; fi; rm -f " + ShotState.shQuote(path)];
+            var ocrCmd = ["sh", "-c", "text=$(tesseract " + ShotState.shQuote(path) + " stdout 2>/dev/null); if [ -n \"$text\" ]; then printf \"%s\" \"$text\" | wl-copy; notify-send -a Quickshot 'Text Copied' -- \"$text\"; fi; rm -f " + ShotState.shQuote(path)];
             Quickshell.execDetached(ocrCmd);
         }
         Qt.quit();

@@ -1,4 +1,3 @@
-//@ pragma UseQApplication
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
@@ -6,13 +5,15 @@ import Quickshell.Services.Notifications
 import Quickshell.Io
 import Quickshell.Services.Pam
 
+import "./modules/settings" as Settings
+import "./modules/style" as Style
 import "./modules/bar/unified" as UnifiedMonitor
 import "./modules/overlays/rng" as RNG
 import "./modules/overlays/magnify" as Magnify
-import ".modules/overlays/geminipanel" as GeminiPanel
 import "./modules/overlays/notifications" as Notifications
 import "./modules/overlays/launcher" as LauncherModule
 import "./modules/bar/tray" as SystemTray
+import "./modules/bar/battery" as BatteryCapsule
 import "./modules/bar/ram" as RamCapsule
 import "./modules/bar/gpu" as GpuCapsule
 import "./modules/bar/cpu" as CpuCapsule
@@ -35,7 +36,50 @@ ShellRoot {
         id: globalTheme
     }
 
-    property alias theme: globalTheme
+    Settings.SettingsManager {
+        id: settingsManagerInstance
+    }
+
+    property alias settingsManager: settingsManagerInstance
+    property alias notificationOverlay: notificationOverlay
+
+    QtObject {
+        id: activeTheme
+
+        property color base00: settingsManager.customBase00
+        property color base01: globalTheme.base01
+        property color base02: globalTheme.base02
+        property color base03: settingsManager.customBase03
+        property color base04: globalTheme.base04
+        property color base05: settingsManager.customBase05
+        property color base06: globalTheme.base06
+        property color base07: globalTheme.base07
+        property color base08: settingsManager.customBase08
+        property color base09: settingsManager.customBase09
+        property color base0A: globalTheme.base0A
+        property color base0B: globalTheme.base0B
+        property color base0C: settingsManager.customBase0C
+        property color base0D: settingsManager.customBase0D
+        property color base0E: globalTheme.base0E
+        property color base0F: globalTheme.base0F
+
+        property string fontFamily: globalTheme.fontFamily
+        property int defaultCardWidth: 400
+        property int defaultCardHeight: 140
+        property int defaultCardRadius: 10
+        property color innerBorderColor: base05
+        property color outerBorderColor: base03
+        property color scrollHandleColor: base0D
+
+        property int globalFontSize: settingsManager.globalFontSize
+        property int slantWidth: settingsManager.slantWidth
+        property int globalBorderWidth: settingsManager.globalBorderWidth
+        property int globalPadding: settingsManager.globalPadding
+    }
+
+    property alias theme: activeTheme
+
+    Binding { target: shell; property: "notificationsEnabled"; value: settingsManager.notificationsEnabled }
 
     readonly property var primaryScreen: {
         const screens = Quickshell.screens;
@@ -45,64 +89,93 @@ ShellRoot {
             ?? screens[0] ?? null;
     }
 
-    readonly property bool debugNotifications: shell.debug
     property bool showHistoryMode: false
     property bool notificationsEnabled: true
     property int unreadCount: 0
     property var deferredNotificationsQueue: []
 
-    onNotificationsEnabledChanged: {
-        if (notificationsEnabled && deferredNotificationsQueue.length > 0) {
-            backlogFlusherTimer.start();
-        } else if (!notificationsEnabled) {
-            backlogFlusherTimer.stop();
-        }
-    }
-
-    onShowHistoryModeChanged: {
-        if (showHistoryMode) {
-            shell.unreadCount = 0;
-        }
-    }
-
-    Timer {
-        id: backlogFlusherTimer
-        interval: 800
-        repeat: true
-        running: false
-        onTriggered: {
-            if (shell.deferredNotificationsQueue.length > 0) {
-                let mockNotif = shell.deferredNotificationsQueue[0];
-                shell.deferredNotificationsQueue = shell.deferredNotificationsQueue.slice(1);
-
-                if (shell.unreadCount > 0) {
-                    shell.unreadCount--;
-                }
-                if (notificationOverlay) {
-                    notificationOverlay.handleNotification(mockNotif);
-                }
-            } else {
-                backlogFlusherTimer.stop();
-            }
-        }
-    }
-
     property string globalPasswordBuffer: ""
     property int passwordLength: 0
 
-    function toggleWindow(windowObj: PanelWindow): void {
-        if (windowObj) {
-            windowObj.visible = !windowObj.visible;
+    function applyCapsuleSlants(loadedItem, modelData, section) {
+        if (!loadedItem) return;
+        var slantType = settingsManager ? settingsManager.getModuleSlant(modelData, section) : "left";
+        var sLeft = "Left";
+        var sRight = "Left";
+        var tAlign = "Left";
+
+        if (slantType === "left") {
+            sLeft = "Left"; sRight = "Left"; tAlign = "Left";
+        } else if (slantType === "right") {
+            sLeft = "Right"; sRight = "Right"; tAlign = "Right";
+        } else if (slantType === "center") {
+            sLeft = "Left"; sRight = "Right"; tAlign = "Center";
         }
+
+        try {
+            if ("slantLeft" in loadedItem) loadedItem.slantLeft = sLeft;
+            if ("slantRight" in loadedItem) loadedItem.slantRight = sRight;
+            if ("tooltipAlign" in loadedItem) loadedItem.tooltipAlign = tAlign;
+
+            for (var i = 0; i < loadedItem.children.length; i++) {
+                var c = loadedItem.children[i];
+                if (c && (c.id === "bg" || ("slantLeft" in c && "leftPadding" in c))) {
+                    c.slantLeft = sLeft;
+                    c.slantRight = sRight;
+                }
+            }
+        } catch(e) {}
+    }
+
+    Component { id: calendarFactory; CalendarCapsule.Calendar { barWindow: topBarWindow } }
+    Component { id: musicFactory; MusicCapsule.Music { barWindow: topBarWindow } }
+    Component { id: alarmFactory; AlarmCapsule.AlarmCapsule { barWindow: topBarWindow } }
+    Component { id: weatherFactory; WeatherCapsule.Weather { barWindow: topBarWindow } }
+    Component { id: unifiedFactory; UnifiedMonitor.UnifiedMonitor { barWindow: topBarWindow } }
+    Component { id: notifyFactory; NotifyCapsule.NotifyCapsule { barWindow: topBarWindow } }
+    Component { id: clockFactory; ClockCapsule.ClockCapsule { barWindow: topBarWindow } }
+    Component { id: audioFactory; SoundModule.AudioCapsule { barWindow: topBarWindow } }
+    Component { id: micFactory; SoundModule.MicCapsule { barWindow: topBarWindow } }
+    Component { id: netFactory; NetCapsule.NetCapsule { barWindow: topBarWindow } }
+    Component { id: cpuFactory; CpuCapsule.CpuCapsule { barWindow: topBarWindow } }
+    Component { id: gpuFactory; GpuCapsule.GpuCapsule { barWindow: topBarWindow } }
+    Component { id: ramFactory; RamCapsule.RamCapsule { barWindow: topBarWindow } }
+    Component { id: trayFactory; SystemTray.Tray { barWindow: topBarWindow } }
+    Component { id: batteryFactory; BatteryCapsule.BatteryCapsule { barWindow: topBarWindow } }
+
+    function getFactoryComponent(idStr) {
+        var clean = idStr.toLowerCase();
+        switch(clean) {
+            case "calendar": return calendarFactory;
+            case "music": return musicFactory;
+            case "alarm": return alarmFactory;
+            case "weather": return weatherFactory;
+            case "unified": return unifiedFactory;
+            case "notify":
+            case "notifications": return notifyFactory;
+            case "clock": return clockFactory;
+            case "audio": return audioFactory;
+            case "mic": return micFactory;
+            case "net": return netFactory;
+            case "cpu": return cpuFactory;
+            case "gpu": return gpuFactory;
+            case "ram": return ramFactory;
+            case "tray": return trayFactory;
+            case "battery": return batteryFactory;
+        }
+        return null;
     }
 
     PanelWindow {
         id: topBarWindow
+        visible: !sessionLock.locked
         screen: primaryScreen ?? (Quickshell.screens.length > 0 ? Quickshell.screens[0] : null)
         anchors.top: true
         anchors.left: true
         anchors.right: true
-        implicitHeight: shell.theme.globalPadding + 28
+        implicitHeight: (settingsManager && settingsManager.barHeight > 0)
+            ? settingsManager.barHeight
+            : (shell.theme.globalPadding + 32)
         color: "transparent"
 
         WlrLayershell.namespace: "quickshell-bar"
@@ -110,219 +183,102 @@ ShellRoot {
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
         exclusionMode: ExclusionMode.Auto
 
-        mask: Region {
-            item: mainBarContainer
-        }
-
-        Rectangle {
+        Style.SlantedBox {
             id: mainBarContainer
             anchors.fill: parent
             anchors.leftMargin: shell.theme.globalPadding / 2
             anchors.rightMargin: shell.theme.globalPadding / 2
+
+            slantLeft: settingsManager.slantStyleMode === "all-right" ? "Right" : "Left"
+            slantRight: settingsManager.slantStyleMode === "all-left" ? "Left" : "Right"
+
+            slantWidth: shell.theme.slantWidth * 1.5
             color: shell.theme.base00
-            radius: shell.theme.defaultCardRadius
-            border.width: shell.theme.globalBorderWidth
-            border.color: shell.theme.base03
-            clip: true
+            borderColor: shell.theme.base03
+            borderWidth: shell.theme.globalBorderWidth
 
             readonly property int capsuleHeight: height - (shell.theme.globalBorderWidth * 2) - 8
-            readonly property int layoutSpacing: 5
 
-            // LEFT SIDE MODULES
-            Item {
-                id: calendarContainer
+            // Left Section
+            Row {
                 anchors.left: parent.left
-                anchors.leftMargin: shell.theme.globalPadding
+                anchors.leftMargin: mainBarContainer.leftPadding
                 anchors.verticalCenter: parent.verticalCenter
-                width: 120
                 height: mainBarContainer.capsuleHeight
+                spacing: settingsManager.capsuleSpacing
 
-                CalendarCapsule.Calendar {
-                    anchors.fill: parent
-                    barWindow: topBarWindow
+                Repeater {
+                    model: settingsManager.barLeftModules
+                    delegate: Loader {
+                        id: leftLoader
+                        height: parent.height
+                        active: settingsManager.isCapsuleVisible(modelData)
+                        visible: active
+                        width: (active && item) ? item.implicitWidth : 0
+                        sourceComponent: shell.getFactoryComponent(modelData)
+                        onItemChanged: shell.applyCapsuleSlants(item, modelData, "left")
+                        Component.onCompleted: shell.applyCapsuleSlants(item, modelData, "left")
+
+                        Connections {
+                            target: settingsManager
+                            function onSlantRevisionChanged() { shell.applyCapsuleSlants(leftLoader.item, modelData, "left"); }
+                        }
+                    }
                 }
             }
 
-            Item {
-                id: musicContainer
-                anchors.left: calendarContainer.right
-                anchors.leftMargin: mainBarContainer.layoutSpacing
-                anchors.verticalCenter: parent.verticalCenter
-                width: 200
-                height: mainBarContainer.capsuleHeight
-
-                MusicCapsule.Music {
-                    anchors.fill: parent
-                    barWindow: topBarWindow
-                }
-            }
-
-            Item {
-                id: alarmContainer
-                anchors.left: musicContainer.right
-                anchors.leftMargin: mainBarContainer.layoutSpacing
-                anchors.verticalCenter: parent.verticalCenter
-                width: 130
-                height: mainBarContainer.capsuleHeight
-
-                AlarmCapsule.AlarmCapsule {
-                    anchors.fill: parent
-                    barWindow: topBarWindow
-                }
-            }
-
-            Item {
-                id: weatherContainer
-                anchors.left: alarmContainer.right
-                anchors.leftMargin: mainBarContainer.layoutSpacing
-                anchors.verticalCenter: parent.verticalCenter
-                width: 150
-                height: mainBarContainer.capsuleHeight
-
-                WeatherCapsule.Weather {
-                    anchors.fill: parent
-                    barWindow: topBarWindow
-                }
-            }
-
-            Item {
-                id: unifiedContainer
-                anchors.left: weatherContainer.right
-                anchors.leftMargin: mainBarContainer.layoutSpacing
-                anchors.verticalCenter: parent.verticalCenter
-                width: 125
-                height: mainBarContainer.capsuleHeight
-
-                UnifiedMonitor.UnifiedMonitor {
-                    anchors.fill: parent
-                    barWindow: topBarWindow
-                }
-            }
-
-            Item {
-                id: notifyContainer
-                anchors.left: unifiedContainer.right
-                anchors.leftMargin: mainBarContainer.layoutSpacing
-                anchors.verticalCenter: parent.verticalCenter
-                width: 180
-                height: mainBarContainer.capsuleHeight
-
-                NotifyCapsule.NotifyCapsule {
-                    anchors.fill: parent
-                    barWindow: topBarWindow
-                }
-            }
-
-            // CENTER MODULES (Audio -> Clock -> Mic)
-            Item {
-                id: clockContainer
+            // Center Section
+            Row {
                 anchors.centerIn: parent
-                width: 130
                 height: mainBarContainer.capsuleHeight
+                spacing: settingsManager.capsuleSpacing
 
-                ClockCapsule.ClockCapsule {
-                    anchors.fill: parent
-                    barWindow: topBarWindow
+                Repeater {
+                    model: settingsManager.barCenterModules
+                    delegate: Loader {
+                        id: centerLoader
+                        height: parent.height
+                        active: settingsManager.isCapsuleVisible(modelData)
+                        visible: active
+                        width: (active && item) ? item.implicitWidth : 0
+                        sourceComponent: shell.getFactoryComponent(modelData)
+                        onItemChanged: shell.applyCapsuleSlants(item, modelData, "center")
+                        Component.onCompleted: shell.applyCapsuleSlants(item, modelData, "center")
+
+                        Connections {
+                            target: settingsManager
+                            function onSlantRevisionChanged() { shell.applyCapsuleSlants(centerLoader.item, modelData, "center"); }
+                        }
+                    }
                 }
             }
 
-            Item {
-                id: audioContainer
-                anchors.right: clockContainer.left
-                anchors.rightMargin: mainBarContainer.layoutSpacing
-                anchors.verticalCenter: parent.verticalCenter
-                width: 150
-                height: mainBarContainer.capsuleHeight
-
-                SoundModule.AudioCapsule {
-                    anchors.fill: parent
-                    barWindow: topBarWindow
-                }
-            }
-
-            Item {
-                id: micContainer
-                anchors.left: clockContainer.right
-                anchors.leftMargin: mainBarContainer.layoutSpacing
-                anchors.verticalCenter: parent.verticalCenter
-                width: 150
-                height: mainBarContainer.capsuleHeight
-
-                SoundModule.MicCapsule {
-                    anchors.fill: parent
-                    barWindow: topBarWindow
-                }
-            }
-
-            // RIGHT SIDE MODULES (Net -> CPU -> GPU -> RAM -> Tray)
-            Item {
-                id: trayContainer
+            // Right Section
+            Row {
                 anchors.right: parent.right
-                anchors.rightMargin: shell.theme.globalPadding
+                anchors.rightMargin: mainBarContainer.rightPadding
                 anchors.verticalCenter: parent.verticalCenter
-                width: trayContent.width
                 height: mainBarContainer.capsuleHeight
+                spacing: settingsManager.capsuleSpacing
+                layoutDirection: Qt.RightToLeft
 
-                SystemTray.Tray {
-                    id: trayContent
-                    anchors.centerIn: parent
-                    barWindow: topBarWindow
-                }
-            }
+                Repeater {
+                    model: settingsManager.barRightModules
+                    delegate: Loader {
+                        id: rightLoader
+                        height: parent.height
+                        active: settingsManager.isCapsuleVisible(modelData)
+                        visible: active
+                        width: (active && item) ? item.implicitWidth : 0
+                        sourceComponent: shell.getFactoryComponent(modelData)
+                        onItemChanged: shell.applyCapsuleSlants(item, modelData, "right")
+                        Component.onCompleted: shell.applyCapsuleSlants(item, modelData, "right")
 
-            Item {
-                id: ramContainer
-                anchors.right: trayContainer.left
-                anchors.rightMargin: mainBarContainer.layoutSpacing
-                anchors.verticalCenter: parent.verticalCenter
-                width: 155
-                height: mainBarContainer.capsuleHeight
-
-                RamCapsule.RamCapsule {
-                    anchors.fill: parent
-                    barWindow: topBarWindow
-                }
-            }
-
-            Item {
-                id: gpuContainer
-                anchors.right: ramContainer.left
-                anchors.rightMargin: mainBarContainer.layoutSpacing
-                anchors.verticalCenter: parent.verticalCenter
-                width: 295
-                height: mainBarContainer.capsuleHeight
-
-                GpuCapsule.GpuCapsule {
-                    anchors.fill: parent
-                    barWindow: topBarWindow
-                }
-            }
-
-            Item {
-                id: cpuContainer
-                anchors.right: gpuContainer.left
-                anchors.rightMargin: mainBarContainer.layoutSpacing
-                anchors.verticalCenter: parent.verticalCenter
-                width: 170
-                height: mainBarContainer.capsuleHeight
-
-                CpuCapsule.CpuCapsule {
-                    anchors.fill: parent
-                    barWindow: topBarWindow
-                }
-            }
-
-            Item {
-                id: netContainer
-                anchors.right: cpuContainer.left
-                anchors.rightMargin: mainBarContainer.layoutSpacing
-                anchors.verticalCenter: parent.verticalCenter
-                width: 260
-                height: mainBarContainer.capsuleHeight
-
-                NetCapsule.NetCapsule {
-                    anchors.fill: parent
-                    barWindow: topBarWindow
+                        Connections {
+                            target: settingsManager
+                            function onSlantRevisionChanged() { shell.applyCapsuleSlants(rightLoader.item, modelData, "right"); }
+                        }
+                    }
                 }
             }
         }
@@ -347,19 +303,12 @@ ShellRoot {
             anchors.fill: parent
             shell: shell
             launcherWindow: launcherOverlayWindow
+            settingsManager: settingsManagerInstance
         }
     }
 
-    Magnify.Magnify {
-        id: magnifierOverlay
-    }
-
-
-
-    RNG.DiceRollerWindow {
-        id: diceRollerWindowInstance
-        shell: shell
-    }
+    Magnify.Magnify { id: magnifierOverlay }
+    RNG.DiceRollerWindow { id: diceRollerWindowInstance; shell: shell }
 
     Component.onCompleted: {
         LauncherModule.LauncherController.rng.diceWindowInstance = diceRollerWindowInstance;
@@ -368,19 +317,17 @@ ShellRoot {
     PamContext {
         id: lockPam
         config: "quickshell"
-        onResponseRequiredChanged: {
-            if (responseRequired) {
-                lockPam.respond(shell.globalPasswordBuffer);
-            }
-        }
+        onResponseRequiredChanged: if (responseRequired) lockPam.respond(shell.globalPasswordBuffer);
         onActiveChanged: {
-            if (!active && !messageIsError && shell.globalPasswordBuffer !== "") {
-                sessionLock.locked = false;
-                shell.globalPasswordBuffer = "";
-                shell.passwordLength = 0;
-            } else if (!active && messageIsError) {
-                shell.globalPasswordBuffer = "";
-                shell.passwordLength = -1;
+            if (!active) {
+                if (lockPam.authenticated) {
+                    sessionLock.locked = false;
+                    shell.globalPasswordBuffer = "";
+                    shell.passwordLength = 0;
+                } else {
+                    shell.globalPasswordBuffer = "";
+                    shell.passwordLength = -1;
+                }
             }
         }
     }
@@ -388,58 +335,23 @@ ShellRoot {
     WlSessionLock {
         id: sessionLock
         locked: false
-        onLockedChanged: {
-            shell.globalPasswordBuffer = "";
-            shell.passwordLength = 0;
-        }
+        onLockedChanged: { shell.globalPasswordBuffer = ""; shell.passwordLength = 0; }
         surface: Component {
-            LockScreen {
-                lockSession: sessionLock
-                rootRef: shell
-            }
+            LockScreen { lockSession: sessionLock; rootRef: shell }
         }
     }
 
-    IpcHandler {
-        id: lockscreenHandler
-        target: "lockscreen"
-        function lock(): void { sessionLock.locked = true; }
-    }
-
-    IpcHandler {
-        target: "launcher"
-        function toggle(): void { launcherOverlay.toggleLauncher(); }
-    }
-
-    IpcHandler {
-        target: "clipboard"
-        function toggle(): void { launcherOverlay.toggleClipboard(); }
-    }
-
-    IpcHandler {
-        target: "todo"
-        function toggle(): void { launcherOverlay.toggleTodo(); }
-    }
-
-    IpcHandler {
-        target: "pass"
-        function toggle(): void { launcherOverlay.togglePass(); }
-    }
-
-    IpcHandler {
-        target: "power"
-        function toggle(): void { launcherOverlay.togglePower(); }
-    }
-
-    IpcHandler {
-        target: "rng"
-        function toggle(): void { launcherOverlay.toggleRng(); }
-    }
-
-    IpcHandler {
-        target: "gemini"
-        function toggle(): void { launcherOverlay.toggleGemini(); }
-    }
+    IpcHandler { id: lockscreenHandler; target: "lockscreen"; function lock(): void { sessionLock.locked = true; } }
+    IpcHandler { target: "settings"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.toggleSettings(); } }
+    IpcHandler { target: "launcher"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.toggleLauncher(); } }
+    IpcHandler { target: "clipboard"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.toggleClipboard(); } }
+    IpcHandler { target: "todo"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.toggleTodo(); } }
+    IpcHandler { target: "notes"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.toggleOverlayMode("notes"); } }
+    IpcHandler { target: "pass"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.togglePass(); } }
+    IpcHandler { target: "power"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.togglePower(); } }
+    IpcHandler { target: "rng"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.toggleRng(); } }
+    IpcHandler { target: "gemini"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.toggleGemini(); } }
+    IpcHandler { target: "magnifier"; function toggle(): void { if (!sessionLock.locked) magnifierOverlay.toggle(); } }
 
     Notifications.NotificationOverlay {
         id: notificationOverlay

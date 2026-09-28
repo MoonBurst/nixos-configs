@@ -5,7 +5,7 @@
     ./microbin.nix
     ./share-approver.nix
     ./audiobookshelf.nix
-    ./authentik.nix
+    ./register.nix
   ];
 
   services.postgresql = {
@@ -15,12 +15,10 @@
 
     ensureDatabases = [
       "mautrix-discord"
-      "authentik"
     ];
 
     ensureUsers = [
       { name = "mautrix-discord"; ensureDBOwnership = true; }
-      { name = "authentik"; ensureDBOwnership = true; }
     ];
 
     authentication = pkgs.lib.mkForce ''

@@ -39,7 +39,8 @@ QtObject {
                 } catch (e) { console.log("[Controller Error] JSON Index Extraction Fault: " + e.message); }
             }
         }
-        xhr.open("GET", cacheFilePath, true);
+        var cacheBuster = cacheFilePath + "?t=" + Date.now();
+        xhr.open("GET", cacheBuster, true);
         xhr.send();
     }
 

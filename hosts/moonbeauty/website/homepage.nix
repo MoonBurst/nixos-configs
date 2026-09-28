@@ -9,7 +9,7 @@ pkgs.writeTextFile {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Moonburst Hub</title>
+      <title>Moon Burst Hub</title>
       <style>
         *, *::before, *::after {
           box-sizing: border-box !important;
@@ -48,7 +48,7 @@ pkgs.writeTextFile {
         }
 
         h1 {
-          color: #FABD2F !important;
+          color: #F7F700 !important;
           font-size: 2.2rem !important;
           font-weight: 800 !important;
           margin: 0 !important;
@@ -56,7 +56,7 @@ pkgs.writeTextFile {
         }
 
         p {
-          color: #FABD2F !important;
+          color: #F7F700 !important;
           font-size: 0.95rem !important;
           opacity: 0.85 !important;
           margin: 0 !important;
@@ -104,14 +104,14 @@ pkgs.writeTextFile {
     <body>
       <div class="card">
         <div class="header-group">
-          <h1>Moonburst</h1>
+          <h1>Moon Burst</h1>
           <p>Services Portal</p>
         </div>
         <div class="link-group">
-          <a class="btn" href="https://matrix.moonburst.net">💬 Matrix Chat</a>
-          <a class="btn" href="https://music.moonburst.net">🎵 Music Streamer (FLAC)</a>
-          <a class="btn" href="https://audiobooks.moonburst.net">📚 Audiobooks & Podcasts</a>
-          <a class="btn" href="https://share.moonburst.net">🔒 Encrypted Share Drop (24h)</a>
+          <a class="btn" href="https://matrix.moonburst.net"> Matrix Chat</a>
+          <a class="btn" href="https://music.moonburst.net"> Music Streamer (FLAC)</a>
+          <a class="btn" href="https://audiobooks.moonburst.net"> Audiobooks & Podcasts</a>
+          <a class="btn" href="https://share.moonburst.net"> Encrypted Share Drop (24h)</a>
         </div>
       </div>
     </body>

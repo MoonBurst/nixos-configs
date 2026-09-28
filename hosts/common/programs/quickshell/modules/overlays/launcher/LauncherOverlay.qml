@@ -9,6 +9,7 @@ Rectangle {
 
     property var shell
     property var launcherWindow
+    property var settingsManager: null
     property string currentDefinition: ""
     property string mode: "apps"
 
@@ -19,6 +20,8 @@ Rectangle {
     readonly property bool isTodoOpen: mode === "todo"
     readonly property bool isPassOpen: mode === "pass"
     readonly property bool isGeminiOpen: mode === "gemini"
+    readonly property bool isSettingsOpen: mode === "settings"
+    readonly property bool isNotesOpen: mode === "notes"
 
     readonly property var ctrl: LauncherModule.LauncherController
     property var activeController: null
@@ -28,15 +31,15 @@ Rectangle {
         property: "activeController"
         value: {
             if (launcherRoot.mode === "apps") return launcherRoot.ctrl.appLauncher
-                if (launcherRoot.mode === "clipboard") return launcherRoot.ctrl.clipboard
-                    if (launcherRoot.mode === "dictionary") return launcherRoot.ctrl.dictionary
-                        if (launcherRoot.mode === "math") return launcherRoot.ctrl.math
-                            if (launcherRoot.mode === "unicode") return launcherRoot.ctrl.unicodeSearch
-                                if (launcherRoot.mode === "search") return launcherRoot.ctrl.startPage
-                                    if (launcherRoot.mode === "email") return launcherRoot.ctrl.email
-                                        if (launcherRoot.mode === "todo") return launcherRoot.ctrl.todo
-                                            if (launcherRoot.mode === "pass") return launcherRoot.ctrl.pass
-                                                return null
+            if (launcherRoot.mode === "clipboard") return launcherRoot.ctrl.clipboard
+            if (launcherRoot.mode === "dictionary") return launcherRoot.ctrl.dictionary
+            if (launcherRoot.mode === "math") return launcherRoot.ctrl.mathEngine
+            if (launcherRoot.mode === "unicode") return launcherRoot.ctrl.unicodeSearch
+            if (launcherRoot.mode.toLowerCase() === "startpage") return launcherRoot.ctrl.startPage
+            if (launcherRoot.mode.toLowerCase() === "email") return launcherRoot.ctrl.email
+            if (launcherRoot.mode === "todo") return launcherRoot.ctrl.todo
+            if (launcherRoot.mode === "pass") return launcherRoot.ctrl.pass
+            return null
         }
     }
 
@@ -47,15 +50,59 @@ Rectangle {
 
     Timer {
         id: searchDebounceTimer
-        interval: 100
+        interval: 80
         repeat: false
         property string pendingText: ""
         onTriggered: {
-            const trimmed = pendingText
-            const currentMode = launcherRoot.mode
+            const raw = pendingText;
+            const trimmed = raw.trim();
+            const lower = trimmed.toLowerCase();
+            const currentMode = launcherRoot.mode;
 
-            // Do not hijack typing while in gemini mode
-            if (currentMode === "gemini") {
+            if (currentMode === "gemini") return;
+
+            const cfgTriggers = ["settings", "setting", "config", "cfg", "options", "opt"];
+            if (cfgTriggers.includes(lower) || raw.startsWith("set ") || raw.startsWith("cfg ")) {
+                launcherRoot.mode = "settings";
+                return;
+            }
+
+            const pwrTriggers = ["power", "pwr", "session", "sys", "reboot", "restart", "shutdown", "poweroff", "sleep", "suspend", "logout"];
+            if (pwrTriggers.includes(lower) || raw.startsWith("pwr ") || raw.startsWith("power ")) {
+                launcherRoot.mode = "power";
+                return;
+            }
+
+            if (lower === "em" || lower === "email" || lower === "mail" || raw.startsWith("em ") || raw.startsWith("email ")) {
+                launcherRoot.mode = "Email";
+                var emQuery = (raw.indexOf(" ") !== -1) ? raw.slice(raw.indexOf(" ") + 1).trim() : "";
+                if (ctrl.email && typeof ctrl.email.refreshFilter === "function") {
+                    ctrl.email.refreshFilter(emQuery);
+                }
+                return;
+            }
+
+            if (lower === "def" || lower === "dict" || lower === "dictionary" || raw.startsWith("def ") || raw.startsWith("dict ")) {
+                launcherRoot.mode = "dictionary";
+                var defQuery = (raw.indexOf(" ") !== -1) ? raw.slice(raw.indexOf(" ") + 1).trim() : "";
+                ctrl.dictionary.fetch(defQuery);
+                return;
+            }
+
+            if (lower === "pass" || lower === "password" || lower === "passwords" || raw.startsWith("pass ") || raw.startsWith("password ")) {
+                launcherRoot.mode = "pass";
+                var passQuery = (raw.indexOf(" ") !== -1) ? raw.slice(raw.indexOf(" ") + 1).trim() : "";
+                ctrl.pass.searchQuery = passQuery;
+                return;
+            }
+
+            if (lower === "td" || lower === "todo" || raw.startsWith("td ") || raw.startsWith("todo ")) {
+                launcherRoot.mode = "todo";
+                return;
+            }
+
+            if (lower === "note" || lower === "notes" || raw.startsWith("note ") || raw.startsWith("notes ")) {
+                launcherRoot.mode = "notes";
                 return;
             }
 
@@ -69,110 +116,44 @@ Rectangle {
                 return;
             }
 
-            if (currentMode === "clipboard") {
-                ctrl.clipboard.refreshFilter(trimmed)
-                return
-            }
-
+            if (currentMode === "notes") return;
+            if (currentMode === "clipboard") { ctrl.clipboard.refreshFilter(trimmed); return; }
             if (currentMode === "pass") {
-                var query = trimmed;
-                const pwrTriggers = ["power", "pwr", "session", "sys", "reboot", "restart", "shutdown", "poweroff", "sleep", "suspend", "logout"];
-                if (pwrTriggers.includes(trimmed) || trimmed.startsWith("pwr ") || trimmed.startsWith("power ")) {
-                    launcherRoot.mode = "power";
-                    return;
-                }
-
-                if (trimmed.startsWith("pass ")) {
-                    query = trimmed.substring(5).trim();
-                }
-                ctrl.pass.searchQuery = query;
+                var pQuery = (raw.indexOf(" ") !== -1 && (lower.startsWith("pass ") || lower.startsWith("password "))) ? raw.slice(raw.indexOf(" ") + 1).trim() : trimmed;
+                ctrl.pass.searchQuery = pQuery;
                 return;
             }
-
             if (currentMode === "dictionary") {
-                var query = trimmed;
-                if (trimmed.startsWith("def ")) {
-                    query = trimmed.substring(4).trim();
-                }
-                ctrl.dictionary.fetch(query);
+                var dQuery = (raw.indexOf(" ") !== -1 && (lower.startsWith("def ") || lower.startsWith("dict "))) ? raw.slice(raw.indexOf(" ") + 1).trim() : trimmed;
+                ctrl.dictionary.fetch(dQuery);
                 return;
             }
-
             if (currentMode === "Email") {
-                var query = trimmed;
-                if (trimmed.startsWith("em ")) {
-                    query = trimmed.substring(5).trim();
-                }
+                var eQuery = (raw.indexOf(" ") !== -1 && (lower.startsWith("em ") || lower.startsWith("email "))) ? raw.slice(raw.indexOf(" ") + 1).trim() : trimmed;
                 if (ctrl.email && typeof ctrl.email.refreshFilter === "function") {
-                    ctrl.email.refreshFilter(query);
+                    ctrl.email.refreshFilter(eQuery);
                 }
                 return;
             }
 
             if (trimmed.length > 1 && trimmed.indexOf("?") === 0) {
-                launcherRoot.mode = "startpage"
-                const cleanQuery = trimmed.substring(1).trim()
-
-                if (launcherRoot.ctrl.startPage) {
-                    launcherRoot.ctrl.startPage.updateSearch(cleanQuery)
-                }
-
-                if (searchLoader.item) {
-                    searchLoader.item.updateSearch(cleanQuery)
-                }
-                return
-            }
-
-            if (trimmed.startsWith(".")) {
-                launcherRoot.mode = "unicode"
-                const unicodeQuery = trimmed.substring(1).trim()
-                launcherRoot.ctrl.unicodeSearch.refreshFilter(unicodeQuery)
-                return
-            }
-
-            if (trimmed.startsWith("def ")) {
-                launcherRoot.mode = "dictionary"
-                var query = trimmed.substring(4).trim()
-                searchField.text = query
-                searchField.cursorPosition = searchField.text.length
-                ctrl.dictionary.fetch(query)
-                return
-            }
-
-            if (trimmed.startsWith("em ")) {
-                launcherRoot.mode = "Email"
-                var query = trimmed.substring(5).trim()
-                searchField.text = query
-                searchField.cursorPosition = searchField.text.length
-                if (ctrl.email && typeof ctrl.email.refreshFilter === "function") {
-                    ctrl.email.refreshFilter(query);
-                }
-                return
-            }
-
-            if (trimmed.startsWith("td ")) {
-                launcherRoot.mode = "todo"
-                return
-            }
-
-            const pwrTriggers = ["power", "pwr", "session", "sys", "reboot", "restart", "shutdown", "poweroff", "sleep", "suspend", "logout"];
-            if (pwrTriggers.includes(trimmed) || trimmed.startsWith("pwr ") || trimmed.startsWith("power ")) {
-                launcherRoot.mode = "power";
+                launcherRoot.mode = "startpage";
+                const cleanQuery = trimmed.substring(1).trim();
+                if (launcherRoot.ctrl.startPage) launcherRoot.ctrl.startPage.updateSearch(cleanQuery);
+                if (searchLoader.item) searchLoader.item.updateSearch(cleanQuery);
                 return;
             }
 
-            if (trimmed.startsWith("pass ")) {
-                launcherRoot.mode = "pass"
-                var query = trimmed.substring(5).trim()
-                searchField.text = query
-                searchField.cursorPosition = searchField.text.length
-                ctrl.pass.searchQuery = query
-                return
+            if (trimmed.startsWith(".")) {
+                launcherRoot.mode = "unicode";
+                const unicodeQuery = trimmed.substring(1).trim();
+                launcherRoot.ctrl.unicodeSearch.refreshFilter(unicodeQuery);
+                return;
             }
 
-            if (launcherRoot.ctrl.mathEngine.runCalculator(trimmed)) {
-                launcherRoot.mode = "math"
-                return
+            if (launcherRoot.ctrl.mathEngineEngine.runCalculator(trimmed)) {
+                launcherRoot.mode = "math";
+                return;
             }
 
             if (trimmed === "rng" || trimmed === "dice" || trimmed === "roll" || trimmed === "coin" || trimmed.startsWith("rng ") || trimmed.startsWith("roll ")) {
@@ -186,8 +167,8 @@ Rectangle {
                 return;
             }
 
-            launcherRoot.mode = "apps"
-            launcherRoot.ctrl.appLauncher.refreshFilter(trimmed)
+            launcherRoot.mode = "apps";
+            launcherRoot.ctrl.appLauncher.refreshFilter(trimmed);
         }
     }
 
@@ -217,18 +198,24 @@ Rectangle {
                 Qt.callLater(function() { if (todoLoader.item) todoLoader.item.forceActiveFocus(); });
             } else if (targetMode === "pass") {
                 Qt.callLater(function() { if (passLoader.item) passLoader.item.forceActiveFocus(); });
+            } else if (targetMode === "notes") {
+                Qt.callLater(function() { if (notesLoader.item) notesLoader.item.forceActiveFocus(); });
             } else {
                 searchField.forceActiveFocus();
             }
         }
     }
 
-    function toggleLauncher() { toggleOverlayMode("apps"); }
+    function toggleLauncher() {
+        var defaultMode = (shell && shell.settingsManager && shell.settingsManager.defaultLauncherMode) ? shell.settingsManager.defaultLauncherMode : "apps";
+        toggleOverlayMode(defaultMode);
+    }
     function toggleClipboard() { toggleOverlayMode("clipboard"); }
     function toggleTodo() { toggleOverlayMode("todo"); }
     function togglePower() { toggleOverlayMode("power"); }
     function togglePass() { toggleOverlayMode("pass"); }
     function toggleGemini() { toggleOverlayMode("gemini"); }
+    function toggleSettings() { toggleOverlayMode("settings"); }
     function toggleEmail() { if (mode === "Email" && launcherWindow.visible) closeOverlay(); else toggleOverlayMode("Email"); }
     function toggleRng() {
         closeOverlay();
@@ -252,6 +239,8 @@ Rectangle {
             if (up) ctrl.unicodeSearch.moveUp(); else ctrl.unicodeSearch.moveDown();
             unicodeLoader.item.currentIndex = ctrl.unicodeSearch.selectedIndex;
             unicodeLoader.item.positionViewAtIndex(unicodeLoader.item.currentIndex, ListView.Contain);
+        } else if (mode === "notes" && notesLoader.item) {
+            if (up) notesLoader.item.selectPrev(); else notesLoader.item.selectNext();
         } else if (mode === "power" && powerLoader.item) {
             if (up) powerLoader.item.selectPrev(); else powerLoader.item.selectNext();
         } else if (mode === "pass" && passLoader.item && passLoader.item.targetListView) {
@@ -270,19 +259,29 @@ Rectangle {
         }
     }
 
-    MouseArea { anchors.fill: parent; onClicked: launcherRoot.closeOverlay() }
-    Keys.onEscapePressed: launcherRoot.closeOverlay()
+    MouseArea { anchors.fill: parent; onClicked: if (launcherRoot.mode !== "settings") launcherRoot.closeOverlay() }
+    Keys.onEscapePressed: {
+        if (searchField.text !== "") {
+            searchField.clear();
+            launcherRoot.mode = "apps";
+        } else if (launcherRoot.mode !== "apps" && launcherRoot.mode !== "") {
+            launcherRoot.mode = "apps";
+        } else {
+            launcherRoot.closeOverlay();
+        }
+    }
 
-    // Centered Main Panel Container
     Rectangle {
         id: mainPanel
         anchors.centerIn: parent
-        height: 700
+        height: (settingsManager && settingsManager.launcherHeight > 0) ? settingsManager.launcherHeight : 700
         radius: 16
         color: shell.theme.base01
         border.width: 5
         border.color: shell.theme.base03
-        width: launcherRoot.mode === "clipboard" ? 1100 : 820
+        width: launcherRoot.mode === "clipboard" ? 1100
+             : (launcherRoot.mode === "settings" ? 1020
+             : ((settingsManager && settingsManager.launcherWidth > 0) ? settingsManager.launcherWidth : 840))
         visible: launcherRoot.mode !== "" && launcherRoot.mode.toLowerCase() !== "email"
 
         Column {
@@ -307,13 +306,15 @@ Rectangle {
 
                 placeholderText: {
                     const currentMode = launcherRoot.mode
+                    if (currentMode === "settings") return "System Settings (Type query to exit, or adjust below)..."
                     if (currentMode === "gemini") return "Ask Gemini... (Enter to send, Tab to clear context)"
-                        if (currentMode === "clipboard") return "Search clipboard history..."
-                            if (currentMode === "unicode") return "Search unicode symbols..."
-                                if (currentMode === "dictionary") return "Enter word..."
-                                    if (currentMode === "power") return "Choose power action (Enter to confirm)..."
-                                        if (currentMode === "pass") return "Search passwords..."
-                                            return "Search applications..."
+                    if (currentMode === "clipboard") return "Search clipboard history..."
+                    if (currentMode === "unicode") return "Search unicode symbols..."
+                    if (currentMode === "dictionary") return "Enter word..."
+                    if (currentMode === "power") return "Choose power action (Enter to confirm)..."
+                    if (currentMode === "pass") return "Search passwords..."
+                    if (currentMode === "notes") return "Type note to save (Enter to add, or select to copy)..."
+                    return "Search applications (or type 'settings')..."
                 }
 
                 background: Rectangle {
@@ -340,7 +341,9 @@ Rectangle {
                         }
                         font.family: searchField.font.family
                         font.pixelSize: searchField.font.pixelSize
-                        color: shell.theme.base0B
+                        font.italic: true
+                        color: "#00e5ff"
+                        opacity: 0.8
                         anchors.fill: parent
                         anchors.leftMargin: searchField.leftPadding
                         verticalAlignment: Text.AlignVCenter
@@ -357,6 +360,22 @@ Rectangle {
                 Keys.onUpPressed: launcherRoot.navigateActiveList(true)
 
                 Keys.onPressed: function(event) {
+                    if (event.key === Qt.Key_Escape) {
+                        if (searchField.text !== "") {
+                            searchField.clear();
+                            launcherRoot.mode = "apps";
+                            event.accepted = true;
+                            return;
+                        } else if (launcherRoot.mode !== "apps") {
+                            launcherRoot.mode = "apps";
+                            event.accepted = true;
+                            return;
+                        }
+                        launcherRoot.closeOverlay();
+                        event.accepted = true;
+                        return;
+                    }
+
                     if (event.key === Qt.Key_Backspace && searchField.text === "") {
                         if (launcherRoot.mode !== "apps") {
                             launcherRoot.mode = "apps";
@@ -399,8 +418,40 @@ Rectangle {
                     }
                 }
 
-                Keys.onReturnPressed: {
-                    const currentMode = launcherRoot.mode
+                Keys.onEnterPressed: searchField.Keys.onReturnPressed(event)
+                Keys.onReturnPressed: function(event) {
+                    var rawText = searchField.text.trim();
+                    var lowerText = rawText.toLowerCase();
+
+                    if (lowerText.startsWith("note ") || lowerText.startsWith("notes ")) {
+                        var noteBody = rawText.slice(rawText.indexOf(" ") + 1).trim();
+                        if (noteBody !== "") {
+                            var notesFile = (launcherRoot.settingsManager && launcherRoot.settingsManager.notesFilePath)
+                                ? launcherRoot.settingsManager.notesFilePath
+                                : (Quickshell.env("HOME") + "/Documents/notes.txt");
+                            Quickshell.execDetached([
+                                "sh", "-c",
+                                'mkdir -p "$(dirname "$1")"; ts=$(date "+%Y-%m-%d %H:%M"); printf "%s | %s\n" "$ts" "$2" >> "$1"; notify-send -a Notes -i accessories-text-editor "📝 Note Saved" "$2"',
+                                "sh", notesFile, noteBody
+                            ]);
+                            searchField.clear();
+                            launcherRoot.closeOverlay();
+                            return;
+                        }
+                    }
+
+                    var currentMode = launcherRoot.mode;
+                    if (currentMode === "notes") {
+                        if (notesLoader.item) {
+                            notesLoader.item.copySelected();
+                        }
+                        launcherRoot.closeOverlay();
+                        return;
+                    }
+
+                    if (currentMode === "settings") {
+                        return;
+                    }
                     if (currentMode === "gemini" && geminiLoader.item) {
                         var prompt = searchField.text;
                         if (prompt.startsWith("ai ")) prompt = prompt.substring(3).trim();
@@ -414,27 +465,40 @@ Rectangle {
                     else if (currentMode === "clipboard") { ctrl.clipboard.copySelected(); launcherRoot.closeOverlay(); }
                     else if (currentMode === "pass") { ctrl.pass.decryptAndCopySelected(); launcherRoot.closeOverlay(); }
                     else if (currentMode === "apps" && appsLoader.item && appsLoader.item.currentIndex >= 0) {
-                        ctrl.appLauncher.launch(ctrl.appLauncher.filteredApps.get(appsLoader.item.currentIndex).exec)
+                        ctrl.appLauncher.launch(ctrl.appLauncher.filteredApps.get(appsLoader.item.currentIndex).exec);
                         launcherRoot.closeOverlay();
                     } else if (currentMode === "startpage" && searchLoader.item) {
-                        searchLoader.item.openSearch()
+                        searchLoader.item.openSearch();
                         launcherRoot.closeOverlay();
                     }
                 }
             }
 
-            // GEMINI LOADER (Persistent in RAM, but takes 0 height when not in gemini mode)
+            // LOADERS
+            Loader {
+                id: settingsLoader
+                active: launcherRoot.mode === "settings"
+                visible: active
+                width: parent.width
+                height: active ? parent.contentHeight : 0
+                source: "SettingsPanel.qml"
+                onLoaded: {
+                    if (item) {
+                        item.shell = launcherRoot.shell;
+                        item.settingsManager = launcherRoot.settingsManager;
+                    }
+                }
+            }
+
             Loader {
                 id: geminiLoader
-                active: true
+                active: launcherRoot.mode === "gemini"
                 visible: launcherRoot.mode === "gemini"
                 width: parent.width
                 height: launcherRoot.mode === "gemini" ? parent.contentHeight : 0
                 source: "GeminiPanel.qml"
                 onLoaded: {
-                    if (item) {
-                        item.shell = launcherRoot.shell;
-                    }
+                    if (item) item.shell = launcherRoot.shell;
                 }
             }
 
@@ -445,7 +509,6 @@ Rectangle {
                 width: parent.width
                 height: active ? parent.contentHeight : 0
                 source: "StartPage.qml"
-
                 onLoaded: {
                     if (item && ctrl.startPage) {
                         var cleanText = searchDebounceTimer.pendingText;
@@ -461,7 +524,6 @@ Rectangle {
                 visible: active
                 width: parent.width
                 height: active ? parent.contentHeight : 0
-
                 sourceComponent: ListView {
                     id: unicodeListView
                     clip: true
@@ -470,7 +532,6 @@ Rectangle {
                     focus: true
                     model: ctrl.unicodeSearch.filteredUnicodeItems
                     currentIndex: ctrl.unicodeSearch.selectedIndex
-
                     onCurrentIndexChanged: ctrl.unicodeSearch.selectedIndex = currentIndex
 
                     highlightMoveDuration: 0
@@ -538,8 +599,9 @@ Rectangle {
                         flickDeceleration: 10000
 
                         delegate: Rectangle {
-                            width: ListView.view.width
-                            height: 90
+                            width: appsListView ? appsListView.width : 0
+                            height: (launcherRoot.settingsManager && launcherRoot.settingsManager.appItemHeight > 0)
+                                ? launcherRoot.settingsManager.appItemHeight : 80
                             radius: 10
                             color: ListView.isCurrentItem ? shell.theme.base02 : mouseArea.containsMouse ? shell.theme.base01 : "transparent"
                             border.width: ListView.isCurrentItem ? 5 : 0
@@ -551,7 +613,9 @@ Rectangle {
                                 spacing: 20
 
                                 Image {
-                                    width: 32; height: 32
+                                    width: (launcherRoot.settingsManager && launcherRoot.settingsManager.appIconSize > 0)
+                                        ? launcherRoot.settingsManager.appIconSize : 32
+                                    height: width
                                     anchors.verticalCenter: parent.verticalCenter
                                     source: {
                                         if (!icon) return "";
@@ -564,10 +628,10 @@ Rectangle {
 
                                 Column {
                                     anchors.verticalCenter: parent.verticalCenter
-                                    spacing: 20
+                                    spacing: 8
 
-                                    Text { text: name || ""; color: shell.theme.base05; font.pixelSize: 20; font.bold: true }
-                                    Text { text: exec || ""; color: shell.theme.base07; font.pixelSize: 20; elide: Text.ElideRight; width: 620 }
+                                    Text { text: name || ""; color: shell.theme.base05; font.pixelSize: 18; font.bold: true }
+                                    Text { text: exec || ""; color: shell.theme.base07; font.pixelSize: 14; elide: Text.ElideRight; width: appsListView ? (appsListView.width - 90) : 0 }
                                 }
                             }
 
@@ -776,6 +840,30 @@ Rectangle {
                                 }
                             }
                         }
+                    }
+                }
+            }
+
+            Loader {
+                id: notesLoader
+                active: launcherRoot.mode === "notes"
+                visible: active
+                focus: true
+                width: parent.width
+                height: active ? parent.contentHeight : 0
+                source: "Notes.qml"
+                onLoaded: {
+                    if (item) {
+                        item.shell = launcherRoot.shell;
+                        item.searchQuery = Qt.binding(function() {
+                            var raw = searchField.text;
+                            if (raw.startsWith("note ") || raw.startsWith("notes ")) {
+                                return raw.slice(raw.indexOf(" ") + 1).trim();
+                            }
+                            if (raw === "note" || raw === "notes") return "";
+                            return raw.trim();
+                        });
+                        item.actionCompleted.connect(function() { launcherRoot.closeOverlay(); });
                     }
                 }
             }

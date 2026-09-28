@@ -93,6 +93,18 @@ in
               color: #${stylixColors.base0D} !important;
           }
 
+          /* Let pages keep their own text color on elements explicitly
+             marked as buttons, instead of forcing the stylix link color.
+             Applies on every site (no domain scoping) -- e.g. covers
+             moonburst.net's .btn links. Note: ".btn" is also used by many
+             Bootstrap-based sites, so this will let their button text
+             revert to its own author color too, wherever a page uses that
+             same class name. */
+          a.btn, a.btn:link, a.btn:visited, a.btn *,
+          a.button, a.button:link, a.button:visited, a.button * {
+              color: revert !important;
+          }
+
           input, textarea, select, button {
               background-color: #${stylixColors.base01} !important;
               color: #${stylixColors.base05} !important;

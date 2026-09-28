@@ -31,7 +31,7 @@ in
     "${super}+q" = "exec ${pkgs.bash}/bin/bash ${scriptsDir}/safekill.sh";
     "${super}+Shift+q" = "kill";
     "${super}+e" = "exec ${explorer}";
-        "${super}+v" = "exec dictate";
+    "${super}+v" = "exec dictate";
     "${super}+d" = "exec quickshell -p /home/moonburst/nix/hosts/common/programs/quickshell/shell.qml ipc call launcher toggle";
     "${super}+k" = "exec quickshell -p /home/moonburst/nix/hosts/common/programs/quickshell/shell.qml ipc call clipboard toggle";
     "${super}+Shift+k" = "exec save-replay";
@@ -39,7 +39,7 @@ in
     "${super}+m" = "exec quickshell -p /home/moonburst/nix/hosts/common/programs/quickshell/shell.qml ipc call magnifier toggle";
     "${super}+o" = "exec quickshell -p /home/moonburst/nix/hosts/common/programs/quickshell/shell.qml ipc call todo toggle";
     "${super}+g" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell ipc call gemini toggle";
-    "${super}+SHIFT+m" = "exec ${pkgs.evolution}/bin/evolution";
+#    "${super}+SHIFT+m" = "exec ${pkgs.evolution}/bin/evolution";
 
     # ░█▀▀░█░█░█▀▀░▀█▀░█▀▀░█▄█
     # ░▀▀█░░█░░▀▀█░░█░░█▀▀░█░█
@@ -51,7 +51,7 @@ in
         "${super}+Escape" = "exec quickshell -p /home/moonburst/nix/hosts/common/programs/quickshell/shell.qml ipc call global_notif dismissLatest";
         "${super}+Shift+minus" = "move scratchpad";
         "${super}+Shift+Equal" = "scratchpad show";
-
+        "${super}+r" = null;
 
     # ░█▀▀░█▀▀░█▀▄░█▀▀░█▀▀░█▀█░█▀▀░█░█░█▀█░▀█▀
     # ░▀▀█░█░░░█▀▄░█▀▀░█▀▀░█░█░▀▀█░█▀█░█░█░░█░

@@ -9,8 +9,11 @@ import "../../style"
 Item {
     id: netBox
 
-    width: 260
-    height: parent ? parent.height : 40
+    property var barWindow: null
+    property string moduleName: "net"
+    property string slantLeft: "Right"
+    property string slantRight: "Right"
+    property int slantWidth: netBox.themeSlantWidth
 
     readonly property int themePadding: (shell && shell.theme && typeof shell.theme.globalPadding !== "undefined") ? shell.theme.globalPadding : 12
     readonly property int themeFontSize: (shell && shell.theme && typeof shell.theme.globalFontSize !== "undefined") ? shell.theme.globalFontSize : 14
@@ -25,21 +28,20 @@ Item {
     property string downSpeedStr: "0B"
     property string upSpeedStr: "0B"
     property string pingStr: "??ms"
-    property var barWindow: null
 
-    property int tooltipHeight: 400
+    property int tooltipHeight: 420
     property int tooltipCollapsedWidth: 240
-    property int tooltipExpandedWidth: 437
+    property int tooltipExpandedWidth: 460
     property int tooltipTopOffset: -2
-    property int tooltipRightOffset: 21
-
-    property string slantLeft: "Right"
-    property string slantRight: "Right"
-    property int slantWidth: netBox.themeSlantWidth
+    property int tooltipRightOffset: 0
 
     property string topProcessesText: "Loading network processes..."
     property string textAccumulatorBuffer: ""
     readonly property var processLinesArray: topProcessesText.split("\n").filter(line => line.trim() !== "")
+
+    implicitWidth: netText.implicitWidth + bg.leftPadding + bg.rightPadding + 20
+    width: implicitWidth
+    height: parent ? parent.height : 40
 
     SlantedBox {
         id: bg
@@ -49,7 +51,6 @@ Item {
         slantWidth: netBox.slantWidth
     }
 
-    // High efficiency: reads default interface and network bytes in a single awk pass
     Process {
         id: netStatsProc
         running: true
@@ -83,7 +84,6 @@ Item {
                     if (!netStatsProc.isFirstRun) {
                         var diffDown = currentDown - netStatsProc.lastDown;
                         var diffUp = currentUp - netStatsProc.lastUp;
-
                         netBox.downSpeedStr = netStatsProc.formatSpeed(diffDown);
                         netBox.upSpeedStr = netStatsProc.formatSpeed(diffUp);
                     }
@@ -100,7 +100,6 @@ Item {
         id: pingProc
         running: false
         command: ["ping", "-c", "1", "-W", "1", "1.1.1.1"]
-
         stdout: SplitParser {
             onRead: data => {
                 var match = data.match(/time=([0-9.]+)\s*ms/);
@@ -110,11 +109,8 @@ Item {
                 }
             }
         }
-
         onExited: (exitCode) => {
-            if (exitCode !== 0) {
-                netBox.pingStr = "OFFLINE";
-            }
+            if (exitCode !== 0) netBox.pingStr = "OFFLINE";
         }
     }
 
@@ -122,25 +118,22 @@ Item {
         id: topNetProcFetcher
         running: false
         command: [
-            "sh",
-            "-c",
+            "sh", "-c",
             "nethogs_bin=$(command -v /run/wrappers/bin/nethogs || command -v nethogs); interface=$(awk '$2 == \"00000000\" {print $1; exit}' /proc/net/route); $nethogs_bin -t -c 2 \"$interface\" 2>/dev/null | awk '/Refreshing:/ {cycle++} cycle==2 && $1 != \"Refreshing:\" && $1 != \"PID\" && $1 != \"\" {if (NF == 3) {prog_full = $1; sub(/\\/[^\\/]+\\/[^\\/]+$/, \"\", prog_full); split(prog_full, path, \"/\"); prog = path[length(path)]; if (prog == \"\") prog = prog_full; sent = $2; recv = $3;} else {split($3, path, \"/\"); prog = path[length(path)]; if (prog == \"\") prog = $3; sent = $5; recv = $6;} total = sent + recv; if (prog ~ /^[0-9]+\\.[0-9]+/ || prog ~ /:/) {prog = \"[system/raw]\"} if (prog != \"\") {speeds[prog] += total}} END {for (p in speeds) {tot = speeds[p]; if (tot > 0.01) {speedStr = (tot < 1024.0) ? sprintf(\"%.1f KB/s\", tot) : sprintf(\"%.1f MB/s\", tot/1024.0); printf \"%.2f %-15s   %11s\\n\", tot, substr(p, 1, 15), speedStr}}}' | sort -rn | head -n 10 | cut -d' ' -f2-"
         ]
         stdout: SplitParser {
             splitMarker: "\n"
             onRead: data => {
-                if (data && data.trim() !== "") {
-                    netBox.textAccumulatorBuffer += data + "\n"
-                }
+                if (data && data.trim() !== "") netBox.textAccumulatorBuffer += data + "\n";
             }
         }
         onExited: (exitCode) => {
             if (exitCode !== 0) {
-                netBox.topProcessesText = "Failed to run packet sniffer.\n\nVerify that the NixOS security wrapper is set:\n\nsecurity.wrappers.nethogs = {\n  source = \"${pkgs.nethogs}/bin/nethogs\";\n  capabilities = \"cap_net_admin,cap_net_raw+ep\";\n  owner = \"root\";\n  group = \"root\";\n};"
+                netBox.topProcessesText = "No active network traffic.";
             } else if (netBox.textAccumulatorBuffer.trim() === "") {
-                netBox.topProcessesText = "No active network traffic.\n(Waiting for transfers...)"
+                netBox.topProcessesText = "No active network traffic.\n(Waiting for transfers...)";
             } else {
-                netBox.topProcessesText = netBox.textAccumulatorBuffer.trim()
+                netBox.topProcessesText = netBox.textAccumulatorBuffer.trim();
             }
         }
     }
@@ -148,10 +141,10 @@ Item {
     Text {
         id: netText
         anchors.fill: parent
-        anchors.leftMargin: bg.leftPadding
-        anchors.rightMargin: bg.rightPadding
-        anchors.topMargin: themePadding
-        anchors.bottomMargin: themePadding
+        anchors.leftMargin: bg.leftPadding + 4
+        anchors.rightMargin: bg.rightPadding + 4
+        anchors.topMargin: 2
+        anchors.bottomMargin: 2
 
         textFormat: Text.RichText
         font.family: themeFontFamily
@@ -159,6 +152,8 @@ Item {
         font.bold: true
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
+        elide: Text.ElideRight
+        clip: true
 
         text: {
             const greenColor = themeBase0C.toString();
@@ -177,8 +172,8 @@ Item {
         id: netHoverTracker
         onHoveredChanged: {
             if (hovered && !topNetProcFetcher.running) {
-                netBox.textAccumulatorBuffer = ""
-                topNetProcFetcher.running = true
+                netBox.textAccumulatorBuffer = "";
+                topNetProcFetcher.running = true;
             }
         }
     }
@@ -195,7 +190,6 @@ Item {
         expandedCoreWidth: netBox.tooltipExpandedWidth
         topOffset: netBox.tooltipTopOffset
         rightOffset: netBox.tooltipRightOffset
-
         slantLeft: netBox.slantLeft
         slantRight: netBox.slantRight
 
@@ -209,14 +203,6 @@ Item {
             x: netTooltip.slantX(y) + 24
         }
 
-        Rectangle {
-            height: 2
-            color: themeBase02
-            width: 360
-            y: 65
-            x: netTooltip.slantX(y) + 24
-        }
-
         Repeater {
             model: netBox.processLinesArray.length
             Text {
@@ -226,27 +212,27 @@ Item {
                 color: themeBase05
                 y: 95 + (index * 28)
                 x: netTooltip.slantX(y) + 24
+                width: netTooltip.width - x - 28
+                elide: Text.ElideRight
             }
         }
     }
 
     Timer {
-        interval: 1000; running: true; repeat: true; triggeredOnStart: true
+        interval: (shell && shell.settingsManager && shell.settingsManager.hardwarePollInterval > 0) ? shell.settingsManager.hardwarePollInterval : 2000; running: true; repeat: true; triggeredOnStart: true
         property int ticks: 0
         onTriggered: {
             netStatsProc.running = false;
             netStatsProc.running = true;
-
             ticks++;
             if (ticks >= 15) {
                 ticks = 0;
                 pingProc.running = false;
                 pingProc.running = true;
             }
-
             if (netHoverTracker.hovered && !topNetProcFetcher.running) {
-                netBox.textAccumulatorBuffer = ""
-                topNetProcFetcher.running = true
+                netBox.textAccumulatorBuffer = "";
+                topNetProcFetcher.running = true;
             }
         }
     }

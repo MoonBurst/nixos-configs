@@ -7,16 +7,13 @@ Item {
     id: passComp
     anchors.fill: parent
 
-    // Property bindings linked directly to the parent search field
     property string searchQuery: ""
     property int selectedIndex: 0
     readonly property alias targetListView: passListView
 
-    // Dynamic helper properties for launcher autocomplete
     property string firstMatchedKey: ""
     property int filteredModelCount: 0
 
-    // Theme references explicitly resolved and set via the loader context
     property var shell: null
     readonly property var theme: (shell && shell.theme) ? shell.theme : null
 
@@ -25,7 +22,6 @@ Item {
 
     onSearchQueryChanged: filterModel()
 
-    // Filters decrypted path keys on-the-fly as the user types
     function filterModel() {
         filteredModel.clear();
         var txt = searchQuery.toLowerCase().trim();
@@ -52,26 +48,33 @@ Item {
         if (selectedIndex >= 0 && selectedIndex < filteredModelCount) {
             var item = filteredModel.get(selectedIndex);
             if (item) {
-                decryptProcess.keyPath = item.key;
+                decryptProcess.command = [
+                    "sh", "-c",
+                    'dir="${PASSWORD_STORE_DIR:-$HOME/.password-store}"; [ ! -d "$dir" ] && dir="$HOME/.local/share/pass"; ' +
+                    'pw=$(PASSWORD_STORE_DIR="$dir" pass show "$1" 2>/dev/null | head -n 1 | tr -d "\\r\\n"); ' +
+                    'if [ -n "$pw" ]; then ' +
+                    '  printf "%s" "$pw" | wl-copy; ' +
+                    '  notify-send -a Pass -u normal -i dialog-password "🔑 Password Copied" "Auto-clearing in 45s..."; ' +
+                    '  ( sleep 0.4; cliphist list 2>/dev/null | head -n 1 | cliphist delete 2>/dev/null; ' +
+                    '    sleep 44.6; cur=$(wl-paste 2>/dev/null); [ "$cur" = "$pw" ] && wl-copy --clear ) & ' +
+                    'fi',
+                    "sh", item.key
+                ];
                 decryptProcess.running = true;
             }
         }
     }
 
-    // Decrypts selected file from custom PASSWORD_STORE_DIR and pipes to clipboard
-    Process {
-        id: decryptProcess
-        running: false
-        property string keyPath: ""
-        command: ["sh", "-c", "PASSWORD_STORE_DIR=$HOME/.local/share/pass pass show \"" + keyPath + "\" | head -n 1 | tr -d '\\r\\n' | wl-copy"]
-    }
+    Process { id: decryptProcess; running: false }
 
-    // Asynchronously indexes custom ~/.local/share/pass directory recursively on startup
     Process {
         id: listKeysProcess
         running: true
-        command: ["sh", "-c", "dir=$HOME/.local/share/pass; find $dir -type f -name '*.gpg' | sed \"s|$dir/||g\" | sed 's|.gpg$||g'"]
-
+        command: [
+            "sh", "-c",
+            'dir="${PASSWORD_STORE_DIR:-$HOME/.password-store}"; [ ! -d "$dir" ] && dir="$HOME/.local/share/pass"; ' +
+            '[ -d "$dir" ] && find "$dir" -type f -name "*.gpg" | sed "s|$dir/||g" | sed "s|\\.gpg$||g"'
+        ]
         stdout: SplitParser {
             onRead: data => {
                 var lines = data.trim().split("\n");
@@ -84,7 +87,6 @@ Item {
         }
     }
 
-    // UI Scrollable List View
     ListView {
         id: passListView
         anchors.fill: parent

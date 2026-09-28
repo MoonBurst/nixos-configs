@@ -40,7 +40,7 @@ Item {
             id: "logout",
             icon: "🚪",
             title: "Log Out",
-            description: "Exit Sway and terminate graphical session",
+            description: "Exit desktop compositor session",
             accent: theme ? theme.base09 : "#FE8019",
             keywords: ["logout", "exit", "quit", "leave"],
             destructive: true
@@ -67,7 +67,6 @@ Item {
 
     readonly property var filteredActions: {
         var q = searchQuery.toLowerCase().trim();
-        // Strip common prefix triggers
         if (q.startsWith("pwr ")) q = q.substring(4).trim();
         if (q.startsWith("power ")) q = q.substring(6).trim();
 
@@ -118,15 +117,14 @@ Item {
 
     function triggerAction(actionId) {
         if (actionId === "lock") {
-            Quickshell.execDetached([
-                "quickshell", "-p",
-                "/home/moonburst/nix/hosts/common/programs/quickshell/shell.qml",
-                "ipc", "call", "lockscreen", "lock"
-            ]);
+            Ipc.call("lockscreen", "lock");
         } else if (actionId === "sleep") {
             Quickshell.execDetached(["systemctl", "suspend"]);
         } else if (actionId === "logout") {
-            Quickshell.execDetached(["swaymsg", "exit"]);
+            Quickshell.execDetached([
+                "sh", "-c",
+                "command -v swaymsg >/dev/null && swaymsg exit || command -v hyprctl >/dev/null && hyprctl dispatch exit || loginctl terminate-session self"
+            ]);
         } else if (actionId === "reboot") {
             Quickshell.execDetached(["systemctl", "reboot"]);
         } else if (actionId === "shutdown") {

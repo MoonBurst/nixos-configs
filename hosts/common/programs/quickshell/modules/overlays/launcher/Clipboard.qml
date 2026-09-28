@@ -30,7 +30,8 @@ Item {
     Timer {
         id: changePoller
         interval: 2000
-        running: true
+        // Only poll cliphist when the clipboard launcher is actively open on screen
+        running: typeof launcherRoot !== 'undefined' && launcherRoot && launcherRoot.mode === "clipboard" && launcherWindow.visible
         repeat: true
         onTriggered: {
             if (!deleteProc.running && !pollCheckWorker.running && !clipboardLoader.running) {
@@ -182,17 +183,15 @@ Item {
             deleteProc.running = false;
             deleteProc.command = [
                 "sh", "-c",
-                "echo '=== [IMAGE DELETE] ===' >> /tmp/clipboard_debug.log; " +
-                "rm -vf '" + imagePath + "' '" + jsonPath + "' >> /tmp/clipboard_debug.log 2>&1"
+                "rm -vf '" + imagePath + "' '" + jsonPath + "'"
             ];
             deleteProc.running = true;
         } else if (cleanId.length > 0) {
             deleteProc.running = false;
             deleteProc.command = [
                 "sh", "-c",
-                "echo '=== [TEXT DELETE ID: " + cleanId + "] ===' >> /tmp/clipboard_debug.log; " +
-                "printf '%s\\t-\\n' '" + cleanId + "' | cliphist delete >> /tmp/clipboard_debug.log 2>&1; " +
-                "if [ -d /tmp/cliphist_db ]; then printf '%s\\t-\\n' '" + cleanId + "' | CLIPHIST_DB_PATH=/tmp/cliphist_db cliphist delete >> /tmp/clipboard_debug.log 2>&1; fi"
+                "printf '%s\\t-\\n' '" + cleanId + "' | cliphist delete; " +
+                "if [ -d /tmp/cliphist_db ]; then printf '%s\\t-\\n' '" + cleanId + "' | CLIPHIST_DB_PATH=/tmp/cliphist_db cliphist delete; fi"
             ];
             deleteProc.running = true;
         }
@@ -250,7 +249,7 @@ Item {
             "    fi; " +
             "  done; " +
             "fi; " +
-            "cliphist list | head -n 200 | while IFS=$'\\t' read -r id text; do " +
+            "cliphist list | head -n 500 | while IFS=$'\\t' read -r id text; do " +
             "  if [[ \"$text\" != *\"binary data\"* && \"$text\" != *\"[Image\"* ]]; then " +
             "    printf \"CLIP\\t%s\\t%s\\n\" \"$id\" \"$text\"; " +
             "  fi; " +

@@ -1,51 +1,47 @@
 import QtQuick
-import QtQuick.Controls 2
 import Quickshell
 import Quickshell.Io
 import "../../style"
 
 Item {
     id: micBox
-
     property var barWindow: null
+    property string slantLeft: "Right"
+    property string slantRight: "Right"
+    property int slantWidth: (shell && shell.theme && shell.theme.slantWidth) ? shell.theme.slantWidth : 12
     property string micDisplayText: "Mic: --"
     property bool muted: false
 
-    width: 140
-    height: parent.height
+    readonly property color themeBase05: (shell && shell.theme) ? shell.theme.base05 : "yellow"
+    readonly property color themeBase08: (shell && shell.theme) ? shell.theme.base08 : "#ff0000"
+    readonly property color themeBase0C: (shell && shell.theme) ? shell.theme.base0C : "#04f100"
+    readonly property int themeFontSize: (shell && shell.theme) ? shell.theme.globalFontSize : 14
+    readonly property string themeFontFamily: (shell && shell.theme) ? shell.theme.fontFamily : "monospace"
 
-    // Centralized SlantedBox Background (Handles mute outlines dynamically)
+    implicitWidth: micText.implicitWidth + bg.leftPadding + bg.rightPadding + 20
+    width: implicitWidth
+    height: parent ? parent.height : 40
+
     SlantedBox {
         id: bg
         anchors.fill: parent
-        slantLeft: "Right"
-        slantRight: "Right"
-
-        borderColor: {
-            if (shell && shell.theme) {
-                return micBox.muted ? (shell.theme.base08 || "red") : (shell.theme.base05 || "yellow");
-            }
-            return "yellow";
-        }
+        slantLeft: micBox.slantLeft
+        slantRight: micBox.slantRight
+        slantWidth: micBox.slantWidth
+        borderColor: micBox.muted ? micBox.themeBase08 : micBox.themeBase05
     }
 
     Process { id: micMuteCmd; command: ["wpctl", "set-mute", "@DEFAULT_AUDIO_SOURCE@", "toggle"] }
-
     Process {
         id: micProc
         running: true
-        command: [
-            "sh", "-c",
-            "wpctl get-volume @DEFAULT_AUDIO_SOURCE@ 2>/dev/null || echo 'Volume: 0.00'"
-        ]
+        command: ["sh", "-c", "wpctl get-volume @DEFAULT_AUDIO_SOURCE@ 2>/dev/null || echo 'Volume: 0.00'"]
         stdout: SplitParser {
             onRead: data => {
                 if (!data) return;
                 var raw = data.trim();
                 var isMuted = raw.indexOf("[MUTED]") !== -1;
-
                 micBox.muted = isMuted;
-
                 var mNum = "0%";
                 if (!isMuted) {
                     var mMatch = raw.match(/[0-9.]+/);
@@ -53,11 +49,8 @@ Item {
                 } else {
                     mNum = "MUTED";
                 }
-
-                var micLabelColor = (shell && shell.theme) ? (shell.theme.base0C || "green").toString() : "green";
-                var micStatusColor = isMuted ? ((shell && shell.theme) ? shell.theme.base08.toString() : "red") : ((shell && shell.theme) ? shell.theme.base05.toString() : "yellow");
-
-                micBox.micDisplayText = "<font color='" + micLabelColor + "'>Mic:</font> <font color='" + micStatusColor + "'>" + mNum + "</font>";
+                var statusColor = isMuted ? micBox.themeBase08.toString() : micBox.themeBase05.toString();
+                micBox.micDisplayText = "<font color='" + micBox.themeBase0C + "'>Mic:</font> <font color='" + statusColor + "'>" + mNum + "</font>";
             }
         }
     }
@@ -72,18 +65,18 @@ Item {
     Text {
         id: micText
         anchors.fill: parent
-        anchors.leftMargin: bg.leftPadding
-        anchors.rightMargin: bg.rightPadding
-        anchors.topMargin: (shell && shell.theme) ? (shell.theme.globalPadding || 12) : 12
-        anchors.bottomMargin: (shell && shell.theme) ? (shell.theme.globalPadding || 12) : 12
-
+        anchors.leftMargin: bg.leftPadding + 4
+        anchors.rightMargin: bg.rightPadding + 4
+        anchors.topMargin: 2; anchors.bottomMargin: 2
         textFormat: Text.RichText
         text: micBox.micDisplayText
-        font.family: (shell && shell.theme) ? (shell.theme.fontFamily || "monospace") : "monospace"
-        font.pixelSize: (shell && shell.theme) ? (shell.theme.globalFontSize || 14) : 14
+        font.family: themeFontFamily
+        font.pixelSize: themeFontSize
         font.bold: true
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
+        elide: Text.ElideRight
+        clip: true
     }
 
     Timer { interval: 2000; running: true; repeat: true; onTriggered: micProc.running = true }

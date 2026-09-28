@@ -17,7 +17,7 @@ Item {
     }
 
     Timer {
-        interval: 1000
+        interval: recordingEngine.isActive ? 1000 : 3000
         running: true
         repeat: true
         triggeredOnStart: true
@@ -31,9 +31,9 @@ Item {
         id: checkProc
         command: [
             "/run/current-system/sw/bin/bash", "-c",
-            "REC=0; [ -f /tmp/record-region.pid ] && kill -0 $(cat /tmp/record-region.pid 2>/dev/null) 2>/dev/null && REC=1; " +
+            "REC=0; [ -f ${XDG_RUNTIME_DIR:-/tmp}/record-region.pid ] && kill -0 $(cat ${XDG_RUNTIME_DIR:-/tmp}/record-region.pid 2>/dev/null) 2>/dev/null && REC=1; " +
             "if [ $REC -eq 0 ]; then pgrep -x wf-recorder >/dev/null 2>&1 && REC=1; fi; " +
-            "STREAM=0; [ -f /tmp/twitch-stream.pid ] && kill -0 $(cat /tmp/twitch-stream.pid 2>/dev/null) 2>/dev/null && STREAM=1; " +
+            "STREAM=0; [ -f ${XDG_RUNTIME_DIR:-/tmp}/twitch-stream.pid ] && kill -0 $(cat ${XDG_RUNTIME_DIR:-/tmp}/twitch-stream.pid 2>/dev/null) 2>/dev/null && STREAM=1; " +
             "if [ $STREAM -eq 0 ]; then pgrep -f '[r]tmp://live.twitch.tv' >/dev/null 2>&1 && STREAM=1; fi; " +
             "echo \"$REC $STREAM\""
         ]

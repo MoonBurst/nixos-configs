@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Io
 
 Rectangle {
     id: geminiView
@@ -19,23 +20,49 @@ Rectangle {
     color: "transparent"
 
     function loadApiKey() {
-        const fileXhr = new XMLHttpRequest();
-        fileXhr.open("GET", "file:///run/secrets/gemini_token");
-        fileXhr.onreadystatechange = function() {
-            if (fileXhr.readyState === XMLHttpRequest.DONE) {
-                if (fileXhr.status === 200 || fileXhr.status === 0) {
-                    let token = fileXhr.responseText.trim();
-                    if (token.length > 0) {
-                        geminiView.apiKey = token;
-                    }
+        // 1. Check environment variable
+        var envKey = Quickshell.env("GEMINI_API_KEY");
+        if (envKey && envKey.trim().length > 0) {
+            geminiView.apiKey = envKey.trim();
+            return;
+        }
+
+        // 2. Check local config key file
+        var localKeyPath = "file://" + (Quickshell.env("HOME") || "") + "/.config/quickshell/gemini_key";
+        var localXhr = new XMLHttpRequest();
+        localXhr.open("GET", localKeyPath);
+        localXhr.onreadystatechange = function() {
+            if (localXhr.readyState === XMLHttpRequest.DONE) {
+                if ((localXhr.status === 200 || localXhr.status === 0) && localXhr.responseText.trim().length > 0) {
+                    geminiView.apiKey = localXhr.responseText.trim();
+                } else {
+                    // 3. Fall back to NixOS sops secret path
+                    var secretXhr = new XMLHttpRequest();
+                    secretXhr.open("GET", "file:///run/secrets/gemini_token");
+                    secretXhr.onreadystatechange = function() {
+                        if (secretXhr.readyState === XMLHttpRequest.DONE && (secretXhr.status === 200 || secretXhr.status === 0)) {
+                            let token = secretXhr.responseText.trim();
+                            if (token.length > 0) geminiView.apiKey = token;
+                        }
+                    };
+                    secretXhr.send();
                 }
             }
         };
-        fileXhr.send();
+        localXhr.send();
     }
 
-    Component.onCompleted: {
-        loadApiKey();
+    Component.onCompleted: loadApiKey()
+
+    function saveUserKey(keyText) {
+        if (!keyText || keyText.trim().length === 0) return;
+        var cleanKey = keyText.trim();
+        geminiView.apiKey = cleanKey;
+        Quickshell.execDetached([
+            "sh", "-c",
+            'mkdir -p "$HOME/.config/quickshell" && install -m 600 /dev/null "$HOME/.config/quickshell/gemini_key" && printf "%s" "$1" > "$HOME/.config/quickshell/gemini_key"',
+            "sh", cleanKey
+        ]);
     }
 
     function clearContext() {
@@ -45,28 +72,21 @@ Rectangle {
         lastUserPrompt = "";
     }
 
-    // Extracts ONLY code from markdown
     function extractCodeOnly(rawText) {
         if (!rawText) return "";
-
         const codeBlockRegex = /```(?:[a-zA-Z0-9_\-\+]+)?\n([\s\S]*?)```/g;
         let matches = [];
         let match;
-
         while ((match = codeBlockRegex.exec(rawText)) !== null) {
             matches.push(match[1].trim());
         }
-
         if (matches.length > 0) return matches.join("\n\n");
-
         const inlineCodeRegex = /`([^`]+)`/g;
         let inlineMatches = [];
         while ((match = inlineCodeRegex.exec(rawText)) !== null) {
             inlineMatches.push(match[1].trim());
         }
-
         if (inlineMatches.length > 0) return inlineMatches.join("\n");
-
         return rawText.trim();
     }
 
@@ -76,24 +96,19 @@ Rectangle {
 
     function retryLastMessage() {
         if (!lastUserPrompt || isLoading) return;
-
-        // Remove the error message bubble from the chat view
         if (chatModel.count > 0 && chatModel.get(chatModel.count - 1).role === "error") {
             chatModel.remove(chatModel.count - 1);
         }
-
-        // Re-send the last question
         conversationHistory.push({ role: "user", parts: [{ text: lastUserPrompt }] });
         isLoading = true;
-        callGemini("gemini-flash-latest");
+        callGemini((shell && shell.settingsManager) ? shell.settingsManager.geminiModelName : "gemini-flash-latest");
     }
 
     function sendMessage(text) {
         if (!text || text.trim() === "" || isLoading) return;
-
         if (!apiKey || apiKey === "") {
             loadApiKey();
-            chatModel.append({ role: "error", text: "API token loading from sops... please try again." });
+            chatModel.append({ role: "error", text: "Please enter your Gemini API key above to continue." });
             return;
         }
 
@@ -102,8 +117,7 @@ Rectangle {
         chatModel.append({ role: "user", text: userText });
         conversationHistory.push({ role: "user", parts: [{ text: userText }] });
         isLoading = true;
-
-        callGemini("gemini-flash-latest");
+        callGemini((shell && shell.settingsManager) ? shell.settingsManager.geminiModelName : "gemini-flash-latest");
     }
 
     function callGemini(modelName) {
@@ -130,7 +144,6 @@ Rectangle {
         xhr.onreadystatechange = function() {
             if (xhr.readyState === XMLHttpRequest.DONE) {
                 geminiView.isLoading = false;
-
                 if (xhr.status === 200) {
                     try {
                         const res = JSON.parse(xhr.responseText);
@@ -145,12 +158,10 @@ Rectangle {
                         chatModel.append({ role: "error", text: "Failed to parse API response: " + e.message });
                     }
                 } else if (xhr.status !== 0) {
-                    // Pop failed user question so history stays pure
                     if (conversationHistory.length > 0) conversationHistory.pop();
-
                     let errorMsg = "Error " + xhr.status + ": " + xhr.statusText;
                     if (xhr.status === 503) {
-                        errorMsg = "Temporary High Demand (503): Google's free tier is experiencing a momentary spike. Click Retry to try again.";
+                        errorMsg = "Temporary High Demand (503): Momentary spike. Click Retry to try again.";
                     } else if (xhr.responseText) {
                         try {
                             const errObj = JSON.parse(xhr.responseText);
@@ -176,6 +187,45 @@ Rectangle {
     ColumnLayout {
         anchors.fill: parent
         spacing: 12
+
+        // API KEY ONBOARDING BANNER (Shown only if key is missing)
+        Rectangle {
+            visible: !geminiView.apiKey || geminiView.apiKey === ""
+            Layout.fillWidth: true
+            height: 48
+            radius: 8
+            color: "#2a1e1e"
+            border.color: geminiView.yellowAccent
+            border.width: 1
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: 8
+                spacing: 8
+
+                Text {
+                    text: "🔑 API Key Required:"
+                    color: geminiView.yellowAccent
+                    font.bold: true
+                    font.pixelSize: 12
+                }
+
+                TextField {
+                    id: keyInputField
+                    Layout.fillWidth: true
+                    placeholderText: "Paste Gemini API Key from Google AI Studio..."
+                    font.pixelSize: 12
+                    color: geminiView.yellowAccent
+                    background: Rectangle { color: "#11111b"; radius: 4; border.color: geminiView.yellowAccent; border.width: 1 }
+                    onAccepted: geminiView.saveUserKey(text)
+                }
+
+                Button {
+                    text: "Save Key"
+                    onClicked: geminiView.saveUserKey(keyInputField.text)
+                }
+            }
+        }
 
         // Subheader Toolbar
         RowLayout {
@@ -241,7 +291,6 @@ Rectangle {
                     border.color: model.role === "error" ? geminiView.errorColor : geminiView.yellowAccent
                     border.width: 2
 
-                    // Message Content
                     TextEdit {
                         id: messageText
                         anchors.fill: parent
@@ -262,7 +311,6 @@ Rectangle {
                         selectedTextColor: "#11111b"
                     }
 
-                    // RETRY BUTTON (Only visible on error cards)
                     Rectangle {
                         id: retryBtn
                         visible: model.role === "error" && !geminiView.isLoading
@@ -285,12 +333,9 @@ Rectangle {
                         }
 
                         HoverHandler { id: retryHover }
-                        TapHandler {
-                            onTapped: geminiView.retryLastMessage()
-                        }
+                        TapHandler { onTapped: geminiView.retryLastMessage() }
                     }
 
-                    // COPY BUTTON (Visible on model cards)
                     Rectangle {
                         id: copyBtn
                         visible: model.role === "model"
@@ -317,17 +362,13 @@ Rectangle {
                         Text {
                             id: copyLabel
                             anchors.centerIn: parent
-                            text: {
-                                if (copyBtn.copied) return "✓ Copied!";
-                                return copyBtn.containsCode ? "Copy Code" : "Copy";
-                            }
+                            text: copyBtn.copied ? "✓ Copied!" : (copyBtn.containsCode ? "Copy Code" : "Copy")
                             color: copyBtn.copied || copyHover.hovered ? "#11111b" : geminiView.yellowAccent
                             font.pixelSize: 13
                             font.bold: true
                         }
 
                         HoverHandler { id: copyHover }
-
                         TapHandler {
                             onTapped: {
                                 const cleanCode = geminiView.extractCodeOnly(model.text);
@@ -340,13 +381,9 @@ Rectangle {
                 }
             }
 
-            ScrollBar.vertical: ScrollBar {
-                policy: ScrollBar.AsNeeded
-                width: 8
-            }
+            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded; width: 8 }
         }
 
-        // Thinking Indicator
         Text {
             visible: geminiView.isLoading
             text: "✦ Gemini is thinking..."

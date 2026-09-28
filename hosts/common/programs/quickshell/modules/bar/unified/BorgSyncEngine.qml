@@ -28,7 +28,10 @@ Item {
     }
 
     Timer {
-        interval: 3000; running: true; repeat: true
+        // Poll every 10s when idle, ramp to 2s when actively syncing
+        interval: borgEngine.serviceActive ? 2000 : 10000
+        running: true
+        repeat: true
         onTriggered: borgProcess.running = true
     }
 

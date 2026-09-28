@@ -11,6 +11,41 @@ Item {
     property var notifModel: null
     property var serverInstance: null
 
+    // Reusable static timers eliminating runtime Qt.createQmlObject allocations
+    Timer {
+        id: unhighlightTimer
+        interval: 350
+        repeat: false
+        property var targetCard: null
+        onTriggered: {
+            if (targetCard) targetCard.isManualDismiss = false;
+        }
+    }
+
+    Timer {
+        id: dismissDelayTimer
+        interval: 400
+        repeat: false
+        property var targetCard: null
+        onTriggered: {
+            if (targetCard) ipc.dismiss(targetCard);
+        }
+    }
+
+    Timer {
+        id: actionInvokeTimer
+        interval: 120
+        repeat: false
+        property var targetAction: null
+        onTriggered: {
+            try {
+                if (targetAction && typeof targetAction.invoke === "function") {
+                    targetAction.invoke();
+                }
+            } catch (e) {}
+        }
+    }
+
     function getNewest() {
         if (!notifModel || notifModel.count === 0) return null;
         return notifModel.get(notifModel.count - 1);
@@ -19,15 +54,8 @@ Item {
     function highlight(card) {
         if (!card) return;
         card.isManualDismiss = true;
-        let timer = Qt.createQmlObject(
-            'import QtQuick; Timer { interval: 350; repeat: false; }',
-            card
-        );
-        timer.triggered.connect(function () {
-            card.isManualDismiss = false;
-            timer.destroy();
-        });
-        timer.start();
+        unhighlightTimer.targetCard = card;
+        unhighlightTimer.restart();
     }
 
     function dismiss(card) {
@@ -68,7 +96,8 @@ Item {
         }
 
         if (trackPath.length > 0) {
-            Quickshell.execDetached(["mpv", "--no-video", "--volume=80", trackPath]);
+            var vol = (typeof shell !== "undefined" && shell && shell.settingsManager && shell.settingsManager.notifVolume !== undefined) ? shell.settingsManager.notifVolume : 80;
+            Quickshell.execDetached(["mpv", "--no-video", "--volume=" + vol, trackPath]);
         }
     }
 
@@ -159,6 +188,7 @@ Item {
 
     function speakNotification(notification) {
         if (!notification) return;
+        if (typeof shell !== 'undefined' && shell && shell.settingsManager && !shell.settingsManager.enableTts) return;
 
         let appName = (notification.appName || notification.desktopEntry || "").toLowerCase();
         let rawSummary = notification.summary || "";
@@ -182,7 +212,6 @@ Item {
         let speechText = "";
 
         if (name.length > 0) {
-            // Strictly says "Message from <Name>" (no message body, no room name)
             speechText = "Message from " + name;
         } else if (rawSummary.toLowerCase().includes("urgent") || body.toLowerCase().includes("urgent")) {
             speechText = "Urgent notification";
@@ -247,19 +276,8 @@ Item {
             }
 
             if (targetAction && typeof targetAction.invoke === "function") {
-                let dbusTimer = Qt.createQmlObject(
-                    'import QtQuick; Timer { interval: 120; repeat: false; }',
-                    ipc
-                );
-                dbusTimer.triggered.connect(function() {
-                    try {
-                        if (targetAction && typeof targetAction.invoke === "function") {
-                            targetAction.invoke();
-                        }
-                    } catch (e) {}
-                    dbusTimer.destroy();
-                });
-                dbusTimer.start();
+                actionInvokeTimer.targetAction = targetAction;
+                actionInvokeTimer.restart();
                 return;
             }
         }
@@ -278,15 +296,8 @@ Item {
 
         ipc.activate(visualCard, textSummary, textBody, textAppName);
 
-        let delayedDismissTimer = Qt.createQmlObject(
-            'import QtQuick; Timer { interval: 400; repeat: false; }',
-            ipc
-        );
-        delayedDismissTimer.triggered.connect(function() {
-            ipc.dismiss(visualCard);
-            delayedDismissTimer.destroy();
-        });
-        delayedDismissTimer.start();
+        dismissDelayTimer.targetCard = visualCard;
+        dismissDelayTimer.restart();
     }
 
     IpcHandler {

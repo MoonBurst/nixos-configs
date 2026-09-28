@@ -15,22 +15,16 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
 
-    // Window position properties bound to LayerShell margins
-    property real posX: 100
-    property real posY: 100
-
     anchors {
         top: true
+        bottom: true
         left: true
+        right: true
     }
 
-    // Direct Wayland LayerShell margin position bindings
-    WlrLayershell.margins.left: root.posX
-    WlrLayershell.margins.top: root.posY
-
-    // Exact window bounds so clicks outside pass through to other apps
-    implicitWidth: 580
-    implicitHeight: 840
+    mask: Region {
+        item: diceCard
+    }
 
     color: "transparent"
 
@@ -325,7 +319,11 @@ PanelWindow {
 
     // --- MAIN FLOATING WINDOW RECTANGLE ---
     Rectangle {
-        anchors.fill: parent
+        id: diceCard
+        x: 100
+        y: 100
+        width: 580
+        height: 840
         radius: 16
         color: root.bgBase
         border.width: 3
@@ -349,23 +347,11 @@ PanelWindow {
                     id: headerDrag
                     anchors.fill: parent
                     cursorShape: Qt.SizeAllCursor
-
-                    property real dragOffsetX: 0
-                    property real dragOffsetY: 0
-
-                    onPressed: (mouse) => {
-                        var globalPt = headerDrag.mapToGlobal(mouse.x, mouse.y);
-                        dragOffsetX = globalPt.x - root.posX;
-                        dragOffsetY = globalPt.y - root.posY;
-                    }
-
-                    onPositionChanged: (mouse) => {
-                        if (pressed) {
-                            var globalPt = headerDrag.mapToGlobal(mouse.x, mouse.y);
-                            root.posX = Math.max(0, globalPt.x - dragOffsetX);
-                            root.posY = Math.max(0, globalPt.y - dragOffsetY);
-                        }
-                    }
+                    drag.target: diceCard
+                    drag.minimumX: 0
+                    drag.minimumY: 0
+                    drag.maximumX: root.width - diceCard.width
+                    drag.maximumY: root.height - diceCard.height
                 }
 
                 RowLayout {
@@ -938,7 +924,7 @@ PanelWindow {
                         model: historyModel
 
                         delegate: Rectangle {
-                            width: ListView.view.width
+                            width: ListView.view ? ListView.view.width : 0
                             height: 64
                             radius: 8
                             color: root.bgBase

@@ -8,6 +8,8 @@ Item {
     property string activeRevealedPath: ""
     signal revealReady(string path)
 
+    readonly property string runtimeDir: Quickshell.env("XDG_RUNTIME_DIR") || "/tmp"
+
     function getDateStamp() {
         var d = new Date();
         var yyyy = d.getFullYear();
@@ -22,14 +24,12 @@ Item {
         var ts = ShotState.timestamp();
         var dateStamp = getDateStamp();
 
-        // Parse names and automatically append today's date to each recipient
         var names = rawNames.split(",").map(function(s) {
             var n = s.trim();
             if (n.length === 0) return "";
             return n.includes(dateStamp) ? n : (n + " " + dateStamp);
         }).filter(function(s) { return s.length > 0; });
 
-        // Auto-Pruning: Keeps only the newest 50 screenshots in cache to prevent disk bloat
         var pruneScript = "ls -1t " + ShotState.shQuote(histDir) + "/*.png 2>/dev/null | tail -n +51 | while read -r old; do rm -f \"$old\" \"${old%.png}.json\"; done; ";
         var setupCmd = "mkdir -p " + ShotState.shQuote(baseDir) + " " + ShotState.shQuote(histDir) + "; " + pruneScript;
 
@@ -53,7 +53,7 @@ Item {
                             "\\( +clone -tile mpr:text -draw 'color 0,0 reset' \\) " +
                             "-compose Over -composite -define png:compression-level=1 " + ShotState.shQuote(outPath) + "; " +
                             "cp -f " + ShotState.shQuote(outPath) + " " + ShotState.shQuote(histImg) + "; " +
-                            "echo '{\"name\":\"" + target + "\",\"path\":\"" + histImg + "\"}' > " + ShotState.shQuote(histMeta) + ") & ";
+                            "echo '{\"name\":\"" + safeTarget + "\",\"path\":\"" + histImg + "\"}' > " + ShotState.shQuote(histMeta) + ") & ";
             }
 
             batchCmd += "wait; ";
@@ -79,7 +79,7 @@ Item {
                       "\\( +clone -tile mpr:text -draw 'color 0,0 reset' \\) " +
                       "-compose Over -composite -define png:compression-level=1 " + ShotState.shQuote(rawPath) + "; " +
                       "cp -f " + ShotState.shQuote(rawPath) + " " + ShotState.shQuote(histImg) + "; " +
-                      "echo '{\"name\":\"" + single + "\",\"path\":\"" + histImg + "\"}' > " + ShotState.shQuote(histMeta) + "; ";
+                      "echo '{\"name\":\"" + safeSingle + "\",\"path\":\"" + histImg + "\"}' > " + ShotState.shQuote(histMeta) + "; ";
 
             if (mode === "copy") {
                 cmd += "wl-copy --type image/png < " + ShotState.shQuote(rawPath) + " && notify-send -a Quickshot 'Copied to clipboard' 'Watermark: " + single + "'";
@@ -89,7 +89,6 @@ Item {
 
             Quickshell.execDetached(["sh", "-c", cmd]);
         } else {
-            // Clean un-watermarked screenshot
             var cleanPath = (mode === "save") ? (baseDir + "/quickshot_" + ts + ".png") : rawPath;
             var cleanHistImg = histDir + "/quickshot_" + ts + "_clean.png";
             var cleanHistMeta = histDir + "/quickshot_" + ts + "_clean.json";
@@ -107,7 +106,6 @@ Item {
         }
     }
 
-    // High-Pass Revealer + Automated Optical Leaker OCR
     Process {
         id: revealProc
         property string targetFile: ""
@@ -115,18 +113,20 @@ Item {
             engine.activeRevealedPath = targetFile;
             engine.revealReady(targetFile);
 
+            var unrotPath = engine.runtimeDir + "/test_fingerprints/UNROTATED.png";
             var ocrCmd = [
                 "sh", "-c",
-                "if command -v tesseract >/dev/null 2>&1; then " +
-                "  unrot='/tmp/test_fingerprints/UNROTATED.png'; " +
-                "  magick " + ShotState.shQuote(targetFile) + " -distort ScaleRotateTranslate -30 \"$unrot\"; " +
-                "  leaker=$(tesseract \"$unrot\" stdout --psm 6 2>/dev/null | grep -E -o '[a-zA-Z0-9_\-]{3,}' | head -n 2 | paste -sd ' ' -); " +
-                "  rm -f \"$unrot\"; " +
-                "  if [ -n \"$leaker\" ]; then " +
-                "    printf \"%s\" \"$leaker\" | wl-copy; " +
-                "    notify-send -a Quickshot -u critical '🚨 LEAK IDENTIFIED' \"Leaker: $leaker (Copied to clipboard)\"; " +
-                "  fi; " +
-                "fi"
+                'if command -v tesseract >/dev/null 2>&1; then ' +
+                '  unrot="$1"; ' +
+                '  magick "$2" -distort ScaleRotateTranslate -30 "$unrot"; ' +
+                '  leaker=$(tesseract "$unrot" stdout --psm 6 2>/dev/null | grep -E -o "[a-zA-Z0-9_-]{3,}" | head -n 2 | paste -sd " " -); ' +
+                '  rm -f "$unrot"; ' +
+                '  if [ -n "$leaker" ]; then ' +
+                '    printf "%s" "$leaker" | wl-copy; ' +
+                '    notify-send -a Quickshot -u critical "🚨 LEAK IDENTIFIED" "Leaker: $leaker (Copied to clipboard)"; ' +
+                '  fi; ' +
+                'fi',
+                "sh", unrotPath, targetFile
             ];
             Quickshell.execDetached(ocrCmd);
         }
@@ -134,13 +134,15 @@ Item {
 
     function executeReveal(cropPath) {
         var ts = new Date().getTime();
-        var outPath = "/tmp/test_fingerprints/REVEALED_" + ts + ".png";
+        var printDir = engine.runtimeDir + "/test_fingerprints";
+        var outPath = printDir + "/REVEALED_" + ts + ".png";
         revealProc.targetFile = outPath;
         revealProc.command = [
             "sh", "-c",
-            "mkdir -p /tmp/test_fingerprints; " +
-            "magick " + ShotState.shQuote(cropPath) + " -channel B -separate \\( +clone -blur 0x2 \\) -compose Subtract -composite -auto-level -define png:compression-level=1 " + ShotState.shQuote(outPath) + "; " +
-            "rm -f " + ShotState.shQuote(cropPath)
+            'mkdir -p "$1" && ' +
+            'magick "$2" -channel B -separate \\( +clone -blur 0x2 \\) -compose Subtract -composite -auto-level -define png:compression-level=1 "$3" && ' +
+            'rm -f "$2"',
+            "sh", printDir, cropPath, outPath
         ];
         revealProc.running = true;
     }

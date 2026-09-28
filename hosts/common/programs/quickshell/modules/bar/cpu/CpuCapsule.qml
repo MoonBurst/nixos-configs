@@ -10,10 +10,10 @@ import "../../style"
 Item {
     id: cpuBox
     property var barWindow: null
+    property string moduleName: "cpu"
     property bool pinTooltip: false
     property string searchQuery: ""
 
-    // Theme Fallbacks
     readonly property int themePadding: (shell && shell.theme && typeof shell.theme.globalPadding !== "undefined") ? shell.theme.globalPadding : 12
     readonly property int themeFontSize: (shell && shell.theme && typeof shell.theme.globalFontSize !== "undefined") ? shell.theme.globalFontSize : 14
     readonly property string themeFontFamily: (shell && shell.theme && typeof shell.theme.fontFamily !== "undefined") ? shell.theme.fontFamily : "monospace"
@@ -22,20 +22,14 @@ Item {
     readonly property color themeBase02: (shell && shell.theme && typeof shell.theme.base02 !== "undefined") ? shell.theme.base02 : "#222222"
     readonly property color themeBase05: (shell && shell.theme && typeof shell.theme.base05 !== "undefined") ? shell.theme.base05 : "yellow"
     readonly property color themeBase08: (shell && shell.theme && typeof shell.theme.base08 !== "undefined") ? shell.theme.base08 : "red"
-    readonly property color themeBase0C: (shell && shell.theme && typeof shell.theme.base0C !== "undefined") ? shell.theme.base0C : "green"
-    // =========================================================================
+    readonly property color themeBase0C: (shell && shell.theme && typeof shell.theme.base0C !== "undefined") ? shell.theme.base0C : "#04f100"
 
-    // =========================================================================
-    // EDITABLE TOOLTIP CONFIGURATION
-    // =========================================================================
-    property int tooltipHeight: 420          // Vertical height of the expanded box
-    property int tooltipCollapsedWidth: 150  // Sleek, thin width during the downward unroll
-    property int tooltipExpandedWidth: 440   // Final horizontal width once fully open
-    property int tooltipTopOffset: -2        // Micro-adjust vertical spacing (px)
-    property int tooltipRightOffset: 21      // Micro-adjust horizontal alignment (px)
-    // =========================================================================
+    property int tooltipHeight: 460
+    property int tooltipCollapsedWidth: 150
+    property int tooltipExpandedWidth: 520
+    property int tooltipTopOffset: -2
+    property int tooltipRightOffset: 0
 
-    // Slant configurations
     property string slantLeft: "Right"
     property string slantRight: "Right"
     property int slantWidth: cpuBox.themeSlantWidth
@@ -46,18 +40,15 @@ Item {
     property string textAccumulatorBuffer: ""
     readonly property var processLinesArray: topProcessesText.split("\n").filter(line => line.trim() !== "")
 
-    // Live Filtered Process List
     readonly property var filteredProcessLinesArray: {
         var lines = processLinesArray;
         if (searchQuery.trim() === "") return lines;
         var q = searchQuery.trim().toLowerCase();
-        return lines.filter(function(line) {
-            return line.toLowerCase().indexOf(q) !== -1;
-        });
+        return lines.filter(function(line) { return line.toLowerCase().indexOf(q) !== -1; });
     }
 
-    width: 175
-    Layout.preferredWidth: 175
+    implicitWidth: cpuText.implicitWidth + bg.leftPadding + bg.rightPadding + 20
+    width: implicitWidth
     height: parent ? parent.height : 40
 
     SlantedBox {
@@ -68,14 +59,27 @@ Item {
         slantWidth: cpuBox.slantWidth
     }
 
-    // Metric Data Collector
     Process {
         id: cpuStatsProc
         running: true
-        command: ["sh", "-c", "usage=$(awk '/cpu / {print int(($2+$4)*100/($2+$4+$5))}' /proc/stat); temp=$(awk '{print int($1/1000); exit}' /sys/class/hwmon/hwmon*/temp*_input 2>/dev/null || echo 0); echo \"$usage%:${temp}°C\""]
+        command: [
+            "sh", "-c",
+            'read -r _ u n s i w x y _ < /proc/stat; ' +
+            'busy=$((u + n + s + w + x + y)); total=$((busy + i)); ' +
+            'f="${XDG_RUNTIME_DIR:-/dev/shm}/qs_cpu_last"; pct=0; ' +
+            'if [ -f "$f" ]; then ' +
+            '  read -r pb pt < "$f"; db=$((busy - pb)); dt=$((total - pt)); ' +
+            '  [ "$dt" -gt 0 ] && pct=$(( (db * 100) / dt )); ' +
+            'fi; ' +
+            'echo "$busy $total" > "$f"; ' +
+            'temp=$(awk \'{print int($1/1000); exit}\' /sys/class/hwmon/hwmon*/temp*_input 2>/dev/null || echo 0); ' +
+            'echo "${pct}%:${temp}°C"'
+        ]
         stdout: SplitParser {
+            splitMarker: "\n"
             onRead: data => {
-                var parts = data.trim().split(":");
+                var raw = (data || "").trim();
+                var parts = raw.split(":");
                 if (parts.length === 2) {
                     cpuBox.cpuUsageStr = parts[0];
                     cpuBox.cpuTempStr = parts[1];
@@ -84,7 +88,6 @@ Item {
         }
     }
 
-    // Client Process Scanner (Normalized to total CPU capacity)
     Process {
         id: topProcFetcher
         running: false
@@ -100,7 +103,6 @@ Item {
         }
     }
 
-    // Process Killer Helper
     Process {
         id: killProc
         function killPid(pid) {
@@ -110,7 +112,6 @@ Item {
         }
     }
 
-    // Delayed refresh after killing a process
     Timer {
         id: killRefreshTimer
         interval: 300
@@ -122,14 +123,13 @@ Item {
         }
     }
 
-    // Main Canvas Display Text
     Text {
         id: cpuText
         anchors.fill: parent
-        anchors.leftMargin: bg.leftPadding
-        anchors.rightMargin: bg.rightPadding
-        anchors.topMargin: themePadding
-        anchors.bottomMargin: themePadding
+        anchors.leftMargin: bg.leftPadding + 4
+        anchors.rightMargin: bg.rightPadding + 4
+        anchors.topMargin: 2
+        anchors.bottomMargin: 2
 
         textFormat: Text.RichText
         font.family: themeFontFamily
@@ -137,17 +137,11 @@ Item {
         font.bold: true
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
-
-        fontSizeMode: Text.Fit
-        minimumPixelSize: 8
         elide: Text.ElideRight
+        clip: true
 
-        text: {
-            const greenColor = themeBase0C.toString();
-            const yellowColor = themeBase05.toString();
-            return "<font color='" + greenColor + "'>CPU:</font> " +
-            "<font color='" + yellowColor + "'>" + cpuBox.cpuUsageStr + " " + cpuBox.cpuTempStr + "</font>";
-        }
+        text: "<font color='" + themeBase0C.toString() + "'>CPU:</font> " +
+              "<font color='" + themeBase05.toString() + "'>" + cpuBox.cpuUsageStr + " " + cpuBox.cpuTempStr + "</font>"
     }
 
     HoverHandler {
@@ -161,7 +155,6 @@ Item {
         }
     }
 
-    // Click capsule to pin/unpin tooltip open
     TapHandler {
         onTapped: {
             cpuBox.pinTooltip = !cpuBox.pinTooltip;
@@ -173,7 +166,6 @@ Item {
         }
     }
 
-    // Tooltip Window
     SlantedTooltip {
         id: cpuTooltip
         moduleItem: cpuBox
@@ -181,9 +173,7 @@ Item {
         tooltipActive: cpuHoverTracker.hovered
         pin: cpuBox.pinTooltip
 
-        // Request keyboard input from Wayland compositor when search is focused/active
-        WlrLayershell.keyboardFocus: (cpuBox.pinTooltip || searchInput.activeFocus) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
-
+        keyboardFocus: (cpuBox.pinTooltip || searchInput.activeFocus) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
         readonly property bool isHovered: tooltipHoverTracker.hovered
 
         tooltipHeight: cpuBox.tooltipHeight
@@ -191,15 +181,12 @@ Item {
         expandedCoreWidth: cpuBox.tooltipExpandedWidth
         topOffset: cpuBox.tooltipTopOffset
         rightOffset: cpuBox.tooltipRightOffset
-
         slantLeft: cpuBox.slantLeft
         slantRight: cpuBox.slantRight
 
         Item {
             anchors.fill: parent
-            HoverHandler {
-                id: tooltipHoverTracker
-            }
+            HoverHandler { id: tooltipHoverTracker }
         }
 
         Text {
@@ -212,7 +199,6 @@ Item {
             x: cpuTooltip.slantX(y) + 20
         }
 
-        // Full-width Slanted Search/Filter Field
         Item {
             id: searchContainer
             y: 50
@@ -240,13 +226,23 @@ Item {
                 selectByMouse: true
                 focus: true
                 activeFocusOnPress: true
-
                 onTextChanged: cpuBox.searchQuery = text
+
+                Keys.onPressed: (event) => {
+                    if (event.key === Qt.Key_Escape) {
+                        if (searchInput.text !== "") {
+                            searchInput.text = "";
+                        } else {
+                            cpuBox.pinTooltip = false;
+                        }
+                        event.accepted = true;
+                    }
+                }
 
                 Text {
                     anchors.fill: parent
                     verticalAlignment: Text.AlignVCenter
-                    text: "Search/Filter processes..."
+                    text: "Search/Filter processes... [Esc to close]"
                     color: cpuBox.themeBase05
                     opacity: 0.4
                     font.family: "monospace"
@@ -256,19 +252,11 @@ Item {
             }
         }
 
-        Rectangle {
-            height: 2
-            color: themeBase02
-            width: 345
-            y: 86
-            x: cpuTooltip.slantX(y) + 20
-        }
-
         Repeater {
             model: cpuBox.filteredProcessLinesArray.length
             delegate: Item {
                 id: processRow
-                readonly property string rawLine: cpuBox.filteredProcessLinesArray[index]
+                readonly property string rawLine: (index < cpuBox.filteredProcessLinesArray.length) ? cpuBox.filteredProcessLinesArray[index] : ""
                 readonly property var parts: rawLine.split("|")
                 readonly property string pid: parts.length > 1 ? parts[0] : ""
                 readonly property string displayText: parts.length > 1 ? parts[1] : rawLine
@@ -278,28 +266,20 @@ Item {
                 width: 345
                 height: 22
 
-                HoverHandler {
-                    id: rowHoverTracker
-                }
+                HoverHandler { id: rowHoverTracker }
 
-                // Slanted Hover Box around entire process row
                 SlantedBox {
                     anchors.fill: parent
-                    anchors.topMargin: -2
-                    anchors.bottomMargin: -2
-                    anchors.leftMargin: -4
-                    anchors.rightMargin: -2
-                    slantLeft: cpuBox.slantLeft
-                    slantRight: cpuBox.slantRight
+                    anchors.topMargin: -2; anchors.bottomMargin: -2
+                    anchors.leftMargin: -4; anchors.rightMargin: -2
+                    slantLeft: cpuBox.slantLeft; slantRight: cpuBox.slantRight
                     slantWidth: 12
                     visible: rowHoverTracker.hovered
                 }
 
                 Text {
-                    anchors.left: parent.left
-                    anchors.leftMargin: 6
-                    anchors.right: killBtn.left
-                    anchors.rightMargin: 8
+                    anchors.left: parent.left; anchors.leftMargin: 6
+                    anchors.right: killBtn.left; anchors.rightMargin: 8
                     anchors.verticalCenter: parent.verticalCenter
                     text: processRow.displayText
                     font.family: "monospace"
@@ -308,7 +288,6 @@ Item {
                     elide: Text.ElideRight
                 }
 
-                // Slanted Kill Process Button
                 Item {
                     id: killBtn
                     anchors.right: parent.right
@@ -319,23 +298,19 @@ Item {
 
                     SlantedBox {
                         anchors.fill: parent
-                        slantLeft: cpuBox.slantLeft
-                        slantRight: cpuBox.slantRight
+                        slantLeft: cpuBox.slantLeft; slantRight: cpuBox.slantRight
                         slantWidth: 12
                     }
 
                     Text {
                         anchors.centerIn: parent
                         text: "✕"
-                        color: killBtnHover.hovered ? cpuBox.themeBase08 : cpuBox.themeBase08
+                        color: cpuBox.themeBase08
                         font.pixelSize: 11
                         font.bold: true
                     }
 
-                    HoverHandler {
-                        id: killBtnHover
-                    }
-
+                    HoverHandler { id: killBtnHover }
                     TapHandler {
                         onTapped: {
                             if (processRow.pid !== "") {
@@ -350,7 +325,7 @@ Item {
     }
 
     Timer {
-        interval: 2000; running: true; repeat: true; triggeredOnStart: true
+        interval: (shell && shell.settingsManager && shell.settingsManager.hardwarePollInterval > 0) ? shell.settingsManager.hardwarePollInterval : 2000; running: true; repeat: true; triggeredOnStart: true
         onTriggered: {
             cpuStatsProc.running = false;
             cpuStatsProc.running = true;

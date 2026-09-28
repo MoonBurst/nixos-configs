@@ -56,7 +56,7 @@ in
   ];
 
   # --- Desktop Entry for Launcher ---
-xdg.desktopEntries = {
+  xdg.desktopEntries = {
     horizon = {
       name = "Horizon";
       genericName = "Horizon Launcher";
@@ -65,7 +65,7 @@ xdg.desktopEntries = {
       terminal = false;
       categories = [ "Game" ];
     };
-  };
+
     matrix-brave = {
       name = "Matrix (Brave)";
       genericName = "Matrix Client";

@@ -110,6 +110,8 @@ Item {
             });
 
             while (historyNotificationsModel.count > 50) {
+                let lastItem = historyNotificationsModel.get(historyNotificationsModel.count - 1);
+                if (lastItem && lastItem.notifId) delete liveNotificationsMap[lastItem.notifId];
                 historyNotificationsModel.remove(historyNotificationsModel.count - 1);
             }
         }
@@ -406,7 +408,8 @@ Item {
                             // Bypasses sandbox blocks and supports full query parameters on output
                             asyncScraper.command = [
                                 "bash", "-c",
-                                "curl -s -L -A 'Mozilla/5.0' '" + cleanUrl + "' | grep -o -E 'https?://[a-zA-Z0-9./_~%-]+\\.(gif|png|jpg|jpeg|webp)[a-zA-Z0-9./?=&%_-]*' | grep -i -v -E 'avatar|profile|icon|logo' | head -n 1"
+                                'curl -s -L --max-time 3 -A "Mozilla/5.0" "$1" | grep -o -E "https?://[a-zA-Z0-9./_~%-]+\\.(gif|png|jpg|jpeg|webp)[a-zA-Z0-9./?=&%_-]*" | grep -i -v -E "avatar|profile|icon|logo" | head -n 1',
+                                "bash", cleanUrl
                             ];
                             asyncScraper.running = true;
                         }

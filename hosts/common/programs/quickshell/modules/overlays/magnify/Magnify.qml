@@ -11,7 +11,7 @@ ShellRoot {
     QtObject {
         id: rootState
         property bool active: false
-        property real zoomFactor: 8.0
+        property real zoomFactor: (typeof shell !== "undefined" && shell && shell.settingsManager) ? shell.settingsManager.magnifierDefaultZoom : 8.0
 
         function handleCommand(cmd) {
             var cleanCmd = cmd.toString().trim();
@@ -118,8 +118,8 @@ ShellRoot {
             // Magnifier Box Container
             Item {
                 id: magnifier
-                width: 300
-                height: 300
+                width: (typeof shell !== 'undefined' && shell && shell.settingsManager) ? shell.settingsManager.magnifierLensSize : 300
+                height: width
                 x: mouseArea.mouseX - width / 2
                 y: mouseArea.mouseY - height / 2
                 visible: shot.hasContent && mouseArea.containsMouse
