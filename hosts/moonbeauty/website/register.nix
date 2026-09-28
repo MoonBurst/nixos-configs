@@ -213,7 +213,8 @@ HTML_PAGE = """<!DOCTYPE html>
       btn.textContent = "Creating accounts...";
 
       try {
-        const res = await fetch("/api/register", {
+        const endpoint = window.location.pathname.startsWith("/register") ? "/register/api" : "/api/register";
+        const res = await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ username, password, token })
@@ -258,7 +259,9 @@ class RegisterHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
     def do_POST(self):
-        if self.path != "/api/register":
+        # Accept any register API path
+        valid_paths = ["/api/register", "/register/api", "/register/api/register", "/api"]
+        if not any(self.path.startswith(p) for p in valid_paths):
             self.send_response(404)
             self.end_headers()
             return
@@ -332,8 +335,8 @@ class RegisterHandler(BaseHTTPRequestHandler):
                         }
                     )
                     urllib.request.urlopen(abs_req)
-                except Exception as abs_err:
-                    pass  # User already exists or non-fatal
+                except Exception:
+                    pass
 
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -384,7 +387,8 @@ in
     };
   };
 
-  services.nginx.virtualHosts."moonburst.net".locations."/register" = {
+  # Proxy /register and /api/register to the registration server
+  services.nginx.virtualHosts."moonburst.net".locations."~* ^/(register|api/register)" = {
     proxyPass = "http://127.0.0.1:${toString registerPort}";
     proxyWebsockets = true;
   };
