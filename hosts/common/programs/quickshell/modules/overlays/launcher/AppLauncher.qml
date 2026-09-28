@@ -6,8 +6,6 @@ Item {
     id: root
 
     property string currentQuery: ""
-    property string pendingQuery: ""
-
     property var allApps: []
     property var knownExecs: ({})
     property var pendingApps: []
@@ -18,61 +16,70 @@ Item {
         id: filteredAppsModel
     }
 
-    Timer {
-        id: filterTimer
-
-        interval: 40
-        repeat: false
-
-        onTriggered: {
-            refreshFilter(pendingQuery)
-        }
-    }
-
     function loadApps() {
         allApps = []
         pendingApps = []
         knownExecs = ({})
-
         filteredAppsModel.clear()
-
         appLoader.running = true
     }
 
-    function queueFilter(query) {
-        pendingQuery = query || ""
-        filterTimer.restart()
+    function fuzzyMatch(needle, haystack) {
+        var nlen = needle.length;
+        var hlen = haystack.length;
+        if (nlen > hlen) return false;
+        if (nlen === hlen) return needle === haystack;
+        var nIdx = 0;
+        var hIdx = 0;
+        while (nIdx < nlen && hIdx < hlen) {
+            if (needle.charCodeAt(nIdx) === haystack.charCodeAt(hIdx)) {
+                nIdx++;
+            }
+            hIdx++;
+        }
+        return nIdx === nlen;
     }
 
     function refreshFilter(query) {
         currentQuery = query || ""
-
         const q = currentQuery.toLowerCase().trim()
-        const showAll = q.length === 0
-
         filteredAppsModel.clear()
 
+        if (q.length === 0) {
+            for (let i = 0, c = allApps.length; i < c; ++i) {
+                filteredAppsModel.append(allApps[i])
+            }
+            return;
+        }
+
+        var matches = []
         for (let i = 0, c = allApps.length; i < c; ++i) {
             const app = allApps[i]
+            let score = 0
+            const name = app.searchName
+            const exec = app.searchExec
 
-            if (
-                showAll ||
-                app.searchName.includes(q) ||
-                app.searchExec.includes(q)
-            ) {
-                filteredAppsModel.append(app)
+            if (name === q) score = 100;
+            else if (name.startsWith(q)) score = 80;
+            else if (name.includes(q)) score = 60;
+            else if (exec.includes(q)) score = 40;
+            else if (root.fuzzyMatch(q, name)) score = 20;
+
+            if (score > 0) {
+                matches.push({ app: app, score: score })
             }
+        }
+
+        matches.sort((a, b) => b.score - a.score)
+
+        for (let j = 0; j < matches.length; ++j) {
+            filteredAppsModel.append(matches[j].app)
         }
     }
 
     function launch(command) {
-        if (!command) {
-            return
-        }
-
+        if (!command) return;
         launcher.running = false
-
-        // Detach process into independent systemd scope or delegate to Sway
         launcher.command = [
             "sh",
             "-c",
@@ -86,42 +93,32 @@ Item {
             "launcher-exec",
             command
         ]
-
         launcher.running = true
     }
 
     function addApp(name, exec, icon) {
-        if (!name || !exec) {
-            return
-        }
-
+        if (!name || !exec) return;
         const key = exec.toLowerCase()
-
-        if (knownExecs[key]) {
-            return
-        }
-
+        if (knownExecs[key]) return;
         knownExecs[key] = true
 
-        // If the desktop entry points to the mismatching icon string, translate it to what's on disk
         let finalIcon = (icon === "horizon-electron") ? "fchat-horizon" : icon
-
         if (finalIcon.startsWith("/")) {
             finalIcon = "file://" + finalIcon
         }
 
         pendingApps.push({
-            name,
-            exec,
+            name: name,
+            exec: exec,
             icon: finalIcon,
             searchName: name.toLowerCase(),
-                         searchExec: exec.toLowerCase()
+            searchExec: exec.toLowerCase()
         })
     }
 
     function flushApps() {
         allApps = pendingApps
-        refreshFilter("")
+        refreshFilter(currentQuery)
     }
 
     Process {
@@ -227,8 +224,8 @@ Item {
 
                     addApp(
                         line.slice(0, first),
-                           line.slice(first + 1, second),
-                           line.slice(second + 1)
+                        line.slice(first + 1, second),
+                        line.slice(second + 1)
                     )
                 }
             }

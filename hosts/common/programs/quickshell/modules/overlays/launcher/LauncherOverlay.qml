@@ -50,7 +50,7 @@ Rectangle {
 
     Timer {
         id: searchDebounceTimer
-        interval: 80
+        interval: 35
         repeat: false
         property string pendingText: ""
         onTriggered: {
@@ -351,9 +351,12 @@ Rectangle {
                 }
 
                 onTextChanged: {
-                    if (launcherRoot.mode === "") return;
-                    searchDebounceTimer.pendingText = text
-                    searchDebounceTimer.restart()
+                    if (launcherRoot.mode === "" && text !== "") launcherRoot.mode = "apps";
+                    if (launcherRoot.mode === "apps" || launcherRoot.mode === "") {
+                        ctrl.appLauncher.refreshFilter(text);
+                    }
+                    searchDebounceTimer.pendingText = text;
+                    searchDebounceTimer.restart();
                 }
 
                 Keys.onDownPressed: launcherRoot.navigateActiveList(false)

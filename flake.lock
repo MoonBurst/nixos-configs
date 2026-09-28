@@ -188,11 +188,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1790451069,
-        "narHash": "sha256-IoppxyT3E1k4I3pVCF3SBCuVsUmZcbFZ7U1P1/6gdTU=",
+        "lastModified": 1790539042,
+        "narHash": "sha256-QX5Z/FGc0vBjOI7/+PqdbLt5iS/eiBBHAZ8pHRyH62M=",
         "owner": "Hy4Ri",
         "repo": "fluxer-flake",
-        "rev": "0495fbb29edd72cc8070bdb9ff11a2a8d8153fb7",
+        "rev": "acb52e4a49842128c3f302cfbdf3d255daa0067f",
         "type": "github"
       },
       "original": {
@@ -426,11 +426,11 @@
         "nixpkgs": "nixpkgs_5"
       },
       "locked": {
-        "lastModified": 1790512223,
-        "narHash": "sha256-8KAHWSn1wjDXBXLyhKDEehT3fu5EQaQ7rpBulGc8q1A=",
+        "lastModified": 1790587265,
+        "narHash": "sha256-t6XTPpcJG2Sew+reacwry75fsgS24PSXbdrDKhJxvUc=",
         "owner": "nix-community",
         "repo": "NUR",
-        "rev": "485bd5cb12128bcd203717d3b8fd13dedc3e399b",
+        "rev": "cdb7478acbc2c47aafe75f92222c0240593fe1c8",
         "type": "github"
       },
       "original": {
