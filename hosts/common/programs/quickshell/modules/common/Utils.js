@@ -95,9 +95,21 @@ const unitTables = {
     },
     volume: {
         base: "l",
-        names: { "ml": "Milliliter", "l": "Liter", "cup": "US Cup", "pint": "US Pint", "qt": "US Quart", "gal": "US Gallon" },
-        rates: { "ml": 0.001, "l": 1.0, "cup": 0.236588, "pint": 0.473176, "qt": 0.946353, "gal": 3.78541 },
-        aliases: { "liter": "l", "liters": "l", "cups": "cup", "pints": "pint", "gallon": "gal", "gallons": "gal" }
+        names: { "ml": "Milliliter", "l": "Liter", "floz": "Fluid Ounce", "tsp": "Teaspoon", "tbsp": "Tablespoon", "cup": "US Cup", "pint": "US Pint", "qt": "US Quart", "gal": "US Gallon" },
+        rates: { "ml": 0.001, "l": 1.0, "floz": 0.0295735, "tsp": 0.00492892, "tbsp": 0.0147868, "cup": 0.236588, "pint": 0.473176, "qt": 0.946353, "gal": 3.78541 },
+        aliases: { "fl oz": "floz", "fluid ounce": "floz", "fluid ounces": "floz", "fl.oz": "floz", "oz fl": "floz", "liter": "l", "liters": "l", "teaspoon": "tsp", "teaspoons": "tsp", "tablespoon": "tbsp", "tablespoons": "tbsp", "cups": "cup", "pints": "pint", "gallon": "gal", "gallons": "gal" }
+    },
+    pressure: {
+        base: "bar",
+        names: { "psi": "Pound/sq inch", "bar": "Bar", "kpa": "Kilopascal", "atm": "Atmosphere" },
+        rates: { "psi": 0.0689476, "bar": 1.0, "kpa": 0.01, "atm": 1.01325 },
+        aliases: { "pounds per square inch": "psi", "bars": "bar", "kilopascal": "kpa" }
+    },
+    power: {
+        base: "kw",
+        names: { "w": "Watt", "kw": "Kilowatt", "hp": "Horsepower" },
+        rates: { "w": 0.001, "kw": 1.0, "hp": 0.7457 },
+        aliases: { "watt": "w", "watts": "w", "kilowatt": "kw", "kilowatts": "kw", "horsepower": "hp" }
     },
     speed: {
         base: "m/s",

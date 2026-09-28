@@ -35,6 +35,12 @@ ShellRoot {
     Theme {
         id: globalTheme
     }
+    // Automatic /tmp RAM-disk cache maintenance (prevents lingering stale images)
+    Process {
+        running: true
+        command: ["sh", "-c", "rm -f /tmp/qs_avatar_notif_*.png /tmp/quickshot_crop_*.png /tmp/qs_dict*.json 2>/dev/null || true"]
+    }
+
 
     Settings.SettingsManager {
         id: settingsManagerInstance

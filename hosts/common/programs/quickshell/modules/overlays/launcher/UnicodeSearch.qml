@@ -1,3 +1,4 @@
+import "../../common/Utils.js" as Utils
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -101,12 +102,9 @@ Item {
         filteredUnicodeItems =
         searchableUnicodeItems.filter(
             function(item) {
-
-                return (
-                    item.searchName.includes(q)
-                ) || (
-                    item.symbol.includes(q)
-                )
+                return item.symbol.includes(q) ||
+                       item.searchName.includes(q) ||
+                       Utils.fuzzyMatch(q, item.searchName);
             }
         )
 
