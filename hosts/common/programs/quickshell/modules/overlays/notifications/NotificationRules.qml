@@ -58,24 +58,14 @@ Item {
         return profile ? profile.color : shell.theme.base0D;
     }
 
-    /*
-     * Extracts Quickshell's native 'image' or 'icon' ImageSource object values as-is.
-     * This passes the active layout memory blocks straight to QML without string decoration crashes.
-     */
+
     function getCustomIcon(notification) {
         if (!notification) return "";
 
-        // FIXED LIFECYCLE MANAGEMENT: Check both fields independently to ensure accurate targets
         let nameString = notification.appName ? notification.appName.toLowerCase() : "";
         let iconString = notification.appIcon ? notification.appIcon.toLowerCase() : "";
 
-        if (nameString.includes("satty") || iconString.includes("satty")) {
-            let oldSatty = activeAppCardRegistry["satty"];
-            if (oldSatty !== undefined && oldSatty !== null && typeof oldSatty.destroy === "function") {
-                oldSatty.destroy();
-            }
-            activeAppCardRegistry["satty"] = null;
-        }
+
 
         if (nameString.includes("microphone") || iconString.includes("microphone")) {
             let oldMic = activeAppCardRegistry["microphone"];

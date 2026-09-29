@@ -35,7 +35,7 @@ PanelWindow {
     readonly property bool isOwner: ShotState.activeScreen === modelData.name
     readonly property bool showChrome: ready && !exporting && (creating || hasSelection)
     readonly property real captureScale: shot.sourceSize.width > 0
-        ? shot.sourceSize.width / Math.max(1, width) : 1
+    ? shot.sourceSize.width / Math.max(1, width) : 1
 
     property string _mode: ""
 
@@ -45,7 +45,6 @@ PanelWindow {
         onRevealReady: function(outPath) {
             liveRevealOverlay.source = "file://" + outPath;
             liveRevealOverlay.visible = true;
-            root.notify("🔍 REVEAL COMPLETE", "Revealed directly inside your selection box.", false);
         }
     }
 
@@ -430,8 +429,8 @@ PanelWindow {
         exportWatchdog.stop();
         if (!result) { abortExport(); return; }
         var path = (mode === "copy") ? ShotState.clipPath()
-                 : (mode === "save") ? ShotState.savePath()
-                 : (mode === "ocr") ? "/tmp/quickshot-ocr.png" : "/tmp/quickshot-selftest.png";
+        : (mode === "save") ? ShotState.savePath()
+        : (mode === "ocr") ? "/tmp/quickshot-ocr.png" : "/tmp/quickshot-selftest.png";
 
         var ok = result.saveToFile(path);
         if (ok && (mode === "copy" || mode === "save")) {

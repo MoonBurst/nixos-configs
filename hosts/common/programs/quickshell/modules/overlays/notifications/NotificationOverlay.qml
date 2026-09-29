@@ -402,9 +402,7 @@ Item {
                 popupCard.originalNotification = notification;
 
                 let appName = (notification.desktopEntry || notification.appName || "").toLowerCase();
-                if (appName.includes("satty") && rulesLoader) {
-                    rulesLoader.activeAppCardRegistry["satty"] = popupCard;
-                } else if ((appName.includes("microphone") || appName.includes("mic")) && rulesLoader) {
+                if ((appName.includes("microphone") || appName.includes("mic")) && rulesLoader) {
                     rulesLoader.activeAppCardRegistry["microphone"] = popupCard;
                 }
             }

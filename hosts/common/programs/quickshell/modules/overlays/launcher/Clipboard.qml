@@ -247,32 +247,98 @@ Item {
         id: clipboardLoader
         command: [
             "python3", "-c",
-            "import os, glob, json, subprocess\n" +
+            "import os, glob, json, subprocess, sqlite3, time, shutil, datetime\n" +
             "items = []\n" +
+            "\n" +
+            "# --- Quickshot images: parse timestamp from the JSON filename ---\n" +
             "hist = os.path.expanduser('~/.cache/quickshot_history')\n" +
             "if os.path.isdir(hist):\n" +
-            "    files = sorted(glob.glob(os.path.join(hist, '*.json')), key=os.path.getmtime, reverse=True)[:30]\n" +
-            "    for f in files:\n" +
+            "    for f in glob.glob(os.path.join(hist, '*.json')):\n" +
             "        img = f[:-5] + '.png'\n" +
-            "        if os.path.exists(img):\n" +
+            "        if not os.path.exists(img):\n" +
+            "            continue\n" +
+            "        try:\n" +
+            "            with open(f) as jf:\n" +
+            "                name = json.load(jf).get('name', '')\n" +
+            "            base = os.path.basename(f)\n" +
+            "            parts = base.split('_')\n" +
+            "            ts = 0\n" +
+            "            if len(parts) >= 3 and len(parts[1]) == 8 and len(parts[2]) >= 6:\n" +
+            "                dt = datetime.datetime.strptime(parts[1] + '_' + parts[2][:6], '%Y%m%d_%H%M%S')\n" +
+            "                ts = dt.timestamp()\n" +
+            "            items.append({'id': img, 'text': '[Image: ' + name + ']', 'searchText': name.lower(), 'isImage': True, 'imagePath': img, '_ts': ts})\n" +
+            "        except Exception:\n" +
+            "            pass\n" +
+            "\n" +
+            "# --- Cliphist text: read the SQLite DB directly for real timestamps ---\n" +
+            "db_paths = []\n" +
+            "env_db = os.environ.get('CLIPHIST_DB_PATH')\n" +
+            "if env_db:\n" +
+            "    db_paths.append(os.path.join(env_db, 'db'))\n" +
+            "    db_paths.append(env_db)\n" +
+            "xdg_cache = os.environ.get('XDG_CACHE_HOME', os.path.expanduser('~/.cache'))\n" +
+            "db_paths.append(os.path.join(xdg_cache, 'cliphist', 'db'))\n" +
+            "\n" +
+            "cliphist_rows = []\n" +
+            "used_db = False\n" +
+            "for db in db_paths:\n" +
+            "    if not os.path.isfile(db):\n" +
+            "        continue\n" +
+            "    try:\n" +
+            "        conn = sqlite3.connect('file:' + db + '?mode=ro', uri=True)\n" +
+            "        cur = conn.cursor()\n" +
+            "        try:\n" +
+            "            cur.execute('SELECT id, created_at, raw FROM history ORDER BY created_at DESC LIMIT 300')\n" +
+            "            for row in cur.fetchall():\n" +
+            "                cliphist_rows.append((row[0], row[1], row[2]))\n" +
+            "        except sqlite3.OperationalError:\n" +
             "            try:\n" +
-            "                with open(f) as jf:\n" +
-            "                    name = json.load(jf).get('name', '')\n" +
-            "                    items.append({'id': img, 'text': '[Image: ' + name + ']', 'searchText': name.lower(), 'isImage': True, 'imagePath': img})\n" +
-            "            except Exception: pass\n" +
-            "try:\n" +
-            "    p = subprocess.Popen(['cliphist', 'list'], stdout=subprocess.PIPE, text=True, errors='ignore')\n" +
-            "    count = 0\n" +
-            "    for line in p.stdout:\n" +
-            "        line = line.rstrip('\\n')\n" +
-            "        parts = line.split('\\t', 1)\n" +
-            "        if len(parts) == 2 and 'binary data' not in parts[1] and '[Image' not in parts[1]:\n" +
-            "            items.append({'id': parts[0].strip(), 'text': parts[1], 'searchText': parts[1].lower(), 'isImage': False, 'imagePath': ''})\n" +
-            "            count += 1\n" +
-            "            if count >= 200: break\n" +
-            "    p.stdout.close()\n" +
-            "    p.wait()\n" +
-            "except Exception: pass\n" +
+            "                cur.execute('SELECT id, created_at, value FROM history ORDER BY created_at DESC LIMIT 300')\n" +
+            "                for row in cur.fetchall():\n" +
+            "                    cliphist_rows.append((row[0], row[1], row[2]))\n" +
+            "            except Exception:\n" +
+            "                cliphist_rows = []\n" +
+            "        conn.close()\n" +
+            "        if cliphist_rows:\n" +
+            "            used_db = True\n" +
+            "            break\n" +
+            "    except Exception:\n" +
+            "        continue\n" +
+            "\n" +
+            "if used_db:\n" +
+            "    for cid, created, raw in cliphist_rows:\n" +
+            "        try:\n" +
+            "            if isinstance(raw, bytes):\n" +
+            "                text = raw.decode('utf-8', errors='ignore')\n" +
+            "            else:\n" +
+            "                text = str(raw)\n" +
+            "        except Exception:\n" +
+            "            continue\n" +
+            "        if 'binary data' in text or '[Image' in text or not text.strip():\n" +
+            "            continue\n" +
+            "        ts = created / 1000.0 if created > 1e12 else float(created)\n" +
+            "        items.append({'id': str(cid), 'text': text, 'searchText': text.lower(), 'isImage': False, 'imagePath': '', '_ts': ts})\n" +
+            "else:\n" +
+            "    try:\n" +
+            "        p = subprocess.Popen(['cliphist', 'list'], stdout=subprocess.PIPE, text=True, errors='ignore')\n" +
+            "        count = 0\n" +
+            "        for line in p.stdout:\n" +
+            "            line = line.rstrip('\\n')\n" +
+            "            parts = line.split('\\t', 1)\n" +
+            "            if len(parts) == 2 and 'binary data' not in parts[1] and '[Image' not in parts[1]:\n" +
+            "                items.append({'id': parts[0].strip(), 'text': parts[1], 'searchText': parts[1].lower(), 'isImage': False, 'imagePath': '', '_ts': 0})\n" +
+            "                count += 1\n" +
+            "                if count >= 200:\n" +
+            "                    break\n" +
+            "        p.stdout.close()\n" +
+            "        p.wait()\n" +
+            "    except Exception:\n" +
+            "        pass\n" +
+            "\n" +
+            "items.sort(key=lambda it: it['_ts'], reverse=True)\n" +
+            "for it in items:\n" +
+            "    del it['_ts']\n" +
+            "\n" +
             "print(json.dumps(items))\n"
         ]
 
