@@ -25,6 +25,7 @@ Item {
     SlantedBox {
         id: bg
         anchors.fill: parent
+        containmentMask: bg
         slantLeft: micBox.slantLeft
         slantRight: micBox.slantRight
         slantWidth: micBox.slantWidth
@@ -43,14 +44,25 @@ Item {
                 var isMuted = raw.indexOf("[MUTED]") !== -1;
                 micBox.muted = isMuted;
                 var mNum = "0%";
+                var volVal = 0;
                 if (!isMuted) {
                     var mMatch = raw.match(/[0-9.]+/);
-                    if (mMatch) mNum = Math.round(parseFloat(mMatch[0]) * 100) + "%";
+                    if (mMatch) {
+                        volVal = Math.round(parseFloat(mMatch[0]) * 100);
+                        mNum = volVal + "%";
+                    }
                 } else {
                     mNum = "MUTED";
+                    var mMatch2 = raw.match(/[0-9.]+/);
+                    if (mMatch2) volVal = Math.round(parseFloat(mMatch2[0]) * 100);
                 }
                 var statusColor = isMuted ? micBox.themeBase08.toString() : micBox.themeBase05.toString();
                 micBox.micDisplayText = "<font color='" + micBox.themeBase0C + "'>Mic:</font> <font color='" + statusColor + "'>" + mNum + "</font>";
+
+                // Bidirectional real-time sync with SettingsManager
+                if (shell && shell.settingsManager) {
+                    shell.settingsManager.updateMicFromSystem(isMuted, volVal);
+                }
             }
         }
     }

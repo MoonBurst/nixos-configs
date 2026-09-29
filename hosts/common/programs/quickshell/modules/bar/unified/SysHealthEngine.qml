@@ -18,40 +18,49 @@ Item {
     property int gitUncommitted: 0
     property int flakeAgeDays: 0
 
-    // Fast Poller (10s): Failed Services & Disk Space
     Timer {
         interval: 10000; running: true; repeat: true; triggeredOnStart: true
         onTriggered: fastHealthProc.running = true
     }
 
-    // Slow Poller (30s): Git status, Nix generations, Flake age & Kernel updates
     Timer {
         interval: 30000; running: true; repeat: true; triggeredOnStart: true
         onTriggered: slowHealthProc.running = true
     }
 
+    // Pure POSIX: No jq required
     Process {
         id: fastHealthProc
         command: [
-            "/run/current-system/sw/bin/bash", "-c",
-            "SYS_FAILED=$(systemctl --failed --plain --no-legend 2>/dev/null | awk '{print $1}' | grep -v 'sync-backup-to-nextcloud'); " +
-            "USER_FAILED=$(systemctl --user --failed --plain --no-legend 2>/dev/null | sed 's/^/user:/'); " +
-            "ALL_FAILED=$(echo -e \"$SYS_FAILED\\n$USER_FAILED\" | jq -R -s -c 'split(\"\\n\") | map(select(length > 0))'); " +
+            "bash", "-c",
+            "SYS_FAILED=$(systemctl --failed --plain --no-legend 2>/dev/null | awk '{print $1}' | grep -v 'sync-backup-to-nextcloud' | tr '\\n' ' '); " +
+            "USER_FAILED=$(systemctl --user --failed --plain --no-legend 2>/dev/null | awk '{print \"user:\" $1}' | tr '\\n' ' '); " +
             "ROOT_USAGE=$(df --output=pcent / 2>/dev/null | tail -n 1 | tr -dc '0-9'); " +
             "BACKUP_USAGE=$(df --output=pcent /mnt/main_backup 2>/dev/null | tail -n 1 | tr -dc '0-9'); " +
-            "[ -z \"$ROOT_USAGE\" ] && ROOT_USAGE=0; [ -z \"$BACKUP_USAGE\" ] && BACKUP_USAGE=0; " +
-            "echo '{\"failed\": '$ALL_FAILED', \"root_pcent\": '$ROOT_USAGE', \"backup_pcent\": '$BACKUP_USAGE'}'"
+            "echo \"FAILED:${SYS_FAILED}${USER_FAILED}::ROOT:${ROOT_USAGE:-0}::BACKUP:${BACKUP_USAGE:-0}\""
         ]
         stdout: SplitParser {
             onRead: data => {
-                try {
-                    const h = JSON.parse(data.trim());
-                    sysHealth.failedUnits = h.failed || [];
-                    sysHealth.failedCount = sysHealth.failedUnits.length;
-                    sysHealth.diskRootPercent = h.root_pcent || 0;
-                    sysHealth.diskBackupPercent = h.backup_pcent || 0;
-                    sysHealth.diskWarning = (sysHealth.diskRootPercent >= 90 || sysHealth.diskBackupPercent >= 90);
-                } catch (e) {}
+                var parts = data.trim().split("::");
+                var failedList = [];
+                var rootP = 0;
+                var backupP = 0;
+                for (var i = 0; i < parts.length; i++) {
+                    var p = parts[i];
+                    if (p.startsWith("FAILED:")) {
+                        var fStr = p.substring(7).trim();
+                        if (fStr) failedList = fStr.split(/\s+/).filter(x => x.length > 0);
+                    } else if (p.startsWith("ROOT:")) {
+                        rootP = parseInt(p.substring(5)) || 0;
+                    } else if (p.startsWith("BACKUP:")) {
+                        backupP = parseInt(p.substring(7)) || 0;
+                    }
+                }
+                sysHealth.failedUnits = failedList;
+                sysHealth.failedCount = failedList.length;
+                sysHealth.diskRootPercent = rootP;
+                sysHealth.diskBackupPercent = backupP;
+                sysHealth.diskWarning = (rootP >= 90 || backupP >= 90);
             }
         }
     }
@@ -59,13 +68,16 @@ Item {
     Process {
         id: slowHealthProc
         command: [
-            "/run/current-system/sw/bin/bash", "-c",
-            "GEN_COUNT=$(find /nix/var/nix/profiles/ -maxdepth 1 -name 'system-*-link' 2>/dev/null | wc -l); " +
-            "[ \"$GEN_COUNT\" -eq 0 ] && GEN_COUNT=$(nix-env --list-generations -p /nix/var/nix/profiles/system 2>/dev/null | wc -l); " +
-            "CUR_KERNEL=$(uname -r); SYS_KERNEL=$(ls /run/current-system/kernel-modules/lib/modules 2>/dev/null | head -n 1); " +
+            "bash", "-c",
+            "GEN_COUNT=0; " +
+            "[ -d /nix/var/nix/profiles ] && GEN_COUNT=$(find /nix/var/nix/profiles/ -maxdepth 1 -name 'system-*-link' 2>/dev/null | wc -l); " +
+            "[ \"$GEN_COUNT\" -eq 0 ] && command -v nix-env >/dev/null && GEN_COUNT=$(nix-env --list-generations -p /nix/var/nix/profiles/system 2>/dev/null | wc -l); " +
+            "CUR_KERNEL=$(uname -r); " +
+            "SYS_KERNEL=$(ls /run/current-system/kernel-modules/lib/modules 2>/dev/null | head -n 1); " +
+            "[ -z \"$SYS_KERNEL\" ] && SYS_KERNEL=$(ls /lib/modules 2>/dev/null | sort -V | tail -n 1); " +
             "[ -z \"$SYS_KERNEL\" ] && SYS_KERNEL=\"$CUR_KERNEL\"; " +
             "REBOOT_REQ=$([ \"$CUR_KERNEL\" != \"$SYS_KERNEL\" ] && echo 1 || echo 0); " +
-            "GIT_DIRTY=$(git -C \"$HOME/nix\" status --porcelain 2>/dev/null | wc -l); " +
+            "GIT_DIRTY=0; [ -d \"$HOME/nix\" ] && GIT_DIRTY=$(git -C \"$HOME/nix\" status --porcelain 2>/dev/null | wc -l); " +
             "FLAKE_FILE=\"$HOME/nix/flake.lock\"; FLAKE_AGE=0; " +
             "[ -f \"$FLAKE_FILE\" ] && FLAKE_AGE=$(( ($(date +%s) - $(stat -c %Y \"$FLAKE_FILE\")) / 86400 )); " +
             "echo '{\"gens\": '$GEN_COUNT', \"cur_k\": \"'$CUR_KERNEL'\", \"sys_k\": \"'$SYS_KERNEL'\", \"reboot\": '$REBOOT_REQ', \"git_dirty\": '$GIT_DIRTY', \"flake_age\": '$FLAKE_AGE'}'"

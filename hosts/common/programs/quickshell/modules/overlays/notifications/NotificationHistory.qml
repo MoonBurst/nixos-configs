@@ -353,62 +353,11 @@ Item {
                         }
 
                         // Non-blocking native shell command executor to bypass CORS sandboxing
-                        Process {
-                            id: asyncScraper
-                            running: false
-                        }
-
-                        // Connect directly to the standard output stream of the background process
-                        // Handles ArrayBuffer data streams dynamically by converting bytes to string
-                        Connections {
-                            target: asyncScraper.stdout
-                            function onData(data) {
-                                var text = "";
-                                if (typeof data === "string") {
-                                    text = data;
-                                } else if (data && data.byteLength !== undefined) {
-                                    // Parse ArrayBuffer bytes natively
-                                    var arr = new Uint8Array(data);
-                                    for (var i = 0; i < arr.length; i++) {
-                                        text += String.fromCharCode(arr[i]);
-                                    }
-                                }
-
-                                if (text !== "") {
-                                    var lines = text.split("\n");
-                                    for (var j = 0; j < lines.length; j++) {
-                                        var trimmed = lines[j].trim();
-                                        if (trimmed.startsWith("http")) {
-                                            delegateRoot.asyncPreviewSource = trimmed;
-                                            break; // Stop parsing after finding the first valid image URL
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        // Asynchronous webpage scraper to resolve image previews natively
-                        // Word boundary matching ensures trailing CDN tokens are preserved
                         function fetchAsyncPreviewNative(url) {
                             if (!url) return;
-
-                            // 1. If it's already a direct file format, map immediately
-                            // Word boundary matching ensures trailing CDN tokens are preserved
                             if (url.match(/\.(?:png|jpg|jpeg|gif|svg|webp)\b/i)) {
                                 delegateRoot.asyncPreviewSource = url;
-                                return;
                             }
-
-                            var cleanUrl = url.trim();
-
-                            // Run an optimized native background scraper using standard CLI tools
-                            // Bypasses sandbox blocks and supports full query parameters on output
-                            asyncScraper.command = [
-                                "bash", "-c",
-                                'curl -s -L --max-time 3 -A "Mozilla/5.0" "$1" | grep -o -E "https?://[a-zA-Z0-9./_~%-]+\\.(gif|png|jpg|jpeg|webp)[a-zA-Z0-9./?=&%_-]*" | grep -i -v -E "avatar|profile|icon|logo" | head -n 1',
-                                "bash", cleanUrl
-                            ];
-                            asyncScraper.running = true;
                         }
 
                         // Trigger the background async parser when the delegate is created

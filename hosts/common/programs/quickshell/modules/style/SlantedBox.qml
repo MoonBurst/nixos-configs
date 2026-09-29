@@ -3,6 +3,7 @@ import QtQuick.Shapes 1.15
 
 Item {
     id: root
+
     // Options: "Left" (\), "Right" (/), or "None" (|)
     property string slantLeft: "Left"
     property string slantRight: "Left"
@@ -11,7 +12,6 @@ Item {
     property real borderWidth: (shell && shell.theme) ? (shell.theme.globalBorderWidth || 3) : 3
     property int slantWidth: (shell && shell.theme) ? (shell.theme.slantWidth || 12) : 12
 
-    // padding helpers
     readonly property int leftPadding: slantLeft === "None" ? ((shell && shell.theme) ? (shell.theme.globalPadding || 12) : 12) : (slantWidth + 6)
     readonly property int rightPadding: slantRight === "None" ? ((shell && shell.theme) ? (shell.theme.globalPadding || 12) : 12) : (slantWidth + 6)
     readonly property real halfBorder: borderWidth / 2
@@ -20,6 +20,19 @@ Item {
     readonly property real x2: (slantLeft === "Left") ? (slantWidth + halfBorder) : halfBorder
     readonly property real x3: (slantRight === "Left") ? (width - slantWidth - halfBorder) : (width - halfBorder)
     readonly property real x4: (slantRight === "Right") ? (width - slantWidth - halfBorder) : (width - halfBorder)
+
+    // Accurate containment test matching the visual parallelogram
+    function contains(point) {
+        var px = point.x;
+        var py = point.y;
+        if (py < 0 || py > height || height <= 0) return false;
+        var ratio = py / height;
+        var l = (slantLeft === "Left") ? (ratio * slantWidth)
+              : ((slantLeft === "Right") ? ((1.0 - ratio) * slantWidth) : 0);
+        var r = (slantRight === "Left") ? (width - (1.0 - ratio) * slantWidth)
+              : ((slantRight === "Right") ? (width - ratio * slantWidth) : width);
+        return px >= l && px <= r;
+    }
 
     Shape {
         anchors.fill: parent

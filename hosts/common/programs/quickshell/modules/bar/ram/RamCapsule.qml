@@ -1,11 +1,9 @@
-// RamCapsule.qml
 import QtQuick
-import QtQuick.Controls 2
 import QtQuick.Layouts 1.15
 import Quickshell
-import Quickshell.Wayland
 import Quickshell.Io
 import "../../style"
+import "../common"
 
 Item {
     id: ramBox
@@ -13,17 +11,6 @@ Item {
     property string moduleName: "ram"
     property bool pinTooltip: false
     property string searchQuery: ""
-
-    readonly property int themePadding: (shell && shell.theme && typeof shell.theme.globalPadding !== "undefined") ? shell.theme.globalPadding : 12
-    readonly property int themeFontSize: (shell && shell.theme && typeof shell.theme.globalFontSize !== "undefined") ? shell.theme.globalFontSize : 14
-    readonly property string themeFontFamily: (shell && shell.theme && typeof shell.theme.fontFamily !== "undefined") ? shell.theme.fontFamily : "monospace"
-    readonly property int themeSlantWidth: (shell && shell.theme && typeof shell.theme.slantWidth !== "undefined") ? shell.theme.slantWidth : 12
-    readonly property color themeBase00: (shell && shell.theme && typeof shell.theme.base00 !== "undefined") ? shell.theme.base00 : "black"
-    readonly property color themeBase02: (shell && shell.theme && typeof shell.theme.base02 !== "undefined") ? shell.theme.base02 : "#222222"
-    readonly property color themeBase05: (shell && shell.theme && typeof shell.theme.base05 !== "undefined") ? shell.theme.base05 : "yellow"
-    readonly property color themeBase08: (shell && shell.theme && typeof shell.theme.base08 !== "undefined") ? shell.theme.base08 : "#ff0000"
-    readonly property color themeBase09: (shell && shell.theme && typeof shell.theme.base09 !== "undefined") ? shell.theme.base09 : "#fe8019"
-    readonly property color themeBase0C: (shell && shell.theme && typeof shell.theme.base0C !== "undefined") ? shell.theme.base0C : "#04f100"
 
     property int tooltipHeight: 460
     property int tooltipCollapsedWidth: 134
@@ -33,7 +20,7 @@ Item {
 
     property string slantLeft: "Right"
     property string slantRight: "Right"
-    property int slantWidth: ramBox.themeSlantWidth
+    property int slantWidth: (shell && shell.theme) ? shell.theme.slantWidth : 12
 
     property real totalGiB: 0.0
     property real availableGiB: 0.0
@@ -47,10 +34,9 @@ Item {
     readonly property var processLinesArray: topProcessesText.split("\n").filter(line => line.trim() !== "")
 
     readonly property var filteredProcessLinesArray: {
-        var lines = processLinesArray;
-        if (searchQuery.trim() === "") return lines;
+        if (searchQuery.trim() === "") return processLinesArray;
         var q = searchQuery.trim().toLowerCase();
-        return lines.filter(function(line) { return line.toLowerCase().indexOf(q) !== -1; });
+        return processLinesArray.filter(line => line.toLowerCase().indexOf(q) !== -1);
     }
 
     implicitWidth: ramText.implicitWidth + bg.leftPadding + bg.rightPadding + 20
@@ -120,15 +106,6 @@ Item {
         }
     }
 
-    Process {
-        id: killProc
-        function killPid(pid) {
-            if (!pid) return;
-            command = ["kill", "-9", pid.toString()];
-            running = true;
-        }
-    }
-
     Timer {
         id: killRefreshTimer
         interval: 300
@@ -148,8 +125,8 @@ Item {
         anchors.bottomMargin: 2
 
         textFormat: Text.RichText
-        font.family: themeFontFamily
-        font.pixelSize: themeFontSize
+        font.family: (shell && shell.theme) ? shell.theme.fontFamily : "monospace"
+        font.pixelSize: (shell && shell.theme) ? shell.theme.globalFontSize : 14
         font.bold: true
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
@@ -157,15 +134,15 @@ Item {
         clip: true
 
         text: {
-            const greenColor = themeBase0C.toString();
+            const greenColor = ((shell && shell.theme) ? shell.theme.base0C : "#04f100").toString();
             var displayAvail = ramBox.effectiveAvailGiB;
             var displayTotal = ramBox.effectiveTotalGiB;
             var usedGiB = displayTotal - displayAvail;
             var usageRatio = (displayTotal > 0) ? (usedGiB / displayTotal) : 0.0;
 
-            var dataColor = themeBase05.toString();
-            if (usageRatio >= 0.85) dataColor = themeBase08.toString();
-            else if (usageRatio >= 0.50) dataColor = themeBase09.toString();
+            var dataColor = ((shell && shell.theme) ? shell.theme.base05 : "yellow").toString();
+            if (usageRatio >= 0.85) dataColor = ((shell && shell.theme) ? shell.theme.base08 : "#ff0000").toString();
+            else if (usageRatio >= 0.50) dataColor = ((shell && shell.theme) ? shell.theme.base09 : "#fe8019").toString();
 
             var valueStr = displayAvail === 0.0 ? " -- GiB" : (" " + displayAvail.toFixed(1) + " GiB");
             return "<font color='" + greenColor + "'>RAM:</font><font color='" + dataColor + "'>" + valueStr + "</font>";
@@ -175,7 +152,7 @@ Item {
     HoverHandler {
         id: ramHoverTracker
         onHoveredChanged: {
-            if (hovered && !ramTooltip.isHovered && !searchInput.activeFocus) {
+            if (hovered && !ramTooltip.isHovered) {
                 ramBox.textAccumulatorBuffer = "";
                 topProcFetcher.running = true;
             }
@@ -185,7 +162,7 @@ Item {
     TapHandler {
         onTapped: {
             ramBox.pinTooltip = !ramBox.pinTooltip;
-            if (ramBox.pinTooltip && !searchInput.activeFocus) {
+            if (ramBox.pinTooltip) {
                 ramBox.textAccumulatorBuffer = "";
                 topProcFetcher.running = true;
             }
@@ -199,9 +176,6 @@ Item {
         tooltipActive: ramHoverTracker.hovered
         pin: ramBox.pinTooltip
 
-        keyboardFocus: (ramBox.pinTooltip || searchInput.activeFocus) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
-        readonly property bool isHovered: tooltipHoverTracker.hovered
-
         tooltipHeight: ramBox.tooltipHeight
         collapsedCoreWidth: ramBox.tooltipCollapsedWidth
         expandedCoreWidth: ramBox.tooltipExpandedWidth
@@ -210,17 +184,12 @@ Item {
         slantLeft: ramBox.slantLeft
         slantRight: ramBox.slantRight
 
-        Item {
-            anchors.fill: parent
-            HoverHandler { id: tooltipHoverTracker }
-        }
-
         Text {
             text: "TOP RAM CONSUMERS:"
-            font.family: themeFontFamily
-            font.pixelSize: themeFontSize - 1
+            font.family: (shell && shell.theme) ? shell.theme.fontFamily : "monospace"
+            font.pixelSize: ((shell && shell.theme) ? shell.theme.globalFontSize : 14) - 1
             font.bold: true
-            color: themeBase05
+            color: (shell && shell.theme) ? shell.theme.base05 : "yellow"
             y: 18
             x: ramTooltip.slantX(y) + 20
         }
@@ -230,9 +199,9 @@ Item {
             x: ramTooltip.slantX(y) + 20
             spacing: 10
 
-            Text { text: "ZRAM: " + ramBox.zramRatio.toFixed(2) + "x"; font.family: themeFontFamily; font.pixelSize: themeFontSize - 2; font.bold: true; color: themeBase0C }
-            Text { text: "SAVED: " + ramBox.zramSavedGiB.toFixed(1) + "G"; font.family: themeFontFamily; font.pixelSize: themeFontSize - 2; color: themeBase09 }
-            Text { text: "PHYS: " + ramBox.availableGiB.toFixed(1) + "/" + ramBox.totalGiB.toFixed(0) + "G"; font.family: themeFontFamily; font.pixelSize: themeFontSize - 2; color: themeBase05; opacity: 0.7 }
+            Text { text: "ZRAM: " + ramBox.zramRatio.toFixed(2) + "x"; font.family: "monospace"; font.pixelSize: 12; font.bold: true; color: (shell && shell.theme) ? shell.theme.base0C : "#04f100" }
+            Text { text: "SAVED: " + ramBox.zramSavedGiB.toFixed(1) + "G"; font.family: "monospace"; font.pixelSize: 12; color: (shell && shell.theme) ? shell.theme.base09 : "#fe8019" }
+            Text { text: "PHYS: " + ramBox.availableGiB.toFixed(1) + "/" + ramBox.totalGiB.toFixed(0) + "G"; font.family: "monospace"; font.pixelSize: 12; color: (shell && shell.theme) ? shell.theme.base05 : "yellow"; opacity: 0.7 }
         }
 
         RowLayout {
@@ -240,141 +209,33 @@ Item {
             x: ramTooltip.slantX(y) + 20
             spacing: 12
 
-            Text { text: "⚡ 100% Physical RAM"; font.family: themeFontFamily; font.pixelSize: themeFontSize - 3; font.bold: true; color: themeBase0C }
-            Text { text: "■ Compressed/Swappable"; font.family: themeFontFamily; font.pixelSize: themeFontSize - 3; color: themeBase05; opacity: 0.8 }
+            Text { text: "⚡ 100% Physical RAM"; font.family: "monospace"; font.pixelSize: 11; font.bold: true; color: (shell && shell.theme) ? shell.theme.base0C : "#04f100" }
+            Text { text: "■ Compressed/Swappable"; font.family: "monospace"; font.pixelSize: 11; color: (shell && shell.theme) ? shell.theme.base05 : "yellow"; opacity: 0.8 }
         }
 
-        Item {
-            id: searchContainer
-            y: 78
-            x: ramTooltip.slantX(y) + 20
-            width: 400
-            height: 26
-
-            SlantedBox {
-                anchors.fill: parent
-                slantLeft: ramBox.slantLeft; slantRight: ramBox.slantRight
-                slantWidth: 12
-            }
-
-            TextInput {
-                id: searchInput
-                anchors.fill: parent
-                anchors.leftMargin: 12; anchors.rightMargin: 12
-                verticalAlignment: TextInput.AlignVCenter
-                color: ramBox.themeBase05
-                font.family: "monospace"
-                font.pixelSize: ramBox.themeFontSize - 1
-                clip: true
-                selectByMouse: true
-                focus: true
-                activeFocusOnPress: true
-                onTextChanged: ramBox.searchQuery = text
-
-                Keys.onPressed: (event) => {
-                    if (event.key === Qt.Key_Escape) {
-                        if (searchInput.text !== "") {
-                            searchInput.text = "";
-                        } else {
-                            ramBox.pinTooltip = false;
-                        }
-                        event.accepted = true;
-                    }
-                }
-
-                Text {
-                    anchors.fill: parent
-                    verticalAlignment: Text.AlignVCenter
-                    text: "Search/Filter processes... [Esc to close]"
-                    color: ramBox.themeBase05
-                    opacity: 0.4
-                    font.family: "monospace"
-                    font.pixelSize: ramBox.themeFontSize - 1
-                    visible: searchInput.text === "" && !searchInput.activeFocus
-                }
-            }
-        }
-
-        Repeater {
-            model: ramBox.filteredProcessLinesArray.length
-            delegate: Item {
-                id: processRow
-                readonly property string rawLine: (index < ramBox.filteredProcessLinesArray.length) ? ramBox.filteredProcessLinesArray[index] : ""
-                readonly property var parts: rawLine.split("|")
-                readonly property string pid: parts.length > 2 ? parts[0] : ""
-                readonly property bool isRawRam: parts.length > 2 ? (parts[1] === "1") : false
-                readonly property string displayText: parts.length > 2 ? (parts[1] === "1" ? "⚡ " + parts[2] : parts[2]) : rawLine
-
-                y: 124 + (index * 28)
-                x: ramTooltip.slantX(y) + 20
-                width: 400
-                height: 22
-
-                HoverHandler { id: rowHoverTracker }
-
-                SlantedBox {
-                    anchors.fill: parent
-                    anchors.topMargin: -2; anchors.bottomMargin: -2
-                    anchors.leftMargin: -4; anchors.rightMargin: -2
-                    slantLeft: ramBox.slantLeft; slantRight: ramBox.slantRight
-                    slantWidth: 12
-                    visible: rowHoverTracker.hovered
-                }
-
-                Text {
-                    anchors.left: parent.left; anchors.leftMargin: 6
-                    anchors.right: killBtn.left; anchors.rightMargin: 8
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: processRow.displayText
-                    font.family: "monospace"
-                    font.pixelSize: ramBox.themeFontSize - 1
-                    color: processRow.isRawRam ? ramBox.themeBase0C : ramBox.themeBase05
-                    font.bold: processRow.isRawRam
-                    elide: Text.ElideRight
-                }
-
-                Item {
-                    id: killBtn
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 50
-                    height: 18
-                    visible: processRow.pid !== ""
-
-                    SlantedBox {
-                        anchors.fill: parent
-                        slantLeft: ramBox.slantLeft; slantRight: ramBox.slantRight
-                        slantWidth: 12
-                    }
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "✕"
-                        color: ramBox.themeBase08
-                        font.pixelSize: 11
-                        font.bold: true
-                    }
-
-                    HoverHandler { id: killBtnHover }
-                    TapHandler {
-                        onTapped: {
-                            if (processRow.pid !== "") {
-                                killProc.killPid(processRow.pid);
-                                killRefreshTimer.start();
-                            }
-                        }
-                    }
-                }
+        ProcessMonitorList {
+            tooltip: ramTooltip
+            startY: 128
+            listWidth: 400
+            lines: ramBox.filteredProcessLinesArray
+            slantLeft: ramBox.slantLeft
+            slantRight: ramBox.slantRight
+            onSearchModified: (q) => ramBox.searchQuery = q
+            onKillRequested: killRefreshTimer.start()
+            onCloseRequested: {
+                ramBox.pinTooltip = false;
+                ramTooltip.closeTooltip();
             }
         }
     }
 
     Timer {
         id: statsRefreshTimer
-        interval: (shell && shell.settingsManager && shell.settingsManager.hardwarePollInterval > 0) ? shell.settingsManager.hardwarePollInterval : 2000; running: true; repeat: true; triggeredOnStart: true
+        interval: (shell && shell.settingsManager && shell.settingsManager.hardwarePollInterval > 0) ? shell.settingsManager.hardwarePollInterval : 2000
+        running: true; repeat: true; triggeredOnStart: true
         onTriggered: {
             ramStatsProc.running = true;
-            if ((ramHoverTracker.hovered || ramBox.pinTooltip) && !ramTooltip.isHovered && !searchInput.activeFocus) {
+            if ((ramHoverTracker.hovered || ramBox.pinTooltip) && !ramTooltip.isHovered) {
                 ramBox.textAccumulatorBuffer = "";
                 topProcFetcher.running = true;
             }

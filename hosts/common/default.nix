@@ -15,6 +15,7 @@
     ./programs/librewolf.nix
     ./programs/mpd.nix
     ./programs/nemo.nix
+    ./programs/quickshell.nix
 #   ./programs/hyprland/default.nix
   ];
 

@@ -1,7 +1,10 @@
 import Quickshell
+import Quickshell.Io
 import QtQuick
+import QtQuick.Layouts
 import QtQuick.LocalStorage
 import QtQuick.Dialogs
+import "../../../common"
 
 Item {
     id: rootWindow
@@ -27,6 +30,9 @@ Item {
     property string activeUser: Quickshell.env("USER") || "moonburst"
     property double lastDeleteTime: 0
 
+    // Himalaya Availability Tracking
+    property bool himalayaInstalled: true
+
     // Property alias to expose the timer to child scopes
     property alias cacheRefreshTimer: cacheRefreshTimer
 
@@ -34,9 +40,33 @@ Item {
         mailListView.forceActiveFocus();
         mailController.cacheFilePath = "file://" + (Quickshell.env("HOME") || "") + "/.cache/himalaya/emails.json";
         mailController.readMailCache();
+        himalayaCheckProc.running = true;
     }
 
-    onVisibleChanged: { if (visible) { mailListView.forceActiveFocus(); mailController.readMailCache(); } }
+    onVisibleChanged: {
+        if (visible) {
+            himalayaCheckProc.running = false;
+            himalayaCheckProc.running = true;
+            mailListView.forceActiveFocus();
+            mailController.readMailCache();
+        }
+    }
+
+    // Process to check if himalaya binary exists in PATH
+    Process {
+        id: himalayaCheckProc
+        running: true
+        command: [
+            "sh", "-c",
+            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
+            'command -v himalaya >/dev/null 2>&1 && echo "1" || echo "0"'
+        ]
+        stdout: SplitParser {
+            onRead: data => {
+                rootWindow.himalayaInstalled = (data.trim() === "1");
+            }
+        }
+    }
 
     EmailController { id: mailController }
 
@@ -49,8 +79,6 @@ Item {
             var activeItem = mailController.selectedMail;
             if (!activeItem) { mailController.activeMailBody = ""; return; }
 
-            // If email body is already cached, render instantly.
-            // If body is empty, display placeholder, trigger background fetch queue, and start poller
             if (activeItem.body_content && activeItem.body_content.trim() !== "") {
                 mailController.activeMailBody = activeItem.body_content;
             } else {
@@ -63,7 +91,6 @@ Item {
                 writeToQueue("FETCH_BODY", activeItem.id.toString(), folderArg, "");
             }
 
-            // Automatically mark email as READ when selected
             var flags = activeItem.flags || [];
             var isUnread = true;
             for (var i = 0; i < flags.length; i++) {
@@ -78,9 +105,6 @@ Item {
         }
     }
 
-    // ============================================================================
-    // DYNAMIC 100ms LAZY BODY POLLING TIMER (WITH MODEL REFRESH FIX)
-    // ============================================================================
     Timer {
         id: bodyFetchPoller
         interval: 100
@@ -92,7 +116,7 @@ Item {
 
         onTriggered: {
             attempts++;
-            if (attempts > 30) { // Timeout after 3 seconds of silent failures
+            if (attempts > 30) {
                 bodyFetchPoller.stop();
                 return;
             }
@@ -107,11 +131,10 @@ Item {
                             var bodyText = lines.slice(1).join("\n");
                             mailController.activeMailBody = bodyText;
 
-                            // Save permanently in cache memory context and reload model to render previews
                             var activeItem = mailController.selectedMail;
                             if (activeItem && activeItem.id.toString() === bodyId) {
                                 activeItem.body_content = bodyText;
-                                mailController.readMailCache(); // Forces QML to reload index cache and render loaded previews instantly
+                                mailController.readMailCache();
                             }
                             bodyFetchPoller.stop();
                         }
@@ -123,21 +146,17 @@ Item {
         }
     }
 
-    // ============================================================================
-    // CACHE REFRESH TIMER (BRIDGES THE ASYNC DAEMON WORKFLOW WITH THE UI)
-    // ============================================================================
     Timer {
         id: cacheRefreshTimer
-        interval: 1200 // 1.2 second delay allows the Python daemon to process the DB row & rebuild cache
+        interval: 1200
         repeat: false
         onTriggered: {
-            console.log("[Email] Sync interval elapsed. Refreshing mail cache...");
             mailController.readMailCache();
         }
     }
 
-    Shortcut { sequence: "Ctrl+F"; enabled: !mailController.isComposing && !contactModalOverlay.visible && !helpModalOverlay.visible; onActivated: mailListView.toggleSearch() }
-    Shortcut { sequence: "Shift+?"; enabled: !mailController.isComposing && !contactModalOverlay.visible; onActivated: helpModalOverlay.visible = !helpModalOverlay.visible }
+    Shortcut { sequence: "Ctrl+F"; enabled: !mailController.isComposing && !contactModalOverlay.visible && !helpModalOverlay.visible && !himalayaInstallModalOverlay.visible; onActivated: mailListView.toggleSearch() }
+    Shortcut { sequence: "Shift+?"; enabled: !mailController.isComposing && !contactModalOverlay.visible && !himalayaInstallModalOverlay.visible; onActivated: helpModalOverlay.visible = !helpModalOverlay.visible }
 
     function getDatabase() { return LocalStorage.openDatabaseSync("QMailQueue", "1.0", "Queue for outbound mail operations", 100000); }
 
@@ -151,9 +170,6 @@ Item {
         } catch (err) { console.log("[Local Queue Error]: " + err); }
     }
 
-    // ============================================================================
-    // NATIVE MAILDIR ROUTERS
-    // ============================================================================
     function getMaildirFolder(folderLabel) {
         var label = (folderLabel || "").toLowerCase();
         var map = {
@@ -169,19 +185,16 @@ Item {
         return map[label] || "INBOX";
     }
 
-    // ============================================================================
-    // SYSTEM HANDLERS
-    // ============================================================================
     function handleDeletion() {
         var activeItem = mailController.selectedMail;
         if (!activeItem) return;
 
         var currentTime = Date.now();
-        if (currentTime - lastDeleteTime < 250) return; // Cooldown gate
+        if (currentTime - lastDeleteTime < 250) return;
         lastDeleteTime = currentTime;
 
         var isStarred = (activeItem.flags || []).map(f => f.toLowerCase()).some(f => f === "flagged" || f === "starred");
-        if (isStarred) { console.log("[Safety Guard] Blocked deletion of a Starred email."); return; }
+        if (isStarred) { return; }
 
         var folderArg = getMaildirFolder(activeItem.folder);
         writeToQueue("DELETE", activeItem.id.toString(), folderArg, "");
@@ -191,7 +204,6 @@ Item {
         var targetDate = activeItem.date || "";
         var targetSender = (activeItem.from ? (activeItem.from.addr || activeItem.from.name || "") : (activeItem.sender || "")).trim();
 
-        // One-liner array filter
         mailController.fullMailCacheList = mailController.fullMailCacheList.filter(item => {
             var s = (item.from ? (item.from.addr || item.from.name || "") : (item.sender || "")).trim();
             return !(targetMsgId ? item["message-id"] === targetMsgId : ((item.subject || "") === targetSub && (item.date || "") === targetDate && s === targetSender));
@@ -206,12 +218,8 @@ Item {
         if (!activeItem || activeItem.folder.toLowerCase() !== "trash") return;
 
         var emailId = activeItem.id.toString();
-
-        // Write the MOVE recovery action to the SQLite database queue
         writeToQueue("MOVE", emailId, "trash", "inbox");
-        console.log("[Queue] Restoring message " + emailId + " back to inbox.");
 
-        // Remove the email from the local trash array immediately to provide snappy UI feedback
         mailController.fullMailCacheList = mailController.fullMailCacheList.filter(item => {
             return !(item.id.toString() === emailId && item.folder.toLowerCase() === "trash");
         });
@@ -233,7 +241,6 @@ Item {
         var activeSubject = activeItem.subject || "";
         var activeDate = activeItem.date || "";
 
-        // Condensed array iterator
         mailController.fullMailCacheList.forEach(item => {
             var s = (item.from ? (item.from.addr || item.from.name || "") : (item.sender || "")).trim();
             if ((item.subject || "") === activeSubject && (item.date || "") === activeDate && s === activeSender) {
@@ -285,7 +292,6 @@ Item {
         composeWindowOverlay.prepopulateForm(replyTo, activeItem.subject.startsWith("Re:") ? activeItem.subject : "Re: " + activeItem.subject, conversationLog);
     }
 
-    // Opens and restores a draft without adding standard reply metadata or doubling signatures
     function initiateDraftEdit() {
         var activeItem = mailController.selectedMail;
         if (!activeItem) return;
@@ -304,7 +310,7 @@ Item {
     }
 
     Keys.onPressed: (event) => {
-        if (mailController.isComposing || contactModalOverlay.visible || helpModalOverlay.visible) return;
+        if (mailController.isComposing || contactModalOverlay.visible || helpModalOverlay.visible || himalayaInstallModalOverlay.visible) return;
         var isAltPressed = (event.modifiers === Qt.AltModifier) || (event.modifiers & Qt.AltModifier) !== 0;
 
         if (isAltPressed) {
@@ -323,7 +329,7 @@ Item {
                 event.accepted = true;
             }
             else if (event.key === Qt.Key_Delete) { rootWindow.handleDeletion(); event.accepted = true; }
-            else if (event.key === Qt.Key_U) { rootWindow.handleRestoreFromTrash(); event.accepted = true; } // 'U' Key restores from Trash
+            else if (event.key === Qt.Key_U) { rootWindow.handleRestoreFromTrash(); event.accepted = true; }
             else if (event.key === Qt.Key_N) { mailController.isComposing = true; composeWindowOverlay.prepopulateForm("", "", ""); event.accepted = true; }
             else if (event.key === Qt.Key_S) { rootWindow.handleStarToggle(); event.accepted = true; }
             else if (event.key === Qt.Key_R) { rootWindow.handleReadToggle(); event.accepted = true; }
@@ -335,8 +341,89 @@ Item {
         anchors.fill: parent; color: rootWindow.windowBgColor
         border.color: rootWindow.outerBorderColor; border.width: rootWindow.outerBorderThickness; radius: (typeof theme !== 'undefined') ? theme.defaultCardRadius : 10
 
+        // ============================================================================
+        // MISSING HIMALAYA NOTIFICATION OVERLAY BANNER
+        // ============================================================================
+        Rectangle {
+            id: missingHimalayaBanner
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.margins: 14
+            height: 64
+            radius: (typeof theme !== 'undefined') ? theme.defaultCardRadius : 10
+            color: "#2a1e1e"
+            border.color: (typeof theme !== 'undefined' && theme.base08) ? theme.base08 : "#ff5555"
+            border.width: 2
+            visible: !rootWindow.himalayaInstalled
+            z: 95
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: 12
+                spacing: 16
+
+                Text {
+                    text: "⚠️"
+                    font.pixelSize: 26
+                    Layout.alignment: Qt.AlignVCenter
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 2
+                    Layout.alignment: Qt.AlignVCenter
+
+                    Text {
+                        text: "Himalaya CLI is not installed"
+                        font.family: (typeof theme !== 'undefined') ? theme.fontFamily : "Fira Sans"
+                        font.pixelSize: (typeof theme !== 'undefined') ? theme.globalFontSize : 18
+                        font.bold: true
+                        color: (typeof theme !== 'undefined' && theme.base08) ? theme.base08 : "#ff5555"
+                    }
+
+                    Text {
+                        text: "Himalaya is required to manage and sync emails. Please install it to enable email features."
+                        font.family: (typeof theme !== 'undefined') ? theme.fontFamily : "Fira Sans"
+                        font.pixelSize: (typeof theme !== 'undefined') ? theme.globalFontSize - 5 : 13
+                        color: (typeof theme !== 'undefined') ? theme.base06 : "#ebdbb2"
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
+                }
+
+                Rectangle {
+                    width: installBtnText.implicitWidth + 24
+                    height: 36
+                    radius: 6
+                    color: installBtnHover.hovered ? ((typeof theme !== 'undefined') ? theme.base05 : "#f7f700") : "transparent"
+                    border.color: (typeof theme !== 'undefined') ? theme.base05 : "#f7f700"
+                    border.width: 2
+                    Layout.alignment: Qt.AlignVCenter
+
+                    Text {
+                        id: installBtnText
+                        anchors.centerIn: parent
+                        text: "⬇ Install Himalaya"
+                        font.family: (typeof theme !== 'undefined') ? theme.fontFamily : "Fira Sans"
+                        font.pixelSize: (typeof theme !== 'undefined') ? theme.globalFontSize - 3 : 15
+                        font.bold: true
+                        color: installBtnHover.hovered ? "#11111b" : ((typeof theme !== 'undefined') ? theme.base05 : "#f7f700")
+                    }
+
+                    HoverHandler { id: installBtnHover }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: himalayaInstallModalOverlay.openInstallPrompt()
+                    }
+                }
+            }
+        }
+
         Row {
             anchors.fill: parent
+            anchors.topMargin: (!rootWindow.himalayaInstalled) ? 84 : 0
 
             SidebarView {
                 width: rootWindow.sidebarColumnWidth; height: parent.height
@@ -362,7 +449,6 @@ Item {
                     rootWindow.writeToQueue("DOWNLOAD_ATTACHMENTS", msgId, getMaildirFolder(folderLabel), (Quickshell.env("HOME") + "/Downloads"));
                 }
 
-                // Intercept the spam block signal and perform a cascade block of all past emails from that sender
                 onMarkSpamRequested: (msgId, folderLabel) => {
                     var targetMail = mailController.fullMailCacheList.find(item => item.id.toString() === msgId && item.folder.toLowerCase() === folderLabel.toLowerCase());
                     if (!targetMail) return;
@@ -374,7 +460,6 @@ Item {
                         spammerAddr = targetMail.sender.trim().toLowerCase();
                     }
 
-                    // Fallback to moving just the single email if no sender address is resolved
                     if (spammerAddr === "") {
                         rootWindow.writeToQueue("MOVE", msgId, getMaildirFolder(folderLabel), "spam");
                         mailController.fullMailCacheList = mailController.fullMailCacheList.filter(item => !(item.id.toString() === msgId && item.folder.toLowerCase() === folderLabel.toLowerCase()));
@@ -383,9 +468,6 @@ Item {
                         return;
                     }
 
-                    console.log("[Cascade Spam] Commencing cascade spam block for sender: " + spammerAddr);
-
-                    // Scan entire cache list. Move any email matching this sender to the spam folder queue.
                     var remainingMails = [];
                     mailController.fullMailCacheList.forEach(item => {
                         var itemSender = "";
@@ -403,17 +485,14 @@ Item {
                         }
                     });
 
-                    // Snappily update UI display state
                     mailController.fullMailCacheList = remainingMails;
                     mailController.recalculateFolderStats();
                     mailController.filterEmailsByActiveFolder();
                 }
 
-                // Intercept the not spam request signal, move the single email back to the inbox, and remove it from local spam folder display
                 onRestoreSpamRequested: (msgId, folderLabel) => {
                     var canonicalSource = getMaildirFolder(folderLabel);
                     rootWindow.writeToQueue("MOVE", msgId, canonicalSource, "inbox");
-                    console.log("[Queue] Restoring spam message " + msgId + " back to Inbox.");
 
                     mailController.fullMailCacheList = mailController.fullMailCacheList.filter(item => {
                         return !(item.id.toString() === msgId && item.folder.toLowerCase() === folderLabel.toLowerCase());
@@ -429,22 +508,69 @@ Item {
             onEscapeDismissRequested: {
                 mailController.isComposing = false;
                 mailListView.forceActiveFocus();
-                cacheRefreshTimer.start(); // Trigger draft sync polling helper
+                cacheRefreshTimer.start();
             }
             onDispatchMailRequested: (to, subject, body) => {
                 rootWindow.handleOutboundDelivery(to, subject, body);
                 mailListView.forceActiveFocus();
-                cacheRefreshTimer.start(); // Trigger delivery sync polling helper
+                cacheRefreshTimer.start();
             }
 
-            // Trigger root-level native file selection dialog when attachment is requested inside modal
             onAttachmentRequested: {
                 fileDialog.open();
             }
         }
 
         // ============================================================================
-        // CONTACTS DIALOG OVERLAY modal box
+        // HIMALAYA SUDO INSTALL MODAL OVERLAY (De-duplicated)
+        // ============================================================================
+        Rectangle {
+            id: himalayaInstallModalOverlay
+            anchors.fill: parent
+            color: "#F40F0F0F"
+            visible: false
+            z: 300
+
+            function openInstallPrompt() {
+                visible = true;
+                pkgModal.openPrompt();
+            }
+
+            MouseArea { anchors.fill: parent }
+
+            Rectangle {
+                width: 480
+                height: 240
+                color: rootWindow.windowBgColor
+                border.color: rootWindow.innerBorderColor
+                border.width: rootWindow.innerCardActiveThickness
+                radius: (typeof theme !== 'undefined') ? theme.defaultCardRadius : 10
+                anchors.centerIn: parent
+
+                PackageInstallerModal {
+                    id: pkgModal
+                    anchors.fill: parent
+                    anchors.margins: 16
+                    title: "🔑 INSTALL HIMALAYA (OFFICIAL REPOS)"
+                    description: "Enter your sudo password to install himalaya from official repositories:"
+                    pacmanPkg: "himalaya"
+                    aptPkg: "himalaya"
+                    dnfPkg: "himalaya"
+                    zypperPkg: "himalaya"
+                    nixPkg: "himalaya"
+                    onInstalled: {
+                        rootWindow.himalayaInstalled = true;
+                        himalayaInstallModalOverlay.visible = false;
+                        cacheRefreshTimer.start();
+                    }
+                    onCancelled: {
+                        himalayaInstallModalOverlay.visible = false;
+                    }
+                }
+            }
+        }
+
+                // CONTACTS DIALOG OVERLAY modal box
         // ============================================================================
         Rectangle {
             id: contactModalOverlay; anchors.fill: parent; color: "#F40F0F0F"; visible: false
@@ -551,13 +677,12 @@ Item {
     DropArea {
         id: rootDropArea
         anchors.fill: parent
-        // Active ONLY when compose window and modals are closed
-        enabled: !mailController.isComposing && !contactModalOverlay.visible && !helpModalOverlay.visible
+        enabled: !mailController.isComposing && !contactModalOverlay.visible && !helpModalOverlay.visible && !himalayaInstallModalOverlay.visible
 
         onEntered: (drag) => {
             if (drag.hasUrls) {
                 drag.acceptProposedAction();
-                rootDropOverlay.visible = true; // Show nice visual root drag-over feedback
+                rootDropOverlay.visible = true;
             }
         }
 
@@ -567,11 +692,9 @@ Item {
 
         onDropped: (drop) => {
             if (drop.hasUrls) {
-                // 1. Instantly open compose modal and initialize blank draft
                 mailController.isComposing = true;
                 composeWindowOverlay.prepopulateForm("", "", "");
 
-                // 2. Loop through dropped files and append standard MML tags directly to the text box
                 for (var i = 0; i < drop.urls.length; i++) {
                     var path = drop.urls[i].toString();
                     if (path.startsWith("file://")) {
@@ -586,13 +709,12 @@ Item {
         }
     }
 
-    // Visual drag-and-drop feedback overlay
     Rectangle {
         id: rootDropOverlay
         anchors.fill: parent
-        color: "#E00f0f0f" // transparent dark
+        color: "#E00f0f0f"
         visible: false
-        z: 110 // Top layer
+        z: 110
 
         Rectangle {
             width: parent.width - 80
@@ -620,19 +742,17 @@ Item {
         }
     }
 
-    // Root-level file selection dialog (Allows selecting multiple files cleanly using system portals)
     FileDialog {
         id: fileDialog
         title: "Select File(s) to Attach"
-        fileMode: FileDialog.OpenFiles // Multi-file selection mode enabled
+        fileMode: FileDialog.OpenFiles
         onAccepted: {
             for (var i = 0; i < selectedFiles.length; i++) {
                 var path = selectedFiles[i].toString();
                 if (path.startsWith("file://")) {
-                    path = path.substring(7); // Strip schema prefix
+                    path = path.substring(7);
                 }
-                path = decodeURIComponent(path); // Decode URL-encoded spaces and characters
-                // Appends the compiled MML tag directly to the body input text field
+                path = decodeURIComponent(path);
                 composeWindowOverlay.bodyInput.text += "\n<#part filename=\"" + path + "\">\n<#/part>\n";
             }
         }

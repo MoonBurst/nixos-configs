@@ -29,6 +29,17 @@ Item {
 
     anchors.fill: parent
     property int activeTab: 0
+    onVisibleChanged: {
+        if (!visible && settingsManager) {
+            settingsManager.previewCapsule = "";
+        }
+    }
+    Component.onDestruction: {
+        if (settingsManager) {
+            settingsManager.previewCapsule = "";
+        }
+    }
+
 
     ColorPickerPopup {
         id: guiColorPicker
@@ -485,6 +496,74 @@ Item {
                 Rectangle { Layout.fillWidth: true; height: 1; color: panelRoot.liveBase03 }
 
                 Text {
+                    text: "🌐 NETWORK HARDWARE INTERFACES"
+                    font.pixelSize: panelRoot.liveFontSize; font.bold: true
+                    color: panelRoot.liveBase05
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Rectangle {
+                        readonly property bool isSelected: (settingsManager ? settingsManager.activeNetInterface : "auto") === "auto"
+                        width: autoNetBtnText.implicitWidth + 20
+                        height: 36
+                        radius: 6
+                        color: isSelected ? panelRoot.liveBase05 : panelRoot.liveBase00
+                        border.width: 1.5
+                        border.color: isSelected ? panelRoot.liveBase05 : panelRoot.liveBase03
+
+                        Text {
+                            id: autoNetBtnText
+                            anchors.centerIn: parent
+                            text: "AUTO DETECT"
+                            font.bold: true; font.pixelSize: 11
+                            color: parent.isSelected ? panelRoot.liveBase00 : panelRoot.liveBase05
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            onClicked: if (settingsManager) settingsManager.activeNetInterface = "auto"
+                        }
+                    }
+
+                    Repeater {
+                        model: (settingsManager && settingsManager.discoveredNetworks.length > 0)
+                            ? settingsManager.discoveredNetworks : []
+
+                        delegate: Rectangle {
+                            readonly property bool isSelected: settingsManager && settingsManager.activeNetInterface === modelData.id
+                            width: ifaceBtnText.implicitWidth + 24
+                            height: 36
+                            radius: 6
+                            color: isSelected ? panelRoot.liveBase05 : panelRoot.liveBase00
+                            border.width: 1.5
+                            border.color: modelData.operstate === "up" ? panelRoot.liveBase0C : panelRoot.liveBase03
+
+                            RowLayout {
+                                anchors.centerIn: parent
+                                spacing: 6
+
+                                Text {
+                                    id: ifaceBtnText
+                                    text: modelData.name + (modelData.ip ? " [" + modelData.ip + "]" : "")
+                                    font.bold: true; font.pixelSize: 11
+                                    color: parent.parent.isSelected ? panelRoot.liveBase00 : (modelData.operstate === "up" ? panelRoot.liveBase0C : panelRoot.liveBase05)
+                                }
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                onClicked: if (settingsManager) settingsManager.activeNetInterface = modelData.id
+                            }
+                        }
+                    }
+                }
+
+                Rectangle { Layout.fillWidth: true; height: 1; color: panelRoot.liveBase03 }
+
+                Text {
                     text: "🔊 AUDIO CONTROLS"
                     font.pixelSize: panelRoot.liveFontSize; font.bold: true
                     color: panelRoot.liveBase05
@@ -569,7 +648,7 @@ Item {
                                 property bool drawerExpanded: false
 
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: drawerExpanded ? 155 : 44
+                                Layout.preferredHeight: drawerExpanded ? (modelData === "tray" ? 115 : 155) : 44
                                 Layout.minimumHeight: Layout.preferredHeight
                                 height: Layout.preferredHeight
                                 radius: 6
@@ -651,7 +730,7 @@ Item {
                                                 preventStealing: true
                                                 onClicked: {
                                                     cardDelegate.drawerExpanded = !cardDelegate.drawerExpanded;
-                                                    if (settingsManager) {
+                                                    if (settingsManager && modelData !== "tray") {
                                                         settingsManager.previewCapsule = cardDelegate.drawerExpanded ? modelData : "";
                                                     }
                                                 }
@@ -693,9 +772,11 @@ Item {
                                         visible: cardDelegate.drawerExpanded
                                         spacing: 4
 
+                                        // Standard capsule tooltip sizing
                                         RowLayout {
                                             Layout.fillWidth: true
                                             spacing: 12
+                                            visible: modelData !== "tray"
 
                                             CyberSlider {
                                                 label: "Tooltip Width"
@@ -722,7 +803,34 @@ Item {
                                                 Layout.alignment: Qt.AlignVCenter
                                                 Text { anchors.centerIn: parent; text: "↺ Reset"; font.pixelSize: 10; font.bold: true; color: rstHov.hovered ? "#000000" : panelRoot.liveBase08 }
                                                 HoverHandler { id: rstHov }
-                                                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: if (settingsManager) settingsManager.resetCapsuleSize(modelData); }
+                                                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; preventStealing: true; onClicked: if (settingsManager) settingsManager.resetCapsuleSize(modelData); }
+                                            }
+                                        }
+
+                                        // Tray Auto-Collapse Duration (0 = Infinite, 1-10s)
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 12
+                                            visible: modelData === "tray"
+
+                                            CyberSlider {
+                                                label: "Tray Open Duration (0 = Infinite)"
+                                                from: 0; to: 10; stepSize: 1; unit: "s"
+                                                value: settingsManager ? settingsManager.trayCollapseTimeoutSec : 3
+                                                valueFormatter: (v) => Math.round(v) === 0 ? "Infinite" : (Math.round(v) + "s")
+                                                theme: panelRoot.theme
+                                                Layout.fillWidth: true
+                                                onValueModified: (v) => { if (settingsManager) settingsManager.trayCollapseTimeoutSec = Math.round(v); }
+                                            }
+
+                                            Rectangle {
+                                                width: 60; height: 28; radius: 4
+                                                color: rstTrayHov.hovered ? panelRoot.liveBase08 : "transparent"
+                                                border.color: panelRoot.liveBase08; border.width: 1
+                                                Layout.alignment: Qt.AlignVCenter
+                                                Text { anchors.centerIn: parent; text: "↺ Reset"; font.pixelSize: 10; font.bold: true; color: rstTrayHov.hovered ? "#000000" : panelRoot.liveBase08 }
+                                                HoverHandler { id: rstTrayHov }
+                                                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; preventStealing: true; onClicked: if (settingsManager) settingsManager.trayCollapseTimeoutSec = 3; }
                                             }
                                         }
                                     }
@@ -902,6 +1010,99 @@ Item {
                 Rectangle { Layout.fillWidth: true; height: 1; color: panelRoot.liveBase03 }
 
                 Text {
+                    text: "🎲 DICE ROLLER & RNG DISPLAY ROUTING"
+                    font.pixelSize: panelRoot.liveFontSize; font.bold: true
+                    color: panelRoot.liveBase0C
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Text {
+                        text: "Open On:"; color: panelRoot.liveBase05; font.bold: true; font.pixelSize: 13
+                    }
+
+                    Repeater {
+                        model: {
+                            var list = ["Focused"];
+                            if (typeof Quickshell !== "undefined" && Quickshell.screens) {
+                                for (var i = 0; i < Quickshell.screens.length; i++) {
+                                    if (Quickshell.screens[i] && Quickshell.screens[i].name) {
+                                        list.push(Quickshell.screens[i].name);
+                                    }
+                                }
+                            }
+                            return list;
+                        }
+                        delegate: Rectangle {
+                            readonly property bool isSelected: {
+                                var cur = settingsManager ? settingsManager.rngScreenTarget : "focused";
+                                if (modelData === "Focused") return (cur === "focused" || cur === "");
+                                return (modelData === cur);
+                            }
+                            width: rngScreenBtnText.implicitWidth + 20
+                            height: 30
+                            radius: 4
+                            color: isSelected ? panelRoot.liveBase05 : panelRoot.liveBase02
+                            border.color: panelRoot.liveBase05
+                            border.width: 1
+
+                            Text {
+                                id: rngScreenBtnText
+                                anchors.centerIn: parent
+                                text: modelData
+                                font.bold: true
+                                font.pixelSize: 11
+                                color: isSelected ? panelRoot.liveBase00 : panelRoot.liveBase05
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    if (settingsManager) {
+                                        settingsManager.rngScreenTarget = (modelData === "Focused") ? "focused" : modelData;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    Rectangle {
+                        width: 110
+                        height: 30
+                        radius: 4
+                        color: testRngHov.hovered ? panelRoot.liveBase0C : "transparent"
+                        border.color: panelRoot.liveBase0C
+                        border.width: 1
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "🎲 Open RNG"
+                            font.bold: true
+                            font.pixelSize: 11
+                            color: testRngHov.hovered ? panelRoot.liveBase00 : panelRoot.liveBase0C
+                        }
+
+                        HoverHandler { id: testRngHov }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                if (shell && shell.diceRollerWindowInstance) {
+                                    shell.diceRollerWindowInstance.openWithTarget();
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Rectangle { Layout.fillWidth: true; height: 1; color: panelRoot.liveBase03 }
+
+                Text {
                     text: "🚀 LAUNCHER SIZING & PREFERENCES"
                     font.pixelSize: panelRoot.liveFontSize; font.bold: true
                     color: panelRoot.liveBase0C
@@ -939,21 +1140,7 @@ Item {
                     onValueModified: (v) => { if (settingsManager) settingsManager.appIconSize = Math.round(v); }
                 }
 
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
-                    Text { text: "Default Mode:"; color: panelRoot.liveBase05; font.bold: true; font.pixelSize: 13 }
-                    Repeater {
-                        model: ["apps", "clipboard", "pass", "todo", "notes"]
-                        delegate: Rectangle {
-                            width: 75; height: 30; radius: 4
-                            color: (settingsManager && settingsManager.defaultLauncherMode === modelData) ? panelRoot.liveBase05 : panelRoot.liveBase02
-                            border.color: panelRoot.liveBase05; border.width: 1
-                            Text { anchors.centerIn: parent; text: modelData.toUpperCase(); font.bold: true; font.pixelSize: 10; color: (settingsManager && settingsManager.defaultLauncherMode === modelData) ? panelRoot.liveBase00 : panelRoot.liveBase05 }
-                            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: if (settingsManager) settingsManager.defaultLauncherMode = modelData }
-                        }
-                    }
-                }
+                
 
                 CyberSlider {
                     label: "Clipboard Max Search History"

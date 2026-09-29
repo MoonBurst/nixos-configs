@@ -84,54 +84,75 @@ Item {
         return Utils.formatDuration(secs, false);
     }
 
-    // Direct, zero-fork command dispatcher via stdin
     function sendMpdCommand(cmd) {
         if (!cmd) return;
         var clean = cmd.endsWith("\n") ? cmd : (cmd + "\n");
+        if (!mpdProcess.running) {
+            mpdProcess.running = true;
+        }
         try {
             mpdProcess.write(clean);
         } catch (e) {
-            Quickshell.execDetached([
-                "python3", "-c",
-                "import socket, sys\ntry:\n    s = socket.socket()\n    s.connect(('127.0.0.1', 6600))\n    s.recv(1024)\n    s.sendall(sys.argv[1].encode())\nexcept Exception: pass",
-                clean
-            ]);
+            mpdWatchdog.restart();
         }
     }
 
-    // Backward-compatibility wrapper for any external callers
-    property var mpdIpc: QtObject {
-        function write(data) {
-            musicBox.sendMpdCommand(data);
+    Timer {
+        id: seekDebounceTimer
+        interval: 150
+        repeat: false
+        property int targetTrack: -1
+        property int targetSeconds: 0
+        onTriggered: {
+            if (targetTrack >= 0) {
+                musicBox.sendMpdCommand("seek " + targetTrack + " " + targetSeconds + "\nstatus\n");
+            }
         }
     }
 
-    // Persistent event & command engine: single connection, zero fork on actions
+    Timer {
+        id: volDebounceTimer
+        interval: 100
+        repeat: false
+        property int targetVol: 0
+        onTriggered: musicBox.sendMpdCommand("setvol " + targetVol + "\nstatus\n")
+    }
+
+    Timer {
+        id: mpdWatchdog
+        interval: 2000
+        repeat: false
+        onTriggered: {
+            if (!mpdProcess.running) {
+                mpdProcess.running = true;
+            }
+        }
+    }
+
     Process {
         id: mpdProcess
         running: true
+        onExited: mpdWatchdog.restart()
 
         command: [
             "python3", "-u", "-c",
             "import socket, sys, time, select\n" +
-            "def connect():\n" +
-            "    while True:\n" +
-            "        try:\n" +
-            "            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n" +
-            "            s.connect(('127.0.0.1', 6600))\n" +
-            "            s.recv(1024)\n" +
-            "            s.setblocking(False)\n" +
-            "            return s\n" +
-            "        except Exception:\n" +
-            "            time.sleep(1)\n" +
-            "s = connect()\n" +
-            "buf = b''\n" +
+            "def get_socket():\n" +
+            "    try:\n" +
+            "        s = socket.create_connection(('127.0.0.1', 6600), timeout=1.5)\n" +
+            "        s.recv(1024)\n" +
+            "        s.setblocking(False)\n" +
+            "        return s\n" +
+            "    except Exception:\n" +
+            "        return None\n" +
+            "s = get_socket()\n" +
             "last_poll = 0\n" +
+            "buf = b''\n" +
             "while True:\n" +
             "    now = time.time()\n" +
             "    if s is None:\n" +
-            "        time.sleep(1)\n" +
-            "        s = connect()\n" +
+            "        time.sleep(1.0)\n" +
+            "        s = get_socket()\n" +
             "        continue\n" +
             "    if now - last_poll >= 1.0:\n" +
             "        last_poll = now\n" +
@@ -143,14 +164,17 @@ Item {
             "            s = None\n" +
             "            continue\n" +
             "    try:\n" +
-            "        r, _, _ = select.select([sys.stdin, s], [], [], 0.3)\n" +
+            "        r, _, _ = select.select([sys.stdin, s], [], [], 0.25)\n" +
             "    except Exception:\n" +
             "        break\n" +
             "    for src in r:\n" +
             "        if src is sys.stdin:\n" +
-            "            line = sys.stdin.readline()\n" +
-            "            if not line: sys.exit(0)\n" +
-            "            try: s.sendall(line.encode('utf-8'))\n" +
+            "            try:\n" +
+            "                line = sys.stdin.readline()\n" +
+            "                if line:\n" +
+            "                    s.sendall(line.encode('utf-8'))\n" +
+            "                else:\n" +
+            "                    time.sleep(0.1)\n" +
             "            except Exception:\n" +
             "                try: s.close()\n" +
             "                except: pass\n" +
@@ -160,14 +184,19 @@ Item {
             "            try:\n" +
             "                chunk = s.recv(4096)\n" +
             "                if not chunk:\n" +
-            "                    s.close()\n" +
+            "                    try: s.close()\n" +
+            "                    except: pass\n" +
             "                    s = None\n" +
             "                    break\n" +
             "                buf += chunk\n" +
             "                while b'\\n' in buf:\n" +
             "                    line_data, buf = buf.split(b'\\n', 1)\n" +
-            "                    sys.stdout.write(line_data.decode('utf-8', errors='ignore') + '\\n')\n" +
-            "                    sys.stdout.flush()\n" +
+            "                    decoded = line_data.decode('utf-8', errors='ignore').strip()\n" +
+            "                    if decoded:\n" +
+            "                        sys.stdout.write(decoded + '\\n')\n" +
+            "                        sys.stdout.flush()\n" +
+            "            except (BlockingIOError, InterruptedError):\n" +
+            "                pass\n" +
             "            except Exception:\n" +
             "                try: s.close()\n" +
             "                except: pass\n" +
@@ -273,6 +302,7 @@ Item {
         moduleItem: musicBox
         barWindow: musicBox.barWindow
         tooltipActive: musicBox.popupActive
+        pin: musicBox.popupActive
         alignSide: "Left"
 
         tooltipHeight: musicBox.tooltipHeight
@@ -287,15 +317,6 @@ Item {
             id: containerWrapper
             anchors.fill: parent
             readonly property real slantRatio: musicTooltip.tooltipSlantWidth / musicTooltip.tooltipHeight
-
-            Shortcut {
-                sequence: "Escape"
-                enabled: true
-                onActivated: {
-                    musicBox.popupActive = false;
-                    musicBox.confirmDeleteMode = false;
-                }
-            }
 
             // 1. TRACK DETAILS CARD
             Item {
@@ -353,7 +374,7 @@ Item {
                 }
             }
 
-            // 2. TRACK POSITION SEEK SLIDER
+            // 2. TRACK POSITION SEEK SLIDER (Debounced)
             Row {
                 y: 165
                 x: musicTooltip.slantX(y) + 24
@@ -405,9 +426,9 @@ Item {
 
                     onMoved: {
                         var idx = musicBox.currentTrackIdx - 1;
-                        if (idx >= 0) {
-                            musicBox.sendMpdCommand("seek " + idx + " " + Math.round(value) + "\nstatus\n");
-                        }
+                        seekDebounceTimer.targetTrack = idx;
+                        seekDebounceTimer.targetSeconds = Math.round(value);
+                        seekDebounceTimer.restart();
                     }
                 }
 
@@ -427,7 +448,7 @@ Item {
                 }
             }
 
-            // 3. VOLUME CONTROL SLIDER
+            // 3. VOLUME CONTROL SLIDER (Debounced)
             Row {
                 y: 215
                 x: musicTooltip.slantX(y) + 24
@@ -475,7 +496,10 @@ Item {
                         color: themeBase05; borderColor: themeBase05
                     }
 
-                    onMoved: musicBox.sendMpdCommand("setvol " + Math.round(value) + "\nstatus\n")
+                    onMoved: {
+                        volDebounceTimer.targetVol = Math.round(value);
+                        volDebounceTimer.restart();
+                    }
                 }
 
                 Text {
@@ -599,7 +623,7 @@ Item {
                             } else {
                                 Quickshell.execDetached([
                                     "sh", "-c",
-                                    'rm -f "$HOME/Music/$1"',
+                                    'target=$(realpath -m "$HOME/Music/$1"); music_root=$(realpath "$HOME/Music"); case "$target" in "$music_root"/*) rm -f "$target" ;; *) exit 1 ;; esac',
                                     "sh",
                                     musicBox.currentFile
                                 ]);

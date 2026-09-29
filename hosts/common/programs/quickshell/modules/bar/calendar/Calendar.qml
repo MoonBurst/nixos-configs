@@ -27,6 +27,7 @@ Item {
 
     property var daysOfWeek: [ "Su", "Mo", "Tu", "We", "Th", "Fr", "Sa" ]
     property bool pinTooltip: false
+    property bool isTooltipHovered: false
 
     function prevMonth() {
         if (displayMonth === 0) { displayMonth = 11; displayYear--; }
@@ -83,13 +84,31 @@ Item {
         clip: true
     }
 
+    // Clicking the date on the bar toggles the calendar pinned open
+    TapHandler {
+        onTapped: {
+            calendarBox.pinTooltip = !calendarBox.pinTooltip;
+        }
+    }
+
     HoverHandler { id: calendarHoverTracker }
+
+    Timer {
+        id: closeGraceTimer
+        interval: 350
+        repeat: false
+        onTriggered: {
+            if (!calendarHoverTracker.hovered && !calendarBox.isTooltipHovered && !calendarBox.pinTooltip) {
+                calendarTooltip.tooltipActive = false;
+            }
+        }
+    }
 
     SlantedTooltip {
         id: calendarTooltip
         moduleItem: calendarBox
         barWindow: calendarBox.barWindow
-        tooltipActive: calendarHoverTracker.hovered
+        tooltipActive: calendarHoverTracker.hovered || calendarBox.isTooltipHovered
         pin: calendarBox.pinTooltip
         alignSide: "Left"
         slantLeft: calendarBox.slantLeft
@@ -99,6 +118,17 @@ Item {
             id: containerWrapper
             anchors.fill: parent
             readonly property real slantRatio: calendarTooltip.tooltipSlantWidth / calendarTooltip.tooltipHeight
+
+            // Keeps the calendar open while hovering over the calendar window itself
+            HoverHandler {
+                id: tpHov
+                onHoveredChanged: {
+                    calendarBox.isTooltipHovered = hovered;
+                    if (!hovered && !calendarHoverTracker.hovered && !calendarBox.pinTooltip) {
+                        closeGraceTimer.restart();
+                    }
+                }
+            }
 
             // Header Controls: Previous Month, Label, Next Month, Today Reset
             Row {

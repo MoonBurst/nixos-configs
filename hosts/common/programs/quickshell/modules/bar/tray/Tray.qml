@@ -16,25 +16,31 @@ Item {
     property string slantLeft: "Right"
     property string slantRight: "Right"
 
+    readonly property int collapseTimeoutSec: (shell && shell.settingsManager && shell.settingsManager.trayCollapseTimeoutSec !== undefined)
+        ? shell.settingsManager.trayCollapseTimeoutSec
+        : 3
+
     width: trayBubbleWrapper.width
     implicitWidth: trayBubbleWrapper.width
     height: parent.height
 
     Timer {
         id: autoCollapseTimer
-        interval: 3000
+        interval: Math.max(100, trayRoot.collapseTimeoutSec * 1000)
         repeat: false
         running: false
         onTriggered: {
-            if (trayRoot.isExpanded && trayRoot.activeMenu === null && !trayHoverArea.containsMouse) {
+            if (trayRoot.collapseTimeoutSec > 0 && trayRoot.isExpanded && trayRoot.activeMenu === null && !trayHoverArea.containsMouse) {
                 trayRoot.isExpanded = false;
             }
         }
     }
 
     function resetCollapseTimer() {
-        if (trayRoot.isExpanded) {
+        if (trayRoot.isExpanded && trayRoot.collapseTimeoutSec > 0) {
             autoCollapseTimer.restart();
+        } else {
+            autoCollapseTimer.stop();
         }
     }
 

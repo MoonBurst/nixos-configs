@@ -23,6 +23,8 @@ Item {
     // TOP BAR & HARDWARE TIMINGS
     property int barHeight: 42
     property int hardwarePollInterval: 2000
+    property int trayCollapseTimeoutSec: 3
+    onTrayCollapseTimeoutSecChanged: queueSave()
 
     // LAUNCHER CUSTOMIZATION
     property int launcherWidth: 840
@@ -38,6 +40,8 @@ Item {
     property int notifBaselineY: 350
     property int notifStackOverlap: 25
     property string notifScreenName: ""
+    property string rngScreenTarget: "focused"
+    onRngScreenTargetChanged: queueSave()
     property real magnifierDefaultZoom: 8.0
     property int magnifierLensSize: 300
     property string screenshotSaveDir: Quickshell.env("HOME") + "/Screenshots"
@@ -60,6 +64,9 @@ Item {
     // GPU DISCOVERY
     property var discoveredGpus: []
     property string activeGpuCard: "card0"
+    property var discoveredNetworks: []
+    property string activeNetInterface: "auto"
+    onActiveNetInterfaceChanged: queueSave()
 
     property int gpu0TempWarn: 70
     property int gpu0TempDanger: 80
@@ -112,29 +119,110 @@ Item {
     }
 
     Process {
+        id: netDiscProc
+        running: true
+        command: [
+            "python3", "-c",
+            "import os, glob, json, subprocess\n" +
+            "nets = []\n" +
+            "for p in sorted(glob.glob('/sys/class/net/*')):\n" +
+            "    name = os.path.basename(p)\n" +
+            "    if not os.path.exists(os.path.join(p, 'device')): continue\n" +
+            "    is_wifi = os.path.isdir(os.path.join(p, 'wireless')) or os.path.isdir(os.path.join(p, 'phy80211'))\n" +
+            "    ntype = 'Wi-Fi' if is_wifi else 'Ethernet'\n" +
+            "    oper = 'down'\n" +
+            "    try:\n" +
+            "        with open(os.path.join(p, 'operstate')) as f: oper = f.read().strip()\n" +
+            "    except Exception: pass\n" +
+            "    speed = ''\n" +
+            "    try:\n" +
+            "        with open(os.path.join(p, 'speed')) as f:\n" +
+            "            s = int(f.read().strip())\n" +
+            "            if s > 0: speed = f'{s}M'\n" +
+            "    except Exception: pass\n" +
+            "    ip = ''\n" +
+            "    try:\n" +
+            "        out = subprocess.check_output(['ip', '-4', 'addr', 'show', name], stderr=subprocess.DEVNULL).decode()\n" +
+            "        for line in out.splitlines():\n" +
+            "            if line.strip().startswith('inet '):\n" +
+            "                ip = line.strip().split()[1].split('/')[0]\n" +
+            "                break\n" +
+            "    except Exception: pass\n" +
+            "    nets.append({'id': name, 'name': f'{ntype} ({name})', 'type': ntype, 'operstate': oper, 'speed': speed, 'ip': ip})\n" +
+            "print(json.dumps(nets))\n"
+        ]
+        stdout: SplitParser {
+            splitMarker: ""
+            onRead: data => {
+                try {
+                    var parsed = JSON.parse(data.trim());
+                    if (parsed && parsed.length > 0) manager.discoveredNetworks = parsed;
+                } catch(e) {}
+            }
+        }
+    }
+
+    Process {
         id: gpuDiscProc
         running: true
         command: [
             "python3", "-c",
-            "import os, glob, json\n" +
-            "KNOWN = {'1002:743f':'RX 6400','1002:743c':'RX 6500 XT','1002:73ff':'RX 6600 XT','1002:73df':'RX 6700 XT','1002:73bf':'RX 6800 / 6900 XT','1002:744c':'RX 7900 XTX','1002:7448':'RX 7900 XT','1002:745e':'RX 7800 XT','1002:747e':'RX 7700 XT','1002:7480':'RX 7600','1002:164e':'Radeon 680M/780M','10de:2684':'RTX 4090','10de:2704':'RTX 4080','10de:2782':'RTX 4070 Ti','10de:2786':'RTX 4070','10de:2860':'RTX 4060 Ti','10de:2882':'RTX 4060','10de:2204':'RTX 3090','10de:2206':'RTX 3080','10de:2484':'RTX 3070','10de:2503':'RTX 3060','8086:56a0':'Intel Arc A770','8086:56a1':'Intel Arc A750'}\n" +
-            "gpus = []\n" +
-            "for card in sorted(glob.glob('/sys/class/drm/card[0-9]')):\n" +
-            "    cname = os.path.basename(card)\n" +
-            "    dlink = os.path.realpath(card + '/device')\n" +
-            "    render = next((os.path.basename(r) for r in glob.glob('/sys/class/drm/renderD*') if os.path.realpath(r + '/device') == dlink), '')\n" +
-            "    label, hw_id = cname.upper(), ''\n" +
-            "    try:\n" +
-            "        with open(card + '/device/vendor') as f: ven = f.read().strip().replace('0x', '').lower()\n" +
-            "        with open(card + '/device/device') as f: dev = f.read().strip().replace('0x', '').lower()\n" +
-            "        hw_id = ven + ':' + dev\n" +
-            "        if hw_id in KNOWN: label = KNOWN[hw_id]\n" +
-            "        elif ven == '1002': label = 'Radeon Graphics'\n" +
-            "        elif ven == '8086': label = 'Intel Graphics'\n" +
-            "    except: pass\n" +
-            "    if not hw_id: hw_id = cname\n" +
-            "    gpus.append({'id': cname, 'hw_id': hw_id, 'render': render, 'name': label})\n" +
-            "print(json.dumps(gpus))\n"
+"import os, glob, json, subprocess
+" +
+            "gpus = []
+" +
+            "try:
+" +
+            "    nv_out = subprocess.check_output(['nvidia-smi', '--query-gpu=index,name', '--format=csv,noheader'], stderr=subprocess.DEVNULL).decode()
+" +
+            "    for line in nv_out.splitlines():
+" +
+            "        line = line.strip()
+" +
+            "        if not line: continue
+" +
+            "        parts = [p.strip() for p in line.split(',') if p.strip()]
+" +
+            "        if len(parts) >= 2:
+" +
+            "            gpus.append({'id': 'nvidia' + parts[0], 'hw_id': '10de:nv' + parts[0], 'vendor': '10de', 'render': 'nvidia', 'name': parts[1].replace('NVIDIA GeForce ', '').replace('NVIDIA ', '')})
+" +
+            "except Exception: pass
+" +
+            "KNOWN = {'1002:743f':'RX 6400','1002:743c':'RX 6500 XT','1002:73ff':'RX 6600 XT','1002:73df':'RX 6700 XT','1002:73bf':'RX 6800 / 6900 XT','1002:744c':'RX 7900 XTX','1002:7448':'RX 7900 XT','1002:745e':'RX 7800 XT','1002:747e':'RX 7700 XT','1002:7480':'RX 7600','1002:164e':'Radeon 680M/780M','8086:56a0':'Intel Arc A770','8086:56a1':'Intel Arc A750'}
+" +
+            "for card in sorted(glob.glob('/sys/class/drm/card[0-9]')):
+" +
+            "    cname = os.path.basename(card)
+" +
+            "    dlink = os.path.realpath(card + '/device')
+" +
+            "    render = next((os.path.basename(r) for r in glob.glob('/sys/class/drm/renderD*') if os.path.realpath(r + '/device') == dlink), '')
+" +
+            "    label, hw_id, vendor = cname.upper(), '', ''
+" +
+            "    try:
+" +
+            "        with open(card + '/device/vendor') as f: vendor = f.read().strip().replace('0x', '').lower()
+" +
+            "        with open(card + '/device/device') as f: dev = f.read().strip().replace('0x', '').lower()
+" +
+            "        hw_id = vendor + ':' + dev
+" +
+            "        if hw_id in KNOWN: label = KNOWN[hw_id]
+" +
+            "        elif vendor == '1002': label = 'Radeon Graphics'
+" +
+            "        elif vendor == '8086': label = 'Intel Graphics'
+" +
+            "    except Exception: pass
+" +
+            "    if vendor != '10de':
+" +
+            "        gpus.append({'id': cname, 'hw_id': hw_id, 'vendor': vendor, 'render': render, 'name': label})
+" +
+            "print(json.dumps(gpus))
+"
         ]
         stdout: SplitParser {
             splitMarker: ""
@@ -147,9 +235,52 @@ Item {
         }
     }
 
+    // Query live mic mute & volume on startup
+    Process {
+        id: liveMicProc
+        running: true
+        command: ["sh", "-c", "wpctl get-volume @DEFAULT_AUDIO_SOURCE@ 2>/dev/null || echo 'Volume: 1.00'"]
+        stdout: SplitParser {
+            onRead: data => {
+                if (!data) return;
+                var raw = data.trim();
+                var isMuted = raw.indexOf("[MUTED]") !== -1;
+                var mMatch = raw.match(/[0-9.]+/);
+                var vol = 100;
+                if (mMatch) vol = Math.round(parseFloat(mMatch[0]) * 100);
+                manager.updateMicFromSystem(isMuted, vol);
+            }
+        }
+    }
     property int masterVolume: 80
+    property bool _suppressVolumeSync: true
+
+    // Query live PipeWire volume on startup so we never overwrite the user's volume
+    Process {
+        id: liveVolProc
+        running: true
+        command: ["sh", "-c", "wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '{print int($2 * 100)}'"]
+        stdout: SplitParser {
+            onRead: data => {
+                var v = parseInt(data.trim());
+                if (!isNaN(v) && v > 0) {
+                    manager._suppressVolumeSync = true;
+                    manager.masterVolume = v;
+                    manager._suppressVolumeSync = false;
+                }
+            }
+        }
+    }
     property int micVolume: 100
     property bool micMuted: false
+    property bool _suppressMicSync: false
+
+    function updateMicFromSystem(isMuted, vol) {
+        _suppressMicSync = true;
+        if (micMuted !== isMuted) micMuted = isMuted;
+        if (vol !== undefined && !isNaN(vol) && vol > 0 && micVolume !== vol) micVolume = vol;
+        _suppressMicSync = false;
+    }
     property bool notificationsEnabled: true
     property int notifHoldDurationSec: 5
     property bool enableTts: true
@@ -322,9 +453,11 @@ Item {
 
     onMasterVolumeChanged: {
         queueSave();
-        syncMasterVolumeProcess.running = false;
-        syncMasterVolumeProcess.command = ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", (masterVolume / 100.0).toFixed(2)];
-        syncMasterVolumeProcess.running = true;
+        if (!_suppressVolumeSync && isLoaded) {
+            syncMasterVolumeProcess.running = false;
+            syncMasterVolumeProcess.command = ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", (masterVolume / 100.0).toFixed(2)];
+            syncMasterVolumeProcess.running = true;
+        }
     }
     onMicVolumeChanged: {
         queueSave();
@@ -334,9 +467,11 @@ Item {
     }
     onMicMutedChanged: {
         queueSave();
-        syncMicMuteProcess.running = false;
-        syncMicMuteProcess.command = ["wpctl", "set-mute", "@DEFAULT_AUDIO_SOURCE@", micMuted ? "1" : "0"];
-        syncMicMuteProcess.running = true;
+        if (!_suppressMicSync && isLoaded) {
+            syncMicMuteProcess.running = false;
+            syncMicMuteProcess.command = ["wpctl", "set-mute", "@DEFAULT_AUDIO_SOURCE@", micMuted ? "1" : "0"];
+            syncMicMuteProcess.running = true;
+        }
     }
 
     Process { id: syncMasterVolumeProcess; running: false }
@@ -356,6 +491,7 @@ Item {
             "globalPadding": manager.globalPadding,
             "barHeight": manager.barHeight,
             "hardwarePollInterval": manager.hardwarePollInterval,
+            "trayCollapseTimeoutSec": manager.trayCollapseTimeoutSec,
             "launcherWidth": manager.launcherWidth,
             "launcherHeight": manager.launcherHeight,
             "appItemHeight": manager.appItemHeight,
@@ -365,6 +501,7 @@ Item {
             "notifBaselineY": manager.notifBaselineY,
             "notifStackOverlap": manager.notifStackOverlap,
             "notifScreenName": manager.notifScreenName,
+            "rngScreenTarget": manager.rngScreenTarget,
             "magnifierDefaultZoom": manager.magnifierDefaultZoom,
             "magnifierLensSize": manager.magnifierLensSize,
             "screenshotSaveDir": manager.screenshotSaveDir,
@@ -375,6 +512,7 @@ Item {
             "defaultLauncherMode": manager.defaultLauncherMode,
             "emailSignature": manager.emailSignature,
             "activeGpuCard": manager.activeGpuCard,
+            "activeNetInterface": manager.activeNetInterface,
             "gpu0": { "tempWarn": manager.gpu0TempWarn, "tempDanger": manager.gpu0TempDanger, "vramWarn": manager.gpu0VramWarn, "vramDanger": manager.gpu0VramDanger },
             "gpu1": { "tempWarn": manager.gpu1TempWarn, "tempDanger": manager.gpu1TempDanger, "vramWarn": manager.gpu1VramWarn, "vramDanger": manager.gpu1VramDanger },
             "customColors": {
@@ -465,6 +603,7 @@ Item {
 
                     if (obj.barHeight !== undefined) manager.barHeight = obj.barHeight;
                     if (obj.hardwarePollInterval !== undefined) manager.hardwarePollInterval = obj.hardwarePollInterval;
+                    if (obj.trayCollapseTimeoutSec !== undefined) manager.trayCollapseTimeoutSec = obj.trayCollapseTimeoutSec;
                     if (obj.launcherWidth !== undefined) manager.launcherWidth = obj.launcherWidth;
                     if (obj.launcherHeight !== undefined) manager.launcherHeight = obj.launcherHeight;
                     if (obj.appItemHeight !== undefined) manager.appItemHeight = obj.appItemHeight;
@@ -475,6 +614,7 @@ Item {
                     if (obj.notifBaselineY !== undefined) manager.notifBaselineY = obj.notifBaselineY;
                     if (obj.notifStackOverlap !== undefined) manager.notifStackOverlap = obj.notifStackOverlap;
                     if (obj.notifScreenName !== undefined) manager.notifScreenName = obj.notifScreenName;
+                    if (obj.rngScreenTarget !== undefined) manager.rngScreenTarget = obj.rngScreenTarget;
                     if (obj.magnifierDefaultZoom !== undefined) manager.magnifierDefaultZoom = obj.magnifierDefaultZoom;
                     if (obj.magnifierLensSize !== undefined) manager.magnifierLensSize = obj.magnifierLensSize;
                     if (obj.screenshotSaveDir !== undefined) manager.screenshotSaveDir = obj.screenshotSaveDir;
@@ -486,6 +626,7 @@ Item {
                     if (obj.emailSignature !== undefined) manager.emailSignature = obj.emailSignature;
 
                     if (obj.activeGpuCard !== undefined) manager.activeGpuCard = obj.activeGpuCard;
+                    if (obj.activeNetInterface !== undefined) manager.activeNetInterface = obj.activeNetInterface;
 
                     if (obj.gpu0) {
                         if (obj.gpu0.tempWarn !== undefined) manager.gpu0TempWarn = obj.gpu0.tempWarn;
@@ -527,6 +668,7 @@ Item {
                     if (obj.enableTts !== undefined) manager.enableTts = obj.enableTts;
                 } catch(e) {}
                 manager.isLoaded = true;
+                manager._suppressVolumeSync = false;
             }
         }
     }

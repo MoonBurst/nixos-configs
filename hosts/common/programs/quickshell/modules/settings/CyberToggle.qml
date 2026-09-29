@@ -76,8 +76,8 @@ Item {
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                    root.checked = !root.checked;
-                    root.toggled(root.checked);
+                    // Do NOT assign root.checked directly; preserves reactive QML property binding
+                    root.toggled(!root.checked);
                 }
             }
         }

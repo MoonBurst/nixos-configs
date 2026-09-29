@@ -7,13 +7,21 @@ Item {
 
     function toggleWindow() {
         if (diceWindowInstance) {
-            diceWindowInstance.visible = !diceWindowInstance.visible;
+            if (typeof diceWindowInstance.toggleWithTarget === "function") {
+                diceWindowInstance.toggleWithTarget();
+            } else {
+                diceWindowInstance.visible = !diceWindowInstance.visible;
+            }
         }
     }
 
     function showWindow() {
         if (diceWindowInstance) {
-            diceWindowInstance.visible = true;
+            if (typeof diceWindowInstance.openWithTarget === "function") {
+                diceWindowInstance.openWithTarget();
+            } else {
+                diceWindowInstance.visible = true;
+            }
         }
     }
 

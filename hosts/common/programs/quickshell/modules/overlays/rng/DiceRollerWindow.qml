@@ -3,11 +3,84 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Io
 
 PanelWindow {
     id: root
 
     property var shell
+    property string detectedFocusedScreenName: ""
+
+    screen: {
+        var target = (shell && shell.settingsManager && shell.settingsManager.rngScreenTarget)
+            ? shell.settingsManager.rngScreenTarget : "focused";
+        if (target === "focused" || target === "") {
+            if (detectedFocusedScreenName !== "") {
+                var foundFocused = Quickshell.screens.find(s => s.name === detectedFocusedScreenName);
+                if (foundFocused) return foundFocused;
+            }
+            return null;
+        }
+        var found = Quickshell.screens.find(s => s.name === target);
+        if (found) return found;
+        return null;
+    }
+
+    onScreenChanged: {
+        if (root.width > 0 && root.height > 0) {
+            diceCard.x = Math.max(20, Math.min(root.width - diceCard.width - 20, diceCard.x));
+            diceCard.y = Math.max(20, Math.min(root.height - diceCard.height - 20, diceCard.y));
+        }
+    }
+
+    // Pure awk/shell monitor focus detector - zero jq dependency
+    Process {
+        id: focusDetector
+        command: [
+            "sh", "-c",
+            "hyprctl monitors 2>/dev/null | awk '/^Monitor/ {m=$2} /focused: (yes|true)/ {print m; exit}' || swaymsg -t get_outputs 2>/dev/null | awk '/name:/ {name=$2} /focused.*true/ {print name; exit}' | tr -d '\", \\t' || echo ''"
+        ]
+        stdout: SplitParser {
+            onRead: data => {
+                var name = data.trim();
+                if (name.length > 0) {
+                    root.detectedFocusedScreenName = name;
+                }
+            }
+        }
+    }
+
+    Timer {
+        interval: 1500
+        running: true
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: {
+            var target = (shell && shell.settingsManager && shell.settingsManager.rngScreenTarget)
+                ? shell.settingsManager.rngScreenTarget : "focused";
+            if (target === "focused" || target === "") {
+                focusDetector.running = true;
+            }
+        }
+    }
+
+    function openWithTarget() {
+        var target = (shell && shell.settingsManager && shell.settingsManager.rngScreenTarget)
+            ? shell.settingsManager.rngScreenTarget : "focused";
+        if (target === "focused" || target === "") {
+            focusDetector.running = false;
+            focusDetector.running = true;
+        }
+        root.visible = true;
+    }
+
+    function toggleWithTarget() {
+        if (root.visible) {
+            root.visible = false;
+        } else {
+            openWithTarget();
+        }
+    }
 
     visible: false
 
@@ -43,39 +116,35 @@ PanelWindow {
     property int strengthVal: 0
     property int flatModVal: 0
     property int customSidesVal: 3
-    property int selectedSides: 6 // Defaults to d6 selected
+    property int selectedSides: 6
 
-    // Advantage / Disadvantage / Keep Options: "all", "kh" (keep highest), "kl" (keep lowest)
     property string keepMode: "all"
     property int keepCount: 1
 
     property string lastRollType: "None"
-    property var lastRolls: [] // Holds objects: { value: val, kept: true/false }
-    property var previewRolls: [] // Holds Mario Party flickering preview numbers
+    property var lastRolls: []
+    property var previewRolls: []
     property int lastTotal: 0
     property real lastAverage: 0.0
     property string coinResult: ""
     property bool showHistoryPanel: false
 
-    // Reset rolls when configuration changes to re-trigger flickering preview
     onDiceCountChanged: root.lastRolls = []
     onSelectedSidesChanged: root.lastRolls = []
 
-    // History Storage Model
     ListModel {
         id: historyModel
     }
 
-    // --- MARIO PARTY FLICKERING DICE TIMER ---
     Timer {
         id: marioPartyTimer
-        interval: 60 // 60ms rapid flickering ticks
+        interval: 60
         repeat: true
         running: root.visible && root.lastRolls.length === 0 && !root.showHistoryPanel
 
         onTriggered: {
             var tempPreview = [];
-            var count = Math.min(30, root.diceCount); // Limit preview box count for smooth 60fps performance
+            var count = Math.min(30, root.diceCount);
             var sides = root.selectedSides < 2 ? 2 : root.selectedSides;
 
             for (var i = 0; i < count; i++) {
@@ -90,7 +159,6 @@ PanelWindow {
         }
     }
 
-    // --- REAL-TIME SYNCHRONIZED NUMBER INPUT COMPONENT ---
     component NumInput : Rectangle {
         id: numBox
         property int value: 0
@@ -110,7 +178,6 @@ PanelWindow {
             anchors.margins: 4
             spacing: 4
 
-            // Up Button (▲) - Left side
             Rectangle {
                 width: 32
                 Layout.fillHeight: true
@@ -139,7 +206,6 @@ PanelWindow {
                 }
             }
 
-            // Real-Time Keystroke Synchronized TextInput
             TextInput {
                 id: txtInput
                 Layout.fillWidth: true
@@ -153,7 +219,6 @@ PanelWindow {
                 validator: IntValidator { bottom: numBox.minVal; top: numBox.maxVal }
                 inputMethodHints: Qt.ImhDigitsOnly
 
-                // Sync value instantly on every keystroke
                 onTextEdited: {
                     var parsed = parseInt(text);
                     if (!isNaN(parsed)) {
@@ -161,14 +226,12 @@ PanelWindow {
                     }
                 }
 
-                // Keep text in sync when value is changed via buttons
                 Binding on text {
                     value: String(numBox.value)
                     when: !txtInput.activeFocus
                 }
             }
 
-            // Down Button (▼) - Right side
             Rectangle {
                 width: 32
                 Layout.fillHeight: true
@@ -203,7 +266,6 @@ PanelWindow {
         var sides = selectedSides;
         if (sides < 2) sides = 2;
 
-        // --- COIN FLIP LOGIC ---
         if (sides === 2) {
             var headsCount = 0;
             var tailsCount = 0;
@@ -225,55 +287,43 @@ PanelWindow {
             lastRollType = diceCount + (diceCount === 1 ? " Coin Flip" : " Coin Flips");
             coinResult = headsCount + " 🪙 Heads / " + tailsCount + " 🪙 Tails";
             lastRolls = coinRolls;
-            lastTotal = headsCount; // Total Heads
+            lastTotal = headsCount;
             lastAverage = diceCount > 0 ? (headsCount / diceCount) : 0;
 
             addHistory(lastRollType, headsCount, lastAverage, coinResult);
             return;
         }
 
-        // --- STANDARD & CUSTOM DICE LOGIC ---
         coinResult = "";
 
         var rawRollObjects = [];
         for (var i = 0; i < diceCount; i++) {
             var raw = Math.floor(Math.random() * sides) + 1;
-
-            // STRENGTH LOGIC: Capped at max die value (sides) when positive, floored at 1 when negative
             var strengthApplied = Math.min(sides, Math.max(1, raw + strengthVal));
-
-            // FLAT MODIFIER LOGIC: Added after strength, uncapped
             var finalVal = strengthApplied + flatModVal;
-
             rawRollObjects.push({ "value": finalVal, "kept": true });
         }
 
-        // --- ADVANTAGE / DISADVANTAGE / KEEP FILTERING ---
         var effectiveKeep = Math.min(diceCount, Math.max(1, keepCount));
 
         if (keepMode === "kh") {
-            // Keep Highest: Sort descending to mark top K as kept
             rawRollObjects.sort(function(a, b) { return b.value - a.value; });
             for (var k = 0; k < rawRollObjects.length; k++) {
                 rawRollObjects[k].kept = (k < effectiveKeep);
             }
         } else if (keepMode === "kl") {
-            // Keep Lowest: Sort ascending to mark lowest K as kept
             rawRollObjects.sort(function(a, b) { return a.value - b.value; });
             for (var l = 0; l < rawRollObjects.length; l++) {
                 rawRollObjects[l].kept = (l < effectiveKeep);
             }
         } else {
-            // Keep All
             for (var m = 0; m < rawRollObjects.length; m++) {
                 rawRollObjects[m].kept = true;
             }
         }
 
-        // Sort final display list ascending (lowest to highest) for visual cleanliness
         rawRollObjects.sort(function(a, b) { return a.value - b.value; });
 
-        // Calculate sum and average of KEPT dice only
         var sum = 0;
         var keptNum = 0;
         var rollSummaryStrings = [];
@@ -308,16 +358,14 @@ PanelWindow {
             "typeStr": type,
             "totalVal": total,
             "avgVal": avg > 0 ? avg.toFixed(2) : "-",
-                            "rollsStr": rollsStr
+            "rollsStr": rollsStr
         });
 
-        // Limit history to last 50 rolls
         if (historyModel.count > 50) {
             historyModel.remove(50, historyModel.count - 50);
         }
     }
 
-    // --- MAIN FLOATING WINDOW RECTANGLE ---
     Rectangle {
         id: diceCard
         x: 100
@@ -334,7 +382,6 @@ PanelWindow {
             anchors.margins: 16
             spacing: 12
 
-            // --- NATIVE DRAGGABLE HEADER BAR ---
             Rectangle {
                 Layout.fillWidth: true
                 height: 48
@@ -367,7 +414,6 @@ PanelWindow {
                         Layout.fillWidth: true
                     }
 
-                    // Toggle History View Button
                     Rectangle {
                         width: 110
                         height: 34
@@ -392,7 +438,6 @@ PanelWindow {
                         }
                     }
 
-                    // Close Window Button
                     Rectangle {
                         width: 34
                         height: 34
@@ -417,14 +462,12 @@ PanelWindow {
                 }
             }
 
-            // --- MAIN ROLLER PANEL ---
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 spacing: 12
                 visible: !root.showHistoryPanel
 
-                // --- ROW 1: QUANTITY, STRENGTH, FLAT MOD (INSTANT TWO-WAY SYNC) ---
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 10
@@ -469,7 +512,6 @@ PanelWindow {
                     }
                 }
 
-                // --- ROW 2: ADVANTAGE / DISADVANTAGE / KEEP MODE SELECTOR ---
                 Rectangle {
                     Layout.fillWidth: true
                     height: 52
@@ -491,7 +533,6 @@ PanelWindow {
                             Layout.alignment: Qt.AlignVCenter
                         }
 
-                        // Mode Buttons: Keep All, Advantage, Disadvantage
                         Repeater {
                             model: [
                                 { "idStr": "all", "label": "Keep All" },
@@ -523,7 +564,6 @@ PanelWindow {
                             }
                         }
 
-                        // Keep Count Spinner
                         NumInput {
                             id: keepSpin
                             visible: root.keepMode !== "all"
@@ -534,7 +574,6 @@ PanelWindow {
                     }
                 }
 
-                // --- STANDARD DICE BUTTON GRID ---
                 GridLayout {
                     Layout.fillWidth: true
                     columns: 4
@@ -582,7 +621,6 @@ PanelWindow {
                     }
                 }
 
-                // --- CUSTOM DIE SELECTOR CARD ---
                 Rectangle {
                     readonly property bool isCustomActive: root.selectedSides === root.customSidesVal && root.selectedSides !== 2 && root.selectedSides !== 4 && root.selectedSides !== 6 && root.selectedSides !== 8 && root.selectedSides !== 10 && root.selectedSides !== 12 && root.selectedSides !== 20 && root.selectedSides !== 100
 
@@ -607,7 +645,7 @@ PanelWindow {
                             Layout.alignment: Qt.AlignVCenter
                         }
 
-                        Item { Layout.fillWidth: true } // Pushes spinner cleanly to the right
+                        Item { Layout.fillWidth: true }
 
                         NumInput {
                             id: customSpin
@@ -628,14 +666,12 @@ PanelWindow {
                     }
                 }
 
-                // --- PROMINENT ROLL ACTION BUTTON ---
                 Rectangle {
                     Layout.fillWidth: true
                     height: 54
                     radius: 10
 
                     color: rollMouse.containsMouse ? root.bgHover : root.bgCard
-
                     border.width: rollMouse.containsMouse ? 3 : 2
                     border.color: rollMouse.containsMouse ? root.highlightColor : root.accentColor
 
@@ -665,7 +701,6 @@ PanelWindow {
                     }
                 }
 
-                // --- RESULTS DISPLAY (WITH MARIO PARTY FLICKERING PREVIEW MODE) ---
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
@@ -674,7 +709,6 @@ PanelWindow {
                     border.width: 1
                     border.color: root.borderColor
 
-                    // --- MODE A: STATIC LOCKED RESULTS AFTER CLICKING ROLL ---
                     ColumnLayout {
                         anchors.fill: parent
                         anchors.margins: 14
@@ -780,7 +814,6 @@ PanelWindow {
                         }
                     }
 
-                    // --- MODE B: MARIO PARTY FLICKERING DICE PREVIEW (BEFORE ROLLING) ---
                     ColumnLayout {
                         anchors.fill: parent
                         anchors.margins: 14
@@ -838,7 +871,6 @@ PanelWindow {
                                         height: 40
                                         radius: 8
 
-                                        // Mario Party Flickering Block Style
                                         color: root.bgBase
                                         border.width: 2
                                         border.color: root.highlightColor
@@ -858,7 +890,6 @@ PanelWindow {
                 }
             }
 
-            // --- ROLL HISTORY PANEL ---
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true

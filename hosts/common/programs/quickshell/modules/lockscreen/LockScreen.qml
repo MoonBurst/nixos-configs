@@ -89,6 +89,11 @@ WlSessionLockSurface {
         }
 
         Keys.onPressed: (event) => {
+            if (event.key === Qt.Key_Escape && (event.modifiers & Qt.ControlModifier) && (event.modifiers & Qt.AltModifier)) {
+                if (windowSurface.lockSession) windowSurface.lockSession.locked = false;
+                event.accepted = true;
+                return;
+            }
             if (event.key === Qt.Key_CapsLock) {
                 windowSurface.isCapsLockActive = !windowSurface.isCapsLockActive;
             } else if (event.text !== "" && event.text.length === 1) {
@@ -244,8 +249,12 @@ WlSessionLockSurface {
                         if (windowSurface.rootRef) {
                             windowSurface.rootRef.globalPasswordBuffer = passwordField.text;
                             windowSurface.rootRef.passwordLength = passwordField.text.length;
+                            var pam = windowSurface.rootRef.lockPam;
+                            if (pam) {
+                                if (pam.active) pam.abort();
+                                pam.start();
+                            }
                         }
-                        lockPam.active = true;
                     }
                 }
             }

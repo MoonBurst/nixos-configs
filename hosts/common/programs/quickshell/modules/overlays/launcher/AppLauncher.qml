@@ -31,14 +31,16 @@ Item {
         filteredAppsModel.clear()
 
         if (q.length === 0) {
-            for (let i = 0, c = allApps.length; i < c; ++i) {
+            let limit = Math.min(80, allApps.length);
+            for (let i = 0; i < limit; ++i) {
                 filteredAppsModel.append(allApps[i])
             }
             return;
         }
 
         var matches = []
-        for (let i = 0, c = allApps.length; i < c; ++i) {
+        let limit = Math.min(80, allApps.length);
+            for (let i = 0; i < limit; ++i) {
             const app = allApps[i]
             let score = 0
             const name = app.searchName

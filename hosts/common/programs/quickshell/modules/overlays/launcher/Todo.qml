@@ -521,6 +521,8 @@ Rectangle {
                 highlightFollowsCurrentItem: false
                 focus: true
 
+                onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
+
                 // Global list keyboard navigation controller
                 Keys.onPressed: (event) => {
                     var isAltShiftPressed = (event.modifiers & Qt.AltModifier) && (event.modifiers & Qt.ShiftModifier);
@@ -534,7 +536,19 @@ Rectangle {
                             event.accepted = true;
                         }
                     } else if (event.key === Qt.Key_Up) {
-                        if (currentIndex === 0) { taskInput.forceActiveFocus(); event.accepted = true; }
+                        if (currentIndex <= 0) {
+                            taskInput.forceActiveFocus();
+                        } else {
+                            currentIndex--;
+                            positionViewAtIndex(currentIndex, ListView.Contain);
+                        }
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Down) {
+                        if (currentIndex < count - 1) {
+                            currentIndex++;
+                            positionViewAtIndex(currentIndex, ListView.Contain);
+                        }
+                        event.accepted = true;
                     } else if (event.key === Qt.Key_Space || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                         var item = todoModel.get(currentIndex);
                         if (item) { todoRoot.toggleTodo(item.id, item.completed); event.accepted = true; }

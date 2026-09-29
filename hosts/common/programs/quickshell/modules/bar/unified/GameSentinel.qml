@@ -12,12 +12,12 @@ Item {
 
     Process {
         id: pauseProc
-        command: ["/run/current-system/sw/bin/sudo", "-n", "/run/current-system/sw/bin/game-sync-pause"]
+        command: ["sudo", "-n", "game-sync-pause"]
     }
 
     Process {
         id: resumeProc
-        command: ["/run/current-system/sw/bin/sudo", "-n", "/run/current-system/sw/bin/game-sync-resume"]
+        command: ["sudo", "-n", "game-sync-resume"]
     }
 
     Timer {
@@ -28,7 +28,7 @@ Item {
     Process {
         id: gamingProcess
         command: [
-            "/run/current-system/sw/bin/bash", "-c",
+            "bash", "-c",
             'CONFIG_DIR="$HOME/.config/quickshell"; ' +
             'GAMES_FILE="$CONFIG_DIR/games_list.json"; ' +
             'IGNORED_FILE="$CONFIG_DIR/games_ignored.json"; ' +
@@ -36,7 +36,7 @@ Item {
             '[ ! -f "$GAMES_FILE" ] && echo \'["Overwatch.exe","MapleStory","MapleStory.exe"]\' > "$GAMES_FILE"; ' +
             '[ ! -f "$IGNORED_FILE" ] && echo \'[]\' > "$IGNORED_FILE"; ' +
             'IS_GAME=0; ' +
-            'PATTERN=$(jq -r \'join("|")\' "$GAMES_FILE" 2>/dev/null); ' +
+            'PATTERN=$(cat "$GAMES_FILE" 2>/dev/null | tr -d \'[]"\\r\\n \' | tr \',\' \'|\' | sed \'s/|*$//\'); ' +
             'if [ -n "$PATTERN" ] && pgrep -E "$PATTERN" >/dev/null 2>&1; then ' +
             '  IS_GAME=1; ' +
             'fi; ' +

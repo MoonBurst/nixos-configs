@@ -39,7 +39,118 @@ let
     proxy_send_timeout 600s;
   '';
 
-  # Automated 30-Day Room Cleanup Script with Tombstone Protection
+  # Custom Moon Burst Theme for Sable
+  customSableCss = pkgs.writeText "custom-sable.css" ''
+    /* =========================================================================
+       MOON BURST SIGNATURE THEME FOR SABLE
+       Obsidian Dark: #0F0F0F | Navy Card: #12131c | Royal Blue: #003399 | Neon Yellow: #F7F700
+       ========================================================================= */
+
+    :root, html, body, [data-theme], [data-theme="dark"], [data-theme="light"] {
+      --bg-canvas: #0F0F0F !important;
+      --bg-surface: #12131c !important;
+      --bg-surface-variant: #1a1b28 !important;
+      --color-primary: #F7F700 !important;
+      --color-primary-hover: #ffff33 !important;
+      --color-primary-active: #dcdc00 !important;
+      --color-on-primary: #0F0F0F !important;
+      --text-primary: #F7F700 !important;
+      --text-secondary: #FABD2F !important;
+      --border-color: #003399 !important;
+      --accent-color: #F7F700 !important;
+      background-color: #0F0F0F !important;
+      background-image: none !important;
+    }
+
+    body {
+      background-color: #0F0F0F !important;
+      color: #F7F700 !important;
+    }
+
+    /* Login Card */
+    #root > div, form, .login-form, [class*="AuthCard"], [class*="loginCard"] {
+      background-color: #12131c !important;
+      border-radius: 8px !important;
+      color: #F7F700 !important;
+    }
+
+    /* Box Shadow on Main Form Card */
+    form, [class*="AuthCard"] {
+      box-shadow: 0 0 0 5px #003399 !important;
+      padding: 2rem !important;
+    }
+
+    /* All Input Fields */
+    input[type="text"], input[type="password"], input[type="email"], select {
+      background-color: #0F0F0F !important;
+      color: #F7F700 !important;
+      border-radius: 8px !important;
+      border: none !important;
+      box-shadow: 0 0 0 4px #003399 !important;
+      outline: none !important;
+      transition: box-shadow 0.15s ease-in-out !important;
+    }
+
+    input:focus, select:focus {
+      box-shadow: 0 0 0 4px #F7F700, 0 0 20px 5px rgba(247, 247, 0, 0.7) !important;
+      color: #F7F700 !important;
+    }
+
+    /* Login & Submit Buttons */
+    button[type="submit"], button.btn-primary, [class*="Button_primary"], [class*="Button_contained"] {
+      background-color: #0F0F0F !important;
+      color: #F7F700 !important;
+      box-shadow: 0 0 0 5px #003399 !important;
+      border-radius: 8px !important;
+      border: none !important;
+      font-weight: bold !important;
+      cursor: pointer !important;
+      transition: box-shadow 0.15s ease-in-out, transform 0.15s ease-in-out !important;
+    }
+
+    button[type="submit"]:hover, button[type="submit"]:focus,
+    button.btn-primary:hover, button.btn-primary:focus {
+      box-shadow: 0 0 0 5px #F7F700, 0 0 25px 6px rgba(247, 247, 0, 0.75) !important;
+      color: #F7F700 !important;
+      transform: scale(1.02) !important;
+    }
+
+    /* Toggle Switch (Sliding Sync) */
+    input[type="checkbox"]:checked, [class*="Switch_checked"] {
+      background-color: #003399 !important;
+      border-color: #F7F700 !important;
+    }
+
+    /* Links */
+    a, [class*="link"] {
+      color: #FABD2F !important;
+      transition: color 0.15s ease-in-out !important;
+    }
+    a:hover, [class*="link"]:hover {
+      color: #F7F700 !important;
+      text-shadow: 0 0 8px rgba(247, 247, 0, 0.5) !important;
+    }
+
+    /* Hide unwanted SSO and divider elements */
+    [class*="ControlDivider"], .login__sso, .login__divider, .register__sso, [class*="login__sso"], [class*="login__divider"] {
+      display: none !important;
+      visibility: hidden !important;
+      height: 0 !important;
+      margin: 0 !important;
+    }
+
+    /* In-App Sidebar & Room Navigation */
+    nav, aside, [class*="Sidebar"], [class*="Navigation"] {
+      background-color: #12131c !important;
+      border-right: 2px solid #003399 !important;
+    }
+
+    header, [class*="Header"], [class*="RoomHeader"] {
+      background-color: #12131c !important;
+      border-bottom: 2px solid #003399 !important;
+    }
+  '';
+
   cleanupScript = pkgs.writeScriptBin "continuwuity-room-cleanup" ''#!${pkgs.python3}/bin/python3
 import sqlite3
 import json
@@ -59,7 +170,6 @@ try:
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
 
-    # 1. Identify all tombstoned (upgraded) rooms to protect their history
     cur.execute("SELECT value FROM servercurrentevent_data WHERE instr(value, 'm.room.tombstone') > 0")
     tombstoned_rooms = set()
     for row in cur.fetchall():
@@ -70,7 +180,6 @@ try:
         except Exception:
             pass
 
-    # 2. Get member count for all rooms
     cur.execute("SELECT key, value FROM roomid_joinedcount")
     rooms = {}
     for r in cur.fetchall():
@@ -88,7 +197,6 @@ try:
 
     for rid, count in rooms.items():
         if rid in tombstoned_rooms:
-            # Protected historical predecessor: never delete
             if rid in tracker:
                 del tracker[rid]
             continue
@@ -286,6 +394,38 @@ in
         return 301 /.well-known/security.txt;
       '';
 
+      # Strip SSO from login endpoint
+      "~* ^/_matrix/client/(v3|r0)/login" = {
+        proxyPass = "http://127.0.0.1:6167";
+        proxyWebsockets = true;
+        extraConfig = ''
+          ${matrixProxyConfig}
+          if ($request_method = GET) {
+            add_header Content-Type application/json;
+            add_header Access-Control-Allow-Origin *;
+            add_header Access-Control-Allow-Methods "GET, POST, OPTIONS";
+            add_header Access-Control-Allow-Headers "*";
+            return 200 '{"flows":[{"type":"m.login.password"}]}';
+          }
+        '';
+      };
+
+      # Strip SSO from register endpoint
+      "~* ^/_matrix/client/(v3|r0)/register" = {
+        proxyPass = "http://127.0.0.1:6167";
+        proxyWebsockets = true;
+        extraConfig = ''
+          ${matrixProxyConfig}
+          if ($request_method = GET) {
+            add_header Content-Type application/json;
+            add_header Access-Control-Allow-Origin *;
+            add_header Access-Control-Allow-Methods "GET, POST, OPTIONS";
+            add_header Access-Control-Allow-Headers "*";
+            return 200 '{"flows":[{"stages":["m.login.dummy"]}]}';
+          }
+        '';
+      };
+
       "/_matrix/media" = {
         proxyPass = "http://127.0.0.1:6167";
         proxyWebsockets = true;
@@ -307,16 +447,27 @@ in
     };
   };
 
-  # SABLE WEB CLIENT WITH CSP STRIPPED AND CAPTURE-PHASE INTERCEPTOR
+  # SABLE WEB CLIENT: MOON BURST THEME + CLICK INTERCEPTOR
   services.nginx.virtualHosts."matrix.moonburst.net" = {
     listen = defaultListen;
 
     extraConfig = ''
       client_max_body_size 10G;
       ${commonNginxHeaders}
+      add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+      add_header Clear-Site-Data '"cache"' always;
     '';
 
     locations = {
+      # Serve custom Moon Burst theme
+      "= /custom-sable.css" = {
+        alias = "${customSableCss}";
+        extraConfig = ''
+          default_type text/css;
+          add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+        '';
+      };
+
       "~* ^/register" = {
         extraConfig = ''
           return 302 https://moonburst.net/register;
@@ -332,7 +483,7 @@ in
       "= /config.json".extraConfig = ''
         default_type application/json;
         add_header Access-Control-Allow-Origin *;
-        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0";
+        add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
         return 200 '${builtins.toJSON {
           defaultHomeserver = 0;
           homeserverList = [
@@ -348,20 +499,18 @@ in
           proxy_pass https://$sable_upstream;
           proxy_set_header Host $sable_upstream;
           proxy_ssl_server_name on;
+          
           proxy_hide_header Content-Security-Policy;
           proxy_set_header Accept-Encoding "";
           sub_filter_once off;
           sub_filter_types text/html;
-          sub_filter '</head>' '<script>(function(){if("serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(function(regs){for(var r of regs)r.unregister();});}function chk(){if(window.location.pathname.indexOf("/register")===0){window.location.href="https://moonburst.net/register";}}window.addEventListener("popstate",chk);var p=history.pushState;history.pushState=function(){p.apply(this,arguments);chk();};var rep=history.replaceState;history.replaceState=function(){rep.apply(this,arguments);chk();};setInterval(chk,50);document.addEventListener("click",function(e){var t=e.target.closest("a, button");if(t){var h=t.getAttribute("href")||"";var txt=(t.innerText||t.textContent||"").trim().toLowerCase();if(h.indexOf("/register")!==-1||txt==="register"||txt.indexOf("register")!==-1){e.preventDefault();e.stopPropagation();window.location.href="https://moonburst.net/register";}}},true);})();</script></head>';
+          sub_filter '</head>' '<link rel="stylesheet" href="/custom-sable.css?v=2026_moonburst"><script>(function(){if("serviceWorker" in navigator){navigator.serviceWorker.getRegistrations().then(function(regs){for(var r of regs)r.unregister();});}function chk(){if(window.location.pathname.indexOf("/register")!==-1){window.location.href="https://moonburst.net/register";}}window.addEventListener("popstate",chk);var p=history.pushState;history.pushState=function(){p.apply(this,arguments);chk();};var rep=history.replaceState;history.replaceState=function(){rep.apply(this,arguments);chk();};document.addEventListener("click",function(e){var t=e.target.closest("a, button, span, div");if(t){var txt=(t.innerText||t.textContent||"").trim().toLowerCase();if(txt==="register"||txt.indexOf("account? register")!==-1){e.preventDefault();e.stopPropagation();window.location.href="https://moonburst.net/register";}}},true);function purgeSSO(){chk();document.querySelectorAll("button, div, span, p, h4").forEach(function(el){var txt=(el.innerText||el.textContent||"").trim();if(txt.indexOf("Single sign-on")!==-1||txt.indexOf("Could not register")!==-1){var b1=el.closest("div")||el;if(b1)b1.remove();}if(txt.indexOf("Continue with ")===0){var b2=el.closest("button")||el;if(b2)b2.remove();}if(txt==="OR"){var b3=el.closest("div")||el;if(b3)b3.remove();}if((txt==="Register"||txt.indexOf("account? Register")!==-1)&&!document.getElementById("sable-recover-link")){var rec=document.createElement("div");rec.id="sable-recover-link";rec.style="text-align:center;margin-top:10px;";var a=document.createElement("a");a.href="https://moonburst.net/register?tab=recovery";a.style="color:#FABD2F;font-size:13px;text-decoration:none;";a.textContent="Forgot Password? Recover Account →";rec.appendChild(a);el.parentNode.appendChild(rec);}});}setInterval(purgeSSO,25);purgeSSO();})();</script></head>';
         '';
         proxyWebsockets = true;
       };
     };
   };
 
-  # =========================================================================
-  # 30-DAY EMPTY ROOM CLEANUP SERVICE & TIMER (TOMBSTONE PROTECTED)
-  # =========================================================================
   systemd.services.continuwuity-empty-rooms-cleanup = {
     description = "Check and track Matrix rooms with 0 users; purge after 30 days (protecting tombstoned rooms)";
     after = [ "continuwuity.service" ];

@@ -11,8 +11,32 @@ PanelWindow {
 
     property bool tooltipActive: false
     property bool pin: false
+    property bool dismissed: false
+    property bool isHovered: tooltipAreaHover.hovered
 
-    // Per-module dimension overrides from Settings
+    readonly property bool isPopupMode: {
+        if (!moduleItem) return false;
+        if ("popupActive" in moduleItem && moduleItem.popupActive) return true;
+        if ("popupVisible" in moduleItem && moduleItem.popupVisible) return true;
+        if ("isPinned" in moduleItem && moduleItem.isPinned) return true;
+        if ("pinTooltip" in moduleItem && moduleItem.pinTooltip) return true;
+        return false;
+    }
+
+    onTooltipActiveChanged: {
+        if (!tooltipActive && !pin && !isPopupMode) {
+            dismissed = false;
+        }
+    }
+
+    onPinChanged: {
+        if (pin) {
+            dismissed = false;
+        } else if (!tooltipActive && !isPopupMode) {
+            dismissed = false;
+        }
+    }
+
     readonly property string moduleKey: (moduleItem && typeof moduleItem.moduleName !== "undefined") ? moduleItem.moduleName : ""
     readonly property int customWidthFromSettings: (shell && shell.settingsManager && moduleKey !== "")
         ? shell.settingsManager.getCapsuleWidth(moduleKey)
@@ -71,10 +95,69 @@ PanelWindow {
     WlrLayershell.exclusiveZone: -1
     WlrLayershell.layer: WlrLayer.Top
     WlrLayershell.namespace: "quickshell-slanted-tooltip"
-    WlrLayershell.keyboardFocus: tooltipWindow.visible ? tooltipWindow.keyboardFocus : WlrLayershell.None
+
+    WlrLayershell.keyboardFocus: {
+        if (!tooltipWindow.visible || !tooltipWindow.isEngaged) return WlrKeyboardFocus.None;
+        if (tooltipWindow.pin || tooltipWindow.isPopupMode || tooltipWindow.isHovered) {
+            return WlrKeyboardFocus.Exclusive;
+        }
+        return WlrKeyboardFocus.None;
+    }
+
+    // =========================================================================
+    // SLANTED INPUT MASK (Pure Quickshell Region subtraction)
+    // =========================================================================
+    mask: Region {
+        id: tooltipMaskRegion
+        readonly property real mH: Math.max(0, animContainer.animHeight)
+        readonly property real mS: Math.max(0, tooltipSlantWidth)
+        readonly property bool isHex: (tooltipWindow.backgroundStyle === "Hexagon" || tooltipWindow.effectiveAlignSide === "Center")
+        readonly property real mW: Math.max(0, animContainer.visualCoreWidth + (isHex ? (tooltipWindow.slantWidth * 2) : mS))
+        readonly property bool isRightSlant: !isHex && (tooltipWindow.slantLeft === "Right" && tooltipWindow.slantRight === "Right")
+        readonly property bool isLeftSlant: !isHex && (tooltipWindow.slantLeft === "Left" && tooltipWindow.slantRight === "Left")
+
+        x: (tooltipWindow.effectiveAlignSide === "Right") ? Math.round(tooltipWindow.width - mW) : ((tooltipWindow.effectiveAlignSide === "Center") ? Math.round((tooltipWindow.width - mW) / 2) : 0)
+        y: 0
+        width: (tooltipWindow.isEngaged && mH > 0) ? Math.round(mW) : 0
+        height: (tooltipWindow.isEngaged && mH > 0) ? Math.round(mH) : 0
+
+        // Right slant (/ /) - Top-Left diagonal cut
+        Region { x: 0; y: 0; width: tooltipMaskRegion.isRightSlant ? Math.round(tooltipMaskRegion.mS * 0.83) : 0; height: Math.round(tooltipMaskRegion.mH * 0.17); intersection: Intersection.Subtract }
+        Region { x: 0; y: Math.round(tooltipMaskRegion.mH * 0.17); width: tooltipMaskRegion.isRightSlant ? Math.round(tooltipMaskRegion.mS * 0.67) : 0; height: Math.round(tooltipMaskRegion.mH * 0.17); intersection: Intersection.Subtract }
+        Region { x: 0; y: Math.round(tooltipMaskRegion.mH * 0.34); width: tooltipMaskRegion.isRightSlant ? Math.round(tooltipMaskRegion.mS * 0.50) : 0; height: Math.round(tooltipMaskRegion.mH * 0.17); intersection: Intersection.Subtract }
+        Region { x: 0; y: Math.round(tooltipMaskRegion.mH * 0.51); width: tooltipMaskRegion.isRightSlant ? Math.round(tooltipMaskRegion.mS * 0.33) : 0; height: Math.round(tooltipMaskRegion.mH * 0.17); intersection: Intersection.Subtract }
+        Region { x: 0; y: Math.round(tooltipMaskRegion.mH * 0.68); width: tooltipMaskRegion.isRightSlant ? Math.round(tooltipMaskRegion.mS * 0.17) : 0; height: Math.round(tooltipMaskRegion.mH * 0.17); intersection: Intersection.Subtract }
+
+        // Right slant (/ /) - Bottom-Right diagonal cut
+        Region { x: Math.round(tooltipMaskRegion.mW - (tooltipMaskRegion.mS * 0.17)); y: Math.round(tooltipMaskRegion.mH * 0.17); width: tooltipMaskRegion.isRightSlant ? Math.round(tooltipMaskRegion.mS * 0.17) : 0; height: Math.round(tooltipMaskRegion.mH * 0.17); intersection: Intersection.Subtract }
+        Region { x: Math.round(tooltipMaskRegion.mW - (tooltipMaskRegion.mS * 0.33)); y: Math.round(tooltipMaskRegion.mH * 0.34); width: tooltipMaskRegion.isRightSlant ? Math.round(tooltipMaskRegion.mS * 0.33) : 0; height: Math.round(tooltipMaskRegion.mH * 0.17); intersection: Intersection.Subtract }
+        Region { x: Math.round(tooltipMaskRegion.mW - (tooltipMaskRegion.mS * 0.50)); y: Math.round(tooltipMaskRegion.mH * 0.51); width: tooltipMaskRegion.isRightSlant ? Math.round(tooltipMaskRegion.mS * 0.50) : 0; height: Math.round(tooltipMaskRegion.mH * 0.17); intersection: Intersection.Subtract }
+        Region { x: Math.round(tooltipMaskRegion.mW - (tooltipMaskRegion.mS * 0.67)); y: Math.round(tooltipMaskRegion.mH * 0.68); width: tooltipMaskRegion.isRightSlant ? Math.round(tooltipMaskRegion.mS * 0.67) : 0; height: Math.round(tooltipMaskRegion.mH * 0.17); intersection: Intersection.Subtract }
+        Region { x: Math.round(tooltipMaskRegion.mW - (tooltipMaskRegion.mS * 0.83)); y: Math.round(tooltipMaskRegion.mH * 0.83); width: tooltipMaskRegion.isRightSlant ? Math.round(tooltipMaskRegion.mS * 0.83) : 0; height: Math.round(tooltipMaskRegion.mH - y); intersection: Intersection.Subtract }
+
+        // Left slant (\ \) - Top-Right diagonal cut
+        Region { x: Math.round(tooltipMaskRegion.mW - (tooltipMaskRegion.mS * 0.83)); y: 0; width: tooltipMaskRegion.isLeftSlant ? Math.round(tooltipMaskRegion.mS * 0.83) : 0; height: Math.round(tooltipMaskRegion.mH * 0.17); intersection: Intersection.Subtract }
+        Region { x: Math.round(tooltipMaskRegion.mW - (tooltipMaskRegion.mS * 0.67)); y: Math.round(tooltipMaskRegion.mH * 0.17); width: tooltipMaskRegion.isLeftSlant ? Math.round(tooltipMaskRegion.mS * 0.67) : 0; height: Math.round(tooltipMaskRegion.mH * 0.17); intersection: Intersection.Subtract }
+        Region { x: Math.round(tooltipMaskRegion.mW - (tooltipMaskRegion.mS * 0.50)); y: Math.round(tooltipMaskRegion.mH * 0.34); width: tooltipMaskRegion.isLeftSlant ? Math.round(tooltipMaskRegion.mS * 0.50) : 0; height: Math.round(tooltipMaskRegion.mH * 0.17); intersection: Intersection.Subtract }
+        Region { x: Math.round(tooltipMaskRegion.mW - (tooltipMaskRegion.mS * 0.33)); y: Math.round(tooltipMaskRegion.mH * 0.51); width: tooltipMaskRegion.isLeftSlant ? Math.round(tooltipMaskRegion.mS * 0.33) : 0; height: Math.round(tooltipMaskRegion.mH * 0.17); intersection: Intersection.Subtract }
+        Region { x: Math.round(tooltipMaskRegion.mW - (tooltipMaskRegion.mS * 0.17)); y: Math.round(tooltipMaskRegion.mH * 0.68); width: tooltipMaskRegion.isLeftSlant ? Math.round(tooltipMaskRegion.mS * 0.17) : 0; height: Math.round(tooltipMaskRegion.mH * 0.17); intersection: Intersection.Subtract }
+
+        // Left slant (\ \) - Bottom-Left diagonal cut
+        Region { x: 0; y: Math.round(tooltipMaskRegion.mH * 0.17); width: tooltipMaskRegion.isLeftSlant ? Math.round(tooltipMaskRegion.mS * 0.17) : 0; height: Math.round(tooltipMaskRegion.mH * 0.17); intersection: Intersection.Subtract }
+        Region { x: 0; y: Math.round(tooltipMaskRegion.mH * 0.34); width: tooltipMaskRegion.isLeftSlant ? Math.round(tooltipMaskRegion.mS * 0.33) : 0; height: Math.round(tooltipMaskRegion.mH * 0.17); intersection: Intersection.Subtract }
+        Region { x: 0; y: Math.round(tooltipMaskRegion.mH * 0.51); width: tooltipMaskRegion.isLeftSlant ? Math.round(tooltipMaskRegion.mS * 0.50) : 0; height: Math.round(tooltipMaskRegion.mH * 0.17); intersection: Intersection.Subtract }
+        Region { x: 0; y: Math.round(tooltipMaskRegion.mH * 0.68); width: tooltipMaskRegion.isLeftSlant ? Math.round(tooltipMaskRegion.mS * 0.67) : 0; height: Math.round(tooltipMaskRegion.mH * 0.17); intersection: Intersection.Subtract }
+        Region { x: 0; y: Math.round(tooltipMaskRegion.mH * 0.83); width: tooltipMaskRegion.isLeftSlant ? Math.round(tooltipMaskRegion.mS * 0.83) : 0; height: Math.round(tooltipMaskRegion.mH - y); intersection: Intersection.Subtract }
+
+        // Hexagon Chamfers
+        Region { x: 0; y: 0; width: tooltipMaskRegion.isHex ? Math.round(tooltipMaskRegion.mS * 0.7) : 0; height: Math.round(tooltipMaskRegion.mS * 0.7); intersection: Intersection.Subtract }
+        Region { x: Math.round(tooltipMaskRegion.mW - (tooltipMaskRegion.mS * 0.7)); y: 0; width: tooltipMaskRegion.isHex ? Math.round(tooltipMaskRegion.mS * 0.7) : 0; height: Math.round(tooltipMaskRegion.mS * 0.7); intersection: Intersection.Subtract }
+        Region { x: 0; y: Math.round(tooltipMaskRegion.mH - (tooltipMaskRegion.mS * 0.7)); width: tooltipMaskRegion.isHex ? Math.round(tooltipMaskRegion.mS * 0.7) : 0; height: Math.round(tooltipMaskRegion.mS * 0.7); intersection: Intersection.Subtract }
+        Region { x: Math.round(tooltipMaskRegion.mW - (tooltipMaskRegion.mS * 0.7)); y: Math.round(tooltipMaskRegion.mH - (tooltipMaskRegion.mS * 0.7)); width: tooltipMaskRegion.isHex ? Math.round(tooltipMaskRegion.mS * 0.7) : 0; height: Math.round(tooltipMaskRegion.mS * 0.7); intersection: Intersection.Subtract }
+    }
 
     readonly property bool isPreviewingFromSettings: (shell && shell.settingsManager && shell.settingsManager.previewCapsule === moduleKey && moduleKey !== "")
-    readonly property bool isEngaged: tooltipActive || pin || isPreviewingFromSettings
+    readonly property bool isEngaged: !dismissed && (tooltipActive || pin || isPopupMode || isPreviewingFromSettings)
 
     anchors.top: true
     anchors.left: true
@@ -93,6 +176,35 @@ PanelWindow {
     }
 
     visible: (isEngaged || animContainer.animHeight > 0) && isReady
+
+    onVisibleChanged: {
+        if (visible && isEngaged) {
+            focusScopeItem.forceActiveFocus();
+        } else if (!visible && !tooltipActive && !pin && !isPopupMode) {
+            dismissed = false;
+        }
+    }
+
+    function closeTooltip() {
+        tooltipWindow.dismissed = true;
+        if (shell && shell.settingsManager && shell.settingsManager.previewCapsule === moduleKey) {
+            shell.settingsManager.previewCapsule = "";
+        }
+
+        if (tooltipWindow.moduleItem) {
+            if ("pinTooltip" in tooltipWindow.moduleItem) tooltipWindow.moduleItem.pinTooltip = false;
+            if ("isPinned" in tooltipWindow.moduleItem) tooltipWindow.moduleItem.isPinned = false;
+            if ("popupVisible" in tooltipWindow.moduleItem) tooltipWindow.moduleItem.popupVisible = false;
+            if ("popupActive" in tooltipWindow.moduleItem) tooltipWindow.moduleItem.popupActive = false;
+            if ("confirmDeleteMode" in tooltipWindow.moduleItem) tooltipWindow.moduleItem.confirmDeleteMode = false;
+        }
+    }
+
+    Shortcut {
+        sequence: "Escape"
+        enabled: tooltipWindow.visible && tooltipWindow.isEngaged
+        onActivated: tooltipWindow.closeTooltip()
+    }
 
     implicitWidth: tooltipWidth
     implicitHeight: effectiveHeight
@@ -198,6 +310,29 @@ PanelWindow {
         property real animHeight: 0
         property real visualCoreWidth: tooltipWindow.collapsedCoreWidth
         property real textOpacity: 0
+
+        HoverHandler {
+            id: tooltipAreaHover
+            onHoveredChanged: {
+                if (hovered && tooltipWindow.visible) {
+                    focusScopeItem.forceActiveFocus();
+                } else if (!hovered && !tooltipActive && !pin && !tooltipWindow.isPopupMode) {
+                    tooltipWindow.dismissed = false;
+                }
+            }
+        }
+
+        Item {
+            id: focusScopeItem
+            anchors.fill: parent
+            focus: true
+            Keys.onPressed: (event) => {
+                if (event.key === Qt.Key_Escape) {
+                    tooltipWindow.closeTooltip();
+                    event.accepted = true;
+                }
+            }
+        }
 
         SequentialAnimation {
             id: openAnimation

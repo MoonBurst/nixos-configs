@@ -85,7 +85,7 @@ Item {
 
     function runCmd(cmdString) {
         cmdRunner.running = false;
-        cmdRunner.command = ["/run/current-system/sw/bin/bash", "-c", cmdString];
+        cmdRunner.command = ["bash", "-c", cmdString];
         cmdRunner.running = true;
     }
 
@@ -125,13 +125,13 @@ Item {
         borgMountProc.running = false;
         if (unifiedBox.pendingAuthAction === "unmount") {
             borgMountProc.command = [
-                "sudo", "-S", "-k", "/run/current-system/sw/bin/bash", "-c",
-                "fusermount -u -z /tmp/borg-mount 2>/dev/null || /run/current-system/sw/bin/borg umount /tmp/borg-mount 2>/dev/null || umount -l /tmp/borg-mount"
+                "sudo", "-S", "-k", "bash", "-c",
+                "fusermount -u -z /tmp/borg-mount 2>/dev/null || borg umount /tmp/borg-mount 2>/dev/null || umount -l /tmp/borg-mount"
             ];
         } else {
             borgMountProc.command = [
-                "sudo", "-S", "-k", "/run/current-system/sw/bin/bash", "-c",
-                "fusermount -u -z /tmp/borg-mount 2>/dev/null || true; mkdir -p /tmp/borg-mount && export BORG_PASSPHRASE=$(cat /run/secrets/borg_passphrase 2>/dev/null || true); /run/current-system/sw/bin/borg mount -o allow_other /mnt/main_backup /tmp/borg-mount"
+                "sudo", "-S", "-k", "bash", "-c",
+                "fusermount -u -z /tmp/borg-mount 2>/dev/null || true; mkdir -p /tmp/borg-mount && export BORG_PASSPHRASE=$(cat /run/secrets/borg_passphrase 2>/dev/null || true); borg mount -o allow_other /mnt/main_backup /tmp/borg-mount"
             ];
         }
         borgMountProc.running = true;
@@ -144,7 +144,6 @@ Item {
     BorgSyncEngine { id: borgEngine; onProgressLabelChanged: recalculateState(); onServiceActiveChanged: recalculateState(); onIsMountedChanged: recalculateState() }
     SysHealthEngine { id: sysHealth; onFailedCountChanged: recalculateState(); onRebootRequiredChanged: recalculateState() }
     PodmanTwitchEngine { id: twitchEngine; onCommandRequested: cmd => unifiedBox.runCmd(cmd); onMainWatchingChanged: recalculateState(); onBerryWatchingChanged: recalculateState() }
-    AgentEngine { id: agentEngine; onIsRunningChanged: recalculateState(); onIsPausedChanged: recalculateState() }
 
     function recalculateState() {
         let lines = [];
@@ -346,10 +345,10 @@ Item {
                     onClicked: {
                         if (borgEngine.serviceActive) {
                             borgEngine.serviceActive = false;
-                            unifiedBox.runCmd("sudo -n /run/current-system/sw/bin/game-sync-pause");
+                            unifiedBox.runCmd("sudo -n game-sync-pause");
                         } else {
                             borgEngine.serviceActive = true;
-                            unifiedBox.runCmd("sudo -n /run/current-system/sw/bin/game-sync-resume");
+                            unifiedBox.runCmd("sudo -n game-sync-resume");
                         }
                     }
                 }
@@ -364,7 +363,7 @@ Item {
                 border.color: sysHealth.failedCount > 0 ? themeBase08 : themeBase02; border.width: 1; radius: 4
                 Text { anchors.centerIn: parent; width: Math.min(parent.width - 4, implicitWidth); elide: Text.ElideRight; text: sysHealth.failedCount > 0 ? "🔄 Reset (" + sysHealth.failedCount + ")" : "✔ 0 Failed"; font.pixelSize: 10; font.bold: true; color: sysHealth.failedCount > 0 ? themeBase08 : themeBase05 }
                 HoverHandler { id: resetBtnHover }
-                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: unifiedBox.runCmd("sudo -n /run/current-system/sw/bin/systemctl reset-failed; systemctl --user reset-failed") }
+                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: unifiedBox.runCmd("sudo -n systemctl reset-failed; systemctl --user reset-failed") }
             }
 
             Rectangle {
@@ -402,25 +401,10 @@ Item {
                     anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         if (sysHealth.rebootRequired) unifiedBox.runCmd("systemctl reboot");
-                        else if (!unifiedBox.gcRunning) { unifiedBox.gcRunning = true; unifiedBox.runCmd("sudo -n /run/current-system/sw/bin/nix-collect-garbage --delete-older-than 14d"); }
-                    }
-                }
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.minimumWidth: 40
-                Layout.preferredHeight: 26
-                height: 26
-                color: agentBtnHover.hovered ? "#313244" : "#181825"
-                border.color: agentEngine.isRunning ? themeBase09 : (agentEngine.isPaused ? themeBase0C : themeBase02); border.width: 1; radius: 4
-                Text { anchors.centerIn: parent; width: Math.min(parent.width - 4, implicitWidth); elide: Text.ElideRight; text: agentEngine.isRunning ? "⏸ AI" : (agentEngine.isPaused ? "▶ AI" : "🤖 Idle"); font.pixelSize: 10; font.bold: true; color: agentEngine.isRunning ? themeBase09 : (agentEngine.isPaused ? themeBase0C : themeBase05) }
-                HoverHandler { id: agentBtnHover }
-                MouseArea {
-                    anchors.fill: parent; cursorShape: (agentEngine.isRunning || agentEngine.isPaused) ? Qt.PointingHandCursor : Qt.ArrowCursor
-                    onClicked: {
-                        if (agentEngine.isRunning) unifiedBox.runCmd("pkill -SIGINT -f agent-worker");
-                        else if (agentEngine.isPaused) unifiedBox.runCmd("nohup /run/current-system/sw/bin/agent --resume >/dev/null 2>&1 &");
+                        else if (!unifiedBox.gcRunning) {
+                            unifiedBox.gcRunning = true;
+                            unifiedBox.runCmd("if command -v nix-collect-garbage >/dev/null 2>&1; then sudo -n nix-collect-garbage --delete-older-than 14d; else sudo -n journalctl --vacuum-time=14d 2>/dev/null || true; fi");
+                        }
                     }
                 }
             }

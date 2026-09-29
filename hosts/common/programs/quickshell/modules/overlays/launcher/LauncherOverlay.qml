@@ -15,8 +15,6 @@ Rectangle {
     property string currentDefinition: ""
     property string mode: "apps"
 
-    // DIRECT INLINE MATH EVALUATOR (Zero external dependency, 100% reliable)
-            // FULL MATH, UNIT & DATA CONVERTER ENGINE
     property string mathResultString: ""
     property int mathSelectedIndex: 0
     onMathResultStringChanged: mathSelectedIndex = 0
@@ -30,7 +28,6 @@ Rectangle {
         return false;
     }
 
-
     readonly property bool isStartPageOpen: mode === "startPage"
     readonly property bool isAppsOpen: mode === "apps"
     readonly property bool isClipboardOpen: mode === "clipboard"
@@ -40,6 +37,7 @@ Rectangle {
     readonly property bool isGeminiOpen: mode === "gemini"
     readonly property bool isSettingsOpen: mode === "settings"
     readonly property bool isNotesOpen: mode === "notes"
+    readonly property bool isAmogusOpen: mode === "amogus"
 
     readonly property var ctrl: LauncherModule.LauncherController
     property var activeController: null
@@ -56,9 +54,35 @@ Rectangle {
             if (launcherRoot.mode.toLowerCase() === "startpage") return launcherRoot.ctrl.startPage
             if (launcherRoot.mode.toLowerCase() === "email") return launcherRoot.ctrl.email
             if (launcherRoot.mode === "todo") return launcherRoot.ctrl.todo
-            if (launcherRoot.mode === "pass") return launcherRoot.ctrl.pass
+            if (launcherRoot.mode === "pass") return (passLoader.item || launcherRoot.ctrl.pass)
             return null
         }
+    }
+
+    // Resolves currently highlighted or top matching key from the active visual list
+    readonly property string topPassKey: {
+        if (launcherRoot.mode !== "pass") return "";
+        var passObj = passLoader.item || (launcherRoot.ctrl ? launcherRoot.ctrl.pass : null);
+        if (passObj && passObj.filteredModelCount > 0) {
+            if (typeof passObj.getKeyAt === "function") {
+                return passObj.getKeyAt(passObj.selectedIndex);
+            }
+            return passObj.firstMatchedKey || "";
+        }
+        return "";
+    }
+
+    // Full target string including "pass " prefix if user typed it
+    function getCompletedPassText() {
+        var key = launcherRoot.topPassKey;
+        if (!key) return "";
+        var raw = searchField.text.trim();
+        if (raw.toLowerCase().startsWith("pass ")) {
+            return "pass " + key;
+        } else if (raw.toLowerCase().startsWith("password ")) {
+            return "password " + key;
+        }
+        return key;
     }
 
     anchors.fill: parent
@@ -110,12 +134,23 @@ Rectangle {
             if (lower === "pass" || lower === "password" || lower === "passwords" || raw.startsWith("pass ") || raw.startsWith("password ")) {
                 launcherRoot.mode = "pass";
                 var passQuery = (raw.indexOf(" ") !== -1) ? raw.slice(raw.indexOf(" ") + 1).trim() : "";
-                ctrl.pass.searchQuery = passQuery;
+                if (passLoader.item) passLoader.item.searchQuery = passQuery;
+                if (ctrl.pass) ctrl.pass.searchQuery = passQuery;
                 return;
             }
 
             if (lower === "td" || lower === "todo" || raw.startsWith("td ") || raw.startsWith("todo ")) {
                 launcherRoot.mode = "todo";
+                return;
+            }
+
+                        const amogusTriggers = ["amogus", "amongus", "sus", "impostor", "imposter", "crewmate"];
+            if (amogusTriggers.includes(lower) || raw.startsWith("amogus ") || raw.startsWith("sus ")) {
+                searchField.clear();
+                launcherRoot.closeOverlay();
+                if (shell && shell.amogusWindowInstance) {
+                    shell.amogusWindowInstance.showWindow();
+                }
                 return;
             }
 
@@ -126,7 +161,10 @@ Rectangle {
 
             if (searchField.text.trim() === "") {
                 if (currentMode === "clipboard") ctrl.clipboard.refreshFilter("");
-                else if (currentMode === "pass") ctrl.pass.searchQuery = "";
+                else if (currentMode === "pass") {
+                    if (passLoader.item) passLoader.item.searchQuery = "";
+                    if (ctrl.pass) ctrl.pass.searchQuery = "";
+                }
                 else if (currentMode === "unicode") ctrl.unicodeSearch.refreshFilter("");
                 else if (currentMode === "dictionary") ctrl.dictionary.fetch("");
                 else if (currentMode === "Email" && ctrl.email && typeof ctrl.email.refreshFilter === "function") ctrl.email.refreshFilter("");
@@ -138,14 +176,15 @@ Rectangle {
             if (currentMode === "clipboard") { ctrl.clipboard.refreshFilter(searchField.text.trim()); return; }
             if (currentMode === "pass") {
                 var pQuery = (raw.indexOf(" ") !== -1 && (lower.startsWith("pass ") || lower.startsWith("password "))) ? raw.slice(raw.indexOf(" ") + 1).trim() : searchField.text.trim();
-                ctrl.pass.searchQuery = pQuery;
+                if (passLoader.item) passLoader.item.searchQuery = pQuery;
+                if (ctrl.pass) ctrl.pass.searchQuery = pQuery;
                 return;
             }
             if (currentMode === "math") {
                 runCalculator(searchField.text.trim());
                 return;
             }
-                    if (currentMode === "dictionary") {
+            if (currentMode === "dictionary") {
                 var dQuery = (raw.indexOf(" ") !== -1 && (lower.startsWith("def ") || lower.startsWith("dict "))) ? raw.slice(raw.indexOf(" ") + 1).trim() : searchField.text.trim();
                 ctrl.dictionary.fetch(dQuery);
                 return;
@@ -199,8 +238,9 @@ Rectangle {
     }
 
     function closeOverlay() {
-        launcherRoot.mode = ""
-        launcherWindow.visible = false
+        if (settingsManager) settingsManager.previewCapsule = "";
+        launcherRoot.mode = "";
+        launcherWindow.visible = false;
     }
 
     function toggleOverlayMode(targetMode) {
@@ -212,16 +252,23 @@ Rectangle {
 
             if (targetMode === "clipboard") { ctrl.clipboard.loadClipboard(); ctrl.clipboard.refreshFilter(""); }
             else if (targetMode === "apps") ctrl.appLauncher.refreshFilter("");
-            else if (targetMode === "pass") ctrl.pass.searchQuery = "";
+            else if (targetMode === "pass") {
+                if (passLoader.item) {
+                    passLoader.item.searchQuery = "";
+                    if (typeof passLoader.item.reload === "function") passLoader.item.reload();
+                }
+                if (ctrl.pass) {
+                    ctrl.pass.searchQuery = "";
+                    if (typeof ctrl.pass.reload === "function") ctrl.pass.reload();
+                }
+            }
 
             launcherWindow.visible = true;
 
             if (targetMode === "todo") {
                 Qt.callLater(function() { if (todoLoader.item) todoLoader.item.forceActiveFocus(); });
-            } else if (targetMode === "pass") {
-                Qt.callLater(function() { if (passLoader.item) passLoader.item.forceActiveFocus(); });
-            } else if (targetMode === "notes") {
-                Qt.callLater(function() { if (notesLoader.item) notesLoader.item.forceActiveFocus(); });
+            } else if (targetMode.toLowerCase() === "email") {
+                // Email manages its own list focus
             } else {
                 searchField.forceActiveFocus();
             }
@@ -265,10 +312,15 @@ Rectangle {
             if (up) notesLoader.item.selectPrev(); else notesLoader.item.selectNext();
         } else if (mode === "power" && powerLoader.item) {
             if (up) powerLoader.item.selectPrev(); else powerLoader.item.selectNext();
-        } else if (mode === "pass" && passLoader.item && passLoader.item.targetListView) {
-            if (up) ctrl.pass.selectPrev(); else ctrl.pass.selectNext();
-            passLoader.item.targetListView.currentIndex = ctrl.pass.selectedIndex;
-            passLoader.item.targetListView.positionViewAtIndex(passLoader.item.targetListView.currentIndex, ListView.Contain);
+        } else if (mode === "pass") {
+            var pItem = passLoader.item || ctrl.pass;
+            if (pItem) {
+                if (up) pItem.selectPrev(); else pItem.selectNext();
+                if (pItem.targetListView) {
+                    pItem.targetListView.currentIndex = pItem.selectedIndex;
+                    pItem.targetListView.positionViewAtIndex(pItem.selectedIndex, ListView.Contain);
+                }
+            }
         } else if (mode === "clipboard" && clipboardLoader.item && clipboardLoader.listViewInstance) {
             if (up) ctrl.clipboard.moveUp(); else ctrl.clipboard.moveDown();
             clipboardLoader.listViewInstance.positionViewAtIndex(ctrl.clipboard.selectedIndex, ListView.Contain);
@@ -281,16 +333,16 @@ Rectangle {
         }
     }
 
-    MouseArea { anchors.fill: parent; onClicked: if (launcherRoot.mode !== "settings") launcherRoot.closeOverlay() }
-    Keys.onEscapePressed: {
-        if (searchField.text !== "") {
-            searchField.clear();
-            launcherRoot.mode = "apps";
-        } else if (launcherRoot.mode !== "apps" && launcherRoot.mode !== "") {
-            launcherRoot.mode = "apps";
-        } else {
+    MouseArea { 
+        anchors.fill: parent; 
+        onClicked: {
+            if (settingsManager) settingsManager.previewCapsule = "";
             launcherRoot.closeOverlay();
         }
+    }
+
+    Keys.onEscapePressed: {
+        launcherRoot.closeOverlay();
     }
 
     Rectangle {
@@ -313,62 +365,91 @@ Rectangle {
 
             readonly property real contentHeight: height - searchField.height - spacing
 
+            FontMetrics {
+                id: searchFontMetrics
+                font: searchField.font
+            }
+
             TextField {
                 id: searchField
                 width: parent.width
                 leftPadding: 20
+                rightPadding: (launcherRoot.mode === "pass" && launcherRoot.topPassKey !== "") ? (autoBadge.width + 30) : 20
                 height: 50
 
-                focus: launcherRoot.mode !== "todo" && launcherRoot.mode.toLowerCase() !== "email"
-                visible: focus
+                focus: true
+                visible: launcherRoot.mode !== "todo" && launcherRoot.mode.toLowerCase() !== "email"
 
                 color: shell.theme.base05
-                font.pixelSize: 30
+                font.pixelSize: 26
                 placeholderTextColor: shell.theme.base05
 
                 placeholderText: {
                     const currentMode = launcherRoot.mode
                     if (currentMode === "settings") return "System Settings (Type query to exit, or adjust below)..."
-                    if (currentMode === "gemini") return "Ask Gemini... (Enter to send, Tab to clear context)"
-                    if (currentMode === "clipboard") return "Search clipboard history..."
-                    if (currentMode === "unicode") return "Search unicode symbols..."
-                    if (currentMode === "dictionary") return "Enter word..."
+                    if (currentMode === "gemini") return "Ask Gemini... (Enter to send, Tab to clear)"
+                    if (currentMode === "clipboard") return "Search clipboard history... [Tab to clear]"
+                    if (currentMode === "unicode") return "Search unicode symbols... [Tab to clear]"
+                    if (currentMode === "dictionary") return "Enter word... [Tab to clear]"
                     if (currentMode === "power") return "Choose power action (Enter to confirm)..."
-                    if (currentMode === "pass") return "Search passwords..."
-                    if (currentMode === "notes") return "Type note to save (Enter to add, or select to copy)..."
+                    if (currentMode === "pass") return "Search passwords... (Enter to auto-complete)"
+                    if (currentMode === "notes") return "Type note to save (Enter to add, Del to remove)..."
+                    if (currentMode === "amogus") return "Among Us Tracker (Click to dim, 'R' to reset, Esc to exit)..."
                     return "Search applications (or type 'settings')..."
+                }
+
+                // INLINE GHOST COMPLETION TEXT (Trailing directly behind typed text)
+                Text {
+                    id: inlineGhostText
+                    visible: launcherRoot.mode === "pass" && searchField.text !== "" && launcherRoot.topPassKey !== "" && searchField.activeFocus
+                    x: searchField.leftPadding + searchFontMetrics.advanceWidth(searchField.text)
+                    anchors.verticalCenter: parent.verticalCenter
+                    font: searchField.font
+                    width: Math.max(0, parent.width - x - (autoBadge.visible ? autoBadge.width + 30 : 20))
+                    clip: true
+                    elide: Text.ElideRight
+
+                    text: {
+                        var fullText = launcherRoot.getCompletedPassText();
+                        var typed = searchField.text;
+                        if (!fullText || !typed) return "";
+                        if (fullText.toLowerCase().startsWith(typed.toLowerCase())) {
+                            return fullText.substring(typed.length);
+                        } else {
+                            return " → " + launcherRoot.topPassKey;
+                        }
+                    }
+                    color: "#00e5ff"
+                    opacity: 0.55
                 }
 
                 background: Rectangle {
                     radius: 10
                     color: "transparent"
-                    border.width: 5
+                    border.width: 4
                     border.color: shell.theme.base05
 
-                    Text {
-                        id: searchSuggestionText
-                        visible: launcherRoot.mode === "pass" && searchField.text !== "" && searchField.activeFocus
-                        text: {
-                            if (launcherRoot.ctrl.pass && launcherRoot.ctrl.pass.filteredModelCount > 0) {
-                                var firstMatch = launcherRoot.ctrl.pass.firstMatchedKey;
-                                var rawText = searchField.text;
-                                var hasPrefix = rawText.startsWith("pass ");
-                                var query = hasPrefix ? rawText.substring(5).trim().toLowerCase() : rawText.trim().toLowerCase();
+                    // AUTO-COMPLETE PILL ON THE RIGHT
+                    Rectangle {
+                        id: autoBadge
+                        visible: launcherRoot.mode === "pass" && launcherRoot.topPassKey !== "" && searchField.text.trim().toLowerCase() !== launcherRoot.getCompletedPassText().toLowerCase()
+                        anchors.right: parent.right
+                        anchors.rightMargin: 12
+                        anchors.verticalCenter: parent.verticalCenter
+                        height: 32
+                        width: badgeRow.implicitWidth + 20
+                        radius: 6
+                        color: "#182030"
+                        border.color: "#00e5ff"
+                        border.width: 1.5
 
-                                if (query !== "" && firstMatch.toLowerCase().startsWith(query)) {
-                                    return hasPrefix ? "pass " + firstMatch : firstMatch;
-                                }
-                            }
-                            return "";
+                        Row {
+                            id: badgeRow
+                            anchors.centerIn: parent
+                            spacing: 6
+                            Text { text: "↵ Complete:"; color: "#00e5ff"; font.bold: true; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+                            Text { text: launcherRoot.topPassKey; color: "#ffffff"; font.bold: true; font.pixelSize: 13; anchors.verticalCenter: parent.verticalCenter }
                         }
-                        font.family: searchField.font.family
-                        font.pixelSize: searchField.font.pixelSize
-                        font.italic: true
-                        color: "#00e5ff"
-                        opacity: 0.8
-                        anchors.fill: parent
-                        anchors.leftMargin: searchField.leftPadding
-                        verticalAlignment: Text.AlignVCenter
                     }
                 }
 
@@ -391,20 +472,16 @@ Rectangle {
                 }
 
                 Keys.onDownPressed: {
-                    if (launcherRoot.mode === "math" && launcherRoot.mathResultString.indexOf("
-") !== -1) {
-                        var total = launcherRoot.mathResultString.split("
-").length;
+                    if (launcherRoot.mode === "math" && launcherRoot.mathResultString.indexOf("\n") !== -1) {
+                        var total = launcherRoot.mathResultString.split("\n").length;
                         launcherRoot.mathSelectedIndex = (launcherRoot.mathSelectedIndex + 3) % total;
                     } else {
                         launcherRoot.navigateActiveList(false);
                     }
                 }
                 Keys.onUpPressed: {
-                    if (launcherRoot.mode === "math" && launcherRoot.mathResultString.indexOf("
-") !== -1) {
-                        var total = launcherRoot.mathResultString.split("
-").length;
+                    if (launcherRoot.mode === "math" && launcherRoot.mathResultString.indexOf("\n") !== -1) {
+                        var total = launcherRoot.mathResultString.split("\n").length;
                         launcherRoot.mathSelectedIndex = (launcherRoot.mathSelectedIndex - 3 + total) % total;
                     } else {
                         launcherRoot.navigateActiveList(true);
@@ -412,6 +489,35 @@ Rectangle {
                 }
 
                 Keys.onPressed: function(event) {
+                    if (event.key === Qt.Key_Escape) {
+                        launcherRoot.closeOverlay();
+                        event.accepted = true;
+                        return;
+                    }
+
+                    if (event.key === Qt.Key_Tab) {
+                        if (launcherRoot.mode === "gemini" && geminiLoader.item) {
+                            geminiLoader.item.clearContext();
+                            searchField.clear();
+                            event.accepted = true;
+                            return;
+                        }
+                        if (searchField.text !== "") {
+                            searchField.clear();
+                            if (passLoader.item) passLoader.item.searchQuery = "";
+                            if (launcherRoot.ctrl.pass) launcherRoot.ctrl.pass.searchQuery = "";
+                            if (launcherRoot.mode === "clipboard") launcherRoot.ctrl.clipboard.refreshFilter("");
+                            else if (launcherRoot.mode === "unicode") launcherRoot.ctrl.unicodeSearch.refreshFilter("");
+                            event.accepted = true;
+                            return;
+                        } else if (launcherRoot.mode !== "apps" && launcherRoot.mode !== "") {
+                            launcherRoot.mode = "apps";
+                            launcherRoot.ctrl.appLauncher.refreshFilter("");
+                            event.accepted = true;
+                            return;
+                        }
+                    }
+
                     if (launcherRoot.mode === "math" && launcherRoot.mathResultString.indexOf("\n") !== -1) {
                         var totalItems = launcherRoot.mathResultString.split("\n").length;
                         if (event.key === Qt.Key_Right) {
@@ -432,21 +538,6 @@ Rectangle {
                             return;
                         }
                     }
-                    if (event.key === Qt.Key_Escape) {
-                        if (searchField.text !== "") {
-                            searchField.clear();
-                            launcherRoot.mode = "apps";
-                            event.accepted = true;
-                            return;
-                        } else if (launcherRoot.mode !== "apps") {
-                            launcherRoot.mode = "apps";
-                            event.accepted = true;
-                            return;
-                        }
-                        launcherRoot.closeOverlay();
-                        event.accepted = true;
-                        return;
-                    }
 
                     if (event.key === Qt.Key_Backspace && searchField.text === "") {
                         if (launcherRoot.mode !== "apps") {
@@ -456,27 +547,12 @@ Rectangle {
                         }
                     }
 
-                    if (event.key === Qt.Key_Tab) {
-                        if (launcherRoot.mode === "gemini" && geminiLoader.item) {
-                            geminiLoader.item.clearContext();
-                            searchField.clear();
+                                        if (event.key === Qt.Key_Delete) {
+                        if (launcherRoot.mode === "notes" && notesLoader.item) {
+                            notesLoader.item.deleteSelected();
                             event.accepted = true;
                             return;
                         }
-                        if (launcherRoot.mode === "pass" && searchSuggestionText.text !== "") {
-                            searchField.text = searchSuggestionText.text;
-                            searchField.cursorPosition = searchField.text.length;
-
-                            var query = searchField.text;
-                            if (query.startsWith("pass ")) { query = query.substring(5).trim(); }
-                            launcherRoot.ctrl.pass.searchQuery = query;
-
-                            event.accepted = true;
-                            return;
-                        }
-                    }
-
-                    if (event.key === Qt.Key_Delete) {
                         if (launcherRoot.mode === "clipboard") {
                             var isCtrlShift = (event.modifiers & Qt.ControlModifier) && (event.modifiers & Qt.ShiftModifier);
                             if (isCtrlShift) {
@@ -495,29 +571,64 @@ Rectangle {
                     var rawText = searchField.text.trim();
                     var lowerText = rawText.toLowerCase();
 
+                    // PASS AUTO-COMPLETE HANDLER
+                    if (launcherRoot.mode === "pass") {
+                        var pItem = passLoader.item || ctrl.pass;
+                        var targetKey = launcherRoot.topPassKey;
+                        var fullCompleteText = launcherRoot.getCompletedPassText();
+
+                        // 1. If not completed yet, complete to the matched target
+                        if (targetKey !== "" && fullCompleteText !== "" && searchField.text.trim().toLowerCase() !== fullCompleteText.toLowerCase()) {
+                            searchField.text = fullCompleteText;
+                            searchField.cursorPosition = searchField.text.length;
+                            if (pItem) pItem.searchQuery = targetKey;
+                            event.accepted = true;
+                            return;
+                        }
+
+                        // 2. If already completed, copy and close
+                        if (pItem && typeof pItem.decryptAndCopySelected === "function") {
+                            pItem.decryptAndCopySelected();
+                        } else if (ctrl.pass) {
+                            ctrl.pass.decryptAndCopySelected();
+                        }
+                        launcherRoot.closeOverlay();
+                        event.accepted = true;
+                        return;
+                    }
+
                     if (lowerText.startsWith("note ") || lowerText.startsWith("notes ")) {
                         var noteBody = rawText.slice(rawText.indexOf(" ") + 1).trim();
                         if (noteBody !== "") {
-                            var notesFile = (launcherRoot.settingsManager && launcherRoot.settingsManager.notesFilePath)
-                                ? launcherRoot.settingsManager.notesFilePath
-                                : (Quickshell.env("HOME") + "/Documents/notes.txt");
-                            Quickshell.execDetached([
-                                "sh", "-c",
-                                'mkdir -p "$(dirname "$1")"; ts=$(date "+%Y-%m-%d %H:%M"); printf "%s | %s\n" "$ts" "$2" >> "$1"; notify-send -a Notes -i accessories-text-editor "📝 Note Saved" "$2"',
-                                "sh", notesFile, noteBody
-                            ]);
+                            if (notesLoader.item) {
+                                notesLoader.item.addNote(noteBody);
+                            } else {
+                                // Fallback direct execution
+                                var notesFile = (launcherRoot.settingsManager && launcherRoot.settingsManager.notesFilePath)
+                                    ? launcherRoot.settingsManager.notesFilePath : (Quickshell.env("HOME") + "/Documents/notes.txt");
+                                Quickshell.execDetached([
+                                    "sh", "-c",
+                                    'mkdir -p "$(dirname "$1")"; ts=$(date "+%Y-%m-%d %H:%M"); printf "%s | %s\n" "$ts" "$2" >> "$1"; notify-send -a Notes -i accessories-text-editor "📝 Note Saved" "$2"',
+                                    "sh", notesFile, noteBody
+                                ]);
+                            }
                             searchField.clear();
                             launcherRoot.closeOverlay();
+                            event.accepted = true;
                             return;
                         }
                     }
 
                     var currentMode = launcherRoot.mode;
                     if (currentMode === "notes") {
-                        if (notesLoader.item) {
+                        if (rawText !== "" && notesLoader.item) {
+                            notesLoader.item.addNote(rawText);
+                            searchField.clear();
+                        } else if (notesLoader.item) {
                             notesLoader.item.copySelected();
                         }
                         launcherRoot.closeOverlay();
+                        event.accepted = true;
                         return;
                     }
 
@@ -533,13 +644,12 @@ Rectangle {
                         return;
                     }
                     if (currentMode === "math") {
-                runCalculator(searchField.text.trim());
-                return;
-            }
+                        runCalculator(searchField.text.trim());
+                        return;
+                    }
                     if (currentMode === "dictionary") { ctrl.dictionary.copySelected(); launcherRoot.closeOverlay(); }
                     else if (currentMode === "unicode") { ctrl.unicodeSearch.copySelected(); launcherRoot.closeOverlay(); }
                     else if (currentMode === "clipboard") { ctrl.clipboard.copySelected(); launcherRoot.closeOverlay(); }
-                    else if (currentMode === "pass") { ctrl.pass.decryptAndCopySelected(); launcherRoot.closeOverlay(); }
                     else if (currentMode === "apps" && appsLoader.item && appsLoader.item.currentIndex >= 0) {
                         ctrl.appLauncher.launch(ctrl.appLauncher.filteredApps.get(appsLoader.item.currentIndex).exec);
                         launcherRoot.closeOverlay();
@@ -550,7 +660,6 @@ Rectangle {
                 }
             }
 
-            // LOADERS
             Loader {
                 id: settingsLoader
                 active: launcherRoot.mode === "settings"
@@ -745,7 +854,7 @@ Rectangle {
 
                         ListView {
                             id: clipboardListView
-                            width: 540; height: parent.height; clip: true; cacheBuffer: 1200; spacing: 20
+                            width: 540; height: parent.height; clip: true; cacheBuffer: 200; spacing: 12
                             model: ctrl.clipboard.filteredClipboardItems
                             currentIndex: ctrl.clipboard.selectedIndex
 
@@ -812,10 +921,53 @@ Rectangle {
                             width: 500; height: parent.height; radius: 12; color: shell.theme.base00; border.width: 5; border.color: shell.theme.base03
 
                             property var selectedItem: (ctrl.clipboard.selectedIndex >= 0 && ctrl.clipboard.selectedIndex < ctrl.clipboard.filteredClipboardItems.count) ? ctrl.clipboard.filteredClipboardItems.get(ctrl.clipboard.selectedIndex) : null
+                            property bool isPromptingSudo: false
+                            property bool isInstalling: false
+                            property bool installError: false
+                            property string statusMsg: ""
+
+                            Process {
+                                id: cliphistInstaller
+                                running: false
+                                stdout: SplitParser {
+                                    splitMarker: "\n"
+                                    onRead: data => { if (data && data.trim()) previewPanel.statusMsg = data.trim(); }
+                                }
+                                onExited: (code) => {
+                                    previewPanel.isInstalling = false;
+                                    if (code === 0) {
+                                        ctrl.clipboard.hasCliphist = true;
+                                        previewPanel.isPromptingSudo = false;
+                                        previewPanel.installError = false;
+                                        ctrl.clipboard.loadClipboard();
+                                    } else {
+                                        previewPanel.installError = true;
+                                        previewPanel.statusMsg = "Install failed. Check password & official repos.";
+                                    }
+                                }
+                            }
+
+                            function runInstall(pass) {
+                                if (!pass || isInstalling) return;
+                                isInstalling = true;
+                                installError = false;
+                                statusMsg = "Installing cliphist from official repos...";
+                                cliphistInstaller.command = [
+                                    "sudo", "-S", "-k", "bash", "-c",
+                                    "if command -v pacman >/dev/null 2>&1; then pacman -Sy --noconfirm cliphist; " +
+                                    "elif command -v apt-get >/dev/null 2>&1; then apt-get update && apt-get install -y cliphist; " +
+                                    "elif command -v dnf >/dev/null 2>&1; then dnf install -y cliphist; " +
+                                    "elif command -v zypper >/dev/null 2>&1; then zypper install -y cliphist; " +
+                                    "elif command -v nix-env >/dev/null 2>&1; then nix-env -iA nixpkgs.cliphist || nix-env -iA nixos.cliphist; " +
+                                    "else echo 'No supported package manager found' >&2; exit 1; fi"
+                                ];
+                                cliphistInstaller.running = true;
+                                cliphistInstaller.write(pass + "\n");
+                            }
 
                             Image {
                                 anchors.fill: parent; anchors.margins: shell.theme.globalPadding
-                                visible: (previewPanel.selectedItem && previewPanel.selectedItem.isImage)
+                                visible: ctrl.clipboard.hasCliphist && previewPanel.selectedItem && previewPanel.selectedItem.isImage
                                 source: visible ? "file://" + previewPanel.selectedItem.imagePath : ""
                                 fillMode: Image.PreserveAspectFit; smooth: false
                             }
@@ -823,7 +975,7 @@ Rectangle {
                             ScrollView {
                                 id: textPreview
                                 anchors.fill: parent; anchors.margins: shell.theme.globalPadding
-                                visible: (previewPanel.selectedItem && !previewPanel.selectedItem.isImage)
+                                visible: ctrl.clipboard.hasCliphist && previewPanel.selectedItem && !previewPanel.selectedItem.isImage
                                 clip: true
 
                                 TextArea {
@@ -831,6 +983,124 @@ Rectangle {
                                     width: textPreview.availableWidth
                                     wrapMode: Text.WrapAnywhere; readOnly: true; selectByMouse: true
                                     color: shell.theme.base05; font.pixelSize: 20; background: null; textFormat: TextEdit.PlainText; persistentSelection: true; implicitHeight: contentHeight
+                                }
+                            }
+
+                            Column {
+                                anchors.centerIn: parent
+                                width: parent.width - 40
+                                spacing: 14
+                                visible: !ctrl.clipboard.hasCliphist
+
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: "📋"
+                                    font.pixelSize: 48
+                                }
+
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: "Preview relies on Cliphist."
+                                    font.family: shell.theme.fontFamily
+                                    font.pixelSize: 20
+                                    font.bold: true
+                                    color: shell.theme.base05
+                                }
+
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: "Clipboard previews require cliphist (official repos only)."
+                                    font.family: shell.theme.fontFamily
+                                    font.pixelSize: 13
+                                    color: shell.theme.base05
+                                    opacity: 0.7
+                                }
+
+                                Rectangle {
+                                    visible: !previewPanel.isPromptingSudo
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    width: 140; height: 38; radius: 6
+                                    color: instClipHov.hovered ? shell.theme.base05 : "transparent"
+                                    border.color: shell.theme.base05; border.width: 2
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "Install"
+                                        font.bold: true; font.pixelSize: 15
+                                        color: instClipHov.hovered ? "#11111b" : shell.theme.base05
+                                    }
+
+                                    HoverHandler { id: instClipHov }
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            previewPanel.isPromptingSudo = true;
+                                            Qt.callLater(() => sudoClipField.forceActiveFocus());
+                                        }
+                                    }
+                                }
+
+                                Column {
+                                    visible: previewPanel.isPromptingSudo
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    width: parent.width - 60
+                                    spacing: 8
+
+                                    Text {
+                                        text: "Enter Sudo Password:"
+                                        font.bold: true; font.pixelSize: 13
+                                        color: previewPanel.installError ? "#ff5555" : shell.theme.base05
+                                    }
+
+                                    Rectangle {
+                                        width: parent.width; height: 36; radius: 6
+                                        color: "#11111b"
+                                        border.color: previewPanel.installError ? "#ff5555" : shell.theme.base05
+                                        border.width: 1.5
+
+                                        TextInput {
+                                            id: sudoClipField
+                                            anchors.fill: parent; anchors.margins: 8
+                                            echoMode: TextInput.Password
+                                            color: shell.theme.base05
+                                            font.pixelSize: 14
+                                            verticalAlignment: TextInput.AlignVCenter
+                                            Keys.onPressed: (event) => {
+                                                if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                                                    previewPanel.runInstall(text);
+                                                    event.accepted = true;
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    Text {
+                                        visible: previewPanel.statusMsg !== ""
+                                        text: previewPanel.statusMsg
+                                        font.pixelSize: 12
+                                        color: previewPanel.installError ? "#ff5555" : "#04f100"
+                                    }
+
+                                    Row {
+                                        spacing: 10
+                                        Rectangle {
+                                            width: 100; height: 32; radius: 4
+                                            color: "transparent"; border.color: shell.theme.base05; border.width: 1
+                                            Text { anchors.centerIn: parent; text: "Cancel"; color: shell.theme.base05; font.bold: true; font.pixelSize: 12 }
+                                            MouseArea { anchors.fill: parent; onClicked: previewPanel.isPromptingSudo = false }
+                                        }
+                                        Rectangle {
+                                            width: 120; height: 32; radius: 4
+                                            color: shell.theme.base05
+                                            Text { anchors.centerIn: parent; text: previewPanel.isInstalling ? "Installing..." : "Confirm"; color: "#11111b"; font.bold: true; font.pixelSize: 12 }
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                enabled: !previewPanel.isInstalling
+                                                onClicked: previewPanel.runInstall(sudoClipField.text)
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -898,7 +1168,6 @@ Rectangle {
                         height: mathLoader.height
                         color: "transparent"
 
-                        // Single Big Result (44px)
                         Rectangle {
                             anchors.fill: parent
                             radius: 14
@@ -931,7 +1200,6 @@ Rectangle {
                             }
                         }
 
-                        // Full-Height Currency Terminal Grid (3 columns x 4 rows, 138px tall)
                         Item {
                             anchors.fill: parent
                             visible: launcherRoot.mathResultString.indexOf("\n") !== -1
@@ -967,7 +1235,6 @@ Rectangle {
                                             anchors.margins: 12
                                             spacing: 6
 
-                                            // Top Header: CODE & SYMBOL
                                             Item {
                                                 width: parent.width
                                                 height: 20
@@ -992,7 +1259,6 @@ Rectangle {
                                                 }
                                             }
 
-                                            // Center Value (Large & Bold)
                                             Text {
                                                 text: cCard.cVal
                                                 font.bold: true
@@ -1003,7 +1269,6 @@ Rectangle {
                                                 elide: Text.ElideRight
                                             }
 
-                                            // Subtitle: Country Name
                                             Text {
                                                 text: cCard.cName
                                                 font.pixelSize: 12
@@ -1035,10 +1300,22 @@ Rectangle {
             }
 
             Loader {
+                id: amogusLoader
+                active: launcherRoot.mode === "amogus"
+                visible: active
+                width: parent.width
+                height: active ? parent.contentHeight : 0
+                source: "Amogus.qml"
+                onLoaded: {
+                    if (item) item.shell = launcherRoot.shell;
+                }
+            }
+
+            Loader {
                 id: notesLoader
                 active: launcherRoot.mode === "notes"
                 visible: active
-                focus: true
+                focus: false
                 width: parent.width
                 height: active ? parent.contentHeight : 0
                 source: "Notes.qml"
@@ -1085,18 +1362,31 @@ Rectangle {
                 }
             }
 
+            // PASS LOADER: Binds searchQuery directly to searchField text minus prefix
             Loader {
                 id: passLoader
                 active: launcherRoot.mode === "pass"
                 visible: active
-                focus: true
+                focus: false
                 width: parent.width
                 height: active ? parent.contentHeight : 0
                 source: "Pass.qml"
                 onLoaded: {
                     if (item) {
                         item.shell = launcherRoot.shell;
-                        item.forceActiveFocus();
+                        item.searchQuery = Qt.binding(function() {
+                            var raw = searchField.text.trim();
+                            if (raw.toLowerCase().startsWith("pass ")) {
+                                return raw.substring(5).trim();
+                            } else if (raw.toLowerCase().startsWith("password ")) {
+                                return raw.substring(9).trim();
+                            }
+                            if (raw.toLowerCase() === "pass" || raw.toLowerCase() === "password") {
+                                return "";
+                            }
+                            return raw;
+                        });
+                        if (typeof item.reload === "function") item.reload();
                     }
                 }
             }

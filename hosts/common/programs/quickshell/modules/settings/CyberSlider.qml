@@ -14,10 +14,10 @@ Item {
     property real value: 0
     property string unit: ""
     property var theme: null
+    property var valueFormatter: null
 
     signal valueModified(real newVal)
 
-    // Jumps to new value when switching GPU cards or resetting
     onValueChanged: {
         if (!sliderControl.pressed) {
             sliderControl.value = root.value;
@@ -54,7 +54,7 @@ Item {
             }
 
             Text {
-                text: Math.round(sliderControl.value) + root.unit
+                text: root.valueFormatter ? root.valueFormatter(sliderControl.value) : (Math.round(sliderControl.value) + root.unit)
                 font.family: root.fontFamily
                 font.pixelSize: root.fontSize
                 font.bold: true

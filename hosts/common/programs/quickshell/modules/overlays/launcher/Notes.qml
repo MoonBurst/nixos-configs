@@ -35,10 +35,12 @@ Item {
             var db = getDatabase();
             db.transaction(function(tx) {
                 tx.executeSql('CREATE TABLE IF NOT EXISTS notes (id INTEGER PRIMARY KEY AUTOINCREMENT, content TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)');
+                tx.executeSql('CREATE TABLE IF NOT EXISTS meta (key TEXT UNIQUE, val TEXT)');
                 
-                // Auto-migration: check if text file notes exist and import them on first run
-                var checkRs = tx.executeSql('SELECT COUNT(*) AS count FROM notes');
-                if (checkRs.rows.item(0).count === 0) {
+                // Only import from notes.txt ONCE in the lifetime of the database
+                var metaRs = tx.executeSql("SELECT val FROM meta WHERE key = 'imported_txt'");
+                if (metaRs.rows.length === 0) {
+                    tx.executeSql("INSERT INTO meta (key, val) VALUES ('imported_txt', '1')");
                     notesImporter.running = true;
                 }
             });
@@ -84,6 +86,24 @@ Item {
         }
     }
 
+    function syncTextFileBackup() {
+        var allLines = [];
+        for (var i = 0; i < notesModel.count; i++) {
+            var n = notesModel.get(i);
+            allLines.push((n.timestamp || "") + " | " + n.content);
+        }
+        var payload = allLines.join("\n");
+        var notesFile = (shell && shell.settingsManager && shell.settingsManager.notesFilePath)
+            ? shell.settingsManager.notesFilePath
+            : (Quickshell.env("HOME") + "/Documents/notes.txt");
+
+        syncFileProc.command = ["sh", "-c", 'mkdir -p "$(dirname "$1")"; printf "%s\\n" "$2" > "$1"', "sh", notesFile, payload];
+        syncFileProc.running = false;
+        syncFileProc.running = true;
+    }
+
+    Process { id: syncFileProc; running: false }
+
     function addNote(text) {
         if (!text || text.trim() === "") return;
         var clean = text.trim();
@@ -93,6 +113,7 @@ Item {
                 tx.executeSql('INSERT INTO notes (content) VALUES (?)', [clean]);
             });
             loadNotes();
+            syncTextFileBackup();
             Quickshell.execDetached(["notify-send", "-a", "Notes", "-i", "accessories-text-editor", "📝 Note Saved", clean]);
         } catch(e) {
             console.error("[Notes DB Insert Error]:", e);
@@ -104,15 +125,22 @@ Item {
         var item = filteredModel.get(idx);
         var targetId = item.noteId;
 
-        filteredModel.remove(idx); // Snappy visual feedback
+        filteredModel.remove(idx);
         try {
             var db = getDatabase();
             db.transaction(function(tx) {
                 tx.executeSql('DELETE FROM notes WHERE id = ?', [targetId]);
             });
             loadNotes();
+            syncTextFileBackup();
         } catch(e) {
             console.error("[Notes DB Delete Error]:", e);
+        }
+    }
+
+    function deleteSelected() {
+        if (selectedIndex >= 0 && selectedIndex < filteredModel.count) {
+            deleteNoteAt(selectedIndex);
         }
     }
 
@@ -135,11 +163,10 @@ Item {
         if (filteredModel.count > 0) selectedIndex = (selectedIndex - 1 + filteredModel.count) % filteredModel.count;
     }
 
-    // Auto-migration process: loads existing notes from ~/Documents/notes.txt on first launch
     Process {
         id: notesImporter
         running: false
-        command: ["sh", "-c", "F=\"$HOME/Documents/notes.txt\"; [ -f \"$F\" ] && cat \"$F\" || true"]
+        command: ["sh", "-c", 'F="$HOME/Documents/notes.txt"; [ -f "$F" ] && cat "$F" || true']
         stdout: SplitParser {
             splitMarker: "\n"
             onRead: line => {
@@ -180,14 +207,14 @@ Item {
                 Text { anchors.horizontalCenter: parent.horizontalCenter; text: "📝"; font.pixelSize: 36 }
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: "No notes yet."
+                    text: "No notes found."
                     font.family: theme ? theme.fontFamily : "monospace"
                     font.pixelSize: 18; font.bold: true
                     color: theme ? theme.base05 : "yellow"
                 }
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: "Type 'note your text' and press Enter to save!"
+                    text: "Type a note and press Enter to save."
                     font.family: "monospace"; font.pixelSize: 13
                     color: theme ? theme.base05 : "yellow"; opacity: 0.6
                 }
@@ -220,8 +247,7 @@ Item {
                         visible: model.timestamp !== ""
                         text: model.timestamp
                         font.family: "monospace"
-                        font.pixelSize: 11
-                        font.bold: true
+                        font.pixelSize: 11; font.bold: true
                         color: theme ? theme.base09 : "#fe8019"
                     }
 
@@ -237,9 +263,7 @@ Item {
                 }
 
                 Rectangle {
-                    width: 26
-                    height: 26
-                    radius: 4
+                    width: 26; height: 26; radius: 4
                     color: delHover.hovered ? (theme ? theme.base08 : "red") : "transparent"
                     border.color: theme ? theme.base08 : "red"
                     border.width: 1
@@ -248,8 +272,7 @@ Item {
                     Text {
                         anchors.centerIn: parent
                         text: "✕"
-                        font.bold: true
-                        font.pixelSize: 11
+                        font.bold: true; font.pixelSize: 11
                         color: delHover.hovered ? "#000000" : (theme ? theme.base08 : "red")
                     }
 

@@ -23,6 +23,7 @@ Item {
     SlantedBox {
         id: bg
         anchors.fill: parent
+        containmentMask: bg
         slantLeft: audioBox.slantLeft
         slantRight: audioBox.slantRight
         slantWidth: audioBox.slantWidth
@@ -51,7 +52,7 @@ Item {
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onClicked: (mouse) => {
             if (mouse.button === Qt.LeftButton) deviceToggleProcess.running = true;
-            else if (mouse.button === Qt.RightButton) mixerOpenProcess.running = true;
+            else if (mouse.button === Qt.RightButton) muteToggleProcess.running = true;
         }
         onWheel: (wheel) => {
             var step = wheel.angleDelta.y > 0 ? "5%+" : "5%-";
@@ -77,9 +78,21 @@ Item {
         clip: true
     }
 
-    Process { id: deviceToggleProcess; running: false; command: [Quickshell.env("HOME") + "/nix/hosts/common/scripts/sound_sink_switcher.sh"] }
-    Process { id: volUpProcess; running: false; command: ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "5%+", "--limit", "1.0"] }
-    Process { id: volDownProcess; running: false; command: ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "5%-"] }
-    Process { id: mixerOpenProcess; running: false; command: ["pavucontrol"] }
+    Process {
+        id: deviceToggleProcess
+        running: false
+        command: [
+            "sh", "-c",
+            "SCR=\"$HOME/nix/hosts/common/scripts/sound_sink_switcher.sh\"; if [ -x \"$SCR\" ]; then \"$SCR\"; else next_sink=$(wpctl status 2>/dev/null | awk '/Sinks:/{flag=1; next} /Sources:/{flag=0} flag && /^[ \\t]+[0-9]+/ {print $1}' | tr -d '.' | grep -v '*' | head -n 1); [ -n \"$next_sink\" ] && wpctl set-default \"$next_sink\"; fi"
+        ]
+    }
+
+    Process {
+        id: muteToggleProcess
+        running: false
+        command: ["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"]
+        onExited: { audioFetcher.running = false; audioFetcher.running = true; }
+    }
+
     Timer { interval: 2000; running: true; repeat: true; onTriggered: { audioFetcher.running = false; audioFetcher.running = true; } }
 }

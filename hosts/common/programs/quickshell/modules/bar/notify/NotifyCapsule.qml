@@ -23,6 +23,7 @@ Item {
     SlantedBox {
         id: bg
         anchors.fill: parent
+        containmentMask: bg
         slantLeft: notifyBox.slantLeft
         slantRight: notifyBox.slantRight
         slantWidth: notifyBox.slantWidth
@@ -51,7 +52,7 @@ Item {
                     shell.notificationsEnabled = !shell.notificationsEnabled;
                 }
             } else if (mouse.button === Qt.RightButton) {
-                Ipc.call("global_notif", "toggleHistory");
+                if (typeof Ipc !== "undefined" && Ipc.call) { Ipc.call("global_notif", "toggleHistory"); } else if (typeof shell !== "undefined" && shell) { shell.showHistoryMode = !shell.showHistoryMode; }
             }
         }
     }

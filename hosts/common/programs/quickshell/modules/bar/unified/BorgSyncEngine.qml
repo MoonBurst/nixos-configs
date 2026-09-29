@@ -34,7 +34,7 @@ Item {
     Process {
         id: borgProcess
         command: [
-            "/run/current-system/sw/bin/bash", "-c",
+            "bash", "-c",
             "STATUS_JSON=$(cat /dev/shm/borg-offsite-status.json 2>/dev/null || echo '{\"status\": \"idle\"}'); " +
             "IS_ACTIVE=$(systemctl is-active sync-backup-to-nextcloud.service 2>/dev/null | tr -d '[:space:]'); " +
             "IS_MOUNTED=$(mount | grep -q '/tmp/borg-mount' && echo 1 || echo 0); " +

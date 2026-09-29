@@ -30,7 +30,7 @@ Item {
     Process {
         id: checkProc
         command: [
-            "/run/current-system/sw/bin/bash", "-c",
+            "bash", "-c",
             "REC=0; [ -f ${XDG_RUNTIME_DIR:-/tmp}/record-region.pid ] && kill -0 $(cat ${XDG_RUNTIME_DIR:-/tmp}/record-region.pid 2>/dev/null) 2>/dev/null && REC=1; " +
             "if [ $REC -eq 0 ]; then pgrep -x wf-recorder >/dev/null 2>&1 && REC=1; fi; " +
             "STREAM=0; [ -f ${XDG_RUNTIME_DIR:-/tmp}/twitch-stream.pid ] && kill -0 $(cat ${XDG_RUNTIME_DIR:-/tmp}/twitch-stream.pid 2>/dev/null) 2>/dev/null && STREAM=1; " +
@@ -50,7 +50,7 @@ Item {
 
     function stopAll() {
         Quickshell.execDetached([
-            "/run/current-system/sw/bin/bash", "-c",
+            "bash", "-c",
             "twitch-stream || record-region || pkill -SIGINT -f 'wf-recorder.*Region_' || pkill -f 'gpu-screen-recorder.*rtmp'"
         ]);
     }

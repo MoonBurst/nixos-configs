@@ -79,11 +79,11 @@ Item {
                     let now = Date.now();
                     if (twitchEngine.mainError && (now - twitchEngine.lastMainRestart > twitchEngine.restartCooldown)) {
                         twitchEngine.lastMainRestart = now;
-                        twitchEngine.commandRequested("sudo -n /run/current-system/sw/bin/podman restart twitch-miner");
+                        twitchEngine.commandRequested("sudo -n podman restart twitch-miner");
                     }
                     if (twitchEngine.berryError && (now - twitchEngine.lastBerryRestart > twitchEngine.restartCooldown)) {
                         twitchEngine.lastBerryRestart = now;
-                        twitchEngine.commandRequested("sudo -n /run/current-system/sw/bin/podman restart twitchminer-berrydrop");
+                        twitchEngine.commandRequested("sudo -n podman restart twitchminer-berrydrop");
                     }
                 } catch (e) {}
             }

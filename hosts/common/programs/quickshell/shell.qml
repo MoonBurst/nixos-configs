@@ -9,6 +9,7 @@ import "./modules/settings" as Settings
 import "./modules/style" as Style
 import "./modules/bar/unified" as UnifiedMonitor
 import "./modules/overlays/rng" as RNG
+import "./modules/overlays/amogus" as AmogusModule
 import "./modules/overlays/magnify" as Magnify
 import "./modules/overlays/notifications" as Notifications
 import "./modules/overlays/launcher" as LauncherModule
@@ -35,12 +36,24 @@ ShellRoot {
     Theme {
         id: globalTheme
     }
+
+    // Dynamic runtime path registration
+    Process {
+        id: ipcPathRegistrar
+        running: true
+        command: [
+            "sh", "-c",
+            'echo "$1" > "${XDG_RUNTIME_DIR:-/tmp}/quickshell-path"',
+            "sh",
+            Quickshell.shellDir
+        ]
+    }
+
     // Automatic /tmp RAM-disk cache maintenance (prevents lingering stale images)
     Process {
         running: true
         command: ["sh", "-c", "rm -f /tmp/qs_avatar_notif_*.png /tmp/quickshot_crop_*.png /tmp/qs_dict*.json 2>/dev/null || true"]
     }
-
 
     Settings.SettingsManager {
         id: settingsManagerInstance
@@ -48,6 +61,9 @@ ShellRoot {
 
     property alias settingsManager: settingsManagerInstance
     property alias notificationOverlay: notificationOverlay
+    property alias diceRollerWindowInstance: diceRollerWindowInstance
+    property alias amogusWindowInstance: amogusWindowInstance
+    property alias lockPam: lockPam
 
     QtObject {
         id: activeTheme
@@ -315,25 +331,40 @@ ShellRoot {
 
     Magnify.Magnify { id: magnifierOverlay }
     RNG.DiceRollerWindow { id: diceRollerWindowInstance; shell: shell }
+    AmogusModule.AmogusWindow { id: amogusWindowInstance; shell: shell }
 
     Component.onCompleted: {
         LauncherModule.LauncherController.rng.diceWindowInstance = diceRollerWindowInstance;
+        Ipc.shellRoot = shell;
+    }
+
+    // Dynamic PAM service detector: uses /etc/pam.d/quickshell if present, otherwise login
+    property string activePamService: "login"
+    Process {
+        running: true
+        command: ["sh", "-c", "[ -f /etc/pam.d/quickshell ] && echo 'quickshell' || echo 'login'"]
+        stdout: SplitParser {
+            onRead: data => { if (data && data.trim()) shell.activePamService = data.trim(); }
+        }
     }
 
     PamContext {
         id: lockPam
-        config: "quickshell"
-        onResponseRequiredChanged: if (responseRequired) lockPam.respond(shell.globalPasswordBuffer);
-        onActiveChanged: {
-            if (!active) {
-                if (lockPam.authenticated) {
-                    sessionLock.locked = false;
-                    shell.globalPasswordBuffer = "";
-                    shell.passwordLength = 0;
-                } else {
-                    shell.globalPasswordBuffer = "";
-                    shell.passwordLength = -1;
-                }
+        config: shell.activePamService
+        user: Quickshell.env("USER") || Quickshell.env("LOGNAME") || ""
+        onResponseRequiredChanged: {
+            if (responseRequired) {
+                lockPam.respond(shell.globalPasswordBuffer);
+            }
+        }
+        onCompleted: (result) => {
+            if (result === PamResult.Success) {
+                sessionLock.locked = false;
+                shell.globalPasswordBuffer = "";
+                shell.passwordLength = 0;
+            } else {
+                shell.globalPasswordBuffer = "";
+                shell.passwordLength = -1;
             }
         }
     }
@@ -347,17 +378,30 @@ ShellRoot {
         }
     }
 
-    IpcHandler { id: lockscreenHandler; target: "lockscreen"; function lock(): void { sessionLock.locked = true; } }
+    // All IPC Command Targets
+    IpcHandler { id: lockscreenHandler; target: "lockscreen"; function lock(): void { sessionLock.locked = true; } function unlock(): void { sessionLock.locked = false; } }
     IpcHandler { target: "settings"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.toggleSettings(); } }
+    IpcHandler {
+        target: "tooltip"
+        function close(): void {
+            // Dismisses all active/pinned tooltips across the bar
+            var caps = [calendarFactory, musicFactory, alarmFactory, weatherFactory, unifiedFactory, clockFactory, netFactory, cpuFactory, gpuFactory, ramFactory, batteryFactory];
+            // Triggers quickshell reload/dismiss event
+            shell.showHistoryMode = false;
+        }
+    }
     IpcHandler { target: "launcher"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.toggleLauncher(); } }
     IpcHandler { target: "clipboard"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.toggleClipboard(); } }
     IpcHandler { target: "todo"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.toggleTodo(); } }
     IpcHandler { target: "notes"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.toggleOverlayMode("notes"); } }
+    IpcHandler { target: "amogus"; function toggle(): void { if (!sessionLock.locked && amogusWindowInstance) amogusWindowInstance.toggleWindow(); } }
+
     IpcHandler { target: "pass"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.togglePass(); } }
     IpcHandler { target: "power"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.togglePower(); } }
     IpcHandler { target: "rng"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.toggleRng(); } }
     IpcHandler { target: "gemini"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.toggleGemini(); } }
     IpcHandler { target: "magnifier"; function toggle(): void { if (!sessionLock.locked) magnifierOverlay.toggle(); } }
+    IpcHandler { target: "email"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.toggleEmail(); } }
 
     Notifications.NotificationOverlay {
         id: notificationOverlay

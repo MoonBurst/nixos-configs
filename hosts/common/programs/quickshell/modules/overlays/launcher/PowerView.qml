@@ -117,7 +117,7 @@ Item {
 
     function triggerAction(actionId) {
         if (actionId === "lock") {
-            Ipc.call("lockscreen", "lock");
+            if (typeof Ipc !== "undefined" && Ipc.call) { Ipc.call("lockscreen", "lock"); } else { Quickshell.execDetached(["sh", "-c", "QS=$(command -v qs || command -v quickshell); DIR=\"$1\"; [ -n \"$QS\" ] && \"$QS\" -p \"$DIR\" ipc call lockscreen lock", "sh", Quickshell.shellDir]); }
         } else if (actionId === "sleep") {
             Quickshell.execDetached(["systemctl", "suspend"]);
         } else if (actionId === "logout") {
