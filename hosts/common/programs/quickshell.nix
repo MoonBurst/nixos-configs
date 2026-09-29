@@ -1,74 +1,32 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, ... }: {
 
-with lib;
-
-let
-  cfg = config.programs.quickshell;
-in {
+  # =========================================================================
+  # MODULAR FEATURE FLAGS
+  # =========================================================================
   options.programs.quickshell = {
-    enable = mkEnableOption "Quickshell desktop shell environment";
+    enable = lib.mkEnableOption "Quickshell desktop shell environment";
+    package = lib.mkPackageOption pkgs "quickshell" { };
 
-    package = mkPackageOption pkgs "quickshell" { };
-
-    # =========================================================================
-    # MODULAR FEATURE FLAGS
-    # =========================================================================
     features = {
-      clipboard = mkOption {
-        type = types.bool;
-        default = true;
-        description = "Clipboard history & previews via cliphist";
-      };
-
-      pass = mkOption {
-        type = types.bool;
-        default = true;
-        description = "GPG password store integration via pass";
-      };
-
-      email = mkOption {
-        type = types.bool;
-        default = true;
-        description = "Email manager and composition overlay via himalaya";
-      };
-
-      watermark = mkOption {
-        type = types.bool;
-        default = true;
-        description = "Quickshot steganographic watermark stamping via imagemagick";
-      };
-
-      ocr = mkOption {
-        type = types.bool;
-        default = true;
-        description = "Quickshot OCR text extraction via tesseract";
-      };
-
-      recording = mkOption {
-        type = types.bool;
-        default = true;
-        description = "Screen recording detection in Unified Monitor via wf-recorder";
-      };
-
-      networkClientMonitoring = mkOption {
-        type = types.bool;
-        default = true;
-        description = "Per-process bandwidth tracking table in Network capsule via nethogs";
-      };
+      clipboard = lib.mkOption { type = lib.types.bool; default = true; description = "Clipboard history via cliphist"; };
+      pass = lib.mkOption { type = lib.types.bool; default = true; description = "GPG password store via pass"; };
+      email = lib.mkOption { type = lib.types.bool; default = true; description = "Email composition via himalaya"; };
+      watermark = lib.mkOption { type = lib.types.bool; default = true; description = "Watermarking via imagemagick"; };
+      ocr = lib.mkOption { type = lib.types.bool; default = true; description = "OCR text extraction via tesseract"; };
+      recording = lib.mkOption { type = lib.types.bool; default = true; description = "Screen recording via wf-recorder"; };
     };
 
-    extraPackages = mkOption {
-      type = types.listOf types.package;
+    extraPackages = lib.mkOption {
+      type = lib.types.listOf lib.types.package;
       default = [ ];
-      description = "Additional custom packages to make available in the environment for Quickshell";
+      description = "Additional custom packages to make available for Quickshell";
     };
   };
 
-  config = mkIf cfg.enable {
+  config = lib.mkIf config.programs.quickshell.enable {
     # -------------------------------------------------------------------------
-    # 1. PAM AUTHENTICATION (WlSessionLock Lockscreen Support)
+    # 1. PAM AUTHENTICATION (Lockscreen Support)
     # -------------------------------------------------------------------------
-    # Grants Quickshell permission to verify passwords for the lockscreen
     security.pam.services.quickshell = {
       allowNullPassword = false;
       startSession = true;

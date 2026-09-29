@@ -85,12 +85,6 @@
     '';
   };
 
-  security.wrappers.nethogs = {
-    source = "${pkgs.nethogs}/bin/nethogs";
-    capabilities = "cap_net_admin,cap_net_raw+ep";
-    owner = "root";
-    group = "root";
-  };
 
   # --- PAM Lockscreen Configuration ---
   security.pam.services.quickshell.enableGnomeKeyring = true;

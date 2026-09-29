@@ -15,7 +15,6 @@
 { command = "border none"; criteria = { class = ".*"; }; }
 { command = "border none"; criteria = { app_id = ".*"; }; }
 
-{ command = "floating enable, resize set 800 800"; criteria = { app_id = "satty"; }; }
       { command = "title_format \"[X11] %title\""; criteria = { shell = "xwayland"; }; }
       { command = "title_format \"[WL] %title\""; criteria = { shell = "xdg_shell"; }; }
 #      { command = "inhibit_idle open"; criteria = { app_id = "gamescope"; title = "Overwatch"; }; }

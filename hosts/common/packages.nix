@@ -24,7 +24,7 @@
     libnotify                   # Sending desktop notifications
     micro
     vlc
-
+    mpd
 
     # --- Archives ---
     zip                         # Zip compression
@@ -54,7 +54,6 @@
     grim                        # Screenshot tool
     slurp                       # Region selector
     playerctl                   # Media key control
-    wlrctl                      # Wayland control
     wtype                       # Virtual keystroke tool
     fastfetch                   # System info
     # --- System Libraries & Audio Engines ---
@@ -66,7 +65,6 @@
     nemo
  #   swaylock-effects                    # Screen locker with blur and aesthetic effects
  imagemagick
-    satty                               # Modern screenshot annotation tool
     qview                               # Minimalist, fast image viewer
     pavucontrol                         # PulseAudio/PipeWire volume mixer (essential for debugging mic/speakers)
 
@@ -85,9 +83,8 @@
     symbola
     unifont        # Ultimate BMP coverage
     unifont_upper  # Ultimate SMP coverage
-#waybar
-vesktop
-tesseract
-kdePackages.kate
+    vesktop
+    tesseract
+    kdePackages.kate
   ];
 }

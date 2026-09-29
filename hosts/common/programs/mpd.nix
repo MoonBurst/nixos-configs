@@ -6,7 +6,16 @@
 
   # Disable the system-wide service completely to prevent conflicts
   services.mpd.enable = false;
-
+systemd.user.services.mpd-mpris = {
+  description = "MPRIS bridge for MPD";
+  wantedBy = [ "default.target" ];
+  after = [ "mpd.service" ];
+  serviceConfig = {
+    ExecStart = "${pkgs.mpd-mpris}/bin/mpd-mpris";
+    Restart = "on-failure";
+    RestartSec = 2;
+  };
+};
   # Declaratively generate the MPD configuration file
   environment.etc."mpd.conf".text = ''
     music_directory     "/home/moonburst/Music"

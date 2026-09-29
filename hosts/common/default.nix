@@ -16,7 +16,6 @@
     ./programs/mpd.nix
     ./programs/nemo.nix
     ./programs/quickshell.nix
-#   ./programs/hyprland/default.nix
   ];
 
   programs.sway.enable = true;
