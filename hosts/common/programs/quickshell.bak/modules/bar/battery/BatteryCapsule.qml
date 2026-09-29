@@ -1,0 +1,120 @@
+import QtQuick
+import QtQuick.Controls 2
+import QtQuick.Layouts 1.15
+import Quickshell
+import Quickshell.Io
+import "../../style"
+import "../../overlays/launcher" as Launcher
+
+Item {
+    id: batBox
+    property var barWindow: null
+    property string moduleName: "battery"
+    property string slantLeft: "Right"
+    property string slantRight: "Right"
+    property int slantWidth: (shell && shell.theme && shell.theme.slantWidth) ? shell.theme.slantWidth : 12
+
+    readonly property color themeBase05: (shell && shell.theme) ? shell.theme.base05 : "yellow"
+    readonly property color themeBase08: (shell && shell.theme) ? shell.theme.base08 : "#ff0000"
+    readonly property color themeBase09: (shell && shell.theme) ? shell.theme.base09 : "#fe8019"
+    readonly property color themeBase0C: (shell && shell.theme) ? shell.theme.base0C : "#04f100"
+    readonly property int themeFontSize: (shell && shell.theme) ? shell.theme.globalFontSize : 14
+    readonly property string themeFontFamily: (shell && shell.theme) ? shell.theme.fontFamily : "monospace"
+
+    Launcher.BatteryEngine {
+        id: batEngine
+    }
+
+    readonly property int numPercent: parseInt(batEngine.percent) || 0
+    readonly property bool isLow: numPercent <= 20 && batEngine.status === "Discharging"
+    readonly property bool isWarning: numPercent <= 40 && batEngine.status === "Discharging"
+
+    readonly property color statusColor: {
+        if (batEngine.status === "Charging" || batEngine.status === "Full") return batBox.themeBase0C;
+        if (isLow) return batBox.themeBase08;
+        if (isWarning) return batBox.themeBase09;
+        return batBox.themeBase05;
+    }
+
+    implicitWidth: batText.implicitWidth + bg.leftPadding + bg.rightPadding + 20
+    width: implicitWidth
+    height: parent ? parent.height : 40
+
+    SlantedBox {
+        id: bg
+        anchors.fill: parent
+        slantLeft: batBox.slantLeft
+        slantRight: batBox.slantRight
+        slantWidth: batBox.slantWidth
+        borderColor: batBox.statusColor
+    }
+
+    Text {
+        id: batText
+        anchors.fill: parent
+        anchors.leftMargin: bg.leftPadding + 4
+        anchors.rightMargin: bg.rightPadding + 4
+        anchors.topMargin: 2
+        anchors.bottomMargin: 2
+        textFormat: Text.RichText
+
+        text: {
+            var icon = batEngine.status === "Charging" ? "⚡ " : (batBox.numPercent <= 20 ? "🪫 " : "🔋 ");
+            return "<font color='" + batBox.themeBase05 + "'>" + icon + "BAT:</font> <font color='" + batBox.statusColor + "'>" + batEngine.percent + " (" + batEngine.power + ")</font>";
+        }
+
+        font.family: batBox.themeFontFamily
+        font.pixelSize: batBox.themeFontSize
+        font.bold: true
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
+        elide: Text.ElideRight
+        clip: true
+    }
+
+    HoverHandler { id: batHover }
+
+    SlantedTooltip {
+        id: batTooltip
+        moduleItem: batBox
+        barWindow: batBox.barWindow
+        tooltipActive: batHover.hovered
+        alignSide: "Right"
+
+        tooltipHeight: 140
+        expandedCoreWidth: 360
+        topOffset: -2
+        slantLeft: batBox.slantLeft
+        slantRight: batBox.slantRight
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 16
+            spacing: 8
+
+            Text {
+                text: "⚡ BATTERY STATUS"
+                font.family: batBox.themeFontFamily
+                font.pixelSize: batBox.themeFontSize
+                font.bold: true
+                color: batBox.themeBase05
+            }
+
+            Text {
+                text: "Status: " + batEngine.status
+                font.family: "monospace"
+                font.pixelSize: 13
+                color: batBox.statusColor
+                font.bold: true
+            }
+
+            Text {
+                text: "Power Draw: " + batEngine.power + "  •  Level: " + batEngine.percent
+                font.family: "monospace"
+                font.pixelSize: 12
+                color: batBox.themeBase05
+                opacity: 0.85
+            }
+        }
+    }
+}

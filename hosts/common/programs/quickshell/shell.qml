@@ -37,10 +37,10 @@ ShellRoot {
         id: globalTheme
     }
 
-    // Dynamic runtime path registration
+    // Dynamic runtime path registration (FIXED: Boot pass only)
     Process {
         id: ipcPathRegistrar
-        running: true
+        running: false
         command: [
             "sh", "-c",
             'echo "$1" > "${XDG_RUNTIME_DIR:-/tmp}/quickshell-path"',
@@ -49,9 +49,10 @@ ShellRoot {
         ]
     }
 
-    // Automatic /tmp RAM-disk cache maintenance (prevents lingering stale images)
+    // Automatic /tmp RAM-disk cache maintenance (FIXED: Bound to startup check)
     Process {
-        running: true
+        id: tmpCacheCleaner
+        running: false
         command: ["sh", "-c", "rm -f /tmp/qs_avatar_notif_*.png /tmp/quickshot_crop_*.png /tmp/qs_dict*.json 2>/dev/null || true"]
     }
 
@@ -335,13 +336,17 @@ ShellRoot {
 
     Component.onCompleted: {
         LauncherModule.LauncherController.rng.diceWindowInstance = diceRollerWindowInstance;
-        Ipc.shellRoot = shell;
+        // Trigger all core background system discovery tracks exactly once at boot time
+        ipcPathRegistrar.running = true;
+        tmpCacheCleaner.running = true;
+        pamServiceDetector.running = true;
     }
 
     // Dynamic PAM service detector: uses /etc/pam.d/quickshell if present, otherwise login
     property string activePamService: "login"
     Process {
-        running: true
+        id: pamServiceDetector
+        running: false
         command: ["sh", "-c", "[ -f /etc/pam.d/quickshell ] && echo 'quickshell' || echo 'login'"]
         stdout: SplitParser {
             onRead: data => { if (data && data.trim()) shell.activePamService = data.trim(); }
@@ -378,8 +383,12 @@ ShellRoot {
         }
     }
 
-    // All IPC Command Targets
-    IpcHandler { id: lockscreenHandler; target: "lockscreen"; function lock(): void { sessionLock.locked = true; } function unlock(): void { sessionLock.locked = false; } }
+    IpcHandler { 
+        id: lockscreenHandler
+        target: "lockscreen"
+        function lock(): void { sessionLock.locked = true; } 
+        function unlock(): void { sessionLock.locked = false; } 
+    }
     IpcHandler { target: "settings"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.toggleSettings(); } }
     IpcHandler {
         target: "tooltip"

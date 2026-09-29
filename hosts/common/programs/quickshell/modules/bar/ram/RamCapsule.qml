@@ -22,6 +22,7 @@ Item {
     property string slantRight: "Right"
     property int slantWidth: (shell && shell.theme) ? shell.theme.slantWidth : 12
 
+    // Native Memory & ZRAM Allocation Registers
     property real totalGiB: 0.0
     property real availableGiB: 0.0
     property real effectiveAvailGiB: 0.0
@@ -51,45 +52,60 @@ Item {
         slantWidth: ramBox.slantWidth
     }
 
-    Process {
-        id: ramStatsProc
-        running: true
-        command: [
-            "sh", "-c",
-            "eval $(awk '/MemTotal:/ {print \"mt=\"$2} /MemAvailable:/ {print \"ma=\"$2} /SwapTotal:/ {print \"st=\"$2} /SwapFree:/ {print \"sf=\"$2}' /proc/meminfo); orig=0; compr=0; if [ -f /sys/block/zram0/mm_stat ]; then read orig compr _ < /sys/block/zram0/mm_stat; fi; printf \"%s:%s:%s:%s:%s:%s\\n\" \"$mt\" \"$ma\" \"$st\" \"$sf\" \"$orig\" \"$compr\""
-        ]
-        stdout: SplitParser {
-            onRead: data => {
-                var parts = data.trim().split(":");
-                if (parts.length === 6) {
-                    var mt = parseInt(parts[0]);
-                    var ma = parseInt(parts[1]);
-                    var st = parseInt(parts[2]);
-                    var sf = parseInt(parts[3]);
-                    var orig = parseInt(parts[4]);
-                    var compr = parseInt(parts[5]);
+    // 1. NATIVE FILE VIEW: TRACKS KERNEL STATS WITH ZERO PROCESS FORKS
+    FileView {
+        id: meminfoFile
+        path: "file:///proc/meminfo"
+        blockLoading: true
+        onTextChanged: {
+            var raw = text();
+            if (!raw) return;
 
-                    if (!isNaN(mt) && !isNaN(ma)) {
-                        ramBox.totalGiB = mt / (1024 * 1024);
-                        ramBox.availableGiB = ma / (1024 * 1024);
-                        var swapFreeKb = isNaN(sf) ? 0 : sf;
-                        var swapTotalKb = isNaN(st) ? 0 : st;
-                        ramBox.effectiveAvailGiB = (ma + swapFreeKb) / (1024 * 1024);
-                        ramBox.effectiveTotalGiB = (mt + swapTotalKb) / (1024 * 1024);
+            var mt = 0, ma = 0, st = 0, sf = 0;
+            var lines = raw.split("\n");
+            
+            // Clean native micro-lexer replaces your old background awk parser block
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i];
+                if (line.startsWith("MemTotal:")) mt = parseFloat(line.replace(/[^0-9]/g, ""));
+                else if (line.startsWith("MemAvailable:")) ma = parseFloat(line.replace(/[^0-9]/g, ""));
+                else if (line.startsWith("SwapTotal:")) st = parseFloat(line.replace(/[^0-9]/g, ""));
+                else if (line.startsWith("SwapFree:")) sf = parseFloat(line.replace(/[^0-9]/g, ""));
+            }
 
-                        if (!isNaN(orig) && !isNaN(compr) && compr > 0) {
-                            ramBox.zramRatio = orig / compr;
-                            ramBox.zramSavedGiB = (orig - compr) / (1024 * 1024 * 1024);
-                        } else {
-                            ramBox.zramRatio = 1.0;
-                            ramBox.zramSavedGiB = 0.0;
-                        }
-                    }
+            if (mt > 0 && ma > 0) {
+                ramBox.totalGiB = mt / (1024 * 1024);
+                ramBox.availableGiB = ma / (1024 * 1024);
+                ramBox.effectiveAvailGiB = (ma + sf) / (1024 * 1024);
+                ramBox.effectiveTotalGiB = (mt + st) / (1024 * 1024);
+            }
+        }
+    }
+
+    // 2. NATIVE FILE VIEW: COMPUTES VIRTUAL ZRAM COMPRESSION METRICS
+    FileView {
+        id: zramFile
+        path: "file:///sys/block/zram0/mm_stat"
+        blockLoading: true
+        onTextChanged: {
+            var raw = text().trim();
+            if (!raw) return;
+            
+            var tokens = raw.split(/\s+/).filter(t => t !== "");
+            if (tokens.length >= 2) {
+                var orig = parseFloat(tokens[0]); // Uncompressed data size
+                var compr = parseFloat(tokens[1]); // Compressed size footprint
+                
+                if (compr > 0) {
+                    ramBox.zramRatio = orig / compr;
+                    ramBox.zramSavedGiB = (orig - compr) / (1024 * 1024 * 1024);
                 }
             }
         }
     }
 
+    // 3. LAZY-LOADED TOP MEMORY CONSUMERS PROBE
+    // Stays completely asleep (running: false) until the user opens the tooltip panel
     Process {
         id: topProcFetcher
         running: false
@@ -229,16 +245,18 @@ Item {
         }
     }
 
-    Timer {
-        id: statsRefreshTimer
-        interval: (shell && shell.settingsManager && shell.settingsManager.hardwarePollInterval > 0) ? shell.settingsManager.hardwarePollInterval : 2000
-        running: true; repeat: true; triggeredOnStart: true
-        onTriggered: {
-            ramStatsProc.running = true;
-            if ((ramHoverTracker.hovered || ramBox.pinTooltip) && !ramTooltip.isHovered) {
-                ramBox.textAccumulatorBuffer = "";
-                topProcFetcher.running = true;
-            }
-        }
-    }
+// Static Polling Clock: Synchronizes hardware buffers directly inside memory layout
+Timer {
+id: statsRefreshTimer
+interval: (shell && shell.settingsManager && shell.settingsManager.hardwarePollInterval > 0) ? shell.settingsManager.hardwarePollInterval : 2000
+running: true; repeat: true; triggeredOnStart: true
+onTriggered: {
+meminfoFile.reload();
+zramFile.reload();
+if ((ramHoverTracker.hovered || ramBox.pinTooltip) && !ramTooltip.isHovered) {
+ramBox.textAccumulatorBuffer = "";
+topProcFetcher.running = true;
+}
+}
+}
 }

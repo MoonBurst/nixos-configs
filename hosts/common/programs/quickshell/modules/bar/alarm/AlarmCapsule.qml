@@ -65,14 +65,19 @@ Item {
         slantWidth: alarmBox.slantWidth
     }
 
+    // FIXED SINGLE-PASS STARTUP EXECUTION
+    // Runs exactly once at boot time, eliminating infinite path searching loops
     Process {
         id: pwPlayCheckProc
-        running: true
-        ["sh", "-c", "export PATH='$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin:$PATH'; command -v pw-play >/dev/null 2>&1 && echo 1 || echo 0"]
-
+        running: false
+        command: ["sh", "-c", "export PATH='$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin:$PATH'; command -v pw-play >/dev/null 2>&1 && echo 1 || echo 0"]
         stdout: SplitParser {
             onRead: data => { alarmBox.hasPwPlay = (data.trim() === "1"); }
         }
+    }
+
+    Component.onCompleted: {
+        pwPlayCheckProc.running = true;
     }
 
     // 3-second audio playback with fallback search across directories

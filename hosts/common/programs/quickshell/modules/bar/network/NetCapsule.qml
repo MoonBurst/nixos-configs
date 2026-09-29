@@ -365,7 +365,7 @@ Item {
 
         onTriggered: {
             netStatsProc.running = false;
-            netStatsProc.running = true;
+            if (netHoverTracker.hovered || netBox.pinTooltip) netStatsProc.running = true;
             ticks++;
             if (ticks >= 15) {
                 ticks = 0;

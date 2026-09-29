@@ -1,0 +1,6 @@
+Email 1.0 Email.qml
+EmailPreview 1.0 EmailPreview.qml
+EmailListView 1.0 EmailListView.qml
+SidebarView 1.0 SidebarView.qml
+ComposeModal 1.0 ComposeModal.qml
+EmailController 1.0 EmailController.qml

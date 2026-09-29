@@ -102,16 +102,7 @@ keybindings (e.g. Sway / Hyprland config):
   qs ipc call global_notif jumpToLatest    Focus app that sent latest notification
   qs ipc call global_notif toggleHistory   Toggle Notification History Drawer
 
-4. SECURITY HARDENING
----------------------
-  • Sway Command Injection: Window titles and desktop entry names from notifications
-    are strictly filtered to alphanumeric characters before passing to swaymsg.
-  • Path Traversal: File deletion actions resolve canonical paths with realpath -m
-    and enforce that paths remain strictly inside the user's home directory.
-  • Safe Run-time Directories: Ephemeral state files, pipes, and temporary buffers
-    use $XDG_RUNTIME_DIR (/run/user/$UID) with 0700 permissions instead of /tmp.
-  • Password Protection: 'pass' uses native '-c' clipboard copying with automatic
-    memory clearing, preventing plaintext credentials from leaking via subshell argv.
+
 
 5. CONFIGURATION & STATE STORAGE
 --------------------------------

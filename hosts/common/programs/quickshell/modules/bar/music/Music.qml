@@ -131,7 +131,7 @@ Item {
 
     Process {
         id: mpdProcess
-        running: true
+        running: musicBox.popupActive
         onExited: mpdWatchdog.restart()
 
         command: [

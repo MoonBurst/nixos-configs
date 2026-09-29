@@ -29,21 +29,41 @@ Item {
         slantWidth: audioBox.slantWidth
     }
 
+    // 1. HIGH-PERFORMANCE PERSISTENT AUDIO MONITOR
+    // Stays alive permanently, reading volume changes from stdout without timer loops
     Process {
-        id: audioFetcher
+        id: audioListener
+        running: true
+        command: ["sh", "-c", "wpctl get-volume @DEFAULT_AUDIO_SINK@; pw-mon -b | grep --line-buffered -E 'sinks|volume|mute'"]
+        
+        function parseWpctlLine(lineData) {
+            if (!lineData) return;
+            var clean = lineData.trim();
+            var isMuted = clean.indexOf("[MUTED]") !== -1;
+            var match = clean.match(/Volume:\s+([0-9.]+)/);
+            var vNum = "--%";
+            if (match) vNum = Math.round(parseFloat(match[1]) * 100) + "%";
+            var txtColor = isMuted ? audioBox.themeBase08.toString() : audioBox.themeBase05.toString();
+            audioBox.audioDisplayText = "<font color='" + audioBox.themeBase05 + "'>Audio:</font> <font color='" + txtColor + "'> " + vNum + "</font>";
+        }
+
+        stdout: SplitParser {
+            splitMarker: "\n"
+            onRead: data => {
+                // Whenever PipeWire emits a volume event, fetch the clean string value instantly
+                audioQueryTrigger.running = false;
+                audioQueryTrigger.running = true;
+            }
+        }
+    }
+
+    // Quick one-pass helper to parse real-time levels safely
+    Process {
+        id: audioQueryTrigger
         running: true
         command: ["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"]
         stdout: SplitParser {
-            onRead: data => {
-                if (!data) return;
-                var clean = data.trim();
-                var isMuted = clean.indexOf("[MUTED]") !== -1;
-                var match = clean.match(/Volume:\s+([0-9.]+)/);
-                var vNum = "--%";
-                if (match) vNum = Math.round(parseFloat(match[1]) * 100) + "%";
-                var txtColor = isMuted ? audioBox.themeBase08.toString() : audioBox.themeBase05.toString();
-                audioBox.audioDisplayText = "<font color='" + audioBox.themeBase05 + "'>Audio:</font> <font color='" + txtColor + "'>" + vNum + "</font>";
-            }
+            onRead: data => audioListener.parseWpctlLine(data)
         }
     }
 
@@ -57,7 +77,7 @@ Item {
         onWheel: (wheel) => {
             var step = wheel.angleDelta.y > 0 ? "5%+" : "5%-";
             Quickshell.execDetached(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", step, "--limit", "1.0"]);
-            audioFetcher.running = false; audioFetcher.running = true;
+            audioQueryTrigger.running = true;
         }
     }
 
@@ -78,21 +98,21 @@ Item {
         clip: true
     }
 
+    // Optimized On-Demand Device Switching Task
     Process {
         id: deviceToggleProcess
         running: false
         command: [
             "sh", "-c",
-            "SCR=\"$HOME/nix/hosts/common/scripts/sound_sink_switcher.sh\"; if [ -x \"$SCR\" ]; then \"$SCR\"; else next_sink=$(wpctl status 2>/dev/null | awk '/Sinks:/{flag=1; next} /Sources:/{flag=0} flag && /^[ \\t]+[0-9]+/ {print $1}' | tr -d '.' | grep -v '*' | head -n 1); [ -n \"$next_sink\" ] && wpctl set-default \"$next_sink\"; fi"
+            "SCR=\"$HOME/nix/hosts/common/scripts/sound_sink_switcher.sh\"; if [ -x \"$SCR\" ]; then \"$SCR\"; else next_sink=$(wpctl status | awk '/Sinks:/{flag=1; next} /Sources:/{flag=0} flag && /^[ \\t]+[0-9]+/ {print $1}' | tr -d '.' | grep -v '*' | head -n 1); [ -n \"$next_sink\" ] && wpctl set-default \"$next_sink\"; fi"
         ]
+        onExited: audioQueryTrigger.running = true
     }
 
     Process {
         id: muteToggleProcess
         running: false
         command: ["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"]
-        onExited: { audioFetcher.running = false; audioFetcher.running = true; }
+        onExited: audioQueryTrigger.running = true
     }
-
-    Timer { interval: 2000; running: true; repeat: true; onTriggered: { audioFetcher.running = false; audioFetcher.running = true; } }
 }

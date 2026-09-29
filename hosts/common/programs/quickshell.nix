@@ -53,7 +53,7 @@ in {
       networkClientMonitoring = mkOption {
         type = types.bool;
         default = true;
-        description = "Per-process bandwidth tracking table in Network capsule via nethogs (with capabilities)";
+        description = "Per-process bandwidth tracking table in Network capsule via nethogs";
       };
     };
 
@@ -73,39 +73,5 @@ in {
       allowNullPassword = false;
       startSession = true;
     };
-
-    # -------------------------------------------------------------------------
-    # 2. CAPABILITIES & PRIVILEGED WRAPPERS
-    # -------------------------------------------------------------------------
-    # When network monitoring is enabled, install /run/wrappers/bin/nethogs
-    # with CAP_NET_RAW and CAP_NET_ADMIN so unprivileged users can read socket rates.
-    programs.nethogs.enable = mkIf cfg.features.networkClientMonitoring (mkDefault true);
-
-    # -------------------------------------------------------------------------
-    # 3. SYSTEM PACKAGES
-    # -------------------------------------------------------------------------
-    environment.systemPackages = with pkgs; [
-      cfg.package
-
-      # Core system foundation for bar, hardware metrics, sound, and shell:
-      pipewire        # Audio playback (`pw-play`) for alarm timers and cues
-      wireplumber     # Volume, sink switcher, and mic control (`wpctl`)
-      wl-clipboard    # Wayland clipboard manager (`wl-copy`, `wl-paste`)
-      curl            # Weather forecasts (wttr.in) & Wiktionary REST queries
-      python3         # Desktop scanner, GPU telemetry, and hardware discovery
-      libnotify       # Desktop notification toasts (`notify-send`)
-      gawk            # Clean hardware text stream parsing without subshell stalls
-      procps          # Reliable `ps`, `pgrep`, `pkill` process tools
-      coreutils       # `timeout`, `date`, `stat`, `realpath`
-      iproute2        # Physical network route and default gateway detection (`ip`)
-    ]
-    # Conditional feature dependencies:
-    ++ optional cfg.features.clipboard pkgs.cliphist
-    ++ optional cfg.features.pass pkgs.pass
-    ++ optional cfg.features.email pkgs.himalaya
-    ++ optional cfg.features.watermark pkgs.imagemagick
-    ++ optional cfg.features.ocr pkgs.tesseract
-    ++ optional cfg.features.recording pkgs.wf-recorder
-    ++ cfg.extraPackages;
   };
 }
