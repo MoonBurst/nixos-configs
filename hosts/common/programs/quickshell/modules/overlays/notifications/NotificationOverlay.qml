@@ -215,7 +215,7 @@ Item {
         WlrLayershell.layer: WlrLayer.Overlay
 
         WlrLayershell.margins.top: 0
-        WlrLayershell.margins.right: shell.theme.globalPadding || 20
+        WlrLayershell.margins.right: (shell && shell.settingsManager && shell.settingsManager.notifMarginX !== undefined) ? shell.settingsManager.notifMarginX : (shell.theme.globalPadding || 20)
         WlrLayershell.margins.bottom: 0
 
         Item {
@@ -298,6 +298,7 @@ Item {
     }
 
     function handleNotification(notification) {
+        if (shell && shell.settingsManager && shell.settingsManager.isNotificationExcluded(notification.appName || notification.desktopEntry || "", notification.summary || "", notification.body || "")) return;
         if (!root.notificationsEnabled) {
             return;
         }

@@ -7,8 +7,19 @@ import Quickshell.Wayland
 PanelWindow {
     id: root
 
+    property string windowId: "amogus"
     property var shell: null
     property int currentScreenIndex: 0
+
+    readonly property bool isPreviewMode: (shell && shell.settingsManager && shell.settingsManager.previewWindow === windowId)
+    property bool isOpenState: false
+    visible: isOpenState || isPreviewMode
+
+    onVisibleChanged: {
+        if (visible && !isPreviewMode && shell && typeof shell.closeOtherOverlays === "function") {
+            shell.closeOtherOverlays(root);
+        }
+    }
 
     // Assign to chosen screen (defaults to second screen if available, else first)
     screen: {
@@ -18,22 +29,29 @@ PanelWindow {
         return Quickshell.screens[0] || null;
     }
 
-    visible: false
-
     function toggleWindow() {
-        root.visible = !root.visible;
+        if (root.visible) hideWindow();
+        else showWindow();
     }
 
     function showWindow() {
-        root.visible = true;
+        root.isOpenState = true;
     }
 
     function hideWindow() {
-        root.visible = false;
+        root.isOpenState = false;
+        if (shell && shell.settingsManager && shell.settingsManager.previewWindow === windowId) {
+            shell.settingsManager.previewWindow = "";
+        }
     }
 
-    // Layer-shell configuration: never steal keyboard focus so games/apps stay active
-    WlrLayershell.layer: WlrLayer.Overlay
+    function close() {
+        hideWindow();
+    }
+
+    // Layer-shell configuration: in preview mode sit underneath SettingsWindow
+    WlrLayershell.namespace: "quickshell-amogus"
+    WlrLayershell.layer: isPreviewMode ? WlrLayer.Top : WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
     anchors {
@@ -94,7 +112,6 @@ PanelWindow {
 
     Component.onCompleted: {
         initModel();
-        // If a second monitor exists, default to it
         if (Quickshell.screens.length > 1) {
             currentScreenIndex = 1;
         }
@@ -130,8 +147,8 @@ PanelWindow {
         id: amogusCard
         x: 80
         y: 80
-        width: 580
-        height: 440
+        width: (shell && shell.settingsManager) ? shell.settingsManager.getWindowWidth(root.windowId, 580) : 580
+        height: (shell && shell.settingsManager) ? shell.settingsManager.getWindowHeight(root.windowId, 440) : 440
         radius: 14
         color: root.themeBase00
         border.color: root.themeBase05
@@ -141,6 +158,23 @@ PanelWindow {
             anchors.fill: parent
             anchors.margins: 14
             spacing: 10
+
+            Rectangle {
+                visible: root.isPreviewMode
+                Layout.fillWidth: true
+                height: 24
+                radius: 4
+                color: root.themeBase0C
+                Text {
+                    anchors.centerIn: parent
+                    text: "👁 AMONG US PREVIEW — Click to Close"
+                    font.bold: true; font.pixelSize: 10; color: "#000"
+                }
+                MouseArea {
+                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                    onClicked: root.close()
+                }
+            }
 
             // Header Bar (Acts as the drag handle)
             Rectangle {
@@ -281,8 +315,8 @@ PanelWindow {
                 columnSpacing: 8
                 rowSpacing: 8
 
-                readonly property real cardW: (width - (5 * 8)) / 6
-                readonly property real cardH: (height - (2 * 8)) / 3
+                readonly property real cardW: Math.max(20, (width - (5 * 8)) / 6)
+                readonly property real cardH: Math.max(20, (height - (2 * 8)) / 3)
 
                 Repeater {
                     model: root.crewModel

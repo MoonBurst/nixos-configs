@@ -4,44 +4,84 @@ import Quickshell.Io
 
 Item {
     id: manager
-
-    property string nixThemeFile: Quickshell.env("HOME") + "/nix/hosts/common/theme.nix"
-
+    
+    property string nixThemeFile: (Quickshell.env("HOME") || "") + "/nix/hosts/common/theme.nix"
+    
+    Process {
+        id: themeFinderProc
+        running: true
+        command: [
+            "sh", "-c",
+            'if [ -n "$THEME_NIX" ] && [ -f "$THEME_NIX" ]; then echo "$THEME_NIX"; exit 0; fi; ' +
+            'for d in "$HOME/.config/quickshell" "$HOME/nix" "$HOME/dotfiles" "$HOME/.config/nix" "/etc/nixos"; do ' +
+            '  if [ -d "$d" ]; then ' +
+            '    f=$(find "$d" -maxdepth 4 -name "theme.nix" 2>/dev/null | head -n 1); ' +
+            '    if [ -n "$f" ] && [ -f "$f" ]; then echo "$f"; exit 0; fi; ' +
+            '  fi; ' +
+            'done; ' +
+            'echo "$HOME/nix/hosts/common/theme.nix"'
+        ]
+        stdout: SplitParser {
+            onRead: data => {
+                var clean = data.trim();
+                if (clean.length > 0) manager.nixThemeFile = clean;
+            }
+        }
+    }
+    
     property bool useStylix: false
     property bool animationsEnabled: true
-
+    
     property string slantStyleMode: "symmetric"
     property int capsuleSpacing: 2
     property int slantRevision: 0
     property int gpuThresholdRevision: 0
-
+    
     property int globalFontSize: 14
+    property int overlayFontSize: 16
+    onOverlayFontSizeChanged: queueSave()
+    
+    // GLOBAL OVERLAY DIMENSIONS
+    property int globalOverlayWidth: 840
+    onGlobalOverlayWidthChanged: { standaloneRevision++; queueSave(); }
+    property int globalOverlayHeight: 650
+    onGlobalOverlayHeightChanged: { standaloneRevision++; queueSave(); }
+    
     property int slantWidth: 12
     property int globalBorderWidth: 3
     property int globalPadding: 12
-
+    
     // TOP BAR & HARDWARE TIMINGS
     property int barHeight: 42
     property int hardwarePollInterval: 2000
     property int trayCollapseTimeoutSec: 3
     onTrayCollapseTimeoutSecChanged: queueSave()
-
-    // LAUNCHER CUSTOMIZATION
-    property int launcherWidth: 840
-    property int launcherHeight: 700
-    property int appItemHeight: 80
-    property int appIconSize: 32
-
+    
+    // LAZY LOADER GRACE TIMEOUT
+    property int overlayGraceTimeoutSec: 10
+    onOverlayGraceTimeoutSecChanged: queueSave()
+    
+    // GLOBAL SEARCH & INPUT FIELD HEIGHT
+    property int globalFieldHeight: 52
+    onGlobalFieldHeightChanged: {
+        standaloneRevision++;
+        queueSave();
+    }
+    
     // STORAGE & AUDIO
     property string notesFilePath: Quickshell.env("HOME") + "/Documents/notes.txt"
     property int notifVolume: 80
-
+    
     // OVERLAYS & TOOLS CONFIGURATION
     property int notifBaselineY: 350
+    property int notifMarginX: 20
+    onNotifMarginXChanged: queueSave()
     property int notifStackOverlap: 25
     property string notifScreenName: ""
     property string rngScreenTarget: "focused"
     onRngScreenTargetChanged: queueSave()
+    property string amogusScreenTarget: "1"
+    onAmogusScreenTargetChanged: queueSave()
     property real magnifierDefaultZoom: 8.0
     property int magnifierLensSize: 300
     property string screenshotSaveDir: Quickshell.env("HOME") + "/Screenshots"
@@ -50,39 +90,183 @@ Item {
     property string geminiModelName: "gemini-flash-latest"
     property int clipboardMaxItems: 200
     property string defaultLauncherMode: "apps"
+    onDefaultLauncherModeChanged: queueSave()
     property string emailSignature: "\n\n--\nSeekers of light..\nBelieve not in justice...\nBelieve not in truth...\nFor they are empty and inconsistent, as are all things..."
-
+    
+    // NOTIFICATION CUSTOMIZATION & FILTERS
+    property string notifBorderColor: ""
+    onNotifBorderColorChanged: queueSave()
+    property string notifCustomIcon: ""
+    onNotifCustomIconChanged: queueSave()
+    property string ttsKeywordsStr: "Apogee, Cageheart, Luster Dawn, Solar Sonata, Vikhlop, Gadren, Parker, urgent, Dad"
+    onTtsKeywordsStrChanged: queueSave()
+    property string notifExcludedStr: "greenclip, copyq"
+    onNotifExcludedStrChanged: queueSave()
+    
+    readonly property var ttsKeywords: ttsKeywordsStr.split(",").map(s => s.trim()).filter(s => s.length > 0)
+    readonly property var notifExcludedStrings: notifExcludedStr.split(",").map(s => s.trim().toLowerCase()).filter(s => s.length > 0)
+    
+    function isNotificationExcluded(appName, summary, body) {
+        var haystack = (appName + " " + summary + " " + body).toLowerCase();
+        for (var i = 0; i < notifExcludedStrings.length; i++) {
+            if (haystack.includes(notifExcludedStrings[i])) return true;
+        }
+        return false;
+    }
+    
     // THEME DEFAULTS
     property string customBase00: "#0f0f0f"
+    property string customBase01: "#181825"
+    property string customBase02: "#313244"
     property string customBase03: "#003399"
+    property string customBase04: "#45475a"
     property string customBase05: "#f7f700"
+    property string customBase06: "#cdd6f4"
+    property string customBase07: "#b4befe"
     property string customBase08: "#ff0000"
     property string customBase09: "#fe8019"
-    property string customBase0C: "#04f100"
+    property string customBase0A: "#fabd2f"
+    property string customBase0B: "#a6adc8"
+    property color customBase0C: "#04f100"
     property string customBase0D: "#003399"
-
-    // GPU DISCOVERY
+    property string customBase0E: "#cba6f7"
+    property string customBase0F: "#eba0ac"
+    
+    function getNixColorBlock() {
+        function clean(h) { return String(h).replace("#", ""); }
+        return "{\n" +
+        "  base00 = \"" + clean(customBase00) + "\";\n" +
+        "  base01 = \"" + clean(customBase01) + "\";\n" +
+        "  base02 = \"" + clean(customBase02) + "\";\n" +
+        "  base03 = \"" + clean(customBase03) + "\";\n" +
+        "  base04 = \"" + clean(customBase04) + "\";\n" +
+        "  base05 = \"" + clean(customBase05) + "\";\n" +
+        "  base06 = \"" + clean(customBase06) + "\";\n" +
+        "  base07 = \"" + clean(customBase07) + "\";\n" +
+        "  base08 = \"" + clean(customBase08) + "\";\n" +
+        "  base09 = \"" + clean(customBase09) + "\";\n" +
+        "  base0A = \"" + clean(customBase0A) + "\";\n" +
+        "  base0B = \"" + clean(customBase0B) + "\";\n" +
+        "  base0C = \"" + clean(customBase0C) + "\";\n" +
+        "  base0D = \"" + clean(customBase0D) + "\";\n" +
+        "  base0E = \"" + clean(customBase0E) + "\";\n" +
+        "  base0F = \"" + clean(customBase0F) + "\";\n" +
+        "}";
+    }
+    
     property var discoveredGpus: []
     property string activeGpuCard: "card0"
-    property var discoveredNetworks: []
-    property string activeNetInterface: "auto"
-    onActiveNetInterfaceChanged: queueSave()
-
+    onActiveGpuCardChanged: queueSave()
+    
+    Process {
+        id: gpuScanner
+        running: true
+        command: [
+            "python3", "-c",
+            "import os, glob, subprocess, re, json\n" +
+            "nv_info = {}\n" +
+            "try:\n" +
+            "    out = subprocess.check_output(['nvidia-smi', '--query-gpu=index,gpu_name,pci.bus_id', '--format=csv,noheader,nounits'], stderr=subprocess.DEVNULL).decode('utf-8', errors='ignore')\n" +
+            "    for line in out.strip().splitlines():\n" +
+            "        p = [x.strip() for x in line.split(',')]\n" +
+            "        if len(p) >= 3:\n" +
+            "            bus_short = p[2].lower().split(':')[-2] + ':' + p[2].lower().split(':')[-1]\n" +
+            "            nv_info[bus_short] = (p[0], p[1])\n" +
+            "except: pass\n" +
+            "def get_vram_gb(dev_path):\n" +
+            "    try:\n" +
+            "        v = int(open(os.path.join(dev_path, 'mem_info_vram_total')).read().strip())\n" +
+            "        return round(v / 1073741824)\n" +
+            "    except: return 0\n" +
+            "def query_udev_name(cid):\n" +
+            "    subsys, model = '', ''\n" +
+            "    try:\n" +
+            "        out = subprocess.check_output(['udevadm', 'info', '-q', 'property', '-p', f'/sys/class/drm/{cid}/device'], stderr=subprocess.DEVNULL).decode('utf-8', errors='ignore')\n" +
+            "        for line in out.splitlines():\n" +
+            "            if line.startswith('ID_PCI_SUBFSYS_MODEL_FROM_DATABASE='): subsys = line.split('=', 1)[1].strip()\n" +
+            "            elif line.startswith('ID_MODEL_FROM_DATABASE='): model = line.split('=', 1)[1].strip()\n" +
+            "    except: pass\n" +
+            "    val = subsys or model\n" +
+            "    m = re.search(r'\\[(.*?)\\]', val)\n" +
+            "    return m.group(1) if m else val\n" +
+            "def clean_specific_name(raw, vram_gb):\n" +
+            "    if not raw: return 'GPU', 'GPU'\n" +
+            "    name = raw\n" +
+            "    if '7900' in name:\n" +
+            "        name = 'RX 7900 XTX' if vram_gb >= 22 else 'RX 7900 XT'\n" +
+            "    elif '6400' in name or '6500' in name:\n" +
+            "        name = 'RX 6400' if vram_gb <= 4 else 'RX 6500 XT'\n" +
+            "    elif '6600' in name:\n" +
+            "        name = 'RX 6600 XT' if 'xt' in name.lower() else 'RX 6600'\n" +
+            "    elif '6700' in name:\n" +
+            "        name = 'RX 6700 XT'\n" +
+            "    elif '6800' in name:\n" +
+            "        name = 'RX 6800 XT'\n" +
+            "    elif '/' in name:\n" +
+            "        name = name.split('/')[0].strip()\n" +
+            "    short = re.sub(r'^(NVIDIA\\s+GeForce\\s+|NVIDIA\\s+|AMD\\s+Radeon\\s+|Radeon\\s+)', '', name, flags=re.I).strip() or name\n" +
+            "    return name, short\n" +
+            "gpus = []\n" +
+            "for c in sorted(glob.glob('/sys/class/drm/card[0-9]')):\n" +
+            "    cid = os.path.basename(c)\n" +
+            "    dev = os.path.join(c, 'device')\n" +
+            "    if not os.path.isdir(dev): continue\n" +
+            "    vendor, device_id = '', ''\n" +
+            "    try: vendor = open(os.path.join(dev, 'vendor')).read().strip().replace('0x', '').lower()\n" +
+            "    except: pass\n" +
+            "    try: device_id = open(os.path.join(dev, 'device')).read().strip().replace('0x', '').lower()\n" +
+            "    except: pass\n" +
+            "    pci_link = os.path.basename(os.path.realpath(dev)).lower()\n" +
+            "    bus_short = pci_link.split(':')[-2] + ':' + pci_link.split(':')[-1] if ':' in pci_link else ''\n" +
+            "    vram = get_vram_gb(dev)\n" +
+            "    raw_name, nv_idx, is_nv = '', '0', (vendor == '10de')\n" +
+            "    if is_nv and bus_short in nv_info:\n" +
+            "        nv_idx, raw_name = nv_info[bus_short]\n" +
+            "    elif is_nv and nv_info:\n" +
+            "        nv_idx, raw_name = list(nv_info.values())[0]\n" +
+            "    if not raw_name: raw_name = query_udev_name(cid)\n" +
+            "    full_name, short_name = clean_specific_name(raw_name, vram)\n" +
+            "    rnodes = sorted(glob.glob(os.path.join(dev, 'drm', 'renderD*')))\n" +
+            "    render = os.path.basename(rnodes[0]) if rnodes else 'renderD128'\n" +
+            "    is_discrete = is_nv or (vendor == '1002' and vram >= 6)\n" +
+            "    gpus.append({'id': cid, 'vendor': vendor, 'device': device_id, 'name': short_name, 'fullName': full_name, 'render': render, 'nv_index': nv_idx, 'vram_gb': vram, 'is_discrete': is_discrete})\n" +
+            "gpus.sort(key=lambda x: (0 if x.get('is_discrete') else 1, -x.get('vram_gb', 0)))\n" +
+            "print(json.dumps(gpus))\n"
+        ]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    var list = JSON.parse(text.trim());
+                    if (Array.isArray(list) && list.length > 0) {
+                        manager.discoveredGpus = list;
+                    }
+                } catch(e) {}
+            }
+        }
+    }
+    
+    readonly property var availableGpuCards: (discoveredGpus && discoveredGpus.length > 0)
+    ? discoveredGpus
+    : [
+        { id: "card0", vendor: "", name: "GPU 0", render: "renderD128", nv_index: "0" },
+        { id: "card1", vendor: "", name: "GPU 1", render: "renderD129", nv_index: "0" }
+    ]
+    
     property int gpu0TempWarn: 70
     property int gpu0TempDanger: 80
     property int gpu0VramWarn: 4
     property int gpu0VramDanger: 2
-
+    
     property int gpu1TempWarn: 65
     property int gpu1TempDanger: 75
     property int gpu1VramWarn: 1
     property int gpu1VramDanger: 0
-
+    
     function getGpuTempWarn(cardId) { return (cardId === "card1" || cardId === 1) ? gpu1TempWarn : gpu0TempWarn; }
     function getGpuTempDanger(cardId) { return (cardId === "card1" || cardId === 1) ? gpu1TempDanger : gpu0TempDanger; }
     function getGpuVramWarn(cardId) { return (cardId === "card1" || cardId === 1) ? gpu1VramWarn : gpu0VramWarn; }
     function getGpuVramDanger(cardId) { return (cardId === "card1" || cardId === 1) ? gpu1VramDanger : gpu0VramDanger; }
-
+    
     function setGpuThreshold(cardId, key, val) {
         var num = Math.round(val);
         var isCard1 = (cardId === "card1" || cardId === 1);
@@ -100,218 +284,92 @@ Item {
         gpuThresholdRevision++;
         saveToDisk();
     }
-
-    function syncStylixDefaults() {
-        if (shell && shell.theme) {
-            if (shell.theme.globalFontSize !== undefined) globalFontSize = shell.theme.globalFontSize;
-            if (shell.theme.slantWidth !== undefined) slantWidth = shell.theme.slantWidth;
-            if (shell.theme.globalBorderWidth !== undefined) globalBorderWidth = shell.theme.globalBorderWidth;
-            if (shell.theme.globalPadding !== undefined) globalPadding = shell.theme.globalPadding;
-            if (shell.theme.base00 !== undefined) customBase00 = shell.theme.base00.toString();
-            if (shell.theme.base03 !== undefined) customBase03 = shell.theme.base03.toString();
-            if (shell.theme.base05 !== undefined) customBase05 = shell.theme.base05.toString();
-            if (shell.theme.base08 !== undefined) customBase08 = shell.theme.base08.toString();
-            if (shell.theme.base09 !== undefined) customBase09 = shell.theme.base09.toString();
-            if (shell.theme.base0C !== undefined) customBase0C = shell.theme.base0C.toString();
-            if (shell.theme.base0D !== undefined) customBase0D = shell.theme.base0D.toString();
+    
+    // STANDALONE WINDOW RESIZING & LIFECYCLE REGISTRY
+    property string previewWindow: ""
+    property var standaloneWindows: ({})
+    property int standaloneRevision: 0
+    
+    function getWindowWidth(idStr, defaultW) {
+        var _rev = manager.standaloneRevision;
+        if (standaloneWindows && standaloneWindows[idStr] && standaloneWindows[idStr].width > 0) {
+            return standaloneWindows[idStr].width;
         }
+        return manager.globalOverlayWidth || defaultW || 840;
+    }
+    
+    function getWindowHeight(idStr, defaultH) {
+        var _rev = manager.standaloneRevision;
+        if (standaloneWindows && standaloneWindows[idStr] && standaloneWindows[idStr].height > 0) {
+            return standaloneWindows[idStr].height;
+        }
+        return manager.globalOverlayHeight || defaultH || 650;
+    }
+    
+    function getWindowFieldHeight(idStr, defaultFH) {
+        var _rev = manager.standaloneRevision;
+        if (standaloneWindows && standaloneWindows[idStr] && standaloneWindows[idStr].fieldHeight > 0) {
+            return standaloneWindows[idStr].fieldHeight;
+        }
+        return manager.globalFieldHeight || defaultFH || 52;
+    }
+    
+    function getWindowIconSize(idStr, defaultIS) {
+        var _rev = manager.standaloneRevision;
+        if (standaloneWindows && standaloneWindows[idStr] && standaloneWindows[idStr].iconSize > 0) {
+            return standaloneWindows[idStr].iconSize;
+        }
+        return defaultIS || 38;
+    }
+    
+    function getWindowImageSize(idStr, defaultIS) {
+        var _rev = manager.standaloneRevision;
+        if (standaloneWindows && standaloneWindows[idStr] && standaloneWindows[idStr].imageSize > 0) {
+            return standaloneWindows[idStr].imageSize;
+        }
+        return defaultIS || 80;
+    }
+    
+    function getWindowLoadPolicy(idStr, defaultPolicy) {
+        var _rev = manager.standaloneRevision;
+        if (standaloneWindows && standaloneWindows[idStr] && standaloneWindows[idStr].loadPolicy) {
+            return standaloneWindows[idStr].loadPolicy;
+        }
+        return defaultPolicy || "lazy";
+    }
+    
+    function setWindowLoadPolicy(idStr, policy) {
+        setWindowProp(idStr, "loadPolicy", policy);
+    }
+    
+    function setWindowProp(idStr, prop, val) {
+        var copy = Object.assign({}, standaloneWindows);
+        if (!copy[idStr]) copy[idStr] = {};
+        copy[idStr][prop] = (typeof val === "number") ? Math.round(val) : val;
+        standaloneWindows = copy;
+        standaloneRevision++;
         saveToDisk();
     }
-
-    Process {
-        id: netDiscProc
-        running: true
-        command: [
-            "python3", "-c",
-            "import os, glob, json, subprocess\n" +
-            "nets = []\n" +
-            "for p in sorted(glob.glob('/sys/class/net/*')):\n" +
-            "    name = os.path.basename(p)\n" +
-            "    if not os.path.exists(os.path.join(p, 'device')): continue\n" +
-            "    is_wifi = os.path.isdir(os.path.join(p, 'wireless')) or os.path.isdir(os.path.join(p, 'phy80211'))\n" +
-            "    ntype = 'Wi-Fi' if is_wifi else 'Ethernet'\n" +
-            "    oper = 'down'\n" +
-            "    try:\n" +
-            "        with open(os.path.join(p, 'operstate')) as f: oper = f.read().strip()\n" +
-            "    except Exception: pass\n" +
-            "    speed = ''\n" +
-            "    try:\n" +
-            "        with open(os.path.join(p, 'speed')) as f:\n" +
-            "            s = int(f.read().strip())\n" +
-            "            if s > 0: speed = f'{s}M'\n" +
-            "    except Exception: pass\n" +
-            "    ip = ''\n" +
-            "    try:\n" +
-            "        out = subprocess.check_output(['ip', '-4', 'addr', 'show', name], stderr=subprocess.DEVNULL).decode()\n" +
-            "        for line in out.splitlines():\n" +
-            "            if line.strip().startswith('inet '):\n" +
-            "                ip = line.strip().split()[1].split('/')[0]\n" +
-            "                break\n" +
-            "    except Exception: pass\n" +
-            "    nets.append({'id': name, 'name': f'{ntype} ({name})', 'type': ntype, 'operstate': oper, 'speed': speed, 'ip': ip})\n" +
-            "print(json.dumps(nets))\n"
-        ]
-        stdout: SplitParser {
-            splitMarker: ""
-            onRead: data => {
-                try {
-                    var parsed = JSON.parse(data.trim());
-                    if (parsed && parsed.length > 0) manager.discoveredNetworks = parsed;
-                } catch(e) {}
-            }
-        }
-    }
-
-    Process {
-        id: gpuDiscProc
-        running: true
-        command: [
-            "python3", "-c",
-"import os, glob, json, subprocess
-" +
-            "gpus = []
-" +
-            "try:
-" +
-            "    nv_out = subprocess.check_output(['nvidia-smi', '--query-gpu=index,name', '--format=csv,noheader'], stderr=subprocess.DEVNULL).decode()
-" +
-            "    for line in nv_out.splitlines():
-" +
-            "        line = line.strip()
-" +
-            "        if not line: continue
-" +
-            "        parts = [p.strip() for p in line.split(',') if p.strip()]
-" +
-            "        if len(parts) >= 2:
-" +
-            "            gpus.append({'id': 'nvidia' + parts[0], 'hw_id': '10de:nv' + parts[0], 'vendor': '10de', 'render': 'nvidia', 'name': parts[1].replace('NVIDIA GeForce ', '').replace('NVIDIA ', '')})
-" +
-            "except Exception: pass
-" +
-            "KNOWN = {'1002:743f':'RX 6400','1002:743c':'RX 6500 XT','1002:73ff':'RX 6600 XT','1002:73df':'RX 6700 XT','1002:73bf':'RX 6800 / 6900 XT','1002:744c':'RX 7900 XTX','1002:7448':'RX 7900 XT','1002:745e':'RX 7800 XT','1002:747e':'RX 7700 XT','1002:7480':'RX 7600','1002:164e':'Radeon 680M/780M','8086:56a0':'Intel Arc A770','8086:56a1':'Intel Arc A750'}
-" +
-            "for card in sorted(glob.glob('/sys/class/drm/card[0-9]')):
-" +
-            "    cname = os.path.basename(card)
-" +
-            "    dlink = os.path.realpath(card + '/device')
-" +
-            "    render = next((os.path.basename(r) for r in glob.glob('/sys/class/drm/renderD*') if os.path.realpath(r + '/device') == dlink), '')
-" +
-            "    label, hw_id, vendor = cname.upper(), '', ''
-" +
-            "    try:
-" +
-            "        with open(card + '/device/vendor') as f: vendor = f.read().strip().replace('0x', '').lower()
-" +
-            "        with open(card + '/device/device') as f: dev = f.read().strip().replace('0x', '').lower()
-" +
-            "        hw_id = vendor + ':' + dev
-" +
-            "        if hw_id in KNOWN: label = KNOWN[hw_id]
-" +
-            "        elif vendor == '1002': label = 'Radeon Graphics'
-" +
-            "        elif vendor == '8086': label = 'Intel Graphics'
-" +
-            "    except Exception: pass
-" +
-            "    if vendor != '10de':
-" +
-            "        gpus.append({'id': cname, 'hw_id': hw_id, 'vendor': vendor, 'render': render, 'name': label})
-" +
-            "print(json.dumps(gpus))
-"
-        ]
-        stdout: SplitParser {
-            splitMarker: ""
-            onRead: data => {
-                try {
-                    var parsed = JSON.parse(data.trim());
-                    if (parsed && parsed.length > 0) manager.discoveredGpus = parsed;
-                } catch(e) {}
-            }
-        }
-    }
-
-    // Query live mic mute & volume on startup
-    Process {
-        id: liveMicProc
-        running: true
-        command: ["sh", "-c", "wpctl get-volume @DEFAULT_AUDIO_SOURCE@ 2>/dev/null || echo 'Volume: 1.00'"]
-        stdout: SplitParser {
-            onRead: data => {
-                if (!data) return;
-                var raw = data.trim();
-                var isMuted = raw.indexOf("[MUTED]") !== -1;
-                var mMatch = raw.match(/[0-9.]+/);
-                var vol = 100;
-                if (mMatch) vol = Math.round(parseFloat(mMatch[0]) * 100);
-                manager.updateMicFromSystem(isMuted, vol);
-            }
-        }
-    }
-    property int masterVolume: 80
-    property bool _suppressVolumeSync: true
-
-    // Query live PipeWire volume on startup so we never overwrite the user's volume
-    Process {
-        id: liveVolProc
-        running: true
-        command: ["sh", "-c", "wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '{print int($2 * 100)}'"]
-        stdout: SplitParser {
-            onRead: data => {
-                var v = parseInt(data.trim());
-                if (!isNaN(v) && v > 0) {
-                    manager._suppressVolumeSync = true;
-                    manager.masterVolume = v;
-                    manager._suppressVolumeSync = false;
-                }
-            }
-        }
-    }
-    property int micVolume: 100
-    property bool micMuted: false
-    property bool _suppressMicSync: false
-
-    function updateMicFromSystem(isMuted, vol) {
-        _suppressMicSync = true;
-        if (micMuted !== isMuted) micMuted = isMuted;
-        if (vol !== undefined && !isNaN(vol) && vol > 0 && micVolume !== vol) micVolume = vol;
-        _suppressMicSync = false;
-    }
-    property bool notificationsEnabled: true
-    property int notifHoldDurationSec: 5
-    property bool enableTts: true
-
-    property var barLeftModules: ["calendar", "music", "alarm", "weather", "unified", "notify"]
-    property var barCenterModules: ["audio", "clock", "mic"]
-    property var barRightModules: ["tray", "ram", "gpu", "cpu", "net", "battery"]
-
-    function getLeftList() { return barLeftModules.length > 0 ? barLeftModules : ["calendar", "music", "alarm", "weather", "unified", "notify"]; }
-    function getCenterList() { return barCenterModules.length > 0 ? barCenterModules : ["audio", "clock", "mic"]; }
-    function getRightList() { return barRightModules.length > 0 ? barRightModules : ["tray", "ram", "gpu", "cpu", "net", "battery"]; }
-
-    // PER-CAPSULE TOOLTIP DIMENSIONS
+    
+    // BAR CAPSULES CONFIGURATION
     property string previewCapsule: ""
     property var capsuleDimensions: ({})
     property int dimensionsRevision: 0
-
+    
     function getCapsuleWidth(idStr) {
         if (capsuleDimensions && capsuleDimensions[idStr] && capsuleDimensions[idStr].width > 0) {
             return capsuleDimensions[idStr].width;
         }
         return 0;
     }
-
+    
     function getCapsuleHeight(idStr) {
         if (capsuleDimensions && capsuleDimensions[idStr] && capsuleDimensions[idStr].height > 0) {
             return capsuleDimensions[idStr].height;
         }
         return 0;
     }
-
+    
     function setCapsuleWidth(idStr, w) {
         var copy = Object.assign({}, capsuleDimensions);
         if (!copy[idStr]) copy[idStr] = {};
@@ -320,7 +378,7 @@ Item {
         dimensionsRevision++;
         saveToDisk();
     }
-
+    
     function setCapsuleHeight(idStr, h) {
         var copy = Object.assign({}, capsuleDimensions);
         if (!copy[idStr]) copy[idStr] = {};
@@ -329,18 +387,10 @@ Item {
         dimensionsRevision++;
         saveToDisk();
     }
-
-    function resetCapsuleSize(idStr) {
-        var copy = Object.assign({}, capsuleDimensions);
-        delete copy[idStr];
-        capsuleDimensions = copy;
-        dimensionsRevision++;
-        saveToDisk();
-    }
-
+    
     property var capsuleSlants: ({})
-
     function getModuleSlant(idStr, section) {
+        var _rev = manager.slantRevision;
         if (capsuleSlants && capsuleSlants[idStr] && capsuleSlants[idStr] !== "auto") return capsuleSlants[idStr];
         if (slantStyleMode === "all-left") return "left";
         if (slantStyleMode === "all-right") return "right";
@@ -348,7 +398,7 @@ Item {
         if (section === "right") return "right";
         return idStr === "clock" ? "center" : (idStr === "mic" ? "right" : "left");
     }
-
+    
     function setModuleSlant(idStr, slantType) {
         var copy = Object.assign({}, capsuleSlants);
         copy[idStr] = slantType;
@@ -356,13 +406,13 @@ Item {
         slantRevision++;
         saveToDisk();
     }
-
+    
     property var visibleCapsules: ({
         "calendar": true, "music": true, "alarm": true, "weather": true,
         "unified": true, "notify": true, "clock": true, "audio": true,
         "mic": true, "net": true, "cpu": true, "gpu": true, "ram": true, "tray": true, "battery": true
     })
-
+    
     function isCapsuleVisible(idStr) { return visibleCapsules[idStr] !== undefined ? visibleCapsules[idStr] : true; }
     function toggleCapsuleVisibility(idStr) {
         var copy = Object.assign({}, visibleCapsules);
@@ -370,7 +420,15 @@ Item {
         visibleCapsules = copy;
         saveToDisk();
     }
-
+    
+    property var barLeftModules: ["calendar", "music", "alarm", "weather", "unified", "notify"]
+    property var barCenterModules: ["audio", "clock", "mic"]
+    property var barRightModules: ["tray", "ram", "gpu", "cpu", "net", "battery"]
+    
+    function getLeftList() { return barLeftModules.length > 0 ? barLeftModules : ["calendar", "music", "alarm", "weather", "unified", "notify"]; }
+    function getCenterList() { return barCenterModules.length > 0 ? barCenterModules : ["audio", "clock", "mic"]; }
+    function getRightList() { return barRightModules.length > 0 ? barRightModules : ["tray", "ram", "gpu", "cpu", "net", "battery"]; }
+    
     function moveWithinSection(section, fromIdx, toIdx) {
         var list = (section === "left" ? getLeftList() : (section === "center" ? getCenterList() : getRightList())).slice();
         if (toIdx < 0 || toIdx >= list.length) return;
@@ -381,29 +439,26 @@ Item {
         else barRightModules = list;
         saveToDisk();
     }
-
-    function moveModule(idStr, targetSection, newIndex) {
-        var l = getLeftList().slice().filter(x => x !== idStr);
-        var c = getCenterList().slice().filter(x => x !== idStr);
-        var r = getRightList().slice().filter(x => x !== idStr);
-        if (targetSection === "left") l.splice(Math.max(0, Math.min(newIndex, l.length)), 0, idStr);
-        else if (targetSection === "center") c.splice(Math.max(0, Math.min(newIndex, c.length)), 0, idStr);
-        else if (targetSection === "right") r.splice(Math.max(0, Math.min(newIndex, r.length)), 0, idStr);
-        barLeftModules = l;
-        barCenterModules = c;
-        barRightModules = r;
-        saveToDisk();
+    
+    property int masterVolume: 80
+    property int micVolume: 100
+    property bool micMuted: false
+    function updateMicFromSystem(muted, vol) {
+        micMuted = muted;
+        if (vol !== undefined && vol >= 0) micVolume = vol;
     }
-
+    
+    property bool notificationsEnabled: true
+    property int notifHoldDurationSec: 5
+    property bool enableTts: true
     property bool isLoaded: false
-
+    
     Timer {
         id: saveDebounceTimer
         interval: 100; repeat: false; onTriggered: manager.saveToDisk()
     }
-
     function queueSave() { if (manager.isLoaded) saveDebounceTimer.restart(); }
-
+    
     onAnimationsEnabledChanged: queueSave()
     onSlantStyleModeChanged: { slantRevision++; queueSave(); }
     onCapsuleSpacingChanged: queueSave()
@@ -411,74 +466,11 @@ Item {
     onSlantWidthChanged: queueSave()
     onGlobalBorderWidthChanged: queueSave()
     onGlobalPaddingChanged: queueSave()
-
     onBarHeightChanged: queueSave()
     onHardwarePollIntervalChanged: queueSave()
-    onLauncherWidthChanged: queueSave()
-    onLauncherHeightChanged: queueSave()
-    onAppItemHeightChanged: queueSave()
-    onAppIconSizeChanged: queueSave()
-    onNotesFilePathChanged: queueSave()
-    onNotifVolumeChanged: queueSave()
-
-    onNotifBaselineYChanged: queueSave()
-    onNotifStackOverlapChanged: queueSave()
-    onNotifScreenNameChanged: queueSave()
-    onMagnifierDefaultZoomChanged: queueSave()
-    onMagnifierLensSizeChanged: queueSave()
-    onScreenshotSaveDirChanged: queueSave()
-    onDefaultWatermarkTagChanged: queueSave()
-    onQuickshotHistoryLimitChanged: queueSave()
-    onGeminiModelNameChanged: queueSave()
-    onClipboardMaxItemsChanged: queueSave()
-    onDefaultLauncherModeChanged: queueSave()
-    onEmailSignatureChanged: queueSave()
-
-    onGpu0TempWarnChanged: queueSave()
-    onGpu0TempDangerChanged: queueSave()
-    onGpu0VramWarnChanged: queueSave()
-    onGpu0VramDangerChanged: queueSave()
-    onGpu1TempWarnChanged: queueSave()
-    onGpu1TempDangerChanged: queueSave()
-    onGpu1VramWarnChanged: queueSave()
-    onGpu1VramDangerChanged: queueSave()
-
-    onCustomBase00Changed: queueSave()
-    onCustomBase03Changed: queueSave()
-    onCustomBase05Changed: queueSave()
-    onCustomBase08Changed: queueSave()
-    onCustomBase09Changed: queueSave()
-    onCustomBase0CChanged: queueSave()
-    onCustomBase0DChanged: queueSave()
-
-    onMasterVolumeChanged: {
-        queueSave();
-        if (!_suppressVolumeSync && isLoaded) {
-            syncMasterVolumeProcess.running = false;
-            syncMasterVolumeProcess.command = ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", (masterVolume / 100.0).toFixed(2)];
-            syncMasterVolumeProcess.running = true;
-        }
-    }
-    onMicVolumeChanged: {
-        queueSave();
-        syncMicVolumeProcess.running = false;
-        syncMicVolumeProcess.command = ["wpctl", "set-volume", "@DEFAULT_AUDIO_SOURCE@", (micVolume / 100.0).toFixed(2)];
-        syncMicVolumeProcess.running = true;
-    }
-    onMicMutedChanged: {
-        queueSave();
-        if (!_suppressMicSync && isLoaded) {
-            syncMicMuteProcess.running = false;
-            syncMicMuteProcess.command = ["wpctl", "set-mute", "@DEFAULT_AUDIO_SOURCE@", micMuted ? "1" : "0"];
-            syncMicMuteProcess.running = true;
-        }
-    }
-
-    Process { id: syncMasterVolumeProcess; running: false }
-    Process { id: syncMicVolumeProcess; running: false }
-    Process { id: syncMicMuteProcess; running: false }
+    
     Process { id: writerProc; running: false }
-
+    
     function saveToDisk() {
         var data = {
             "useStylix": manager.useStylix,
@@ -486,22 +478,29 @@ Item {
             "slantStyleMode": manager.slantStyleMode,
             "capsuleSpacing": manager.capsuleSpacing,
             "globalFontSize": manager.globalFontSize,
+            "overlayFontSize": manager.overlayFontSize,
+            "globalOverlayWidth": manager.globalOverlayWidth,
+            "globalOverlayHeight": manager.globalOverlayHeight,
+            "globalFieldHeight": manager.globalFieldHeight,
             "slantWidth": manager.slantWidth,
             "globalBorderWidth": manager.globalBorderWidth,
             "globalPadding": manager.globalPadding,
             "barHeight": manager.barHeight,
             "hardwarePollInterval": manager.hardwarePollInterval,
             "trayCollapseTimeoutSec": manager.trayCollapseTimeoutSec,
-            "launcherWidth": manager.launcherWidth,
-            "launcherHeight": manager.launcherHeight,
-            "appItemHeight": manager.appItemHeight,
-            "appIconSize": manager.appIconSize,
+            "overlayGraceTimeoutSec": manager.overlayGraceTimeoutSec,
             "notesFilePath": manager.notesFilePath,
             "notifVolume": manager.notifVolume,
             "notifBaselineY": manager.notifBaselineY,
+            "notifMarginX": manager.notifMarginX,
             "notifStackOverlap": manager.notifStackOverlap,
             "notifScreenName": manager.notifScreenName,
+            "notifBorderColor": manager.notifBorderColor,
+            "notifCustomIcon": manager.notifCustomIcon,
+            "ttsKeywordsStr": manager.ttsKeywordsStr,
+            "notifExcludedStr": manager.notifExcludedStr,
             "rngScreenTarget": manager.rngScreenTarget,
+            "amogusScreenTarget": manager.amogusScreenTarget,
             "magnifierDefaultZoom": manager.magnifierDefaultZoom,
             "magnifierLensSize": manager.magnifierLensSize,
             "screenshotSaveDir": manager.screenshotSaveDir,
@@ -512,12 +511,13 @@ Item {
             "defaultLauncherMode": manager.defaultLauncherMode,
             "emailSignature": manager.emailSignature,
             "activeGpuCard": manager.activeGpuCard,
-            "activeNetInterface": manager.activeNetInterface,
             "gpu0": { "tempWarn": manager.gpu0TempWarn, "tempDanger": manager.gpu0TempDanger, "vramWarn": manager.gpu0VramWarn, "vramDanger": manager.gpu0VramDanger },
             "gpu1": { "tempWarn": manager.gpu1TempWarn, "tempDanger": manager.gpu1TempDanger, "vramWarn": manager.gpu1VramWarn, "vramDanger": manager.gpu1VramDanger },
             "customColors": {
-                "base00": manager.customBase00, "base03": manager.customBase03, "base05": manager.customBase05,
-                "base08": manager.customBase08, "base09": manager.customBase09, "base0C": manager.customBase0C, "base0D": manager.customBase0D
+                "base00": manager.customBase00, "base01": manager.customBase01, "base02": manager.customBase02, "base03": manager.customBase03,
+                "base04": manager.customBase04, "base05": manager.customBase05, "base06": manager.customBase06, "base07": manager.customBase07,
+                "base08": manager.customBase08, "base09": manager.customBase09, "base0A": manager.customBase0A, "base0B": manager.customBase0B,
+                "base0C": manager.customBase0C, "base0D": manager.customBase0D, "base0E": manager.customBase0E, "base0F": manager.customBase0F
             },
             "notificationsEnabled": manager.notificationsEnabled,
             "notifHoldDurationSec": manager.notifHoldDurationSec,
@@ -530,12 +530,10 @@ Item {
             "barRight": manager.getRightList(),
             "capsuleSlants": manager.capsuleSlants,
             "capsuleDimensions": manager.capsuleDimensions,
+            "standaloneWindows": manager.standaloneWindows,
             "visibleCapsules": manager.visibleCapsules
         };
-
-        var jsonStr = JSON.stringify(data);
-
-        writerProc.running = false;
+        
         writerProc.command = [
             "python3", "-c",
             "import sys, os\n" +
@@ -544,45 +542,11 @@ Item {
             "tmp_path = f_path + '.tmp'\n" +
             "with open(tmp_path, 'w') as f: f.write(sys.argv[1])\n" +
             "os.replace(tmp_path, f_path)\n",
-            jsonStr
+            JSON.stringify(data)
         ];
         writerProc.running = true;
     }
-
-    Process { id: nixWriterProc; running: false }
-
-    function syncToNixTheme() {
-        var pyScript = 
-            "import sys, re, os\n" +
-            "path = os.path.expanduser('~/nix/hosts/common/theme.nix')\n" +
-            "if not os.path.exists(path): sys.exit(0)\n" +
-            "with open(path, 'r') as f: content = f.read()\n" +
-            "b00, b03, b05, b08, b09, b0C, b0D = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6], sys.argv[7]\n" +
-            "f_size, p_pad, b_w, s_w = sys.argv[8], sys.argv[9], sys.argv[10], sys.argv[11]\n" +
-            "content = re.sub(r'base00\\s*=\\s*\"#[0-9a-fA-F]{6}\"', f'base00 = \"{b00}\"', content)\n" +
-            "content = re.sub(r'base03\\s*=\\s*\"#[0-9a-fA-F]{6}\"', f'base03 = \"{b03}\"', content)\n" +
-            "content = re.sub(r'base05\\s*=\\s*\"#[0-9a-fA-F]{6}\"', f'base05 = \"{b05}\"', content)\n" +
-            "content = re.sub(r'base08\\s*=\\s*\"#[0-9a-fA-F]{6}\"', f'base08 = \"{b08}\"', content)\n" +
-            "content = re.sub(r'base09\\s*=\\s*\"#[0-9a-fA-F]{6}\"', f'base09 = \"{b09}\"', content)\n" +
-            "content = re.sub(r'base0C\\s*=\\s*\"#[0-9a-fA-F]{6}\"', f'base0C = \"{b0C}\"', content)\n" +
-            "content = re.sub(r'base0D\\s*=\\s*\"#[0-9a-fA-F]{6}\"', f'base0D = \"{b0D}\"', content)\n" +
-            "content = re.sub(r'(globalFontSize\\s*=\\s*)\\d+', f'\\g<1>{f_size}', content)\n" +
-            "content = re.sub(r'(globalPadding\\s*=\\s*)\\d+', f'\\g<1>{p_pad}', content)\n" +
-            "content = re.sub(r'(globalBorderWidth\\s*=\\s*)\\d+', f'\\g<1>{b_w}', content)\n" +
-            "content = re.sub(r'(slantWidth\\s*=\\s*)\\d+', f'\\g<1>{s_w}', content)\n" +
-            "with open(path, 'w') as f: f.write(content)\n";
-
-        nixWriterProc.running = false;
-        nixWriterProc.command = [
-            "python3", "-c", pyScript,
-            manager.customBase00, manager.customBase03, manager.customBase05,
-            manager.customBase08, manager.customBase09, manager.customBase0C, manager.customBase0D,
-            manager.globalFontSize.toString(), manager.globalPadding.toString(),
-            manager.globalBorderWidth.toString(), manager.slantWidth.toString()
-        ];
-        nixWriterProc.running = true;
-    }
-
+    
     Process {
         id: loaderProc
         running: true
@@ -597,24 +561,29 @@ Item {
                     if (obj.slantStyleMode !== undefined) manager.slantStyleMode = obj.slantStyleMode;
                     if (obj.capsuleSpacing !== undefined) manager.capsuleSpacing = obj.capsuleSpacing;
                     if (obj.globalFontSize !== undefined) manager.globalFontSize = obj.globalFontSize;
+                    if (obj.overlayFontSize !== undefined) manager.overlayFontSize = obj.overlayFontSize;
+                    if (obj.globalOverlayWidth !== undefined) manager.globalOverlayWidth = obj.globalOverlayWidth;
+                    if (obj.globalOverlayHeight !== undefined) manager.globalOverlayHeight = obj.globalOverlayHeight;
+                    if (obj.globalFieldHeight !== undefined) manager.globalFieldHeight = obj.globalFieldHeight;
                     if (obj.slantWidth !== undefined) manager.slantWidth = obj.slantWidth;
                     if (obj.globalBorderWidth !== undefined) manager.globalBorderWidth = obj.globalBorderWidth;
                     if (obj.globalPadding !== undefined) manager.globalPadding = obj.globalPadding;
-
                     if (obj.barHeight !== undefined) manager.barHeight = obj.barHeight;
                     if (obj.hardwarePollInterval !== undefined) manager.hardwarePollInterval = obj.hardwarePollInterval;
                     if (obj.trayCollapseTimeoutSec !== undefined) manager.trayCollapseTimeoutSec = obj.trayCollapseTimeoutSec;
-                    if (obj.launcherWidth !== undefined) manager.launcherWidth = obj.launcherWidth;
-                    if (obj.launcherHeight !== undefined) manager.launcherHeight = obj.launcherHeight;
-                    if (obj.appItemHeight !== undefined) manager.appItemHeight = obj.appItemHeight;
-                    if (obj.appIconSize !== undefined) manager.appIconSize = obj.appIconSize;
+                    if (obj.overlayGraceTimeoutSec !== undefined) manager.overlayGraceTimeoutSec = obj.overlayGraceTimeoutSec;
                     if (obj.notesFilePath !== undefined) manager.notesFilePath = obj.notesFilePath;
                     if (obj.notifVolume !== undefined) manager.notifVolume = obj.notifVolume;
-
                     if (obj.notifBaselineY !== undefined) manager.notifBaselineY = obj.notifBaselineY;
+                    if (obj.notifMarginX !== undefined) manager.notifMarginX = obj.notifMarginX;
                     if (obj.notifStackOverlap !== undefined) manager.notifStackOverlap = obj.notifStackOverlap;
                     if (obj.notifScreenName !== undefined) manager.notifScreenName = obj.notifScreenName;
+                    if (obj.notifBorderColor !== undefined) manager.notifBorderColor = obj.notifBorderColor;
+                    if (obj.notifCustomIcon !== undefined) manager.notifCustomIcon = obj.notifCustomIcon;
+                    if (obj.ttsKeywordsStr !== undefined) manager.ttsKeywordsStr = obj.ttsKeywordsStr;
+                    if (obj.notifExcludedStr !== undefined) manager.notifExcludedStr = obj.notifExcludedStr;
                     if (obj.rngScreenTarget !== undefined) manager.rngScreenTarget = obj.rngScreenTarget;
+                    if (obj.amogusScreenTarget !== undefined) manager.amogusScreenTarget = obj.amogusScreenTarget;
                     if (obj.magnifierDefaultZoom !== undefined) manager.magnifierDefaultZoom = obj.magnifierDefaultZoom;
                     if (obj.magnifierLensSize !== undefined) manager.magnifierLensSize = obj.magnifierLensSize;
                     if (obj.screenshotSaveDir !== undefined) manager.screenshotSaveDir = obj.screenshotSaveDir;
@@ -624,10 +593,8 @@ Item {
                     if (obj.clipboardMaxItems !== undefined) manager.clipboardMaxItems = obj.clipboardMaxItems;
                     if (obj.defaultLauncherMode !== undefined) manager.defaultLauncherMode = obj.defaultLauncherMode;
                     if (obj.emailSignature !== undefined) manager.emailSignature = obj.emailSignature;
-
                     if (obj.activeGpuCard !== undefined) manager.activeGpuCard = obj.activeGpuCard;
-                    if (obj.activeNetInterface !== undefined) manager.activeNetInterface = obj.activeNetInterface;
-
+                    
                     if (obj.gpu0) {
                         if (obj.gpu0.tempWarn !== undefined) manager.gpu0TempWarn = obj.gpu0.tempWarn;
                         if (obj.gpu0.tempDanger !== undefined) manager.gpu0TempDanger = obj.gpu0.tempDanger;
@@ -640,26 +607,35 @@ Item {
                         if (obj.gpu1.vramWarn !== undefined) manager.gpu1VramWarn = obj.gpu1.vramWarn;
                         if (obj.gpu1.vramDanger !== undefined) manager.gpu1VramDanger = obj.gpu1.vramDanger;
                     }
-
+                    
                     if (obj.customColors) {
                         if (obj.customColors.base00) manager.customBase00 = obj.customColors.base00;
+                        if (obj.customColors.base01) manager.customBase01 = obj.customColors.base01;
+                        if (obj.customColors.base02) manager.customBase02 = obj.customColors.base02;
                         if (obj.customColors.base03) manager.customBase03 = obj.customColors.base03;
+                        if (obj.customColors.base04) manager.customBase04 = obj.customColors.base04;
                         if (obj.customColors.base05) manager.customBase05 = obj.customColors.base05;
+                        if (obj.customColors.base06) manager.customBase06 = obj.customColors.base06;
+                        if (obj.customColors.base07) manager.customBase07 = obj.customColors.base07;
                         if (obj.customColors.base08) manager.customBase08 = obj.customColors.base08;
                         if (obj.customColors.base09) manager.customBase09 = obj.customColors.base09;
+                        if (obj.customColors.base0A) manager.customBase0A = obj.customColors.base0A;
+                        if (obj.customColors.base0B) manager.customBase0B = obj.customColors.base0B;
                         if (obj.customColors.base0C) manager.customBase0C = obj.customColors.base0C;
                         if (obj.customColors.base0D) manager.customBase0D = obj.customColors.base0D;
+                        if (obj.customColors.base0E) manager.customBase0E = obj.customColors.base0E;
+                        if (obj.customColors.base0F) manager.customBase0F = obj.customColors.base0F;
                     }
-
-                    if (obj.barLeft && Array.isArray(obj.barLeft) && obj.barLeft.length > 0) manager.barLeftModules = obj.barLeft;
-                    if (obj.barCenter && Array.isArray(obj.barCenter) && obj.barCenter.length > 0) manager.barCenterModules = obj.barCenter;
-                    if (obj.barRight && Array.isArray(obj.barRight) && obj.barRight.length > 0) manager.barRightModules = obj.barRight;
-
+                    
+                    if (obj.barLeft && Array.isArray(obj.barLeft)) manager.barLeftModules = obj.barLeft;
+                    if (obj.barCenter && Array.isArray(obj.barCenter)) manager.barCenterModules = obj.barCenter;
+                    if (obj.barRight && Array.isArray(obj.barRight)) manager.barRightModules = obj.barRight;
+                    
                     if (obj.capsuleSlants) manager.capsuleSlants = obj.capsuleSlants;
                     if (obj.capsuleDimensions) manager.capsuleDimensions = obj.capsuleDimensions;
-                    manager.slantRevision++;
+                    if (obj.standaloneWindows) manager.standaloneWindows = obj.standaloneWindows;
                     if (obj.visibleCapsules) manager.visibleCapsules = obj.visibleCapsules;
-
+                    
                     if (obj.masterVolume !== undefined) manager.masterVolume = obj.masterVolume;
                     if (obj.micVolume !== undefined) manager.micVolume = obj.micVolume;
                     if (obj.micMuted !== undefined) manager.micMuted = obj.micMuted;
@@ -668,8 +644,53 @@ Item {
                     if (obj.enableTts !== undefined) manager.enableTts = obj.enableTts;
                 } catch(e) {}
                 manager.isLoaded = true;
-                manager._suppressVolumeSync = false;
             }
         }
+    }
+    
+    Process { id: stylixSaverProc; running: false }
+    
+    function saveColorToStylix(propName, hexStr) {
+        var baseKey = propName.replace(/^customB/, "b");
+        if (!baseKey.startsWith("base")) baseKey = "base05";
+        
+        stylixSaverProc.command = [
+            "python3", "-c",
+            "import os, re, sys, subprocess\n" +
+            "prop = sys.argv[1]\n" +
+            "hex_val = sys.argv[2]\n" +
+            "clean_hex = hex_val.replace('#', '')\n" +
+            "theme_nix = os.path.expanduser(sys.argv[3])\n" +
+            "theme_qml = os.path.expanduser(sys.argv[4])\n" +
+            "updated_nix = False\n" +
+            "if os.path.isfile(theme_nix):\n" +
+            "    try:\n" +
+            "        with open(theme_nix, 'r') as f: content = f.read()\n" +
+            "        new_content = re.sub(r'(' + prop + r'\\s*=\\s*\"#?)[^\"]+(\";)', r'\\g<1>' + clean_hex + r'\\g<2>', content)\n" +
+            "        if new_content != content:\n" +
+            "            with open(theme_nix, 'w') as f: f.write(new_content)\n" +
+            "            updated_nix = True\n" +
+            "    except Exception as e: pass\n" +
+            "updated_qml = False\n" +
+            "if os.path.isfile(theme_qml):\n" +
+            "    try:\n" +
+            "        with open(theme_qml, 'r') as f: qcontent = f.read()\n" +
+            "        new_qcontent = re.sub(r'(property\\s+color\\s+' + prop + r'\\s*:\\s*\")[^\"]+(\")', r'\\g<1>#' + clean_hex + r'\\g<2>', qcontent)\n" +
+            "        if new_qcontent != qcontent:\n" +
+            "            with open(theme_qml, 'w') as f: f.write(new_qcontent)\n" +
+            "            updated_qml = True\n" +
+            "    except Exception as e: pass\n" +
+            "msg = f'Saved {prop} (#{clean_hex})'\n" +
+            "if updated_nix and updated_qml: detail = 'Updated theme.nix and Theme.qml'\n" +
+            "elif updated_nix: detail = 'Updated theme.nix'\n" +
+            "elif updated_qml: detail = 'Updated Theme.qml'\n" +
+            "else: detail = f'Saved locally ({theme_nix} not found)'\n" +
+            "subprocess.run(['notify-send', '-a', 'Settings', '💾 Saved to Stylix', f'{msg}: {detail}'])\n",
+            baseKey,
+            hexStr,
+            manager.nixThemeFile,
+            Quickshell.shellDir + "/Theme.qml"
+        ];
+        stylixSaverProc.running = true;
     }
 }

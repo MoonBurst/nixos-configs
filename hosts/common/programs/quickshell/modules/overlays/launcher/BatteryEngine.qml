@@ -1,24 +1,20 @@
-// modules/overlays/launcher/BatteryEngine.qml
 import QtQuick
 import Quickshell.Io
 
 Item {
     id: engine
 
-    // Exposed interface properties for the parent view to bind to
     property bool hasBattery: false
     property string batteryName: ""
     property string percent: "0%"
     property string status: "Unknown"
     property string power: "0.0W"
-    
-    // Normalized charge value (0.0 to 1.0)
+
     readonly property real value: {
         var val = parseFloat(percent);
         return isNaN(val) ? 1.0 : Math.min(1.0, Math.max(0.0, val / 100.0));
     }
 
-    // Cleaned up status output for UI fit
     readonly property string shortStatus: {
         if (status === "Charging") return "Charging";
         if (status === "Discharging") return "Draw";
@@ -27,7 +23,6 @@ Item {
         return status;
     }
 
-    // Startup Battery Detector (Searches for devices starting with BAT or sb)
     Process {
         id: detectProc
         running: true
@@ -38,13 +33,12 @@ Item {
                 if (name !== "") {
                     engine.batteryName = name;
                     engine.hasBattery = true;
-                    pollProc.running = true; // Trigger first metrics read
+                    pollProc.running = true;
                 }
             }
         }
     }
 
-    // Process to pull battery capacity, status, and power draw (microwatts or microvolts*microamps)
     Process {
         id: pollProc
         running: false
@@ -66,7 +60,6 @@ Item {
         }
     }
 
-    // Polling Timer (Ticks safely every 10 seconds, only if a battery device is active)
     Timer {
         id: pollTimer
         interval: 10000

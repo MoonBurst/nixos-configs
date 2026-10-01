@@ -27,7 +27,7 @@ Item {
     Layout.fillWidth: true
     width: parent ? parent.width : 600
     implicitWidth: 600
-    implicitHeight: Math.max(48, ((theme && theme.globalFontSize) ? theme.globalFontSize * 2.8 : 48))
+    implicitHeight: Math.max(48, root.fontSize * 2.8)
 
     readonly property color base00: (theme && theme.base00) ? theme.base00 : "#11111b"
     readonly property color base02: (theme && theme.base02) ? theme.base02 : "#313244"
@@ -35,7 +35,7 @@ Item {
     readonly property color base05: (theme && theme.base05) ? theme.base05 : "yellow"
     readonly property color base08: (theme && theme.base08) ? theme.base08 : "#f38ba8"
     readonly property string fontFamily: (theme && theme.fontFamily) ? theme.fontFamily : "monospace"
-    readonly property int fontSize: (theme && theme.globalFontSize) ? theme.globalFontSize : 14
+    property int fontSize: (theme && theme.overlayFontSize) ? theme.overlayFontSize : ((theme && theme.globalFontSize) ? theme.globalFontSize : 14)
 
     ColumnLayout {
         anchors.fill: parent

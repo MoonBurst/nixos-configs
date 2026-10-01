@@ -11,13 +11,13 @@ Item {
     property var theme: null
 
     signal colorSelected(string propName, string hexStr)
+    signal saveToStylixRequested(string propName, string hexStr)
     signal closed()
 
     anchors.fill: parent
     visible: false
     z: 9999
 
-    // Close on backdrop click
     MouseArea {
         anchors.fill: parent
         onClicked: pickerRoot.close()
@@ -36,10 +36,9 @@ Item {
         pickerRoot.closed();
     }
 
-    // HSV State
-    property real currentH: 0.16  // 0.0 - 1.0 (Hue)
-    property real currentS: 1.0   // 0.0 - 1.0 (Saturation)
-    property real currentV: 1.0   // 0.0 - 1.0 (Value/Brightness)
+    property real currentH: 0.16
+    property real currentS: 1.0
+    property real currentV: 1.0
 
     function updateColorFromHsv() {
         var col = Qt.hsva(currentH, currentS, currentV, 1.0);
@@ -65,11 +64,10 @@ Item {
         svCanvas.requestPaint();
     }
 
-    // Modal Box
     Rectangle {
         id: pickerBox
-        width: 380
-        height: 440
+        width: 400
+        height: 460
         anchors.centerIn: parent
         radius: 12
         color: (theme && theme.base00) ? theme.base00 : "#11111b"
@@ -104,18 +102,15 @@ Item {
                         var ctx = getContext("2d");
                         ctx.reset();
 
-                        // Base pure hue fill
                         ctx.fillStyle = Qt.hsva(pickerRoot.currentH, 1.0, 1.0, 1.0);
                         ctx.fillRect(0, 0, width, height);
 
-                        // Horizontal white gradient (Saturation: 0 -> 1)
                         var gradWhite = ctx.createLinearGradient(0, 0, width, 0);
                         gradWhite.addColorStop(0, "rgba(255,255,255,1)");
                         gradWhite.addColorStop(1, "rgba(255,255,255,0)");
                         ctx.fillStyle = gradWhite;
                         ctx.fillRect(0, 0, width, height);
 
-                        // Vertical black gradient (Value: 1 -> 0)
                         var gradBlack = ctx.createLinearGradient(0, 0, 0, height);
                         gradBlack.addColorStop(0, "rgba(0,0,0,0)");
                         gradBlack.addColorStop(1, "rgba(0,0,0,1)");
@@ -124,7 +119,6 @@ Item {
                     }
                 }
 
-                // Drag indicator ring
                 Rectangle {
                     width: 14; height: 14; radius: 7
                     x: Math.max(0, Math.min(parent.width - width, pickerRoot.currentS * parent.width - width/2))
@@ -246,27 +240,48 @@ Item {
                 }
             }
 
-            // 4. ACTION BUTTONS
+            // 4. ACTION BUTTONS (With Save to Stylix)
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 10
+                spacing: 8
 
                 Rectangle {
                     Layout.fillWidth: true; height: 34; radius: 6
                     color: (theme && theme.base02) ? theme.base02 : "#313244"
                     border.color: (theme && theme.base03) ? theme.base03 : "#45475a"; border.width: 1
-                    Text { anchors.centerIn: parent; text: "Cancel"; font.bold: true; color: (theme && theme.base05) ? theme.base05 : "yellow" }
+                    Text { anchors.centerIn: parent; text: "Cancel"; font.bold: true; font.pixelSize: 11; color: (theme && theme.base05) ? theme.base05 : "yellow" }
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: pickerRoot.close() }
                 }
 
                 Rectangle {
                     Layout.fillWidth: true; height: 34; radius: 6
                     color: (theme && theme.base05) ? theme.base05 : "yellow"
-                    Text { anchors.centerIn: parent; text: "✔ Apply Color"; font.bold: true; color: "#11111b" }
+                    Text { anchors.centerIn: parent; text: "✔ Apply"; font.bold: true; font.pixelSize: 11; color: "#11111b" }
                     MouseArea {
                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             pickerRoot.colorSelected(pickerRoot.targetProperty, pickerRoot.currentColor.toString());
+                            pickerRoot.close();
+                        }
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true; height: 34; radius: 6
+                    color: stylixHov.hovered ? "#00e5ff" : ((theme && theme.base02) ? theme.base02 : "#1e1e2e")
+                    border.color: "#00e5ff"; border.width: 1
+                    Text {
+                        anchors.centerIn: parent
+                        text: "💾 Stylix"
+                        font.bold: true; font.pixelSize: 11
+                        color: stylixHov.hovered ? "#000" : "#00e5ff"
+                    }
+                    HoverHandler { id: stylixHov }
+                    MouseArea {
+                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            pickerRoot.colorSelected(pickerRoot.targetProperty, pickerRoot.currentColor.toString());
+                            pickerRoot.saveToStylixRequested(pickerRoot.targetProperty, pickerRoot.currentColor.toString());
                             pickerRoot.close();
                         }
                     }

@@ -1,6 +1,5 @@
 .pragma library
 
-// Formats bytes to clean human-readable units (e.g. 1048576 -> "1.0 MB")
 function formatBytes(bytes, decimals) {
     if (isNaN(bytes) || bytes <= 0) return "0 B";
     decimals = (decimals !== undefined) ? decimals : 1;
@@ -13,7 +12,6 @@ function formatBytes(bytes, decimals) {
     return (i === 0 ? Math.round(val) : val.toFixed(decimals)) + " " + sizes[i];
 }
 
-// Formats duration in seconds to "Xh Ym Zs" or "M:SS"
 function formatDuration(secs, detailed) {
     secs = Math.round(secs);
     if (isNaN(secs) || secs < 0) return detailed ? "0s" : "0:00";
@@ -30,19 +28,16 @@ function formatDuration(secs, detailed) {
     return (h > 0 ? (h + ":" + (m < 10 ? "0" : "") + m) : m) + ":" + (s < 10 ? "0" : "") + s;
 }
 
-// POSIX safe shell argument escaping
 function escapeShell(str) {
     return "'" + String(str).replace(/'/g, "'\\''") + "'";
 }
 
-// Extracts the first HTTP/HTTPS link from plain text
 function extractUrl(text) {
     if (!text) return "";
     var match = text.match(/(https?:\/\/[^\s<]+)/);
     return match ? match[0] : "";
 }
 
-// Strips HTML and XML tags from a string
 function stripHtml(html) {
     if (!html) return "";
     return html.replace(/<[^>]*>/g, "")
@@ -54,7 +49,6 @@ function stripHtml(html) {
                .trim();
 }
 
-// Subsequence fuzzy search (checks if needle chars exist in order in haystack)
 function fuzzyMatch(needle, haystack) {
     var n = needle.toLowerCase();
     var h = haystack.toLowerCase();
@@ -71,9 +65,6 @@ function fuzzyMatch(needle, haystack) {
     return nIdx === nlen;
 }
 
-// ==============================================================================
-// COMPLETE CONVERTER ENGINE (CURRENCIES, UNITS, MEASUREMENTS, DATA RATES, MATH)
-// ==============================================================================
 const unitTables = {
     length: {
         base: "m",
@@ -139,13 +130,11 @@ function formatMoney(num, code) {
     return parts.join(".");
 }
 
-// Master Evaluator: returns formatted result string if query matches math/conversions, or null if it's an app name
 function evaluate(query, isMathMode) {
     const clean = (query || "").trim();
     if (!clean) return null;
     let expr = clean.startsWith("=") ? clean.substring(1).trim() : clean;
 
-    // 1. DATA TRANSFER SPEED (e.g. "10 GB / 100 Mbps")
     const transferMatch = expr.match(/^([+-]?\d*\.?\d+)\s*([a-zA-Z]+)\s*\/\s*([+-]?\d*\.?\d+)\s*([a-zA-Z]+)$/i);
     if (transferMatch) {
         const sizeVal = parseFloat(transferMatch[1]);
@@ -173,7 +162,6 @@ function evaluate(query, isMathMode) {
         }
     }
 
-    // 2. EXPLICIT UNIT PAIR CONVERSION (e.g. "10m to ft", "50kg in lbs", "$10 in eur")
     const pairMatch = expr.match(/^([$€£¥元]?\s*\d*\.?\d+)\s*([a-zA-Z$€£¥元°]+)\s*(?:to|in)\s*([a-zA-Z$€£¥元°]+)$/i);
     if (pairMatch) {
         let val = parseFloat(pairMatch[1].replace(/[$€£¥元]/g, ""));
@@ -205,7 +193,6 @@ function evaluate(query, isMathMode) {
         }
     }
 
-    // 3. CURRENCY SWEEP (e.g. "$10", "10usd", "100yen", "50eur")
     const currSingle = expr.match(/^([$€£¥元]?\s*\d*\.?\d+)\s*([a-zA-Z$€£¥元]*)$/i);
     if (currSingle && (currSingle[1].match(/[$€£¥元]/) || currSingle[2])) {
         let numStr = currSingle[1].replace(/[$€£¥元]/g, "").trim();
@@ -229,7 +216,6 @@ function evaluate(query, isMathMode) {
         }
     }
 
-    // 4. TEMPERATURE SWEEP (e.g. "100c" -> °F and K, "100f" -> °C and K)
     const tempSingle = expr.match(/^([+-]?\d*\.?\d+)\s*(c|f|°c|°f)$/i);
     if (tempSingle) {
         let val = parseFloat(tempSingle[1]);
@@ -249,7 +235,6 @@ function evaluate(query, isMathMode) {
         return rows.join("\n");
     }
 
-    // 5. FULL CATEGORY UNIT SWEEP (e.g. "10m", "50kg", "16gib", "5gal", "60mph")
     const singleUnit = expr.match(/^([+-]?\d*\.?\d+)\s*([a-zA-Z°\/]+)$/i);
     if (singleUnit) {
         let val = parseFloat(singleUnit[1]);
@@ -272,17 +257,22 @@ function evaluate(query, isMathMode) {
         }
     }
 
-    // 6. ARITHMETIC EXPRESSIONS
-    if (!clean.startsWith("=")) {
-        if (!/[+\-*\/^%]/.test(expr) && !/\b(sqrt|sin|cos|tan|abs|log|ln)\b/i.test(expr)) return null;
-    }
-    if (!/[0-9]/.test(expr) && !/\b(pi|e)\b/i.test(expr)) return null;
+    // SECURITY CHECK: Math Sanitization
+    // Rejects any arbitrary code or unauthorized identifiers before evaluating
+    let cleanExpr = expr.replace(/[+\-*\/^%(\s]+$/, "").trim();
+    if (!cleanExpr) return isMathMode ? "" : null;
 
-    let evalExpr = expr.replace(/[+\-*\/^%(\s]+$/, "").trim();
-    if (!evalExpr) return isMathMode ? "" : null;
+    // Strict character whitelist for arithmetic
+    if (!/^[0-9+\-*\/^%()., \t\r\n]|^(sqrt|sin|cos|tan|abs|log|ln|pi|e|round)\b/i.test(cleanExpr)) {
+        return null;
+    }
+    // Block any attempt to access properties, constructors, or global objects
+    if (/[;={}\[\]\\`$"'!@#&_]|process|require|import|window|shell|Quickshell/i.test(cleanExpr)) {
+        return null;
+    }
 
     try {
-        let parsed = evalExpr
+        let parsed = cleanExpr
             .replace(/\^/g, "**")
             .replace(/\bpi\b/gi, "Math.PI")
             .replace(/\be\b/g, "Math.E")

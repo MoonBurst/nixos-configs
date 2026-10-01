@@ -13,7 +13,7 @@ Item {
     id: musicBox
 
     // ──────────────────────────────────────────────────────────────
-    // Theme (unchanged)
+    // Theme
     // ──────────────────────────────────────────────────────────────
     readonly property int themePadding: (shell && shell.theme && typeof shell.theme.globalPadding !== "undefined") ? shell.theme.globalPadding : 12
     readonly property int themeFontSize: (shell && shell.theme && typeof shell.theme.globalFontSize !== "undefined") ? shell.theme.globalFontSize : 14
@@ -27,7 +27,7 @@ Item {
     readonly property var themeBase0C: (shell && shell.theme && shell.theme.base0C !== undefined) ? shell.theme.base0C : "#04f100"
 
     // ──────────────────────────────────────────────────────────────
-    // Layout properties (unchanged)
+    // Layout properties
     // ──────────────────────────────────────────────────────────────
     property int tooltipHeight: 420
     property int tooltipCollapsedWidth: 179
@@ -39,6 +39,9 @@ Item {
     property int slantWidth: musicBox.themeSlantWidth
     property var barWindow: null
     property string moduleName: "music"
+
+    // Maximum characters to show in the bar title (0 disables truncation)
+    property int maxTitleLength: 15
 
     // ──────────────────────────────────────────────────────────────
     // MPRIS player selection
@@ -63,7 +66,11 @@ Item {
     // ──────────────────────────────────────────────────────────────
     property string trackStr: {
         if (!playerAvailable) return "No Track"
-            return activePlayer.trackTitle || "No Track"
+            var title = activePlayer.trackTitle || "No Track"
+            if (musicBox.maxTitleLength > 0 && title.length > musicBox.maxTitleLength) {
+                return title.slice(0, musicBox.maxTitleLength).trim() + "…"
+            }
+            return title
     }
     property string tooltipTitle: {
         if (!playerAvailable) return "No Title Playing"
@@ -82,12 +89,11 @@ Item {
             switch (activePlayer.playbackState) {
                 case MprisPlaybackState.Playing: return "play"
                 case MprisPlaybackState.Paused:  return "pause"
-                default:                          return "stop"
+                default:                         return "stop"
             }
     }
 
     // Track count — MPRIS doesn't expose this; we keep a placeholder.
-    // If you want real counts, add a tiny `mpc status` Process (optional).
     property string trackCountStr: ""
 
     // Position / duration (seconds, from MPRIS)
@@ -106,14 +112,12 @@ Item {
     property string currentFile: ""
 
     // ──────────────────────────────────────────────────────────────
-    // Position refresh — MPRIS does not push position updates
-    // automatically; we poll it once per second while playing.
+    // Position refresh
     // ──────────────────────────────────────────────────────────────
     Timer {
         interval: 1000
         repeat: true
-        running: musicBox.playerAvailable
-        && musicBox.playbackState === "play"
+        running: musicBox.playerAvailable && musicBox.playbackState === "play"
         onTriggered: if (musicBox.activePlayer) musicBox.activePlayer.positionChanged()
     }
 
@@ -125,8 +129,6 @@ Item {
     }
 
     function sendMpdCommand(cmd) {
-        // Legacy shim — no longer used by MPRIS controls, but kept so
-        // any external callers don’t break. Forward to mpc.
         if (!cmd) return
             Quickshell.execDetached(["sh", "-c",
                                     "printf '%s\\n' \"$1\" | mpc --quiet",
@@ -477,9 +479,11 @@ Item {
                 spacing: 12
 
                 Item {
-                    width: { var totalBtnW = musicBox.confirmDeleteMode ? 240 : 180
-                        return Math.max(0, (parent.width - totalBtnW) / 2) }
-                        height: 38
+                    width: {
+                        var totalBtnW = musicBox.confirmDeleteMode ? 240 : 180
+                        return Math.max(0, (parent.width - totalBtnW) / 2)
+                    }
+                    height: 38
                 }
 
                 // ── Open Folder ──────────────────────────────────
@@ -527,8 +531,6 @@ Item {
                             if (!musicBox.confirmDeleteMode) {
                                 musicBox.confirmDeleteMode = true
                             } else {
-                                // Remove the current song from the MPD queue.
-                                // (Safer than deleting the file from disk.)
                                 Quickshell.execDetached(["mpc", "del", "0"])
                                 musicBox.confirmDeleteMode = false
                                 if (musicBox.activePlayer) musicBox.activePlayer.next()

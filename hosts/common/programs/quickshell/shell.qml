@@ -12,7 +12,22 @@ import "./modules/overlays/rng" as RNG
 import "./modules/overlays/amogus" as AmogusModule
 import "./modules/overlays/magnify" as Magnify
 import "./modules/overlays/notifications" as Notifications
-import "./modules/overlays/launcher" as LauncherModule
+
+// Specific Overlay Module Folders
+import "./modules/overlays/launcher" as AppLauncherModule
+import "./modules/overlays/calc" as CalcModule
+import "./modules/overlays/clipboard" as ClipboardModule
+import "./modules/overlays/dictionary" as DictionaryModule
+import "./modules/overlays/unicode" as UnicodeModule
+import "./modules/overlays/notes" as NotesModule
+import "./modules/overlays/pass" as PassModule
+import "./modules/overlays/power" as PowerModule
+import "./modules/overlays/todo" as TodoModule
+import "./modules/overlays/gemini" as GeminiModule
+import "./modules/overlays/settings" as SettingsWindowModule
+import "./modules/overlays/email" as EmailModule
+import "./modules/overlays/websearch" as WebSearchModule
+
 import "./modules/bar/tray" as SystemTray
 import "./modules/bar/battery" as BatteryCapsule
 import "./modules/bar/ram" as RamCapsule
@@ -37,7 +52,6 @@ ShellRoot {
         id: globalTheme
     }
 
-    // Dynamic runtime path registration (FIXED: Boot pass only)
     Process {
         id: ipcPathRegistrar
         running: false
@@ -49,7 +63,6 @@ ShellRoot {
         ]
     }
 
-    // Automatic /tmp RAM-disk cache maintenance (FIXED: Bound to startup check)
     Process {
         id: tmpCacheCleaner
         running: false
@@ -65,6 +78,49 @@ ShellRoot {
     property alias diceRollerWindowInstance: diceRollerWindowInstance
     property alias amogusWindowInstance: amogusWindowInstance
     property alias lockPam: lockPam
+    property alias sessionLock: sessionLock
+
+    // Direct handles for mutual exclusivity and fast in-memory switching
+    property alias appLauncherWindow: appLauncherWindow
+    property alias calcWindow: calcWindow
+    property alias clipboardWindow: clipboardWindow
+    property alias dictionaryWindow: dictionaryWindow
+    property alias unicodeWindow: unicodeWindow
+    property alias notesWindow: notesWindow
+    property alias passWindow: passWindow
+    property alias powerWindow: powerWindow
+    property alias todoWindow: todoWindow
+    property alias geminiWindow: geminiWindow
+    property alias settingsWindow: settingsWindow
+    property alias emailWindow: emailWindow
+    property alias startPageWindow: startPageWindow
+
+    function closeOtherOverlays(activeWin) {
+        var previewTarget = settingsManagerInstance ? settingsManagerInstance.previewWindow : "";
+        var list = [
+            appLauncherWindow, calcWindow, clipboardWindow, dictionaryWindow,
+            unicodeWindow, notesWindow, passWindow, powerWindow,
+            todoWindow, geminiWindow, settingsWindow, emailWindow,
+            startPageWindow, diceRollerWindowInstance, amogusWindowInstance
+        ];
+
+        for (var i = 0; i < list.length; i++) {
+            var w = list[i];
+            if (!w || w === activeWin) continue;
+
+            // Preserve settings and the currently previewed window together
+            if (previewTarget !== "") {
+                if (w === settingsWindow) continue;
+                if (w.windowId === previewTarget) continue;
+            }
+
+            if (w.visible) {
+                if (typeof w.close === "function") w.close();
+                else if (typeof w.hideWindow === "function") w.hideWindow();
+                else w.visible = false;
+            }
+        }
+    }
 
     QtObject {
         id: activeTheme
@@ -87,7 +143,7 @@ ShellRoot {
         property color base0F: globalTheme.base0F
 
         property string fontFamily: globalTheme.fontFamily
-        property int defaultCardWidth: 400
+        property int defaultCardWidth: 420
         property int defaultCardHeight: 140
         property int defaultCardRadius: 10
         property color innerBorderColor: base05
@@ -121,6 +177,7 @@ ShellRoot {
     property int passwordLength: 0
 
     function applyCapsuleSlants(loadedItem, modelData, section) {
+        if (!settingsManager) return;
         if (!loadedItem) return;
         var slantType = settingsManager ? settingsManager.getModuleSlant(modelData, section) : "left";
         var sLeft = "Left";
@@ -307,42 +364,32 @@ ShellRoot {
         }
     }
 
-    PanelWindow {
-        id: launcherOverlayWindow
-        visible: false
-        screen: primaryScreen ?? (Quickshell.screens.length > 0 ? Quickshell.screens[0] : null)
-        anchors.top: true
-        anchors.left: true
-        anchors.right: true
-        anchors.bottom: true
-        color: "transparent"
-
-        WlrLayershell.namespace: "quickshell-launcher"
-        WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: visible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
-
-        LauncherModule.LauncherOverlay {
-            id: launcherOverlay
-            anchors.fill: parent
-            shell: shell
-            launcherWindow: launcherOverlayWindow
-            settingsManager: settingsManagerInstance
-        }
-    }
+    // Modularized Standalone Overlay Windows
+    AppLauncherModule.AppLauncherWindow       { id: appLauncherWindow;       shell: shell }
+    CalcModule.CalcWindow                     { id: calcWindow;              shell: shell }
+    ClipboardModule.ClipboardWindow           { id: clipboardWindow;         shell: shell }
+    DictionaryModule.DictionaryWindow         { id: dictionaryWindow;        shell: shell }
+    UnicodeModule.UnicodeWindow               { id: unicodeWindow;           shell: shell }
+    NotesModule.NotesWindow                   { id: notesWindow;             shell: shell }
+    PassModule.PassWindow                     { id: passWindow;              shell: shell }
+    PowerModule.PowerWindow                   { id: powerWindow;             shell: shell }
+    TodoModule.TodoWindow                     { id: todoWindow;              shell: shell }
+    GeminiModule.GeminiWindow                 { id: geminiWindow;            shell: shell }
+    SettingsWindowModule.SettingsWindow       { id: settingsWindow;          shell: shell }
+    SettingsWindowModule.OverlayInspectorWindow { id: overlayInspectorWindow;  shell: shell }
+    EmailModule.EmailWindow                   { id: emailWindow;             shell: shell }
+    WebSearchModule.StartPageWindow           { id: startPageWindow;         shell: shell }
 
     Magnify.Magnify { id: magnifierOverlay }
     RNG.DiceRollerWindow { id: diceRollerWindowInstance; shell: shell }
     AmogusModule.AmogusWindow { id: amogusWindowInstance; shell: shell }
 
     Component.onCompleted: {
-        LauncherModule.LauncherController.rng.diceWindowInstance = diceRollerWindowInstance;
-        // Trigger all core background system discovery tracks exactly once at boot time
         ipcPathRegistrar.running = true;
         tmpCacheCleaner.running = true;
         pamServiceDetector.running = true;
     }
 
-    // Dynamic PAM service detector: uses /etc/pam.d/quickshell if present, otherwise login
     property string activePamService: "login"
     Process {
         id: pamServiceDetector
@@ -389,28 +436,17 @@ ShellRoot {
         function lock(): void { sessionLock.locked = true; } 
         function unlock(): void { sessionLock.locked = false; } 
     }
-    IpcHandler { target: "settings"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.toggleSettings(); } }
+
     IpcHandler {
         target: "tooltip"
         function close(): void {
-            // Dismisses all active/pinned tooltips across the bar
-            var caps = [calendarFactory, musicFactory, alarmFactory, weatherFactory, unifiedFactory, clockFactory, netFactory, cpuFactory, gpuFactory, ramFactory, batteryFactory];
-            // Triggers quickshell reload/dismiss event
             shell.showHistoryMode = false;
         }
     }
-    IpcHandler { target: "launcher"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.toggleLauncher(); } }
-    IpcHandler { target: "clipboard"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.toggleClipboard(); } }
-    IpcHandler { target: "todo"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.toggleTodo(); } }
-    IpcHandler { target: "notes"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.toggleOverlayMode("notes"); } }
-    IpcHandler { target: "amogus"; function toggle(): void { if (!sessionLock.locked && amogusWindowInstance) amogusWindowInstance.toggleWindow(); } }
 
-    IpcHandler { target: "pass"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.togglePass(); } }
-    IpcHandler { target: "power"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.togglePower(); } }
-    IpcHandler { target: "rng"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.toggleRng(); } }
-    IpcHandler { target: "gemini"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.toggleGemini(); } }
-    IpcHandler { target: "magnifier"; function toggle(): void { if (!sessionLock.locked) magnifierOverlay.toggle(); } }
-    IpcHandler { target: "email"; function toggle(): void { if (!sessionLock.locked) launcherOverlay.toggleEmail(); } }
+    IpcHandler { target: "amogus"; function toggle(): void { if (!sessionLock.locked && amogusWindowInstance) amogusWindowInstance.toggleWindow(); } }
+    IpcHandler { target: "rng"; function toggle(): void { if (!sessionLock.locked && diceRollerWindowInstance) diceRollerWindowInstance.toggleWithTarget(); } }
+    IpcHandler { target: "magnifier"; function toggle(): void { if (!sessionLock.locked && magnifierOverlay) magnifierOverlay.toggle(); } }
 
     Notifications.NotificationOverlay {
         id: notificationOverlay
@@ -420,3 +456,4 @@ ShellRoot {
         onNotificationsEnabledChanged: shell.notificationsEnabled = notificationsEnabled
     }
 }
+
