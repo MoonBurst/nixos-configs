@@ -49,7 +49,7 @@
     };
 
     serviceConfig = {
-      ExecStart = "${pkgs.bash}/bin/bash -c 'export PATH=/run/wrappers/bin:/home/moonburst/.nix-profile/bin:/run/current-system/sw/bin:/usr/bin:/bin; exec ${pkgs.quickshell}/bin/quickshell -p /home/moonburst/nix/hosts/common/programs/quickshell/shell.qml'";
+      ExecStart = "${pkgs.bash}/bin/bash -c 'export PATH=/run/wrappers/bin:/home/moonburst/.nix-profile/bin:/run/current-system/sw/bin:/usr/bin:/bin; export DRI_PRIME=pci-0000_2b_00_0 MESA_VK_DEVICE_SELECT=1002:743f!; exec ${pkgs.quickshell}/bin/quickshell -p /home/moonburst/nix/hosts/common/programs/quickshell/shell.qml'";
       Restart = "always";
       RestartSec = "1s";
     };

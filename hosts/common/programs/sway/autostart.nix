@@ -23,26 +23,9 @@ in
     { command = "${pkgs.corectrl}/bin/corectrl"; }
 #Clipboard
 {
-command = ''
-    ${pkgs.wl-clipboard}/bin/wl-paste --type text --watch ${pkgs.bash}/bin/bash -c '
-      NEW_CLIP=''$( ${pkgs.wl-clipboard}/bin/wl-paste -n )
-      [ -z "''$NEW_CLIP" ] && exit 0
-
-      SF="/tmp/native_clipboard_history.txt"
-      touch "''$SF"
-
-      # Cleans the ##TS header prefix before matching to filter consecutive duplicates
-      LAST_CLIP=''$( tr "\0" "\n" < "''$SF" 2>/dev/null | sed "s/^##TS:[0-9]*|//" | tail -n 1 )
-      if [ "''$NEW_CLIP" != "''$LAST_CLIP" ]; then
-          # Writes with null-byte separation and prepends accurate Unix epochs
-          printf "##TS:%s|%s\0" "''$(date +%s)" "''$NEW_CLIP" >> "''$SF"
-
-          SNIPPET=''$( echo "''$NEW_CLIP" | head -n 1 | cut -c1-40 )
-          ${pkgs.libnotify}/bin/notify-send -a "System Clipboard" -i "edit-copy" "📋 Text Copied" "''$SNIPPET..."
-      fi
-    ' &
-  '';
+  command = "exec ${pkgs.wl-clipboard}/bin/wl-paste --type text --watch ${pkgs.bash}/bin/bash -c 'NEW_CLIP=$(${pkgs.wl-clipboard}/bin/wl-paste -n); [ -z \"$NEW_CLIP\" ] && exit 0; SF=\"/tmp/native_clipboard_history.txt\"; touch \"$SF\"; LAST_CLIP=$(tr \"\\0\" \"\\n\" < \"$SF\" 2>/dev/null | sed \"s/^##TS:[0-9]*|//\" | tail -n 1); if [ \"$NEW_CLIP\" != \"$LAST_CLIP\" ]; then printf \"##TS:%s|%s\\0\" \"$(date +%s)\" \"$NEW_CLIP\" >> \"$SF\"; SNIPPET=$(echo \"$NEW_CLIP\" | head -n 1 | cut -c1-40); ${pkgs.libnotify}/bin/notify-send -a \"System Clipboard\" -i \"edit-copy\" \"📋 Text Copied\" \"$SNIPPET...\"; fi' &";
 }
+
 
 
 
