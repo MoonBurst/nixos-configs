@@ -9,19 +9,24 @@ Item {
     property int selectedIndex: 0
     property string previewImage: ""
     property string previewText: ""
-    property bool hasCliphist: true
+    property bool hasCliphist: false
 
     property var allClipboardItems: []
     property var filteredClipboardModel: ListModel { id: fModel }
 
-    Component.onCompleted: loadClipboard()
+    Component.onCompleted: {
+        checkCliphistProc.running = true;
+    }
 
     Process {
         id: checkCliphistProc
-        running: true
-        command: ["sh", "-c", "command -v cliphist >/dev/null 2>&1 && echo 1 || echo 0"]
+        running: false
+        command: ["sh", "-c", "export PATH=\"$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin:$PATH\"; command -v cliphist >/dev/null 2>&1 && echo 1 || echo 0"]
         stdout: SplitParser {
-            onRead: data => { engine.hasCliphist = (data.trim() === "1"); }
+            onRead: data => {
+                engine.hasCliphist = (data.trim() === "1");
+                engine.loadClipboard();
+            }
         }
     }
 
@@ -33,7 +38,7 @@ Item {
             "python3", "-c",
             "import os, glob, json, subprocess\n" +
             "paths = os.environ.get('PATH', '').split(':')\n" +
-            "paths += [os.path.expanduser('~/.nix-profile/bin'), os.path.expanduser('~/.local/bin'), '/run/current-system/sw/bin']\n" +
+            "paths += [os.path.expanduser('~/.nix-profile/bin'), os.path.expanduser('~/.local/bin'), '/run/current-system/sw/bin', '/usr/bin', '/usr/local/bin']\n" +
             "os.environ['PATH'] = ':'.join(paths)\n" +
             "items = []\n" +
             "hist = os.path.expanduser('~/.cache/quickshot_history')\n" +
@@ -82,7 +87,6 @@ Item {
     Process {
         id: previewLoader
         running: false
-        command: ["cliphist", "decode", ""]
         stdout: SplitParser {
             splitMarker: "\n"
             onRead: data => {
@@ -104,7 +108,7 @@ Item {
     Process {
         id: wipeProcess
         running: false
-        command: ["sh", "-c", "export PATH=\"$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH\"; cliphist wipe; rm -rf $HOME/.cache/quickshot_history/*"]
+        command: ["sh", "-c", "export PATH=\"$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH\"; command -v cliphist >/dev/null && cliphist wipe; rm -rf $HOME/.cache/quickshot_history/*"]
     }
 
     function loadClipboard() {
@@ -146,9 +150,13 @@ Item {
             previewText = "";
         } else {
             previewImage = "";
-            previewLoader.running = false;
-            previewLoader.command = ["cliphist", "decode", item.id];
-            previewLoader.running = true;
+            if (engine.hasCliphist) {
+                previewLoader.running = false;
+                previewLoader.command = ["cliphist", "decode", item.id];
+                previewLoader.running = true;
+            } else {
+                previewText = item.text || "";
+            }
         }
     }
 
@@ -160,8 +168,10 @@ Item {
         copyProcess.running = false;
         if (item.isImage && item.imagePath) {
             copyProcess.command = ["sh", "-c", "wl-copy --type image/png < '" + item.imagePath.replace(/'/g, "'\\''") + "'"];
+        } else if (engine.hasCliphist) {
+            copyProcess.command = ["sh", "-c", 'cliphist decode "$1" | wl-copy', "sh", item.id];
         } else {
-            copyProcess.command = ["sh", "-c", "cliphist decode " + item.id + " | wl-copy"];
+            copyProcess.command = ["wl-copy", item.text];
         }
         copyProcess.running = true;
     }
@@ -188,7 +198,7 @@ Item {
             var jsonPath = imagePath.replace(/\.png$/, ".json");
             deleteProc.command = ["sh", "-c", "rm -vf '" + imagePath + "' '" + jsonPath + "'"];
             deleteProc.running = true;
-        } else if (cleanId.length > 0) {
+        } else if (cleanId.length > 0 && engine.hasCliphist) {
             deleteProc.command = ["sh", "-c", "printf '%s\\t-\\n' '" + cleanId + "' | cliphist delete"];
             deleteProc.running = true;
         }

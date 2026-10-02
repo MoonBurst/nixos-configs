@@ -65,7 +65,7 @@ PanelWindow {
     }
     
     WlrLayershell.namespace: "quickshell-web-search"
-    WlrLayershell.layer: isPreviewMode ? WlrLayer.Overlay : WlrLayer.Top
+    WlrLayershell.layer: isPreviewMode ? WlrLayer.Top : WlrLayer.Overlay
     WlrLayershell.keyboardFocus: (visible && !isPreviewMode) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     
     anchors { top: true; bottom: true; left: true; right: true }

@@ -21,7 +21,6 @@ Item {
     property string slantRight: "Right"
     property int slantWidth: (shell && shell.theme) ? shell.theme.slantWidth : 12
 
-    // Internal tracking registers
     property real lastBusy: 0
     property real lastTotal: 0
     property bool isFirstRun: true
@@ -30,8 +29,9 @@ Item {
     property string topProcessesText: "Loading CPU processes..."
     property string textAccumulatorBuffer: ""
 
-    readonly property var processLinesArray: topProcessesText.split("\n").filter(line => line.trim() !== "")
+    property string cpuTempPath: "/sys/class/thermal/thermal_zone0/temp"
 
+    readonly property var processLinesArray: topProcessesText.split("\n").filter(line => line.trim() !== "")
     readonly property var filteredProcessLinesArray: {
         if (searchQuery.trim() === "") return processLinesArray;
         var q = searchQuery.trim().toLowerCase();
@@ -48,6 +48,32 @@ Item {
         slantLeft: cpuBox.slantLeft
         slantRight: cpuBox.slantRight
         slantWidth: cpuBox.slantWidth
+    }
+
+    // Dynamic CPU sensor discovery: prevents 0°C across reboots
+    Process {
+        id: hwmonFinder
+        running: true
+        command: [
+            "sh", "-c",
+            'for h in /sys/class/hwmon/hwmon*; do ' +
+            '  name=$(cat "$h/name" 2>/dev/null); ' +
+            '  if [ "$name" = "k10temp" ] || [ "$name" = "coretemp" ] || [ "$name" = "zenpower" ]; then ' +
+            '    f=$(ls "$h"/temp*_input 2>/dev/null | head -n 1); ' +
+            '    [ -n "$f" ] && echo "$f" && exit 0; ' +
+            '  fi; ' +
+            'done; ' +
+            'echo "/sys/class/thermal/thermal_zone0/temp"'
+        ]
+        stdout: SplitParser {
+            onRead: data => {
+                var clean = data.trim();
+                if (clean.length > 0) {
+                    cpuBox.cpuTempPath = clean;
+                    cpuTempFile.path = "file://" + clean;
+                }
+            }
+        }
     }
 
 
@@ -79,7 +105,7 @@ Item {
 
     FileView {
         id: cpuTempFile
-        path: "file:///sys/class/hwmon/hwmon1/temp1_input"
+        path: cpuBox.cpuTempPath === "/sys/class/thermal/thermal_zone0/temp" ? "" : "file://" + cpuBox.cpuTempPath
         blockLoading: true
         onTextChanged: {
             var raw = text().trim();
@@ -197,7 +223,6 @@ Item {
         }
     }
 
-
     Timer {
         interval: (shell && shell.settingsManager && shell.settingsManager.hardwarePollInterval > 0) ? shell.settingsManager.hardwarePollInterval : 2000
         running: true; repeat: true; triggeredOnStart: true
@@ -205,7 +230,6 @@ Item {
             cpuStatFile.reload();
             cpuTempFile.reload();
 
-            // Only update detailed process layouts if the user is looking at the screen card
             if ((cpuHoverTracker.hovered || cpuBox.pinTooltip) && !cpuTooltip.isHovered) {
                 cpuBox.textAccumulatorBuffer = "";
                 topProcFetcher.running = true;

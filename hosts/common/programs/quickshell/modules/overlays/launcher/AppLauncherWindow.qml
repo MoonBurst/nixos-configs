@@ -4,7 +4,6 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 import "../../../" as RootTheme
-import "../../settings" as SettingsTools
 import "./backend" as Backend
 import "./frontend" as Frontend
 
@@ -54,27 +53,43 @@ PanelWindow {
 
     readonly property bool isUiActive: shouldKeepLoaded || isOpenState || isPreviewMode || inGracePeriod
 
+    // High-priority focus timer ensures instant keyboard focus upon opening
+    Timer {
+        id: focusTimer
+        interval: 30
+        repeat: false
+        onTriggered: {
+            if (viewLoader.item && typeof viewLoader.item.clearAndFocus === "function") {
+                viewLoader.item.clearAndFocus();
+            }
+        }
+    }
+
     onVisibleChanged: {
         if (visible && !isPreviewMode) {
             if (safeShell && typeof safeShell.closeOtherOverlays === "function") {
                 safeShell.closeOtherOverlays(window);
             }
             launcherEngine.scan();
-            if (viewLoader.item) viewLoader.item.clearAndFocus();
+            focusTimer.restart();
         }
     }
 
     WlrLayershell.namespace: "quickshell-applauncher"
-    WlrLayershell.layer: isPreviewMode ? WlrLayer.Overlay : WlrLayer.Top
+    WlrLayershell.layer: isPreviewMode ? WlrLayer.Top : WlrLayer.Overlay
+    // Exclusive focus routes keyboard input immediately upon opening; None in preview mode so Inspector stays interactive
     WlrLayershell.keyboardFocus: (visible && !isPreviewMode) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
 
+    mask: isPreviewMode ? previewMask : null
+    Region { id: previewMask; item: card }
+
     function open() {
         if (safeShell && safeShell.sessionLock && safeShell.sessionLock.locked) return;
         isOpenState = true;
-        if (viewLoader.item) viewLoader.item.clearAndFocus();
+        focusTimer.restart();
     }
     function close() {
         isOpenState = false;
@@ -159,35 +174,9 @@ PanelWindow {
         }
     }
 
-    // STATIC POSITIONED INSPECTOR (Pinned to right side of screen)
-    SettingsTools.PreviewInspector {
-        id: previewInspector
-        visible: window.isPreviewMode
-        windowId: window.windowId
-        settingsManager: window.settingsManager
-        theme: window.theme
-        defaultW: 840
-        defaultH: 700
-        defaultFH: 52
-        defaultIS: 38
-        hasField: true
-        hasIcon: true
-        defaultPolicy: window.defaultPolicy
-
-        onDoneRequested: {
-            if (settingsManager) settingsManager.previewWindow = "";
-        }
-    }
-
     Shortcut {
         sequence: "Escape"
-        enabled: window.visible
-        onActivated: {
-            if (window.isPreviewMode) {
-                if (settingsManager) settingsManager.previewWindow = "";
-            } else {
-                window.close();
-            }
-        }
+        enabled: window.visible && !window.isPreviewMode
+        onActivated: window.close()
     }
 }

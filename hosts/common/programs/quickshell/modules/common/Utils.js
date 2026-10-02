@@ -135,6 +135,11 @@ function evaluate(query, isMathMode) {
     if (!clean) return null;
     let expr = clean.startsWith("=") ? clean.substring(1).trim() : clean;
 
+    // Do not evaluate bare single words (e.g. "e", "pi", "sin") without '=' prefix
+    if (!clean.startsWith("=") && /^[a-zA-Z]+$/.test(expr)) {
+        return null;
+    }
+
     const transferMatch = expr.match(/^([+-]?\d*\.?\d+)\s*([a-zA-Z]+)\s*\/\s*([+-]?\d*\.?\d+)\s*([a-zA-Z]+)$/i);
     if (transferMatch) {
         const sizeVal = parseFloat(transferMatch[1]);
@@ -257,16 +262,12 @@ function evaluate(query, isMathMode) {
         }
     }
 
-    // SECURITY CHECK: Math Sanitization
-    // Rejects any arbitrary code or unauthorized identifiers before evaluating
     let cleanExpr = expr.replace(/[+\-*\/^%(\s]+$/, "").trim();
     if (!cleanExpr) return isMathMode ? "" : null;
 
-    // Strict character whitelist for arithmetic
     if (!/^[0-9+\-*\/^%()., \t\r\n]|^(sqrt|sin|cos|tan|abs|log|ln|pi|e|round)\b/i.test(cleanExpr)) {
         return null;
     }
-    // Block any attempt to access properties, constructors, or global objects
     if (/[;={}\[\]\\`$"'!@#&_]|process|require|import|window|shell|Quickshell/i.test(cleanExpr)) {
         return null;
     }

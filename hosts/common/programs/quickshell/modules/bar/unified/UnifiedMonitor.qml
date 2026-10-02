@@ -322,10 +322,10 @@ Item {
                 visible: recEngine.isActive
                 Layout.fillWidth: true
                 Layout.minimumWidth: 40
-                Layout.preferredHeight: 26
-                height: 26
+                Layout.preferredHeight: 28
+                height: 28
                 color: stopRecHover.hovered ? "#45475a" : "#181825"
-                border.color: "#ff5555"; border.width: 1; radius: 4
+                border.color: "#ff5555"; border.width: 1.5; radius: 6
                 Text { anchors.centerIn: parent; width: Math.min(parent.width - 4, implicitWidth); elide: Text.ElideRight; text: "⏹ Stop"; font.pixelSize: 10; font.bold: true; color: "#ff5555" }
                 HoverHandler { id: stopRecHover }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: recEngine.stopAll() }
@@ -334,10 +334,10 @@ Item {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.minimumWidth: 50
-                Layout.preferredHeight: 26
-                height: 26
+                Layout.preferredHeight: 28
+                height: 28
                 color: syncBtnHover.hovered ? "#313244" : "#181825"
-                border.color: themeBase05; border.width: 1; radius: 4
+                border.color: themeBase05; border.width: 1.5; radius: 6
                 Text { anchors.centerIn: parent; width: Math.min(parent.width - 4, implicitWidth); elide: Text.ElideRight; text: borgEngine.serviceActive ? "⏸ Pause" : "▶ Sync"; font.pixelSize: 10; font.bold: true; color: themeBase05 }
                 HoverHandler { id: syncBtnHover }
                 MouseArea {
@@ -357,10 +357,10 @@ Item {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.minimumWidth: 50
-                Layout.preferredHeight: 26
-                height: 26
+                Layout.preferredHeight: 28
+                height: 28
                 color: resetBtnHover.hovered ? "#313244" : "#181825"
-                border.color: sysHealth.failedCount > 0 ? themeBase08 : themeBase02; border.width: 1; radius: 4
+                border.color: sysHealth.failedCount > 0 ? themeBase08 : themeBase05; border.width: 1.5; radius: 6
                 Text { anchors.centerIn: parent; width: Math.min(parent.width - 4, implicitWidth); elide: Text.ElideRight; text: sysHealth.failedCount > 0 ? "🔄 Reset (" + sysHealth.failedCount + ")" : "✔ 0 Failed"; font.pixelSize: 10; font.bold: true; color: sysHealth.failedCount > 0 ? themeBase08 : themeBase05 }
                 HoverHandler { id: resetBtnHover }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: unifiedBox.runCmd("sudo -n systemctl reset-failed; systemctl --user reset-failed") }
@@ -369,10 +369,10 @@ Item {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.minimumWidth: 50
-                Layout.preferredHeight: 26
-                height: 26
+                Layout.preferredHeight: 28
+                height: 28
                 color: mountBtnHover.hovered ? "#313244" : "#181825"
-                border.color: borgEngine.isMounted ? themeBase09 : themeBase0C; border.width: 1; radius: 4
+                border.color: borgEngine.isMounted ? themeBase09 : themeBase0C; border.width: 1.5; radius: 6
                 Text { anchors.centerIn: parent; width: Math.min(parent.width - 4, implicitWidth); elide: Text.ElideRight; text: borgEngine.isMounted ? "⏏ Unmount" : "📂 Browse"; font.pixelSize: 10; font.bold: true; color: borgEngine.isMounted ? themeBase09 : themeBase0C }
                 HoverHandler { id: mountBtnHover }
                 MouseArea {
@@ -391,10 +391,10 @@ Item {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.minimumWidth: 45
-                Layout.preferredHeight: 26
-                height: 26
+                Layout.preferredHeight: 28
+                height: 28
                 color: dynBtnHover.hovered ? "#313244" : "#181825"
-                border.color: sysHealth.rebootRequired ? themeBase09 : themeBase05; border.width: 1; radius: 4
+                border.color: sysHealth.rebootRequired ? themeBase09 : themeBase05; border.width: 1.5; radius: 6
                 Text { anchors.centerIn: parent; width: Math.min(parent.width - 4, implicitWidth); elide: Text.ElideRight; text: sysHealth.rebootRequired ? "🔄 Reboot" : (unifiedBox.gcRunning ? "🧹 ..." : "🧹 GC"); font.pixelSize: 10; font.bold: true; color: sysHealth.rebootRequired ? themeBase09 : themeBase05 }
                 HoverHandler { id: dynBtnHover }
                 MouseArea {

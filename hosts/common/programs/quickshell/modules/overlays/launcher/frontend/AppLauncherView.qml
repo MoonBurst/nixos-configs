@@ -29,6 +29,17 @@ Item {
     Component.onCompleted: Qt.callLater(() => searchField.forceActiveFocus())
     onVisibleChanged: if (visible) Qt.callLater(() => searchField.forceActiveFocus())
 
+    function isCalcQuery(raw) {
+        if (!raw) return false;
+        var trimmed = raw.trim();
+        if (trimmed.startsWith("=")) return true;
+        var lower = trimmed.toLowerCase();
+        if (lower === "calc" || lower.startsWith("calc ")) return true;
+        // Require at least one digit or explicit arithmetic operator to prevent hijacking plain letters
+        if (!/[\d]/.test(trimmed) && !/[+\-*\/^%]/.test(trimmed)) return false;
+        return Utils.evaluate(trimmed, true) !== null;
+    }
+
     function checkRouting(rawText) {
         if (!rawText) return false;
         var raw = rawText.trim();
@@ -70,9 +81,13 @@ Item {
         }
         if (raw.startsWith(".")) { viewRoot.routeRequested("unicode", raw.substring(1).trim()); return true; }
         if (raw.startsWith("?")) { viewRoot.routeRequested("web", raw.substring(1).trim()); return true; }
-        if (raw.startsWith("=") || Utils.evaluate(raw, true) !== null) {
-            viewRoot.routeRequested("calc", raw.startsWith("=") ? raw.substring(1).trim() : raw); return true;
+
+        if (viewRoot.isCalcQuery(raw)) {
+            var calcExpr = raw.startsWith("=") ? raw.substring(1).trim() : (lower.startsWith("calc ") ? raw.substring(5).trim() : raw);
+            viewRoot.routeRequested("calc", calcExpr);
+            return true;
         }
+
         if (lower === "amogus" || lower === "amongus" || lower === "sus") {
             viewRoot.routeRequested("amogus", ""); return true;
         }
@@ -94,7 +109,6 @@ Item {
         anchors.margins: (viewRoot.theme && viewRoot.theme.globalPadding) ? viewRoot.theme.globalPadding : 16
         spacing: 14
 
-        // Search Bar Box with Direct Vertical Centering
         Rectangle {
             id: searchBox
             Layout.fillWidth: true
@@ -172,7 +186,6 @@ Item {
             }
         }
 
-        // Instant 0ms Animated Apps List
         ListView {
             id: appsList
             Layout.fillWidth: true

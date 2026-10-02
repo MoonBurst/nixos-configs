@@ -177,7 +177,7 @@ Item {
         
         Rectangle {
             id: himalayaInstallModalOverlay
-            anchors.fill: parent; color: "#F40F0F0F"; visible: false; z: 300
+            anchors.fill: parent; color: "#EE000000"; visible: !viewRoot.engine.himalayaInstalled; z: 300
             function openInstallPrompt() { visible = true; pkgModal.openPrompt(); }
             MouseArea { anchors.fill: parent; onClicked: himalayaInstallModalOverlay.visible = false }
             

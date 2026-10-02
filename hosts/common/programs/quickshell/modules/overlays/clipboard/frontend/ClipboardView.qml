@@ -1,7 +1,10 @@
 import QtQuick
 import QtQuick.Controls 2
 import QtQuick.Layouts 1.15
+import Quickshell
+import Quickshell.Io
 import "../backend"
+import "../../../common"
 
 Item {
     id: viewRoot
@@ -25,12 +28,57 @@ Item {
     Component.onCompleted: Qt.callLater(() => searchField.forceActiveFocus())
     onVisibleChanged: if (visible) Qt.callLater(() => searchField.forceActiveFocus())
 
+    // Background process to install cliphist AND create/enable a persistent systemd user service
+    Process {
+        id: cliphistServiceSetupProc
+        running: false
+        command: [
+            "bash", "-c",
+            'mkdir -p "$HOME/.config/systemd/user"; ' +
+            'cat << \'SVC\' > "$HOME/.config/systemd/user/cliphist.service"\n' +
+            '[Unit]\nDescription=Cliphist Clipboard Daemon\nPartOf=graphical-session.target\nAfter=graphical-session.target\n\n' +
+            '[Service]\nType=simple\nExecStart=/bin/sh -c "wl-paste --watch cliphist store"\nRestart=always\nRestartSec=2\n\n' +
+            '[Install]\nWantedBy=graphical-session.target\nSVC\n' +
+            'systemctl --user daemon-reload 2>/dev/null || true; ' +
+            'systemctl --user enable --now cliphist.service 2>/dev/null || true; ' +
+            '( wl-paste --watch cliphist store & ) 2>/dev/null || true'
+        ]
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: (viewRoot.theme && viewRoot.theme.globalPadding) ? viewRoot.theme.globalPadding : 16
         spacing: 14
 
-        // 1. Fixed-Height Search Bar Row (Does not stretch across window)
+        // Missing cliphist banner & automated service installer
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 180
+            radius: 8
+            visible: !engine.hasCliphist
+            color: (theme && theme.base00) ? theme.base00 : "#11111b"
+            border.color: (theme && theme.base08) ? theme.base08 : "#ff5555"
+            border.width: 1.5
+
+            PackageInstallerModal {
+                anchors.fill: parent
+                anchors.margins: 14
+                title: "⚠️ CLIPHIST REQUIRED FOR CLIPBOARD HISTORY"
+                description: "Enter your sudo password to install cliphist and enable the background clipboard service:"
+                pacmanPkg: "cliphist"
+                aptPkg: "cliphist"
+                dnfPkg: "cliphist"
+                zypperPkg: "cliphist"
+                nixPkg: "cliphist"
+                onInstalled: {
+                    cliphistServiceSetupProc.running = true;
+                    engine.hasCliphist = true;
+                    engine.loadClipboard();
+                }
+            }
+        }
+
+        // Fixed-Height Search Bar Row
         RowLayout {
             Layout.fillWidth: true
             Layout.preferredHeight: viewRoot.fieldHeight
@@ -70,7 +118,7 @@ Item {
                         Text {
                             anchors.fill: parent
                             verticalAlignment: Text.AlignVCenter
-                            text: "Search clipboard history... [image: for shots, Del to remove]"
+                            text: engine.hasCliphist ? "Search clipboard history... [image: for shots, Del to remove]" : "Images only (install cliphist above for full history)..."
                             color: "#666"
                             font.pixelSize: viewRoot.overlayFontSize
                             visible: parent.text === "" && !parent.activeFocus
@@ -128,7 +176,7 @@ Item {
             }
         }
 
-        // 2. Expandable Content Area (List + Preview Panel)
+        // Content Area (List + Preview)
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true

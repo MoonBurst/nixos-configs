@@ -175,16 +175,17 @@ Item {
                 WlrLayershell.layer: WlrLayer.Overlay
                 WlrLayershell.keyboardFocus: menuPopup.visible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
-                margins.top: (shell && shell.theme) ? (shell.theme.globalPadding + 55 || 67) : 67
+                margins.top: shell.settingsManager.barHeight + (shell.theme.globalPadding / 2)
                 margins.right: {
                     if (!barWindow || !barWindow.contentItem) return (shell && shell.theme) ? (shell.theme.globalPadding || 12) : 12;
                     var globalIconPos = trayItem.mapToItem(barWindow.contentItem, 0, 0);
                     return barWindow.width - (globalIconPos.x + trayItem.width);
                 }
 
-                implicitWidth: barWindow ? barWindow.width : 220
-                implicitHeight: 1080
+                implicitWidth: 220
+                implicitHeight: popupLayoutColumn.implicitHeight + 24
                 color: "transparent"
+
 
                 onVisibleChanged: {
                     if (visible) {

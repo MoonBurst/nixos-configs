@@ -19,9 +19,13 @@ Item {
     signal valueModified(real newVal)
 
     onValueChanged: {
-        if (!sliderControl.pressed) {
+        if (!sliderControl.pressed && sliderControl.value !== root.value) {
             sliderControl.value = root.value;
         }
+    }
+
+    Component.onCompleted: {
+        sliderControl.value = root.value;
     }
 
     Layout.fillWidth: true
@@ -54,7 +58,11 @@ Item {
             }
 
             Text {
-                text: root.valueFormatter ? root.valueFormatter(sliderControl.value) : (Math.round(sliderControl.value) + root.unit)
+                text: {
+                    if (root.valueFormatter) return root.valueFormatter(sliderControl.value);
+                    if (root.stepSize < 1) return sliderControl.value.toFixed(1) + root.unit;
+                    return Math.round(sliderControl.value) + root.unit;
+                }
                 font.family: root.fontFamily
                 font.pixelSize: root.fontSize
                 font.bold: true
@@ -88,7 +96,7 @@ Item {
 
                 SlantedBox {
                     height: parent.height
-                    width: Math.max(12, sliderControl.visualPosition * parent.width)
+                    width: Math.max(0, Math.min(parent.width, (sliderControl.visualPosition || 0) * parent.width))
                     slantLeft: "Left"
                     slantRight: "Left"
                     slantWidth: 8
@@ -98,10 +106,10 @@ Item {
             }
 
             handle: SlantedBox {
-                x: sliderControl.leftPadding + sliderControl.visualPosition * (sliderControl.availableWidth - width)
-                y: sliderControl.topPadding + sliderControl.availableHeight / 2 - height / 2
-                implicitWidth: 18
-                implicitHeight: 20
+                width: 18
+                height: 20
+                x: Math.round(sliderControl.leftPadding + (sliderControl.visualPosition || 0) * (sliderControl.availableWidth - width))
+                y: Math.round(sliderControl.topPadding + (sliderControl.availableHeight - height) / 2)
                 slantLeft: "Left"
                 slantRight: "Left"
                 slantWidth: 6

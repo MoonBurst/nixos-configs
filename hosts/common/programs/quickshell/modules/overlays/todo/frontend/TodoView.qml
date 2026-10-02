@@ -34,6 +34,7 @@ Item {
 
     function clearAndFocus() {
         if (engine.activeCategory !== "") {
+            todoListView.currentIndex = -1;
             Qt.callLater(() => taskInput.forceActiveFocus());
         }
     }
@@ -88,7 +89,8 @@ Item {
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
                                 engine.activeCategory = model.name;
-                                todoListView.forceActiveFocus();
+                                todoListView.currentIndex = -1;
+                                taskInput.forceActiveFocus();
                             }
                         }
                     }
@@ -224,8 +226,12 @@ Item {
                         if (event.key === Qt.Key_Up) { engine.moveTodo(currentIndex, true); event.accepted = true; }
                         else if (event.key === Qt.Key_Down) { engine.moveTodo(currentIndex, false); event.accepted = true; }
                     } else if (event.key === Qt.Key_Up) {
-                        if (currentIndex <= 0) taskInput.forceActiveFocus();
-                        else currentIndex--;
+                        if (currentIndex <= 0) {
+                            todoListView.currentIndex = -1;
+                            taskInput.forceActiveFocus();
+                        } else {
+                            currentIndex--;
+                        }
                         event.accepted = true;
                     } else if (event.key === Qt.Key_Down) {
                         if (currentIndex < count - 1) currentIndex++;
@@ -244,7 +250,7 @@ Item {
 
                 delegate: Rectangle {
                     id: delegateCard
-                    readonly property bool isSelected: index === todoListView.currentIndex
+                    readonly property bool isSelected: (index === todoListView.currentIndex) && todoListView.activeFocus
                     readonly property bool isThisItemEditing: engine.editingTaskId === model.id
 
                     width: todoListView.width - 12
@@ -270,7 +276,6 @@ Item {
                         spacing: 12
                         visible: !delegateCard.isThisItemEditing
 
-                        // 1. Interactive Checkbox (Mouse click only toggles when clicking this box)
                         Rectangle {
                             width: 24
                             height: 24
@@ -293,12 +298,12 @@ Item {
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
                                     todoListView.currentIndex = index;
+                                    todoListView.forceActiveFocus();
                                     engine.toggleTodo(model.id, model.completed);
                                 }
                             }
                         }
 
-                        // 2. Task Text (Clicking selects the item without toggling)
                         Text {
                             text: model.task
                             font.family: viewRoot.todoFontFamily
@@ -310,7 +315,6 @@ Item {
                         }
                     }
 
-                    // Inline Editor
                     Item {
                         id: inlineEditLayout
                         anchors.fill: parent
@@ -342,7 +346,6 @@ Item {
                         }
                     }
 
-                    // Card Selection Click Area (Does NOT toggle completion)
                     MouseArea {
                         anchors.fill: parent
                         z: -1

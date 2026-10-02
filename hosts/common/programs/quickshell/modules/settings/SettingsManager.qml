@@ -4,9 +4,9 @@ import Quickshell.Io
 
 Item {
     id: manager
-    
+
     property string nixThemeFile: (Quickshell.env("HOME") || "") + "/nix/hosts/common/theme.nix"
-    
+
     Process {
         id: themeFinderProc
         running: true
@@ -28,51 +28,42 @@ Item {
             }
         }
     }
-    
+
     property bool useStylix: false
     property bool animationsEnabled: true
-    
+
     property string slantStyleMode: "symmetric"
     property int capsuleSpacing: 2
     property int slantRevision: 0
     property int gpuThresholdRevision: 0
-    
+
     property int globalFontSize: 14
     property int overlayFontSize: 16
     onOverlayFontSizeChanged: queueSave()
-    
-    // GLOBAL OVERLAY DIMENSIONS
+
     property int globalOverlayWidth: 840
     onGlobalOverlayWidthChanged: { standaloneRevision++; queueSave(); }
     property int globalOverlayHeight: 650
     onGlobalOverlayHeightChanged: { standaloneRevision++; queueSave(); }
-    
+
     property int slantWidth: 12
     property int globalBorderWidth: 3
     property int globalPadding: 12
-    
-    // TOP BAR & HARDWARE TIMINGS
+
     property int barHeight: 42
     property int hardwarePollInterval: 2000
     property int trayCollapseTimeoutSec: 3
     onTrayCollapseTimeoutSecChanged: queueSave()
-    
-    // LAZY LOADER GRACE TIMEOUT
+
     property int overlayGraceTimeoutSec: 10
     onOverlayGraceTimeoutSecChanged: queueSave()
-    
-    // GLOBAL SEARCH & INPUT FIELD HEIGHT
+
     property int globalFieldHeight: 52
-    onGlobalFieldHeightChanged: {
-        standaloneRevision++;
-        queueSave();
-    }
-    
-    // STORAGE & AUDIO
+    onGlobalFieldHeightChanged: { standaloneRevision++; queueSave(); }
+
     property string notesFilePath: Quickshell.env("HOME") + "/Documents/notes.txt"
     property int notifVolume: 80
-    
-    // OVERLAYS & TOOLS CONFIGURATION
+
     property int notifBaselineY: 350
     property int notifMarginX: 20
     onNotifMarginXChanged: queueSave()
@@ -92,8 +83,36 @@ Item {
     property string defaultLauncherMode: "apps"
     onDefaultLauncherModeChanged: queueSave()
     property string emailSignature: "\n\n--\nSeekers of light..\nBelieve not in justice...\nBelieve not in truth...\nFor they are empty and inconsistent, as are all things..."
-    
-    // NOTIFICATION CUSTOMIZATION & FILTERS
+
+    // MPRIS Watch Sources
+    property bool mprisWatchLocal: true
+    onMprisWatchLocalChanged: queueSave()
+    property bool mprisWatchSpotify: true
+    onMprisWatchSpotifyChanged: queueSave()
+    property bool mprisWatchBrowser: true
+    onMprisWatchBrowserChanged: queueSave()
+
+    // Custom Capsule Config
+    property string customCapsuleMode: "static"
+    onCustomCapsuleModeChanged: queueSave()
+    property string customCapsuleType: "text"
+    onCustomCapsuleTypeChanged: queueSave()
+    property string customCapsuleText: "Custom Text"
+    onCustomCapsuleTextChanged: queueSave()
+    property string customCapsuleImages: ""
+    onCustomCapsuleImagesChanged: queueSave()
+    property int customCapsuleSwapInterval: 5
+    onCustomCapsuleSwapIntervalChanged: queueSave()
+    property real customCapsuleScrollSpeed: 40
+    onCustomCapsuleScrollSpeedChanged: queueSave()
+    property real customCapsuleImageScale: 1.0
+    onCustomCapsuleImageScaleChanged: queueSave()
+    property bool customCapsuleRandomSwap: false
+    onCustomCapsuleRandomSwapChanged: queueSave()
+    property int customCapsuleImageSize: 28
+    onCustomCapsuleImageSizeChanged: queueSave()
+
+    // Notifications
     property string notifBorderColor: ""
     onNotifBorderColorChanged: queueSave()
     property string notifCustomIcon: ""
@@ -102,10 +121,10 @@ Item {
     onTtsKeywordsStrChanged: queueSave()
     property string notifExcludedStr: "greenclip, copyq"
     onNotifExcludedStrChanged: queueSave()
-    
+
     readonly property var ttsKeywords: ttsKeywordsStr.split(",").map(s => s.trim()).filter(s => s.length > 0)
     readonly property var notifExcludedStrings: notifExcludedStr.split(",").map(s => s.trim().toLowerCase()).filter(s => s.length > 0)
-    
+
     function isNotificationExcluded(appName, summary, body) {
         var haystack = (appName + " " + summary + " " + body).toLowerCase();
         for (var i = 0; i < notifExcludedStrings.length; i++) {
@@ -113,8 +132,7 @@ Item {
         }
         return false;
     }
-    
-    // THEME DEFAULTS
+
     property string customBase00: "#0f0f0f"
     property string customBase01: "#181825"
     property string customBase02: "#313244"
@@ -131,7 +149,7 @@ Item {
     property string customBase0D: "#003399"
     property string customBase0E: "#cba6f7"
     property string customBase0F: "#eba0ac"
-    
+
     function getNixColorBlock() {
         function clean(h) { return String(h).replace("#", ""); }
         return "{\n" +
@@ -153,11 +171,11 @@ Item {
         "  base0F = \"" + clean(customBase0F) + "\";\n" +
         "}";
     }
-    
+
     property var discoveredGpus: []
     property string activeGpuCard: "card0"
     onActiveGpuCardChanged: queueSave()
-    
+
     Process {
         id: gpuScanner
         running: true
@@ -244,29 +262,29 @@ Item {
             }
         }
     }
-    
+
     readonly property var availableGpuCards: (discoveredGpus && discoveredGpus.length > 0)
-    ? discoveredGpus
-    : [
-        { id: "card0", vendor: "", name: "GPU 0", render: "renderD128", nv_index: "0" },
-        { id: "card1", vendor: "", name: "GPU 1", render: "renderD129", nv_index: "0" }
-    ]
-    
+        ? discoveredGpus
+        : [
+            { id: "card0", vendor: "", name: "GPU 0", render: "renderD128", nv_index: "0" },
+            { id: "card1", vendor: "", name: "GPU 1", render: "renderD129", nv_index: "0" }
+        ]
+
     property int gpu0TempWarn: 70
     property int gpu0TempDanger: 80
     property int gpu0VramWarn: 4
     property int gpu0VramDanger: 2
-    
+
     property int gpu1TempWarn: 65
     property int gpu1TempDanger: 75
     property int gpu1VramWarn: 1
     property int gpu1VramDanger: 0
-    
+
     function getGpuTempWarn(cardId) { return (cardId === "card1" || cardId === 1) ? gpu1TempWarn : gpu0TempWarn; }
     function getGpuTempDanger(cardId) { return (cardId === "card1" || cardId === 1) ? gpu1TempDanger : gpu0TempDanger; }
     function getGpuVramWarn(cardId) { return (cardId === "card1" || cardId === 1) ? gpu1VramWarn : gpu0VramWarn; }
     function getGpuVramDanger(cardId) { return (cardId === "card1" || cardId === 1) ? gpu1VramDanger : gpu0VramDanger; }
-    
+
     function setGpuThreshold(cardId, key, val) {
         var num = Math.round(val);
         var isCard1 = (cardId === "card1" || cardId === 1);
@@ -284,12 +302,11 @@ Item {
         gpuThresholdRevision++;
         saveToDisk();
     }
-    
-    // STANDALONE WINDOW RESIZING & LIFECYCLE REGISTRY
+
     property string previewWindow: ""
     property var standaloneWindows: ({})
     property int standaloneRevision: 0
-    
+
     function getWindowWidth(idStr, defaultW) {
         var _rev = manager.standaloneRevision;
         if (standaloneWindows && standaloneWindows[idStr] && standaloneWindows[idStr].width > 0) {
@@ -297,7 +314,7 @@ Item {
         }
         return manager.globalOverlayWidth || defaultW || 840;
     }
-    
+
     function getWindowHeight(idStr, defaultH) {
         var _rev = manager.standaloneRevision;
         if (standaloneWindows && standaloneWindows[idStr] && standaloneWindows[idStr].height > 0) {
@@ -305,7 +322,7 @@ Item {
         }
         return manager.globalOverlayHeight || defaultH || 650;
     }
-    
+
     function getWindowFieldHeight(idStr, defaultFH) {
         var _rev = manager.standaloneRevision;
         if (standaloneWindows && standaloneWindows[idStr] && standaloneWindows[idStr].fieldHeight > 0) {
@@ -313,7 +330,7 @@ Item {
         }
         return manager.globalFieldHeight || defaultFH || 52;
     }
-    
+
     function getWindowIconSize(idStr, defaultIS) {
         var _rev = manager.standaloneRevision;
         if (standaloneWindows && standaloneWindows[idStr] && standaloneWindows[idStr].iconSize > 0) {
@@ -321,7 +338,7 @@ Item {
         }
         return defaultIS || 38;
     }
-    
+
     function getWindowImageSize(idStr, defaultIS) {
         var _rev = manager.standaloneRevision;
         if (standaloneWindows && standaloneWindows[idStr] && standaloneWindows[idStr].imageSize > 0) {
@@ -329,7 +346,7 @@ Item {
         }
         return defaultIS || 80;
     }
-    
+
     function getWindowLoadPolicy(idStr, defaultPolicy) {
         var _rev = manager.standaloneRevision;
         if (standaloneWindows && standaloneWindows[idStr] && standaloneWindows[idStr].loadPolicy) {
@@ -337,11 +354,11 @@ Item {
         }
         return defaultPolicy || "lazy";
     }
-    
+
     function setWindowLoadPolicy(idStr, policy) {
         setWindowProp(idStr, "loadPolicy", policy);
     }
-    
+
     function setWindowProp(idStr, prop, val) {
         var copy = Object.assign({}, standaloneWindows);
         if (!copy[idStr]) copy[idStr] = {};
@@ -350,26 +367,26 @@ Item {
         standaloneRevision++;
         saveToDisk();
     }
-    
-    // BAR CAPSULES CONFIGURATION
+
     property string previewCapsule: ""
     property var capsuleDimensions: ({})
+    property var capsuleBarWidths: ({})
     property int dimensionsRevision: 0
-    
+
     function getCapsuleWidth(idStr) {
         if (capsuleDimensions && capsuleDimensions[idStr] && capsuleDimensions[idStr].width > 0) {
             return capsuleDimensions[idStr].width;
         }
         return 0;
     }
-    
+
     function getCapsuleHeight(idStr) {
         if (capsuleDimensions && capsuleDimensions[idStr] && capsuleDimensions[idStr].height > 0) {
             return capsuleDimensions[idStr].height;
         }
         return 0;
     }
-    
+
     function setCapsuleWidth(idStr, w) {
         var copy = Object.assign({}, capsuleDimensions);
         if (!copy[idStr]) copy[idStr] = {};
@@ -378,7 +395,26 @@ Item {
         dimensionsRevision++;
         saveToDisk();
     }
-    
+
+    function getCapsuleBarWidth(idStr) {
+        if (capsuleBarWidths && capsuleBarWidths[idStr] > 0) return capsuleBarWidths[idStr];
+        return 0;
+    }
+    function setCapsuleBarWidth(idStr, w) {
+        var copy = Object.assign({}, capsuleBarWidths);
+        copy[idStr] = Math.round(w);
+        capsuleBarWidths = copy;
+        saveToDisk();
+    }
+    function moveToSection(capsuleId, targetSection) {
+        barLeftModules = (barLeftModules || []).filter(function(x) { return x !== capsuleId; });
+        barCenterModules = (barCenterModules || []).filter(function(x) { return x !== capsuleId; });
+        barRightModules = (barRightModules || []).filter(function(x) { return x !== capsuleId; });
+        if (targetSection === "left") barLeftModules = barLeftModules.concat([capsuleId]);
+        else if (targetSection === "right") barRightModules = barRightModules.concat([capsuleId]);
+        else barCenterModules = barCenterModules.concat([capsuleId]);
+        saveToDisk();
+    }
     function setCapsuleHeight(idStr, h) {
         var copy = Object.assign({}, capsuleDimensions);
         if (!copy[idStr]) copy[idStr] = {};
@@ -387,7 +423,7 @@ Item {
         dimensionsRevision++;
         saveToDisk();
     }
-    
+
     property var capsuleSlants: ({})
     function getModuleSlant(idStr, section) {
         var _rev = manager.slantRevision;
@@ -398,7 +434,7 @@ Item {
         if (section === "right") return "right";
         return idStr === "clock" ? "center" : (idStr === "mic" ? "right" : "left");
     }
-    
+
     function setModuleSlant(idStr, slantType) {
         var copy = Object.assign({}, capsuleSlants);
         copy[idStr] = slantType;
@@ -406,13 +442,13 @@ Item {
         slantRevision++;
         saveToDisk();
     }
-    
+
     property var visibleCapsules: ({
         "calendar": true, "music": true, "alarm": true, "weather": true,
         "unified": true, "notify": true, "clock": true, "audio": true,
-        "mic": true, "net": true, "cpu": true, "gpu": true, "ram": true, "tray": true, "battery": true
+        "mic": true, "net": true, "cpu": true, "gpu": true, "ram": true, "tray": true, "battery": true, "custom": true
     })
-    
+
     function isCapsuleVisible(idStr) { return visibleCapsules[idStr] !== undefined ? visibleCapsules[idStr] : true; }
     function toggleCapsuleVisibility(idStr) {
         var copy = Object.assign({}, visibleCapsules);
@@ -420,15 +456,15 @@ Item {
         visibleCapsules = copy;
         saveToDisk();
     }
-    
+
     property var barLeftModules: ["calendar", "music", "alarm", "weather", "unified", "notify"]
-    property var barCenterModules: ["audio", "clock", "mic"]
+    property var barCenterModules: ["audio", "clock", "mic", "custom"]
     property var barRightModules: ["tray", "ram", "gpu", "cpu", "net", "battery"]
-    
+
     function getLeftList() { return barLeftModules.length > 0 ? barLeftModules : ["calendar", "music", "alarm", "weather", "unified", "notify"]; }
-    function getCenterList() { return barCenterModules.length > 0 ? barCenterModules : ["audio", "clock", "mic"]; }
+    function getCenterList() { return barCenterModules.length > 0 ? barCenterModules : ["audio", "clock", "mic", "custom"]; }
     function getRightList() { return barRightModules.length > 0 ? barRightModules : ["tray", "ram", "gpu", "cpu", "net", "battery"]; }
-    
+
     function moveWithinSection(section, fromIdx, toIdx) {
         var list = (section === "left" ? getLeftList() : (section === "center" ? getCenterList() : getRightList())).slice();
         if (toIdx < 0 || toIdx >= list.length) return;
@@ -439,7 +475,7 @@ Item {
         else barRightModules = list;
         saveToDisk();
     }
-    
+
     property int masterVolume: 80
     property int micVolume: 100
     property bool micMuted: false
@@ -447,18 +483,18 @@ Item {
         micMuted = muted;
         if (vol !== undefined && vol >= 0) micVolume = vol;
     }
-    
+
     property bool notificationsEnabled: true
     property int notifHoldDurationSec: 5
     property bool enableTts: true
     property bool isLoaded: false
-    
+
     Timer {
         id: saveDebounceTimer
         interval: 100; repeat: false; onTriggered: manager.saveToDisk()
     }
     function queueSave() { if (manager.isLoaded) saveDebounceTimer.restart(); }
-    
+
     onAnimationsEnabledChanged: queueSave()
     onSlantStyleModeChanged: { slantRevision++; queueSave(); }
     onCapsuleSpacingChanged: queueSave()
@@ -468,9 +504,9 @@ Item {
     onGlobalPaddingChanged: queueSave()
     onBarHeightChanged: queueSave()
     onHardwarePollIntervalChanged: queueSave()
-    
+
     Process { id: writerProc; running: false }
-    
+
     function saveToDisk() {
         var data = {
             "useStylix": manager.useStylix,
@@ -510,6 +546,18 @@ Item {
             "clipboardMaxItems": manager.clipboardMaxItems,
             "defaultLauncherMode": manager.defaultLauncherMode,
             "emailSignature": manager.emailSignature,
+            "mprisWatchLocal": manager.mprisWatchLocal,
+            "mprisWatchSpotify": manager.mprisWatchSpotify,
+            "mprisWatchBrowser": manager.mprisWatchBrowser,
+            "customCapsuleMode": manager.customCapsuleMode,
+            "customCapsuleType": manager.customCapsuleType,
+            "customCapsuleText": manager.customCapsuleText,
+            "customCapsuleImages": manager.customCapsuleImages,
+            "customCapsuleSwapInterval": manager.customCapsuleSwapInterval,
+            "customCapsuleScrollSpeed": manager.customCapsuleScrollSpeed,
+            "customCapsuleImageScale": manager.customCapsuleImageScale,
+            "customCapsuleRandomSwap": manager.customCapsuleRandomSwap,
+            "customCapsuleImageSize": manager.customCapsuleImageSize,
             "activeGpuCard": manager.activeGpuCard,
             "gpu0": { "tempWarn": manager.gpu0TempWarn, "tempDanger": manager.gpu0TempDanger, "vramWarn": manager.gpu0VramWarn, "vramDanger": manager.gpu0VramDanger },
             "gpu1": { "tempWarn": manager.gpu1TempWarn, "tempDanger": manager.gpu1TempDanger, "vramWarn": manager.gpu1VramWarn, "vramDanger": manager.gpu1VramDanger },
@@ -530,10 +578,11 @@ Item {
             "barRight": manager.getRightList(),
             "capsuleSlants": manager.capsuleSlants,
             "capsuleDimensions": manager.capsuleDimensions,
+            "capsuleBarWidths": manager.capsuleBarWidths,
             "standaloneWindows": manager.standaloneWindows,
             "visibleCapsules": manager.visibleCapsules
         };
-        
+
         writerProc.command = [
             "python3", "-c",
             "import sys, os\n" +
@@ -546,7 +595,7 @@ Item {
         ];
         writerProc.running = true;
     }
-    
+
     Process {
         id: loaderProc
         running: true
@@ -593,8 +642,20 @@ Item {
                     if (obj.clipboardMaxItems !== undefined) manager.clipboardMaxItems = obj.clipboardMaxItems;
                     if (obj.defaultLauncherMode !== undefined) manager.defaultLauncherMode = obj.defaultLauncherMode;
                     if (obj.emailSignature !== undefined) manager.emailSignature = obj.emailSignature;
+                    if (obj.mprisWatchLocal !== undefined) manager.mprisWatchLocal = obj.mprisWatchLocal;
+                    if (obj.mprisWatchSpotify !== undefined) manager.mprisWatchSpotify = obj.mprisWatchSpotify;
+                    if (obj.mprisWatchBrowser !== undefined) manager.mprisWatchBrowser = obj.mprisWatchBrowser;
+                    if (obj.customCapsuleMode !== undefined) manager.customCapsuleMode = obj.customCapsuleMode;
+                    if (obj.customCapsuleType !== undefined) manager.customCapsuleType = obj.customCapsuleType;
+                    if (obj.customCapsuleText !== undefined) manager.customCapsuleText = obj.customCapsuleText;
+                    if (obj.customCapsuleImages !== undefined) manager.customCapsuleImages = obj.customCapsuleImages;
+                    if (obj.customCapsuleSwapInterval !== undefined) manager.customCapsuleSwapInterval = obj.customCapsuleSwapInterval;
+                    if (obj.customCapsuleScrollSpeed !== undefined) manager.customCapsuleScrollSpeed = obj.customCapsuleScrollSpeed;
+                    if (obj.customCapsuleImageScale !== undefined) manager.customCapsuleImageScale = obj.customCapsuleImageScale;
+                    if (obj.customCapsuleRandomSwap !== undefined) manager.customCapsuleRandomSwap = obj.customCapsuleRandomSwap;
+                    if (obj.customCapsuleImageSize !== undefined) manager.customCapsuleImageSize = obj.customCapsuleImageSize;
                     if (obj.activeGpuCard !== undefined) manager.activeGpuCard = obj.activeGpuCard;
-                    
+
                     if (obj.gpu0) {
                         if (obj.gpu0.tempWarn !== undefined) manager.gpu0TempWarn = obj.gpu0.tempWarn;
                         if (obj.gpu0.tempDanger !== undefined) manager.gpu0TempDanger = obj.gpu0.tempDanger;
@@ -607,7 +668,7 @@ Item {
                         if (obj.gpu1.vramWarn !== undefined) manager.gpu1VramWarn = obj.gpu1.vramWarn;
                         if (obj.gpu1.vramDanger !== undefined) manager.gpu1VramDanger = obj.gpu1.vramDanger;
                     }
-                    
+
                     if (obj.customColors) {
                         if (obj.customColors.base00) manager.customBase00 = obj.customColors.base00;
                         if (obj.customColors.base01) manager.customBase01 = obj.customColors.base01;
@@ -626,16 +687,24 @@ Item {
                         if (obj.customColors.base0E) manager.customBase0E = obj.customColors.base0E;
                         if (obj.customColors.base0F) manager.customBase0F = obj.customColors.base0F;
                     }
-                    
+
                     if (obj.barLeft && Array.isArray(obj.barLeft)) manager.barLeftModules = obj.barLeft;
                     if (obj.barCenter && Array.isArray(obj.barCenter)) manager.barCenterModules = obj.barCenter;
                     if (obj.barRight && Array.isArray(obj.barRight)) manager.barRightModules = obj.barRight;
-                    
+
+                    var allM = (manager.barLeftModules || []).concat(manager.barCenterModules || []).concat(manager.barRightModules || []);
+                    if (!allM.includes("custom")) {
+                        var cList = (manager.barCenterModules || []).slice();
+                        cList.push("custom");
+                        manager.barCenterModules = cList;
+                    }
+
                     if (obj.capsuleSlants) manager.capsuleSlants = obj.capsuleSlants;
                     if (obj.capsuleDimensions) manager.capsuleDimensions = obj.capsuleDimensions;
+                    if (obj.capsuleBarWidths) manager.capsuleBarWidths = obj.capsuleBarWidths;
                     if (obj.standaloneWindows) manager.standaloneWindows = obj.standaloneWindows;
                     if (obj.visibleCapsules) manager.visibleCapsules = obj.visibleCapsules;
-                    
+
                     if (obj.masterVolume !== undefined) manager.masterVolume = obj.masterVolume;
                     if (obj.micVolume !== undefined) manager.micVolume = obj.micVolume;
                     if (obj.micMuted !== undefined) manager.micMuted = obj.micMuted;
@@ -647,13 +716,13 @@ Item {
             }
         }
     }
-    
+
     Process { id: stylixSaverProc; running: false }
-    
+
     function saveColorToStylix(propName, hexStr) {
         var baseKey = propName.replace(/^customB/, "b");
         if (!baseKey.startsWith("base")) baseKey = "base05";
-        
+
         stylixSaverProc.command = [
             "python3", "-c",
             "import os, re, sys, subprocess\n" +

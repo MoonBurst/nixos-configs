@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts 1.15
-import "../style"
 
 Item {
     id: root
@@ -37,20 +36,16 @@ Item {
             elide: Text.ElideRight
         }
 
-        // Solid badge button identical to bar's SHOW / HIDE
-        SlantedBox {
+        Rectangle {
             id: badgePill
             Layout.preferredWidth: 64
             Layout.preferredHeight: Math.max(26, root.fontSize * 1.6)
             Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+            radius: 6
 
-            slantLeft: "Left"
-            slantRight: "Left"
-            slantWidth: 8
-
-            color: root.checked ? root.base0C : root.base08
-            borderColor: root.checked ? root.base0C : root.base08
-            borderWidth: 1
+            color: root.checked ? root.base0C : root.base00
+            border.color: root.checked ? root.base0C : root.base08
+            border.width: 1.5
 
             Text {
                 anchors.centerIn: parent
@@ -58,15 +53,13 @@ Item {
                 font.family: root.fontFamily
                 font.pixelSize: Math.max(11, root.fontSize - 3)
                 font.bold: true
-                color: "#000000"
+                color: root.checked ? "#000000" : root.base08
             }
 
             MouseArea {
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    root.toggled(!root.checked);
-                }
+                onClicked: root.toggled(!root.checked)
             }
         }
     }

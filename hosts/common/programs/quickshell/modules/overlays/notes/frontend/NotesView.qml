@@ -74,10 +74,16 @@ Item {
                             }
                             event.accepted = true;
                         } else if (event.key === Qt.Key_Down) {
-                            if (engine.selectedIndex < engine.filteredModel.count - 1) engine.selectedIndex++;
+                            if (engine.selectedIndex < engine.filteredModel.count - 1) {
+                                engine.selectedIndex++;
+                                notesList.positionViewAtIndex(engine.selectedIndex, ListView.Contain);
+                            }
                             event.accepted = true;
                         } else if (event.key === Qt.Key_Up) {
-                            if (engine.selectedIndex > 0) engine.selectedIndex--;
+                            if (engine.selectedIndex > 0) {
+                                engine.selectedIndex--;
+                                notesList.positionViewAtIndex(engine.selectedIndex, ListView.Contain);
+                            }
                             event.accepted = true;
                         } else if (event.key === Qt.Key_Delete) {
                             engine.deleteNoteAt(engine.selectedIndex);
@@ -93,6 +99,24 @@ Item {
             Layout.fillWidth: true; Layout.fillHeight: true; clip: true; spacing: 8
             model: engine.filteredModel
             currentIndex: engine.selectedIndex
+
+            boundsBehavior: Flickable.StopAtBounds
+            flickDeceleration: 10000
+            maximumFlickVelocity: 15000
+
+            // Direct high-speed scroll handler
+            WheelHandler {
+                target: null
+                onWheel: (event) => {
+                    var step = 180;
+                    if (event.angleDelta.y > 0) {
+                        notesList.contentY = Math.max(notesList.originY, notesList.contentY - step);
+                    } else if (event.angleDelta.y < 0) {
+                        var maxY = Math.max(notesList.originY, notesList.contentHeight - notesList.height);
+                        notesList.contentY = Math.min(maxY, notesList.contentY + step);
+                    }
+                }
+            }
 
             delegate: Rectangle {
                 id: noteCard

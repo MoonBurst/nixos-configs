@@ -14,15 +14,14 @@ PanelWindow {
     readonly property var theme: safeShell ? safeShell.theme : null
 
     readonly property string previewId: settingsManager ? settingsManager.previewWindow : ""
-    visible: previewId !== "" && previewId !== "settings"
+    visible: previewId !== ""
 
     screen: safeShell?.primaryScreen ?? Quickshell.screens[0] ?? null
 
     WlrLayershell.namespace: "quickshell-inspector"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: visible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
 
-    // Fixed static position: anchored to the top-right corner of the monitor
     anchors {
         top: true
         right: true
@@ -32,9 +31,14 @@ PanelWindow {
         right: 40
     }
 
-    implicitWidth: 320
+    implicitWidth: 330
     implicitHeight: inspectorCard.implicitHeight
     color: "transparent"
+
+    // Crucial: Limit Wayland mouse input region strictly to the inspector card
+    mask: Region {
+        item: inspectorCard
+    }
 
     readonly property var targetConfig: {
         var map = {
@@ -48,6 +52,7 @@ PanelWindow {
             "power":      { name: "Power & Session",     defW: 720,  defH: 560, defFH: 52, defIS: 36, hasField: false, hasIcon: false },
             "todo":       { name: "Todo Task Board",     defW: 860,  defH: 740, defFH: 58, defIS: 32, hasField: true,  hasIcon: false },
             "gemini":     { name: "Gemini AI",           defW: 880,  defH: 720, defFH: 52, defIS: 32, hasField: true,  hasIcon: false },
+            "settings":   { name: "Settings",            defW: 1040, defH: 760, defFH: 52, defIS: 32, hasField: false, hasIcon: false },
             "web":        { name: "Web Search",          defW: 780,  defH: 320, defFH: 54, defIS: 32, hasField: true,  hasIcon: false },
             "email":      { name: "Email Client",        defW: 1500, defH: 900, defFH: 48, defIS: 32, hasField: true,  hasIcon: false },
             "amogus":     { name: "Among Us",            defW: 580,  defH: 440, defFH: 38, defIS: 32, hasField: false, hasIcon: false },
@@ -70,13 +75,13 @@ PanelWindow {
 
     Rectangle {
         id: inspectorCard
-        width: 320
+        width: 330
         implicitHeight: contentCol.implicitHeight + 28
+        height: implicitHeight
         radius: (theme && theme.defaultCardRadius) ? theme.defaultCardRadius : 10
         color: (theme && theme.base00) ? theme.base00 : "#11111b"
         border.color: (theme && theme.base05) ? theme.base05 : "yellow"
         border.width: (theme && theme.globalBorderWidth) ? theme.globalBorderWidth : 2
-        clip: true
 
         readonly property color base00: (theme && theme.base00) ? theme.base00 : "#11111b"
         readonly property color base02: (theme && theme.base02) ? theme.base02 : "#313244"
@@ -87,8 +92,8 @@ PanelWindow {
 
         ColumnLayout {
             id: contentCol
-            anchors.fill: parent
-            anchors.margins: 14
+            width: parent.width - 28
+            x: 14; y: 14
             spacing: 10
 
             // Header
@@ -208,7 +213,7 @@ PanelWindow {
                         anchors.centerIn: parent
                         text: "🍃 Lazy"
                         font.bold: true; font.pixelSize: 10
-                        color: parent.isLazy ? parent.base00 : inspectorCard.base05
+                        color: parent.isLazy ? inspectorCard.base00 : inspectorCard.base05
                     }
                     MouseArea {
                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor

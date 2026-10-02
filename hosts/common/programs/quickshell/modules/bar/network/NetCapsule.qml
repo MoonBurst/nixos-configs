@@ -316,7 +316,7 @@ Item {
             "sh", "-c",
             'gw=$(ip route show default 2>/dev/null | awk \'/default/ {print $3; exit}\'); ' +
             'host="${gw:-1.1.1.1}"; ' +
-            'ping -c 1 -W 1 "$host" 2>/dev/null'
+            'timeout 1.5s ping -c 1 -W 1 "$host" 2>/dev/null'
         ]
         stdout: SplitParser {
             onRead: data => {
@@ -333,7 +333,7 @@ Item {
         }
         onExited: (exitCode) => {
             if (exitCode !== 0) {
-                netBox.pingStr = "OFFLIN";
+                netBox.pingStr = "OFFLINE";
             }
         }
     }

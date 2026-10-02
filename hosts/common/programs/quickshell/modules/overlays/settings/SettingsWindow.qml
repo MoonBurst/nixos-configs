@@ -31,16 +31,21 @@ PanelWindow {
             if (safeShell && typeof safeShell.closeOtherOverlays === "function") {
                 safeShell.closeOtherOverlays(window);
             }
-            escapeFocusProxy.forceActiveFocus();
         }
     }
 
     WlrLayershell.namespace: "quickshell-settings-window"
-    WlrLayershell.layer: WlrLayer.Overlay
+    // Settings stays on Top layer so previewed overlays on Overlay layer appear ABOVE it
+    WlrLayershell.layer: WlrLayer.Top
     WlrLayershell.keyboardFocus: (visible && !isPreviewMode) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
+
+    mask: Region {
+        item: (settingsManager && settingsManager.previewWindow !== "") ? card : fullSettingsBg
+    }
+    Item { id: fullSettingsBg; anchors.fill: parent }
 
     function open() {
         if (safeShell && safeShell.sessionLock && safeShell.sessionLock.locked) return;
@@ -49,7 +54,6 @@ PanelWindow {
             card.x = Math.round(Math.max(20, (window.width - card.width) / 2));
             card.y = Math.round(Math.max(20, (window.height - card.height) / 2));
         }
-        escapeFocusProxy.forceActiveFocus();
     }
     function close() {
         isOpenState = false;
@@ -68,28 +72,13 @@ PanelWindow {
 
     MouseArea {
         anchors.fill: parent
-        enabled: !window.isPreviewMode
+        enabled: !window.isPreviewMode && (settingsManager ? settingsManager.previewWindow === "" : true)
+        visible: enabled
         onClicked: {
             if (settingsManager && settingsManager.previewWindow !== "") {
                 settingsManager.previewWindow = "";
             } else {
                 window.close();
-            }
-        }
-    }
-
-    Item {
-        id: escapeFocusProxy
-        focus: true
-        Keys.onPressed: (event) => {
-            if (event.key === Qt.Key_Escape) {
-                // If an overlay preview is active, Escape ONLY closes the preview and retains settings
-                if (settingsManager && settingsManager.previewWindow !== "") {
-                    settingsManager.previewWindow = "";
-                } else {
-                    window.close();
-                }
-                event.accepted = true;
             }
         }
     }
