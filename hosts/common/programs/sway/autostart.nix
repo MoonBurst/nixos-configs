@@ -21,9 +21,30 @@ in
 # **Background Services**
     { command = "eval $(${pkgs.gnome-keyring}/bin/gnome-keyring-daemon --start --components=secrets) && dbus-update-activation-environment --systemd --all MESA_VK_DEVICE_SELECT DRI_PRIME && systemctl --user start quickshell"; }
     { command = "${pkgs.corectrl}/bin/corectrl"; }
-    # **Clipboard Management (Cliphist)**
-    { command = "${pkgs.wl-clipboard}/bin/wl-paste --type text --watch ${pkgs.cliphist}/bin/cliphist store -max-items 50"; }
-    { command = "${pkgs.wl-clipboard}/bin/wl-paste --type image --watch ${pkgs.cliphist}/bin/cliphist store -max-items 10"; }
+#Clipboard
+{
+command = ''
+    ${pkgs.wl-clipboard}/bin/wl-paste --type text --watch ${pkgs.bash}/bin/bash -c '
+      NEW_CLIP=''$( ${pkgs.wl-clipboard}/bin/wl-paste -n )
+      [ -z "''$NEW_CLIP" ] && exit 0
+
+      SF="/tmp/native_clipboard_history.txt"
+      touch "''$SF"
+
+      # Cleans the ##TS header prefix before matching to filter consecutive duplicates
+      LAST_CLIP=''$( tr "\0" "\n" < "''$SF" 2>/dev/null | sed "s/^##TS:[0-9]*|//" | tail -n 1 )
+      if [ "''$NEW_CLIP" != "''$LAST_CLIP" ]; then
+          # Writes with null-byte separation and prepends accurate Unix epochs
+          printf "##TS:%s|%s\0" "''$(date +%s)" "''$NEW_CLIP" >> "''$SF"
+
+          SNIPPET=''$( echo "''$NEW_CLIP" | head -n 1 | cut -c1-40 )
+          ${pkgs.libnotify}/bin/notify-send -a "System Clipboard" -i "edit-copy" "📋 Text Copied" "''$SNIPPET..."
+      fi
+    ' &
+  '';
+}
+
+
 
   ];
 }

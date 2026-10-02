@@ -9,25 +9,13 @@ Item {
     property int selectedIndex: 0
     property string previewImage: ""
     property string previewText: ""
-    property bool hasCliphist: false
+    property bool hasCliphist: true
 
     property var allClipboardItems: []
     property var filteredClipboardModel: ListModel { id: fModel }
 
     Component.onCompleted: {
-        checkCliphistProc.running = true;
-    }
-
-    Process {
-        id: checkCliphistProc
-        running: false
-        command: ["sh", "-c", "export PATH=\"$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin:$PATH\"; command -v cliphist >/dev/null 2>&1 && echo 1 || echo 0"]
-        stdout: SplitParser {
-            onRead: data => {
-                engine.hasCliphist = (data.trim() === "1");
-                engine.loadClipboard();
-            }
-        }
+        loadClipboard();
     }
 
     property string _jsonBuffer: ""
@@ -36,33 +24,84 @@ Item {
         running: false
         command: [
             "python3", "-c",
-            "import os, glob, json, subprocess\n" +
-            "paths = os.environ.get('PATH', '').split(':')\n" +
-            "paths += [os.path.expanduser('~/.nix-profile/bin'), os.path.expanduser('~/.local/bin'), '/run/current-system/sw/bin', '/usr/bin', '/usr/local/bin']\n" +
-            "os.environ['PATH'] = ':'.join(paths)\n" +
-            "items = []\n" +
+            "import os, glob, json\n" +
+            "items_pool = []\n" +
+            "\n" +
+            "# 1. Harvest Image Assets from Quickshot Cache with actual OS creation times\n" +
             "hist = os.path.expanduser('~/.cache/quickshot_history')\n" +
             "if os.path.isdir(hist):\n" +
-            "    for f in sorted(glob.glob(os.path.join(hist, '*.json')), key=os.path.getmtime, reverse=True)[:50]:\n" +
+            "    for f in glob.glob(os.path.join(hist, '*.json')):\n" +
             "        img = f[:-5] + '.png'\n" +
             "        if not os.path.exists(img): continue\n" +
             "        try:\n" +
+            "            ts = int(os.path.getmtime(f))\n" +
             "            with open(f) as jf: name = json.load(jf).get('name', '')\n" +
-            "            items.append({'id': img, 'text': '[Image: ' + name + ']', 'searchText': name.lower(), 'isImage': True, 'imagePath': img})\n" +
-            "        except Exception: pass\n" +
-            "try:\n" +
-            "    p = subprocess.Popen(['cliphist', 'list'], stdout=subprocess.PIPE, text=True, errors='ignore')\n" +
-            "    for line in p.stdout:\n" +
-            "        line = line.rstrip('\\n')\n" +
-            "        parts = line.split('\\t', 1)\n" +
-            "        if len(parts) == 2:\n" +
-            "            cid, txt = parts[0].strip(), parts[1]\n" +
-            "            if 'binary data' not in txt and '[Image' not in txt and txt.strip():\n" +
-            "                items.append({'id': cid, 'text': txt, 'searchText': txt.lower(), 'isImage': False, 'imagePath': ''})\n" +
-            "                if len(items) >= 250: break\n" +
-            "    p.stdout.close(); p.wait()\n" +
-            "except Exception: pass\n" +
-            "print(json.dumps(items))\n"
+            "            items_pool.append({\n" +
+            "                'ts': ts,\n" +
+            "                'data': {'id': img, 'text': '[Image: ' + name + ']', 'searchText': name.lower(), 'isImage': True, 'imagePath': img, 'fullRawText': ''}\n" +
+            "            })\n" +
+            "        except: pass\n" +
+            "\n" +
+            "# 2. Harvest Null-Terminated Text Blocks (Evaluating reversed to put newest on top)\n" +
+            "state_file = '/tmp/native_clipboard_history.txt'\n" +
+            "if os.path.exists(state_file):\n" +
+            "    try:\n" +
+            "        file_ts = int(os.path.getmtime(state_file))\n" +
+            "        with open(state_file, 'r', encoding='utf-8', errors='ignore') as sf:\n" +
+            "            content = sf.read()\n" +
+            "            blocks = [b.strip() for b in content.split('\\x00') if b.strip()]\n" +
+            "            \n" +
+            "            fallback_ts = 0\n" +
+            "            # FIXED: Loop backwards through blocks so the newest logs get the largest timestamps\n" +
+            "            for b in reversed(blocks):\n" +
+            "                txt = b\n" +
+            "                ts = file_ts - fallback_ts\n" +
+            "                fallback_ts += 1\n" +
+            "                \n" +
+            "                if b.startswith('##TS:'):\n" +
+            "                    try:\n" +
+            "                        parts = b.split('|', 1)\n" +
+            "                        if len(parts) == 2:\n" +
+            "                            ts = int(parts[0][5:])\n" +
+            "                            txt = parts[1]\n" +
+            "                    except:\n" +
+            "                        pass\n" +
+            "                \n" +
+            "                lines_list = txt.splitlines()\n" +
+            "                first_line = lines_list[0].strip() if lines_list else txt.strip()\n" +
+            "                display_text = first_line if len(first_line) < 55 else first_line[:52] + '...'\n" +
+            "                if len(lines_list) > 1:\n" +
+            "                    display_text += ' ↵'\n" +
+            "                \n" +
+            "                items_pool.append({\n" +
+            "                    'ts': ts,\n" +
+            "                    'data': {'id': '', 'text': display_text, 'searchText': txt.lower(), 'isImage': False, 'imagePath': '', 'fullRawText': txt}\n" +
+            "                })\n" +
+            "    except:\n" +
+            "        pass\n" +
+            "\n" +
+            "# 3. Unified Chronological Interleaving Sort Pass (Newest Items First!)\n" +
+            "items_pool.sort(key=lambda x: x['ts'], reverse=True)\n" +
+            "\n" +
+            "final_items = []\n" +
+            "seen_text = set()\n" +
+            "\n" +
+            "for item in items_pool:\n" +
+            "    payload = item['data']\n" +
+            "    if not payload['isImage']:\n" +
+            "        if payload['fullRawText'] in seen_text: continue\n" +
+            "        seen_text.add(payload['fullRawText'])\n" +
+            "    \n" +
+            "    final_items.append(payload)\n" +
+            "\n" +
+            "# Post-process re-index serial id markers for list view identification strings\n" +
+            "idx = len(final_items)\n" +
+            "for item in final_items:\n" +
+            "    if not item['isImage']:\n" +
+            "        item['id'] = str(idx)\n" +
+            "    idx -= 1\n" +
+            "\n" +
+            "print(json.dumps(final_items))\n"
         ]
         stdout: SplitParser {
             splitMarker: ""
@@ -83,32 +122,13 @@ Item {
         }
     }
 
-    property string _previewAccumulator: ""
-    Process {
-        id: previewLoader
-        running: false
-        stdout: SplitParser {
-            splitMarker: "\n"
-            onRead: data => {
-                if (engine._previewAccumulator.length < 4000) {
-                    engine._previewAccumulator += (engine._previewAccumulator.length > 0 ? "\n" : "") + data;
-                }
-            }
-        }
-        onStarted: { engine._previewAccumulator = ""; engine.previewText = ""; }
-        onExited: {
-            engine.previewText = (engine._previewAccumulator.length >= 4000)
-                ? (engine._previewAccumulator + "\n\n... [preview truncated]")
-                : engine._previewAccumulator;
-        }
-    }
-
     Process { id: copyProcess; running: false }
     Process { id: deleteProc; running: false }
+
     Process {
         id: wipeProcess
         running: false
-        command: ["sh", "-c", "export PATH=\"$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH\"; command -v cliphist >/dev/null && cliphist wipe; rm -rf $HOME/.cache/quickshot_history/*"]
+        command: ["sh", "-c", "rm -f /tmp/native_clipboard_history.txt; touch /tmp/native_clipboard_history.txt; rm -rf $HOME/.cache/quickshot_history/*"]
     }
 
     function loadClipboard() {
@@ -150,13 +170,7 @@ Item {
             previewText = "";
         } else {
             previewImage = "";
-            if (engine.hasCliphist) {
-                previewLoader.running = false;
-                previewLoader.command = ["cliphist", "decode", item.id];
-                previewLoader.running = true;
-            } else {
-                previewText = item.text || "";
-            }
+            previewText = item.fullRawText || item.text || "";
         }
     }
 
@@ -168,10 +182,8 @@ Item {
         copyProcess.running = false;
         if (item.isImage && item.imagePath) {
             copyProcess.command = ["sh", "-c", "wl-copy --type image/png < '" + item.imagePath.replace(/'/g, "'\\''") + "'"];
-        } else if (engine.hasCliphist) {
-            copyProcess.command = ["sh", "-c", 'cliphist decode "$1" | wl-copy', "sh", item.id];
         } else {
-            copyProcess.command = ["wl-copy", item.text];
+            copyProcess.command = ["wl-copy", item.fullRawText || item.text];
         }
         copyProcess.running = true;
     }
@@ -183,10 +195,11 @@ Item {
 
         const isImage = Boolean(item.isImage);
         const imagePath = String(item.imagePath || "");
-        const cleanId = String(item.id || "").trim();
+        const cleanText = String(item.fullRawText || item.text || "");
 
         for (let i = 0; i < allClipboardItems.length; i++) {
-            if (String(allClipboardItems[i].id).trim() === cleanId) {
+            var comp = allClipboardItems[i].fullRawText || allClipboardItems[i].text || "";
+            if (comp === cleanText) {
                 allClipboardItems.splice(i, 1); break;
             }
         }
@@ -198,17 +211,36 @@ Item {
             var jsonPath = imagePath.replace(/\.png$/, ".json");
             deleteProc.command = ["sh", "-c", "rm -vf '" + imagePath + "' '" + jsonPath + "'"];
             deleteProc.running = true;
-        } else if (cleanId.length > 0 && engine.hasCliphist) {
-            deleteProc.command = ["sh", "-c", "printf '%s\\t-\\n' '" + cleanId + "' | cliphist delete"];
+        } else {
+            deleteProc.command = [
+                "python3", "-c",
+                "import sys\n" +
+                "with open('/tmp/native_clipboard_history.txt', 'r') as f: content = f.read()\n" +
+                "blocks = content.split('\\x00')\n" +
+                "with open('/tmp/native_clipboard_history.txt', 'w') as f:\n" +
+                "    for b in blocks:\n" +
+                "        txt = b\n" +
+                "        if b.startswith('##TS:'):\n" +
+                "            try:\n" +
+                "                parts = b.split('|', 1)\n" +
+                "                if len(parts) == 2: txt = parts[1]\n" +
+                "            except: pass\n" +
+                "        if txt.strip() != sys.argv.strip():\n" +
+                "            f.write(b + '\\x00')\n",
+                cleanText
+            ];
             deleteProc.running = true;
         }
     }
 
-    function wipeHistory() {
-        allClipboardItems = [];
-        fModel.clear();
-        selectedIndex = 0;
-        updatePreview();
-        wipeProcess.running = true;
+    Timer {
+        id: liveSyncTimer
+        interval: 1000
+        running: parent ? parent.visible : false
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: {
+            engine.loadClipboard();
+        }
     }
 }

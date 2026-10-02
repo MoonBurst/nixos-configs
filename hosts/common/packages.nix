@@ -50,7 +50,6 @@
 
     # --- Wayland & Compositor ---
     swaybg                      # Wallpaper management
-    cliphist                    # Clipboard history
     grim                        # Screenshot tool
     slurp                       # Region selector
     playerctl                   # Media key control

@@ -126,25 +126,25 @@ PanelWindow {
         }
     }
 
+    // FIXED: Non-recursive overlay inspector anchor bounds mapping
     SettingsTools.PreviewInspector {
         id: previewInspector
         visible: window.isPreviewMode
-        anchors.left: (card.x + card.width + width + 20 <= window.width) ? card.right : undefined
-        anchors.right: (card.x + card.width + width + 20 > window.width) ? card.left : undefined
-        anchors.leftMargin: 20; anchors.rightMargin: 20
+        anchors.left: card.right
+        anchors.leftMargin: 20
         anchors.verticalCenter: card.verticalCenter
 
         windowId: window.windowId
         settingsManager: window.settingsManager
         theme: window.theme
         defaultW: 1080; defaultH: 700
-        defaultFH: 52; defaultIS: 36
-        hasField: true; hasIcon: false
-        defaultPolicy: window.defaultPolicy
+            defaultFH: 52; defaultIS: 36
+                hasField: true; hasIcon: false
+                defaultPolicy: window.defaultPolicy
 
-        onDoneRequested: {
-            if (settingsManager) settingsManager.previewWindow = "";
-        }
+                    onDoneRequested: {
+                        if (settingsManager) settingsManager.previewWindow = "";
+                    }
     }
 
     Shortcut {

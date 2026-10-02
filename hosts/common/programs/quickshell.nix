@@ -8,7 +8,6 @@
     package = lib.mkPackageOption pkgs "quickshell" { };
 
     features = {
-      clipboard = lib.mkOption { type = lib.types.bool; default = true; description = "Clipboard history via cliphist"; };
       pass = lib.mkOption { type = lib.types.bool; default = true; description = "GPG password store via pass"; };
       email = lib.mkOption { type = lib.types.bool; default = true; description = "Email composition via himalaya"; };
       watermark = lib.mkOption { type = lib.types.bool; default = true; description = "Watermarking via imagemagick"; };
