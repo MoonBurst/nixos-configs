@@ -100,6 +100,8 @@
     enableSSHSupport = true;
   };
 
+  services.gvfs.enable = true;
+  services.udisks2.enable = true;
   programs.fuse.userAllowOther = true;
   security.polkit.enable = true;
   security.rtkit.enable = true;

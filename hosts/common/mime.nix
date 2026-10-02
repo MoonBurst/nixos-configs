@@ -34,7 +34,7 @@ let
       --icon=dialog-error
   '';
 
-  # Helper: [ FoundDesktopFile, Notifier ]
+  # Helper: [ FoundDesktopFile "mime-fallback.desktop" ]
   dumb = pkg: [ (getDesktop pkg) "mime-fallback.desktop" ];
 
 in {
@@ -47,10 +47,7 @@ in {
 
   # --- 2. SYSTEM LEVEL CONFIGURATIONS ---
   config = {
-    # FIXED: Nesting the dynamic module injection safely inside the config block
     _module.args.apps = apps;
-
-    # Expose the option mapping populated for regular system configurations
     apps = apps;
 
     environment.systemPackages = [
@@ -99,10 +96,12 @@ in {
 
           # Documents & Files
           "application/pdf"        = dumb apps.pdfViewer;
-          "inode/directory"        = dumb apps.fileManager;
           "text/plain"             = dumb apps.editor;
           "application/x-shellscript" = dumb apps.editor;
           "x-scheme-handler/terminal" = dumb apps.terminal;
+
+          # FIXED: Folders must pass a single string or flattened explicit application filename sequence
+          "inode/directory"        = [ "nemo.desktop" ];
         };
       };
     };

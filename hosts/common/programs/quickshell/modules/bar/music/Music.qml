@@ -107,10 +107,11 @@ Item {
             : "";
 
         Quickshell.execDetached([
+            "systemd-run", "--user", "--scope", "--quiet",
             "bash", "-c",
             'url="$1"; target=""; ' +
             'if [ -n "$url" ] && [[ "$url" == file://* ]]; then ' +
-            '    clean=$(python3 -c "import urllib.parse, sys; print(urllib.parse.unquote(sys.argv[1][7:]))" "$url" 2>/dev/null || echo "${url#file://}"); ' +
+            '    clean=$(python3 -c "import urllib.parse, sys; print(urllib.parse.unquote(sys.stdin.read().strip()))" 2>/dev/null || echo "${url#file://}"); ' +
             '    if [ -e "$clean" ]; then target="$clean"; fi; ' +
             'fi; ' +
             'if [ -z "$target" ]; then ' +
@@ -124,16 +125,16 @@ Item {
             '    fi; ' +
             'fi; ' +
             'dir=""; ' +
-            'if [ -d "$target" ]; then dir="$target"; ' +
-            'elif [ -f "$target" ]; then dir="$(dirname "$target")"; ' +
+            'if [ -d "$target" ]; then dir="${target#file://}"; ' +
+            'elif [ -f "$target" ]; then dir="$(dirname "${target#file://}")"; ' +
             'else dir="$HOME/Music"; fi; ' +
-            'if command -v gio >/dev/null 2>&1; then exec gio open "$dir"; ' +
-            'elif command -v xdg-open >/dev/null 2>&1; then exec xdg-open "$dir"; ' +
-            'elif command -v nemo >/dev/null 2>&1; then exec nemo "$dir"; ' +
-            'elif command -v nautilus >/dev/null 2>&1; then exec nautilus "$dir"; ' +
-            'elif command -v dolphin >/dev/null 2>&1; then exec dolphin "$dir"; ' +
-            'elif command -v thunar >/dev/null 2>&1; then exec thunar "$dir"; ' +
-            'elif command -v pcmanfm >/dev/null 2>&1; then exec pcmanfm "$dir"; fi',
+            'if command -v xdg-open >/dev/null 2>&1; then xdg-open "$dir"; ' +
+            'elif command -v gio >/dev/null 2>&1; then gio open "$dir"; ' +
+            'elif command -v nemo >/dev/null 2>&1; then nemo "$dir"; ' +
+            'elif command -v dolphin >/dev/null 2>&1; then dolphin "$dir"; ' +
+            'elif command -v thunar >/dev/null 2>&1; then thunar "$dir"; ' +
+            'elif command -v nautilus >/dev/null 2>&1; then nautilus "$dir"; ' +
+            'elif command -v pcmanfm >/dev/null 2>&1; then pcmanfm "$dir"; fi',
             "bash", rawUrl
         ]);
     }
@@ -144,10 +145,11 @@ Item {
             : "";
 
         Quickshell.execDetached([
+            "systemd-run", "--user", "--scope", "--quiet",
             "bash", "-c",
             'url="$1"; target=""; ' +
             'if [ -n "$url" ] && [[ "$url" == file://* ]]; then ' +
-            '    clean=$(python3 -c "import urllib.parse, sys; print(urllib.parse.unquote(sys.argv[1][7:]))" "$url" 2>/dev/null || echo "${url#file://}"); ' +
+            '    clean=$(python3 -c "import urllib.parse, sys; print(urllib.parse.unquote(sys.stdin.read().strip()))" 2>/dev/null || echo "${url#file://}"); ' +
             '    if [ -f "$clean" ]; then target="$clean"; fi; ' +
             'fi; ' +
             'if [ -z "$target" ]; then ' +
@@ -175,334 +177,299 @@ Item {
             "bash", rawUrl
         ]);
 
-        if (musicBox.activePlayer && musicBox.activePlayer.canGoNext) {
-            musicBox.activePlayer.next();
-        }
-    }
-
-    implicitWidth: Math.max(180, musicText.implicitWidth + bg.leftPadding + bg.rightPadding + 16)
-    width: implicitWidth
-    height: parent ? parent.height : 40
-
-    SlantedBox {
-        id: bg
-        anchors.fill: parent
-        slantLeft: musicBox.slantLeft
-        slantRight: musicBox.slantRight
-        slantWidth: musicBox.slantWidth
-    }
-
-    Text {
-        id: musicText
-        anchors.fill: parent
-        anchors.leftMargin: bg.leftPadding
-        anchors.rightMargin: bg.rightPadding
-        anchors.topMargin: 2
-        anchors.bottomMargin: 2
-        color: themeBase05
-        text: musicBox.trackStr
-        font.family: themeFontFamily
-        font.pixelSize: themeFontSize
-        font.bold: true
-        horizontalAlignment: Text.AlignHCenter
-        verticalAlignment: Text.AlignVCenter
-        elide: Text.ElideRight
-        clip: true
-    }
-
-    TapHandler {
-        onTapped: {
-            musicBox.popupActive = !musicBox.popupActive;
-            if (!musicBox.popupActive) musicBox.confirmDeleteMode = false;
-            else if (musicBox.activePlayer) musicBox.activePlayer.positionChanged();
-        }
-    }
-
-    SlantedTooltip {
-        id: musicTooltip
-        moduleItem: musicBox
-        barWindow: musicBox.barWindow
-        tooltipActive: musicBox.popupActive
-        alignSide: "Left"
-        pin: musicBox.popupActive
-        slantLeft: musicBox.slantLeft
-        slantRight: musicBox.slantRight
-        tooltipHeight: musicBox.tooltipHeight
-        collapsedCoreWidth: musicBox.tooltipCollapsedWidth
-        expandedCoreWidth: musicBox.tooltipExpandedWidth
-        topOffset: musicBox.tooltipTopOffset
-        rightOffset: musicBox.tooltipRightOffset
-
-        Item {
-            id: containerWrapper
-            anchors.fill: parent
-            readonly property real slantRatio: musicTooltip.tooltipSlantWidth / musicTooltip.tooltipHeight
-
-            // 1. TRACK DETAILS
-            Item {
-                id: trackCard
-                y: 28
-                x: musicTooltip.slantX(y) + 36
-                width: musicTooltip.width - musicTooltip.tooltipSlantWidth - 48
-                height: 95
-
-                SlantedBox {
-                    anchors.fill: parent
-                    slantLeft: musicTooltip.slantLeft
-                    slantRight: musicTooltip.slantRight
-                    slantWidth: parent.height * containerWrapper.slantRatio
-                    borderColor: themeBase05
-                    color: "transparent"
-                }
-
-                Column {
-                    anchors.centerIn: parent
-                    width: parent.width - (parent.height * containerWrapper.slantRatio) - 20
-                    spacing: 4
-
-                    Text {
-                        width: parent.width
-                        text: musicBox.tooltipTitle
-                        font.family: themeFontFamily; font.pixelSize: 17; font.bold: true; color: themeBase05
-                        horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight
-                    }
-                    Text {
-                        width: parent.width
-                        text: musicBox.tooltipArtist
-                        font.family: themeFontFamily; font.pixelSize: 14; color: themeBase05; opacity: 0.8
-                        horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight
-                    }
-                    Text {
-                        width: parent.width
-                        visible: musicBox.tooltipAlbum !== ""
-                        text: musicBox.tooltipAlbum
-                        font.family: themeFontFamily; font.pixelSize: 12; color: themeBase05; opacity: 0.6
-                        horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight
-                    }
-                }
-            }
-
-            // 2. SEEK SLIDER
-            Row {
-                y: 135
-                x: musicTooltip.slantX(y) + 24
-                width: musicTooltip.width - musicTooltip.tooltipSlantWidth - 48
-                spacing: 8
-
-                Text { text: musicBox.formatTime(musicBox.elapsedSeconds); font.family: themeFontFamily; font.pixelSize: 12; color: themeBase05; anchors.verticalCenter: parent.verticalCenter }
-
-                Slider {
-                    id: seekSlider
-                    width: parent.width - 90
-                    anchors.verticalCenter: parent.verticalCenter
-                    enabled: musicBox.playerAvailable && musicBox.activePlayer.canSeek && musicBox.activePlayer.positionSupported
-                    from: 0; to: musicBox.totalSeconds > 0 ? musicBox.totalSeconds : 100
-                    value: musicBox.elapsedSeconds
-
-                    background: SlantedBox {
-                        implicitHeight: 8; slantLeft: musicTooltip.slantLeft; slantRight: musicTooltip.slantRight; slantWidth: 10
-                        color: themeBase03; borderColor: "transparent"
-                        SlantedBox {
-                            height: parent.height
-                            width: Math.max(0, seekSlider.visualPosition * parent.width)
-                            slantLeft: musicTooltip.slantLeft; slantRight: musicTooltip.slantRight; slantWidth: 10
-                            color: themeBase05; borderColor: "transparent"
-                        }
-                    }
-                    handle: SlantedBox {
-                        width: 14; height: 14
-                        x: seekSlider.leftPadding + seekSlider.visualPosition * (seekSlider.availableWidth - width)
-                        y: seekSlider.topPadding + seekSlider.availableHeight / 2 - height / 2
-                        slantLeft: musicTooltip.slantLeft; slantRight: musicTooltip.slantRight; slantWidth: 6
-                        color: themeBase05; borderColor: themeBase05
-                    }
-                    onMoved: if (musicBox.activePlayer && musicBox.activePlayer.canSeek) musicBox.activePlayer.position = value
-                }
-
-                Text { text: musicBox.formatTime(musicBox.totalSeconds); font.family: themeFontFamily; font.pixelSize: 12; color: themeBase05; anchors.verticalCenter: parent.verticalCenter }
-            }
-
-            // 3. VOLUME SLIDER
-            Row {
-                y: 180
-                x: musicTooltip.slantX(y) + 24
-                width: musicTooltip.width - musicTooltip.tooltipSlantWidth - 48
-                spacing: 8
-
-                Text { text: "VOL"; font.family: themeFontFamily; font.pixelSize: 12; font.bold: true; color: themeBase05; anchors.verticalCenter: parent.verticalCenter }
-
-                Slider {
-                    id: volSlider
-                    width: parent.width - 80
-                    anchors.verticalCenter: parent.verticalCenter
-                    enabled: musicBox.playerAvailable && musicBox.activePlayer.volumeSupported
-                    from: 0; to: 100
-                    value: musicBox.currentVolume
-                    onMoved: if (musicBox.activePlayer && musicBox.activePlayer.volumeSupported) musicBox.activePlayer.volume = value / 100.0
-
-                    background: SlantedBox {
-                        implicitHeight: 8; slantLeft: musicTooltip.slantLeft; slantRight: musicTooltip.slantRight; slantWidth: 10
-                        color: themeBase03; borderColor: "transparent"
-                        SlantedBox {
-                            height: parent.height
-                            width: Math.max(0, volSlider.visualPosition * parent.width)
-                            slantLeft: musicTooltip.slantLeft; slantRight: musicTooltip.slantRight; slantWidth: 10
-                            color: themeBase05; borderColor: "transparent"
-                        }
-                    }
-                    handle: SlantedBox {
-                        width: 14; height: 14
-                        x: volSlider.leftPadding + volSlider.visualPosition * (volSlider.availableWidth - width)
-                        y: volSlider.topPadding + volSlider.availableHeight / 2 - height / 2
-                        slantLeft: musicTooltip.slantLeft; slantRight: musicTooltip.slantRight; slantWidth: 6
-                        color: themeBase05; borderColor: themeBase05
-                    }
-                }
-
-                Text { text: Math.round(volSlider.value) + "%"; font.family: themeFontFamily; font.pixelSize: 12; color: themeBase05; anchors.verticalCenter: parent.verticalCenter }
-            }
-
-            // 4. PLAYBACK CONTROLS
-            Row {
-                y: 230
-                x: musicTooltip.slantX(y) + 24
-                width: musicTooltip.width - musicTooltip.tooltipSlantWidth - 48
-                spacing: 12
-
-                Item { width: Math.max(0, (parent.width - 324) / 2); height: 40 }
-
-                Rectangle {
-                    width: 96; height: 34; radius: 6
-                    color: themeBase00; border.color: themeBase05; border.width: 1.5
-                    Text { anchors.centerIn: parent; text: "⏮ Prev"; font.bold: true; font.pixelSize: 13; color: themeBase05; opacity: musicBox.playerAvailable && musicBox.activePlayer.canGoPrevious ? 1.0 : 0.4 }
-                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: if (musicBox.activePlayer && musicBox.activePlayer.canGoPrevious) musicBox.activePlayer.previous() }
-                }
-
-                Rectangle {
-                    width: 106; height: 34; radius: 6
-                    color: musicBox.playbackState === "play" ? themeBase05 : themeBase00
-                    border.color: themeBase05; border.width: 1.5
-                    Text { anchors.centerIn: parent; text: musicBox.playbackState === "play" ? "⏸ Pause" : "⏯ Play"; font.bold: true; font.pixelSize: 13; color: musicBox.playbackState === "play" ? themeBase00 : themeBase05 }
-                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: if (musicBox.activePlayer && musicBox.activePlayer.canTogglePlaying) musicBox.activePlayer.togglePlaying() }
-                }
-
-                Rectangle {
-                    width: 96; height: 34; radius: 6
-                    color: themeBase00; border.color: themeBase05; border.width: 1.5
-                    Text { anchors.centerIn: parent; text: "⏭ Next"; font.bold: true; font.pixelSize: 13; color: themeBase05; opacity: musicBox.playerAvailable && musicBox.activePlayer.canGoNext ? 1.0 : 0.4 }
-                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: if (musicBox.activePlayer && musicBox.activePlayer.canGoNext) musicBox.activePlayer.next() }
-                }
-            }
-
-            // 5. UTILITY BUTTONS
-            Row {
-                y: 285
-                x: musicTooltip.slantX(y) + 24
-                width: musicTooltip.width - musicTooltip.tooltipSlantWidth - 48
-                spacing: 12
-
-                Item {
-                    width: {
-                        var totalBtnW = musicBox.confirmDeleteMode ? 240 : 180;
-                        return Math.max(0, (parent.width - totalBtnW) / 2);
-                    }
-                    height: 36
-                }
-
-                Rectangle {
-                    width: 90; height: 32; radius: 6
-                    visible: !musicBox.confirmDeleteMode
-                    color: themeBase00; border.color: themeBase05; border.width: 1.5
-                    Row {
-                        anchors.centerIn: parent; spacing: 5
-                        Text { text: "📂"; font.pixelSize: 13 }
-                        Text { text: "Folder"; font.bold: true; font.pixelSize: 11; color: themeBase05 }
-                    }
-                    MouseArea {
-                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                        onClicked: { musicBox.openMusicDirectory(); musicBox.popupActive = false; }
-                    }
-                }
-
-                Rectangle {
-                    width: musicBox.confirmDeleteMode ? 130 : 84; height: 32; radius: 6
-                    color: musicBox.confirmDeleteMode ? "#ff5555" : themeBase00
-                    border.color: musicBox.confirmDeleteMode ? "#ff5555" : themeBase05
-                    border.width: 1.5
-                    Row {
-                        anchors.centerIn: parent; spacing: 5
-                        Text { text: "🗑️"; font.pixelSize: 13 }
-                        Text { text: musicBox.confirmDeleteMode ? "Confirm?" : "Trash"; font.bold: true; font.pixelSize: 11; color: musicBox.confirmDeleteMode ? "#000" : themeBase05 }
-                    }
-                    MouseArea {
-                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            if (!musicBox.confirmDeleteMode) musicBox.confirmDeleteMode = true;
-                            else { musicBox.trashCurrentTrack(); musicBox.confirmDeleteMode = false; }
-                        }
-                    }
-                }
-
-                Rectangle {
-                    width: 70; height: 32; radius: 6; visible: musicBox.confirmDeleteMode
-                    color: themeBase00; border.color: themeBase05; border.width: 1.5
-                    Text { anchors.centerIn: parent; text: "Cancel"; font.bold: true; font.pixelSize: 11; color: themeBase05 }
-                    MouseArea {
-                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                        onClicked: { musicBox.popupActive = false; musicBox.confirmDeleteMode = false; }
-                    }
-                }
-            }
-
-            // 6. MPRIS WATCH SOURCE TOGGLES
-            RowLayout {
-                y: 335
-                x: musicTooltip.slantX(y) + 24
-                width: musicTooltip.width - musicTooltip.tooltipSlantWidth - 48
-                spacing: 8
-
-                Text {
-                    text: "Sources:"
-                    font.family: themeFontFamily; font.pixelSize: 11; font.bold: true
-                    color: themeBase05
-                }
-
-                Rectangle {
-                    readonly property bool active: (shell && shell.settingsManager) ? shell.settingsManager.mprisWatchLocal : true
-                    width: localTxt.implicitWidth + 14; height: 24; radius: 4
-                    color: active ? themeBase05 : "#222"
-                    border.color: themeBase05; border.width: 1
-                    Text { id: localTxt; anchors.centerIn: parent; text: "🖥️ Local"; font.pixelSize: 10; font.bold: true; color: parent.active ? "#000" : themeBase05 }
-                    MouseArea {
-                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                        onClicked: if (shell && shell.settingsManager) shell.settingsManager.mprisWatchLocal = !shell.settingsManager.mprisWatchLocal
-                    }
-                }
-
-                Rectangle {
-                    readonly property bool active: (shell && shell.settingsManager) ? shell.settingsManager.mprisWatchSpotify : true
-                    width: spotTxt.implicitWidth + 14; height: 24; radius: 4
-                    color: active ? "#1db954" : "#222"
-                    border.color: "#1db954"; border.width: 1
-                    Text { id: spotTxt; anchors.centerIn: parent; text: "🟢 Spotify"; font.pixelSize: 10; font.bold: true; color: parent.active ? "#000" : "#1db954" }
-                    MouseArea {
-                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                        onClicked: if (shell && shell.settingsManager) shell.settingsManager.mprisWatchSpotify = !shell.settingsManager.mprisWatchSpotify
-                    }
-                }
-
-                Rectangle {
-                    readonly property bool active: (shell && shell.settingsManager) ? shell.settingsManager.mprisWatchBrowser : true
-                    width: browTxt.implicitWidth + 14; height: 24; radius: 4
-                    color: active ? themeBase0C : "#222"
-                    border.color: themeBase0C; border.width: 1
-                    Text { id: browTxt; anchors.centerIn: parent; text: "🌐 Browser"; font.pixelSize: 10; font.bold: true; color: parent.active ? "#000" : themeBase0C }
-                    MouseArea {
-                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                        onClicked: if (shell && shell.settingsManager) shell.settingsManager.mprisWatchBrowser = !shell.settingsManager.mprisWatchBrowser
-                    }
-                }
-            }
-        }
-    }
+if (musicBox.activePlayer && musicBox.activePlayer.canGoNext) {
+musicBox.activePlayer.next();
+}
+}
+implicitWidth: Math.max(180, musicText.implicitWidth + bg.leftPadding + bg.rightPadding + 16)
+width: implicitWidth
+height: parent ? parent.height : 40
+SlantedBox {
+id: bg
+anchors.fill: parent
+slantLeft: musicBox.slantLeft
+slantRight: musicBox.slantRight
+slantWidth: musicBox.slantWidth
+}
+Text {
+id: musicText
+anchors.fill: parent
+anchors.leftMargin: bg.leftPadding
+anchors.rightMargin: bg.rightPadding
+anchors.topMargin: 2
+anchors.bottomMargin: 2
+color: themeBase05
+text: musicBox.trackStr
+font.family: themeFontFamily
+font.pixelSize: themeFontSize
+font.bold: true
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter
+elide: Text.ElideRight
+clip: true
+}
+TapHandler {
+onTapped: {
+musicBox.popupActive = !musicBox.popupActive;
+if (!musicBox.popupActive) musicBox.confirmDeleteMode = false;
+else if (musicBox.activePlayer) musicBox.activePlayer.positionChanged();
+}
+}
+SlantedTooltip {
+id: musicTooltip
+moduleItem: musicBox
+barWindow: musicBox.barWindow
+tooltipActive: musicBox.popupActive
+alignSide: "Left"
+pin: musicBox.popupActive
+slantLeft: musicBox.slantLeft
+slantRight: musicBox.slantRight
+tooltipHeight: musicBox.tooltipHeight
+collapsedCoreWidth: musicBox.tooltipCollapsedWidth
+expandedCoreWidth: musicBox.tooltipExpandedWidth
+topOffset: musicBox.tooltipTopOffset
+rightOffset: musicBox.tooltipRightOffset
+Item {
+id: containerWrapper
+anchors.fill: parent
+readonly property real slantRatio: musicTooltip.tooltipSlantWidth / musicTooltip.tooltipHeight
+// 1. TRACK DETAILS
+Item {
+id: trackCard
+y: 28
+x: musicTooltip.slantX(y) + 36
+width: musicTooltip.width - musicTooltip.tooltipSlantWidth - 48
+height: 95
+SlantedBox {
+anchors.fill: parent
+slantLeft: musicTooltip.slantLeft
+slantRight: musicTooltip.slantRight
+slantWidth: parent.height * containerWrapper.slantRatio
+borderColor: themeBase05
+color: "transparent"
+}
+Column {
+anchors.centerIn: parent
+width: parent.width - (parent.height * containerWrapper.slantRatio) - 20
+spacing: 4
+Text {
+width: parent.width
+text: musicBox.tooltipTitle
+font.family: themeFontFamily; font.pixelSize: 17; font.bold: true; color: themeBase05
+horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight
+}
+Text {
+width: parent.width
+text: musicBox.tooltipArtist
+font.family: themeFontFamily; font.pixelSize: 14; color: themeBase05; opacity: 0.8
+horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight
+}
+Text {
+width: parent.width
+visible: musicBox.tooltipAlbum !== ""
+text: musicBox.tooltipAlbum
+font.family: themeFontFamily; font.pixelSize: 12; color: themeBase05; opacity: 0.6
+horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight
+}
+}
+}
+// 2. SEEK SLIDER
+Row {
+y: 135
+x: musicTooltip.slantX(y) + 24
+width: musicTooltip.width - musicTooltip.tooltipSlantWidth - 48
+spacing: 8
+Text { text: musicBox.formatTime(musicBox.elapsedSeconds); font.family: themeFontFamily; font.pixelSize: 12; color: themeBase05; anchors.verticalCenter: parent.verticalCenter }
+Slider {
+id: seekSlider
+width: parent.width - 90
+anchors.verticalCenter: parent.verticalCenter
+enabled: musicBox.playerAvailable && musicBox.activePlayer.canSeek && musicBox.activePlayer.positionSupported
+from: 0; to: musicBox.totalSeconds > 0 ? musicBox.totalSeconds : 100
+value: musicBox.elapsedSeconds
+background: SlantedBox {
+implicitHeight: 8; slantLeft: musicTooltip.slantLeft; slantRight: musicTooltip.slantRight; slantWidth: 10
+color: themeBase03; borderColor: "transparent"
+SlantedBox {
+height: parent.height
+width: Math.max(0, seekSlider.visualPosition * parent.width)
+slantLeft: musicTooltip.slantLeft; slantRight: musicTooltip.slantRight; slantWidth: 10
+color: themeBase05; borderColor: "transparent"
+}
+}
+handle: SlantedBox {
+width: 14; height: 14
+x: seekSlider.leftPadding + seekSlider.visualPosition * (seekSlider.availableWidth - width)
+y: seekSlider.topPadding + seekSlider.availableHeight / 2 - height / 2
+slantLeft: musicTooltip.slantLeft; slantRight: musicTooltip.slantRight; slantWidth: 6
+color: themeBase05; borderColor: themeBase05
+}
+onMoved: if (musicBox.activePlayer && musicBox.activePlayer.canSeek) musicBox.activePlayer.position = value
+}
+Text { text: musicBox.formatTime(musicBox.totalSeconds); font.family: themeFontFamily; font.pixelSize: 12; color: themeBase05; anchors.verticalCenter: parent.verticalCenter }
+}
+// 3. VOLUME SLIDER
+Row {
+y: 180
+x: musicTooltip.slantX(y) + 24
+width: musicTooltip.width - musicTooltip.tooltipSlantWidth - 48
+spacing: 8
+Text { text: "VOL"; font.family: themeFontFamily; font.pixelSize: 12; font.bold: true; color: themeBase05; anchors.verticalCenter: parent.verticalCenter }
+Slider {
+id: volSlider
+width: parent.width - 80
+anchors.verticalCenter: parent.verticalCenter
+enabled: musicBox.playerAvailable && musicBox.activePlayer.volumeSupported
+from: 0; to: 100
+value: musicBox.currentVolume
+onMoved: if (musicBox.activePlayer && musicBox.activePlayer.volumeSupported) musicBox.activePlayer.volume = value / 100.0
+background: SlantedBox {
+implicitHeight: 8; slantLeft: musicTooltip.slantLeft; slantRight: musicTooltip.slantRight; slantWidth: 10
+color: themeBase03; borderColor: "transparent"
+SlantedBox {
+height: parent.height
+width: Math.max(0, volSlider.visualPosition * parent.width)
+slantLeft: musicTooltip.slantLeft; slantRight: musicTooltip.slantRight; slantWidth: 10
+color: themeBase05; borderColor: "transparent"
+}
+}
+handle: SlantedBox {
+width: 14; height: 14
+x: volSlider.leftPadding + volSlider.visualPosition * (volSlider.availableWidth - width)
+y: volSlider.topPadding + volSlider.availableHeight / 2 - height / 2
+slantLeft: musicTooltip.slantLeft; slantRight: musicTooltip.slantRight; slantWidth: 6
+color: themeBase05; borderColor: themeBase05
+}
+}
+Text { text: Math.round(volSlider.value) + "%"; font.family: themeFontFamily; font.pixelSize: 12; color: themeBase05; anchors.verticalCenter: parent.verticalCenter }
+}
+// 4. PLAYBACK CONTROLS
+Row {
+y: 230
+x: musicTooltip.slantX(y) + 24
+width: musicTooltip.width - musicTooltip.tooltipSlantWidth - 48
+spacing: 12
+Item { width: Math.max(0, (parent.width - 324) / 2); height: 40 }
+Rectangle {
+width: 96; height: 34; radius: 6
+color: themeBase00; border.color: themeBase05; border.width: 1.5
+Text { anchors.centerIn: parent; text: "⏮ Prev"; font.bold: true; font.pixelSize: 13; color: themeBase05; opacity: musicBox.playerAvailable && musicBox.activePlayer.canGoPrevious ? 1.0 : 0.4 }
+MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: if (musicBox.activePlayer && musicBox.activePlayer.canGoPrevious) musicBox.activePlayer.previous() }
+}
+Rectangle {
+width: 106; height: 34; radius: 6
+color: musicBox.playbackState === "play" ? themeBase05 : themeBase00
+border.color: themeBase05; border.width: 1.5
+Text { anchors.centerIn: parent; text: musicBox.playbackState === "play" ? "⏸ Pause" : "⏯ Play"; font.bold: true; font.pixelSize: 13; color: musicBox.playbackState === "play" ? themeBase00 : themeBase05 }
+MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: if (musicBox.activePlayer && musicBox.activePlayer.canTogglePlaying) musicBox.activePlayer.togglePlaying() }
+}
+Rectangle {
+width: 96; height: 34; radius: 6
+color: themeBase00; border.color: themeBase05; border.width: 1.5
+Text { anchors.centerIn: parent; text: "⏭ Next"; font.bold: true; font.pixelSize: 13; color: themeBase05; opacity: musicBox.playerAvailable && musicBox.activePlayer.canGoNext ? 1.0 : 0.4 }
+MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: if (musicBox.activePlayer && musicBox.activePlayer.canGoNext) musicBox.activePlayer.next() }
+}
+}
+// 5. UTILITY BUTTONS
+Row {
+y: 285
+x: musicTooltip.slantX(y) + 24
+width: musicTooltip.width - musicTooltip.tooltipSlantWidth - 48
+spacing: 12
+Item {
+width: {
+var totalBtnW = musicBox.confirmDeleteMode ? 240 : 180;
+return Math.max(0, (parent.width - totalBtnW) / 2);
+}
+height: 36
+}
+Rectangle {
+width: 90; height: 32; radius: 6
+visible: !musicBox.confirmDeleteMode
+color: themeBase00; border.color: themeBase05; border.width: 1.5
+Row {
+anchors.centerIn: parent; spacing: 5
+Text { text: "📂"; font.pixelSize: 13 }
+Text { text: "Folder"; font.bold: true; font.pixelSize: 11; color: themeBase05 }
+}
+MouseArea {
+anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+onClicked: { musicBox.openMusicDirectory(); musicBox.popupActive = false; }
+}
+}
+Rectangle {
+width: musicBox.confirmDeleteMode ? 130 : 84; height: 32; radius: 6
+color: musicBox.confirmDeleteMode ? "#ff5555" : themeBase00
+border.color: musicBox.confirmDeleteMode ? "#ff5555" : themeBase05
+border.width: 1.5
+Row {
+anchors.centerIn: parent; spacing: 5
+Text { text: "🗑️"; font.pixelSize: 13 }
+Text { text: musicBox.confirmDeleteMode ? "Confirm?" : "Trash"; font.bold: true; font.pixelSize: 11; color: musicBox.confirmDeleteMode ? "#000" : themeBase05 }
+}
+MouseArea {
+anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+onClicked: {
+if (!musicBox.confirmDeleteMode) musicBox.confirmDeleteMode = true;
+else { musicBox.trashCurrentTrack(); musicBox.confirmDeleteMode = false; }
+}
+}
+}
+Rectangle {
+width: 70; height: 32; radius: 6; visible: musicBox.confirmDeleteMode
+color: themeBase00; border.color: themeBase05; border.width: 1.5
+Text { anchors.centerIn: parent; text: "Cancel"; font.bold: true; font.pixelSize: 11; color: themeBase05 }
+MouseArea {
+anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+onClicked: { musicBox.popupActive = false; musicBox.confirmDeleteMode = false; }
+}
+}
+}
+// 6. MPRIS WATCH SOURCE TOGGLES
+RowLayout {
+y: 335
+x: musicTooltip.slantX(y) + 24
+width: musicTooltip.width - musicTooltip.tooltipSlantWidth - 48
+spacing: 8
+Text {
+text: "Sources:"
+font.family: themeFontFamily; font.pixelSize: 11; font.bold: true
+color: themeBase05
+}
+Rectangle {
+readonly property bool active: (shell && shell.settingsManager) ? shell.settingsManager.mprisWatchLocal : true
+width: localTxt.implicitWidth + 14; height: 24; radius: 4
+color: active ? themeBase05 : "#222"
+border.color: themeBase05; border.width: 1
+Text { id: localTxt; anchors.centerIn: parent; text: "🖥️ Local"; font.pixelSize: 10; font.bold: true; color: parent.active ? "#000" : themeBase05 }
+MouseArea {
+anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+onClicked: if (shell && shell.settingsManager) shell.settingsManager.mprisWatchLocal = !shell.settingsManager.mprisWatchLocal
+}
+}
+Rectangle {
+readonly property bool active: (shell && shell.settingsManager) ? shell.settingsManager.mprisWatchSpotify : true
+width: spotTxt.implicitWidth + 14; height: 24; radius: 4
+color: active ? "#1db954" : "#222"
+border.color: "#1db954"; border.width: 1
+Text { id: spotTxt; anchors.centerIn: parent; text: "🟢 Spotify"; font.pixelSize: 10; font.bold: true; color: parent.active ? "#000" : "#1db954" }
+MouseArea {
+anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+onClicked: if (shell && shell.settingsManager) shell.settingsManager.mprisWatchSpotify = !shell.settingsManager.mprisWatchSpotify
+}
+}
+Rectangle {
+readonly property bool active: (shell && shell.settingsManager) ? shell.settingsManager.mprisWatchBrowser : true
+width: browTxt.implicitWidth + 14; height: 24; radius: 4
+color: active ? themeBase0C : "#222"
+border.color: themeBase0C; border.width: 1
+Text { id: browTxt; anchors.centerIn: parent; text: "🌐 Browser"; font.pixelSize: 10; font.bold: true; color: parent.active ? "#000" : themeBase0C }
+MouseArea {
+anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+onClicked: if (shell && shell.settingsManager) shell.settingsManager.mprisWatchBrowser = !shell.settingsManager.mprisWatchBrowser
+}
+}
+}
+}
+}
 }
