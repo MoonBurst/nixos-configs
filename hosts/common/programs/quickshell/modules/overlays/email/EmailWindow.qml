@@ -194,7 +194,15 @@ PanelWindow {
         stdout: SplitParser {
             splitMarker: "\n"
             onRead: data => {
-                if (data.trim() === "ESC") window.close();
+                if (data.trim() === "ESC") {
+                    if (emailEngine.isComposing) {
+                        // STEP BACK: Close composer, reset focus, consume event
+                        emailEngine.isComposing = false;
+                    } else {
+                        // Otherwise, close the main application window
+                        window.close();
+                    }
+                }
             }
         }
     }
