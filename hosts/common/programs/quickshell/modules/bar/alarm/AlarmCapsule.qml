@@ -1,4 +1,3 @@
-// AlarmCapsule.qml
 import QtQuick
 import QtQuick.Controls 2
 import QtQuick.Layouts 1.15
@@ -65,45 +64,28 @@ Item {
         slantWidth: alarmBox.slantWidth
     }
 
-    // FIXED SINGLE-PASS STARTUP EXECUTION
-    // Runs exactly once at boot time, eliminating infinite path searching loops
     Process {
         id: pwPlayCheckProc
-        running: false
-        command: ["sh", "-c", "export PATH='$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin:$PATH'; command -v pw-play >/dev/null 2>&1 && echo 1 || echo 0"]
+        running: true
+        command: [
+            "sh", "-c",
+            'SCR="' + Quickshell.shellDir + '/modules/bar/alarm/backend/AlarmEngine.lua"; ' +
+            'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
+            '"$CMD" "$SCR" check-player'
+        ]
         stdout: SplitParser {
             onRead: data => { alarmBox.hasPwPlay = (data.trim() === "1"); }
         }
     }
 
-    Component.onCompleted: {
-        pwPlayCheckProc.running = true;
-    }
-
-    // 3-second audio playback with fallback search across directories
     Process {
         id: alarmFetcher
         running: true
         command: [
             "sh", "-c",
-            'SF="$1"; [ ! -f "$SF" ] && echo "No Alarm" && exit 0; ' +
-            'read start total msg < "$SF"; cur=$(date +%s); el=$((cur - start)); rem=$((total - el)); ' +
-            'if [ "$rem" -le 0 ]; then ' +
-            '  notify-send -t 10000 -u critical "Alarm Alert" "$(echo "$msg" | sed \'s/"//g\')"; ' +
-            '  snd="$2"; ' +
-            '  [ ! -f "$snd" ] && snd="$HOME/Documents/communicator.mp3"; ' +
-            '  [ ! -f "$snd" ] && snd="$HOME/Music/communicator.mp3"; ' +
-            '  [ ! -f "$snd" ] && snd=$(find "$HOME" -maxdepth 3 -name "communicator.mp3" 2>/dev/null | head -n 1); ' +
-            '  if [ -n "$snd" ] && [ -f "$snd" ]; then ' +
-            '    (timeout -k 0.5s 3s pw-play --volume 0.5 "$snd" 2>/dev/null || timeout 3s paplay "$snd" 2>/dev/null || true) & ' +
-            '  else ' +
-            '    (timeout 3s speaker-test -t sine -f 800 2>/dev/null || true) & ' +
-            '  fi; ' +
-            '  echo "No Alarm"; rm -f "$SF"; ' +
-            'else ' +
-            '  h=$((rem / 3600)); m=$(((rem % 3600) / 60)); s=$((rem % 60)); ' +
-            '  printf "%02dh %02dm %02ds\\n" $h $m $s; ' +
-            'fi',
+            'SCR="' + Quickshell.shellDir + '/modules/bar/alarm/backend/AlarmEngine.lua"; ' +
+            'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
+            '"$CMD" "$SCR" poll "$1" "$2"',
             "sh",
             alarmBox.stateFile,
             alarmBox.soundPath
@@ -116,7 +98,14 @@ Item {
     Process {
         id: alarmCancelEngine
         running: false
-        command: ["sh", "-c", 'rm -f "$1"; pkill -f "communicator.mp3" 2>/dev/null || true', "sh", alarmBox.stateFile]
+        command: [
+            "sh", "-c",
+            'SCR="' + Quickshell.shellDir + '/modules/bar/alarm/backend/AlarmEngine.lua"; ' +
+            'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
+            '"$CMD" "$SCR" cancel "$1"',
+            "sh",
+            alarmBox.stateFile
+        ]
     }
 
     Process { id: alarmWriteEngine; running: false }
@@ -191,8 +180,17 @@ Item {
         }
 
         if (totalSeconds > 0) {
-            var stateString = currentEpoch + " " + totalSeconds + " \"" + msg + "\"";
-            alarmWriteEngine.command = ["sh", "-c", 'printf "%s\\n" "$1" > "$2"', "sh", stateString, alarmBox.stateFile];
+            alarmWriteEngine.command = [
+                "sh", "-c",
+                'SCR="' + Quickshell.shellDir + '/modules/bar/alarm/backend/AlarmEngine.lua"; ' +
+                'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
+                '"$CMD" "$SCR" save "$1" "$2" "$3" "$4"',
+                "sh",
+                alarmBox.stateFile,
+                currentEpoch.toString(),
+                totalSeconds.toString(),
+                msg
+            ];
             alarmWriteEngine.running = false;
             alarmWriteEngine.running = true;
         }
@@ -326,7 +324,7 @@ Item {
                     var h = parseInt(parts[0], 10);
                     var m = parseInt(parts[1], 10);
                     if (isNaN(h)) h = 12;
-                    if (isNaN(m)) m = 0;
+                    if (isNaN(m)) h = 0;
 
                     if (timeInput.editingHours) {
                         h = isUp ? ((h === 12) ? 1 : h + 1) : ((h === 1) ? 12 : h - 1);

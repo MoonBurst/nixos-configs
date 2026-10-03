@@ -15,27 +15,6 @@ Item {
     property string slantRight: "Right"
     property int slantWidth: netBox.themeSlantWidth
 
-    // ------------------------------------------------------------------
-    // STATIC CHARACTER BUDGET
-    //
-    // Every value on the bar is formatted to a fixed character count, so the
-    // rendered string is always the same length. Nothing shifts, nothing
-    // clips, nothing elides.
-    //
-    // Layout:
-    //   "NET: "          5 chars
-    //   "▼"              1 char
-    //   down speed       6 chars   (e.g. " 0.3Mb", " 9.9Mb", " 1.2Gb")
-    //   " "              1 char
-    //   "▲"              1 char
-    //   up speed         6 chars
-    //   " "              1 char
-    //   ping             6 chars   (e.g. "  12ms", " 999ms", "OFFLIN")
-    //   ─────────────────────────
-    //   TOTAL           27 chars
-    //
-    // Reduced from 320 → 260. Slimmer without clipping.
-    // ------------------------------------------------------------------
     property int staticWidth: 260
 
     readonly property int themePadding: shell?.theme?.globalPadding ?? 12
@@ -75,9 +54,6 @@ Item {
         slantWidth: netBox.slantWidth
     }
 
-    // ------------------------------------------------------------------
-    // Top-N network users engine, inlined as an internal component.
-    // ------------------------------------------------------------------
     Item {
         id: netTop
 
@@ -206,8 +182,6 @@ Item {
             }
         }
 
-        // Fixed-width tooltip formatter: 6 chars, e.g. " 0.3Mb", " 9.9Mb",
-        // " 1.2Gb", " 0.0Mb". Same normalization as the bar.
         function formatBps(bps) {
             if (!bps || bps < 1) return " 0.0Mb";
             var bits = bps * 8;
@@ -235,35 +209,16 @@ Item {
         }
     }
 
+    // Direct invocation without shell overhead
     Process {
         id: netStatsProc
         running: true
-        command: [
-            "sh", "-c",
-            'target=$(ip -4 route show default 2>/dev/null | awk \'/default/ {print $5; exit}\'); ' +
-            '[ -z "$target" ] && target=$(awk \'$2 == "00000000" {print $1; exit}\' /proc/net/route 2>/dev/null); ' +
-            'if [ -z "$target" ] || [ ! -d "/sys/class/net/$target/device" ]; then ' +
-            '  for dev in /sys/class/net/*/device; do ' +
-            '    iface=$(basename $(dirname "$dev")); state=$(cat "/sys/class/net/$iface/operstate" 2>/dev/null); ' +
-            '    if [ "$state" = "up" ]; then target="$iface"; break; fi; ' +
-            '  done; ' +
-            'fi; ' +
-            '[ -z "$target" ] && target=$(ls -1 /sys/class/net/ 2>/dev/null | grep -v "^lo$" | head -n 1); ' +
-            '[ -z "$target" ] && echo "0:0:unknown:unknown:none:none" && exit; ' +
-            'rx=$(cat "/sys/class/net/$target/statistics/rx_bytes" 2>/dev/null || echo 0); ' +
-            'tx=$(cat "/sys/class/net/$target/statistics/tx_bytes" 2>/dev/null || echo 0); ' +
-            'ip=$(ip -4 addr show "$target" 2>/dev/null | awk \'/inet / {print $2; exit}\' | cut -d/ -f1); ' +
-            'speed=$(cat "/sys/class/net/$target/speed" 2>/dev/null || echo ""); ' +
-            'is_wifi=$([ -d "/sys/class/net/$target/wireless" ] || [ -d "/sys/class/net/$target/phy80211" ] && echo "Wi-Fi" || echo "Ethernet"); ' +
-            'printf "%s:%s:%s:%s:%s:%s\\n" "$rx" "$tx" "$target" "$is_wifi" "${ip:-none}" "${speed:-none}"'
-        ]
+        command: ["lua", Quickshell.shellDir + "/modules/bar/network/backend/NetEngine.lua", "stats"]
 
         property real lastDown: 0
         property real lastUp: 0
         property bool isFirstRun: true
 
-        // Fixed-width bar formatter. Always returns exactly 6 characters.
-        // Input is BYTES/sec from the kernel; output is BITS/sec.
         function formatSpeed(bytesPerSec) {
             if (!bytesPerSec || bytesPerSec < 1) return " 0.0Mb";
             var bits = bytesPerSec * 8;
@@ -309,31 +264,22 @@ Item {
         }
     }
 
+    // Direct invocation without shell overhead
     Process {
         id: pingProc
         running: false
-        command: [
-            "sh", "-c",
-            'gw=$(ip route show default 2>/dev/null | awk \'/default/ {print $3; exit}\'); ' +
-            'host="${gw:-1.1.1.1}"; ' +
-            'timeout 1.5s ping -c 1 -W 1 "$host" 2>/dev/null'
-        ]
+        command: ["lua", Quickshell.shellDir + "/modules/bar/network/backend/NetEngine.lua", "ping"]
         stdout: SplitParser {
             onRead: data => {
-                var match = data.match(/time=([0-9.]+)\s*ms/);
-                if (match && match.length >= 2) {
-                    var ms = parseFloat(match[1]);
-                    var s;
-                    if (ms < 1.0) s = "<1ms";
-                    else s = Math.round(ms) + "ms";
+                var clean = data.trim();
+                if (clean.startsWith("OK:")) {
+                    var ms = parseFloat(clean.substring(3));
+                    var s = (ms < 1.0) ? "<1ms" : Math.round(ms) + "ms";
                     while (s.length < 6) s = " " + s;
                     netBox.pingStr = s;
+                } else {
+                    netBox.pingStr = "OFFLINE";
                 }
-            }
-        }
-        onExited: (exitCode) => {
-            if (exitCode !== 0) {
-                netBox.pingStr = "OFFLINE";
             }
         }
     }
@@ -345,9 +291,6 @@ Item {
     Text {
         id: netText
         anchors.fill: parent
-        // Padding trimmed: no extra +4 on either side. The SlantedBox's own
-        // leftPadding/rightPadding (which equals slantWidth + 6) is now the
-        // only horizontal inset.
         anchors.leftMargin: bg.leftPadding
         anchors.rightMargin: bg.rightPadding
         anchors.topMargin: 2

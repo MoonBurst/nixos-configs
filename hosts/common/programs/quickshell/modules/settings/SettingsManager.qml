@@ -61,7 +61,7 @@ Item {
     property int globalFieldHeight: 52
     onGlobalFieldHeightChanged: { standaloneRevision++; queueSave(); }
 
-    property string notesFilePath: Quickshell.env("HOME") + "/Documents/notes.txt"
+    property string notesFilePath: (Quickshell.env("HOME") || "") + "/Documents/notes.txt"
     property int notifVolume: 80
 
     property int notifBaselineY: 350
@@ -75,7 +75,7 @@ Item {
     onAmogusScreenTargetChanged: queueSave()
     property real magnifierDefaultZoom: 8.0
     property int magnifierLensSize: 300
-    property string screenshotSaveDir: Quickshell.env("HOME") + "/Screenshots"
+    property string screenshotSaveDir: (Quickshell.env("HOME") || "") + "/Screenshots"
     property string defaultWatermarkTag: ""
     property int quickshotHistoryLimit: 50
     property string geminiModelName: "gemini-flash-latest"
@@ -84,7 +84,6 @@ Item {
     onDefaultLauncherModeChanged: queueSave()
     property string emailSignature: "\n\n--\nSeekers of light..\nBelieve not in justice...\nBelieve not in truth...\nFor they are empty and inconsistent, as are all things..."
 
-    // MPRIS Watch Sources
     property bool mprisWatchLocal: true
     onMprisWatchLocalChanged: queueSave()
     property bool mprisWatchSpotify: true
@@ -92,7 +91,6 @@ Item {
     property bool mprisWatchBrowser: true
     onMprisWatchBrowserChanged: queueSave()
 
-    // Custom Capsule Config
     property string customCapsuleMode: "static"
     onCustomCapsuleModeChanged: queueSave()
     property string customCapsuleType: "text"
@@ -112,7 +110,6 @@ Item {
     property int customCapsuleImageSize: 28
     onCustomCapsuleImageSizeChanged: queueSave()
 
-    // Notifications
     property string notifBorderColor: ""
     onNotifBorderColorChanged: queueSave()
     property string notifCustomIcon: ""
@@ -180,76 +177,11 @@ Item {
         id: gpuScanner
         running: true
         command: [
-            "python3", "-c",
-            "import os, glob, subprocess, re, json\n" +
-            "nv_info = {}\n" +
-            "try:\n" +
-            "    out = subprocess.check_output(['nvidia-smi', '--query-gpu=index,gpu_name,pci.bus_id', '--format=csv,noheader,nounits'], stderr=subprocess.DEVNULL).decode('utf-8', errors='ignore')\n" +
-            "    for line in out.strip().splitlines():\n" +
-            "        p = [x.strip() for x in line.split(',')]\n" +
-            "        if len(p) >= 3:\n" +
-            "            bus_short = p[2].lower().split(':')[-2] + ':' + p[2].lower().split(':')[-1]\n" +
-            "            nv_info[bus_short] = (p[0], p[1])\n" +
-            "except: pass\n" +
-            "def get_vram_gb(dev_path):\n" +
-            "    try:\n" +
-            "        v = int(open(os.path.join(dev_path, 'mem_info_vram_total')).read().strip())\n" +
-            "        return round(v / 1073741824)\n" +
-            "    except: return 0\n" +
-            "def query_udev_name(cid):\n" +
-            "    subsys, model = '', ''\n" +
-            "    try:\n" +
-            "        out = subprocess.check_output(['udevadm', 'info', '-q', 'property', '-p', f'/sys/class/drm/{cid}/device'], stderr=subprocess.DEVNULL).decode('utf-8', errors='ignore')\n" +
-            "        for line in out.splitlines():\n" +
-            "            if line.startswith('ID_PCI_SUBFSYS_MODEL_FROM_DATABASE='): subsys = line.split('=', 1)[1].strip()\n" +
-            "            elif line.startswith('ID_MODEL_FROM_DATABASE='): model = line.split('=', 1)[1].strip()\n" +
-            "    except: pass\n" +
-            "    val = subsys or model\n" +
-            "    m = re.search(r'\\[(.*?)\\]', val)\n" +
-            "    return m.group(1) if m else val\n" +
-            "def clean_specific_name(raw, vram_gb):\n" +
-            "    if not raw: return 'GPU', 'GPU'\n" +
-            "    name = raw\n" +
-            "    if '7900' in name:\n" +
-            "        name = 'RX 7900 XTX' if vram_gb >= 22 else 'RX 7900 XT'\n" +
-            "    elif '6400' in name or '6500' in name:\n" +
-            "        name = 'RX 6400' if vram_gb <= 4 else 'RX 6500 XT'\n" +
-            "    elif '6600' in name:\n" +
-            "        name = 'RX 6600 XT' if 'xt' in name.lower() else 'RX 6600'\n" +
-            "    elif '6700' in name:\n" +
-            "        name = 'RX 6700 XT'\n" +
-            "    elif '6800' in name:\n" +
-            "        name = 'RX 6800 XT'\n" +
-            "    elif '/' in name:\n" +
-            "        name = name.split('/')[0].strip()\n" +
-            "    short = re.sub(r'^(NVIDIA\\s+GeForce\\s+|NVIDIA\\s+|AMD\\s+Radeon\\s+|Radeon\\s+)', '', name, flags=re.I).strip() or name\n" +
-            "    return name, short\n" +
-            "gpus = []\n" +
-            "for c in sorted(glob.glob('/sys/class/drm/card[0-9]')):\n" +
-            "    cid = os.path.basename(c)\n" +
-            "    dev = os.path.join(c, 'device')\n" +
-            "    if not os.path.isdir(dev): continue\n" +
-            "    vendor, device_id = '', ''\n" +
-            "    try: vendor = open(os.path.join(dev, 'vendor')).read().strip().replace('0x', '').lower()\n" +
-            "    except: pass\n" +
-            "    try: device_id = open(os.path.join(dev, 'device')).read().strip().replace('0x', '').lower()\n" +
-            "    except: pass\n" +
-            "    pci_link = os.path.basename(os.path.realpath(dev)).lower()\n" +
-            "    bus_short = pci_link.split(':')[-2] + ':' + pci_link.split(':')[-1] if ':' in pci_link else ''\n" +
-            "    vram = get_vram_gb(dev)\n" +
-            "    raw_name, nv_idx, is_nv = '', '0', (vendor == '10de')\n" +
-            "    if is_nv and bus_short in nv_info:\n" +
-            "        nv_idx, raw_name = nv_info[bus_short]\n" +
-            "    elif is_nv and nv_info:\n" +
-            "        nv_idx, raw_name = list(nv_info.values())[0]\n" +
-            "    if not raw_name: raw_name = query_udev_name(cid)\n" +
-            "    full_name, short_name = clean_specific_name(raw_name, vram)\n" +
-            "    rnodes = sorted(glob.glob(os.path.join(dev, 'drm', 'renderD*')))\n" +
-            "    render = os.path.basename(rnodes[0]) if rnodes else 'renderD128'\n" +
-            "    is_discrete = is_nv or (vendor == '1002' and vram >= 6)\n" +
-            "    gpus.append({'id': cid, 'vendor': vendor, 'device': device_id, 'name': short_name, 'fullName': full_name, 'render': render, 'nv_index': nv_idx, 'vram_gb': vram, 'is_discrete': is_discrete})\n" +
-            "gpus.sort(key=lambda x: (0 if x.get('is_discrete') else 1, -x.get('vram_gb', 0)))\n" +
-            "print(json.dumps(gpus))\n"
+            "sh", "-c",
+            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$PATH"; ' +
+            'SCR="' + Quickshell.shellDir + '/modules/settings/backend/SettingsEngine.lua"; ' +
+            'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
+            '"$CMD" "$SCR" scan-gpus'
         ]
         stdout: StdioCollector {
             onStreamFinished: {
@@ -300,7 +232,7 @@ Item {
             else if (key === "vramDanger") gpu0VramDanger = num;
         }
         gpuThresholdRevision++;
-        saveToDisk();
+        queueSave();
     }
 
     property string previewWindow: ""
@@ -309,55 +241,43 @@ Item {
 
     function getWindowWidth(idStr, defaultW) {
         var _rev = manager.standaloneRevision;
-        if (standaloneWindows && standaloneWindows[idStr] && standaloneWindows[idStr].width > 0) {
-            return standaloneWindows[idStr].width;
-        }
+        if (standaloneWindows && standaloneWindows[idStr] && standaloneWindows[idStr].width > 0) return standaloneWindows[idStr].width;
+        if (idStr === "settings") return 1040;
         return manager.globalOverlayWidth || defaultW || 840;
     }
 
     function getWindowHeight(idStr, defaultH) {
         var _rev = manager.standaloneRevision;
-        if (standaloneWindows && standaloneWindows[idStr] && standaloneWindows[idStr].height > 0) {
-            return standaloneWindows[idStr].height;
-        }
+        if (standaloneWindows && standaloneWindows[idStr] && standaloneWindows[idStr].height > 0) return standaloneWindows[idStr].height;
+        if (idStr === "settings") return 760;
         return manager.globalOverlayHeight || defaultH || 650;
     }
 
     function getWindowFieldHeight(idStr, defaultFH) {
         var _rev = manager.standaloneRevision;
-        if (standaloneWindows && standaloneWindows[idStr] && standaloneWindows[idStr].fieldHeight > 0) {
-            return standaloneWindows[idStr].fieldHeight;
-        }
+        if (standaloneWindows && standaloneWindows[idStr] && standaloneWindows[idStr].fieldHeight > 0) return standaloneWindows[idStr].fieldHeight;
         return manager.globalFieldHeight || defaultFH || 52;
     }
 
     function getWindowIconSize(idStr, defaultIS) {
         var _rev = manager.standaloneRevision;
-        if (standaloneWindows && standaloneWindows[idStr] && standaloneWindows[idStr].iconSize > 0) {
-            return standaloneWindows[idStr].iconSize;
-        }
+        if (standaloneWindows && standaloneWindows[idStr] && standaloneWindows[idStr].iconSize > 0) return standaloneWindows[idStr].iconSize;
         return defaultIS || 38;
     }
 
     function getWindowImageSize(idStr, defaultIS) {
         var _rev = manager.standaloneRevision;
-        if (standaloneWindows && standaloneWindows[idStr] && standaloneWindows[idStr].imageSize > 0) {
-            return standaloneWindows[idStr].imageSize;
-        }
+        if (standaloneWindows && standaloneWindows[idStr] && standaloneWindows[idStr].imageSize > 0) return standaloneWindows[idStr].imageSize;
         return defaultIS || 80;
     }
 
     function getWindowLoadPolicy(idStr, defaultPolicy) {
         var _rev = manager.standaloneRevision;
-        if (standaloneWindows && standaloneWindows[idStr] && standaloneWindows[idStr].loadPolicy) {
-            return standaloneWindows[idStr].loadPolicy;
-        }
+        if (standaloneWindows && standaloneWindows[idStr] && standaloneWindows[idStr].loadPolicy) return standaloneWindows[idStr].loadPolicy;
         return defaultPolicy || "lazy";
     }
 
-    function setWindowLoadPolicy(idStr, policy) {
-        setWindowProp(idStr, "loadPolicy", policy);
-    }
+    function setWindowLoadPolicy(idStr, policy) { setWindowProp(idStr, "loadPolicy", policy); }
 
     function setWindowProp(idStr, prop, val) {
         var copy = Object.assign({}, standaloneWindows);
@@ -365,25 +285,59 @@ Item {
         copy[idStr][prop] = (typeof val === "number") ? Math.round(val) : val;
         standaloneWindows = copy;
         standaloneRevision++;
-        saveToDisk();
+        queueSave();
+    }
+
+    function applyDimensionsToAll(sourceId) {
+        var w = getWindowWidth(sourceId, 840);
+        var h = getWindowHeight(sourceId, 650);
+        var fh = getWindowFieldHeight(sourceId, 52);
+
+        var allWindows = [
+            "launcher", "calc", "clipboard", "dictionary",
+            "unicode", "notes", "pass", "power", "todo",
+            "gemini", "settings", "web", "email", "amogus", "rng"
+        ];
+
+        var copy = Object.assign({}, standaloneWindows);
+        for (var i = 0; i < allWindows.length; i++) {
+            var id = allWindows[i];
+            if (!copy[id]) copy[id] = {};
+            copy[id].width = w;
+            copy[id].height = h;
+            if (fh > 0) copy[id].fieldHeight = fh;
+        }
+
+        manager.standaloneWindows = copy;
+        manager.globalOverlayWidth = w;
+        manager.globalOverlayHeight = h;
+        manager.globalFieldHeight = fh;
+        standaloneRevision++;
+        queueSave();
+
+        Quickshell.execDetached([
+            "notify-send", "-a", "Settings", "-i", "preferences-desktop",
+            "📐 Overlay Sizing Applied",
+            "Applied " + w + "x" + h + " (Field: " + fh + "px) to all overlay windows."
+        ]);
     }
 
     property string previewCapsule: ""
     property var capsuleDimensions: ({})
     property var capsuleBarWidths: ({})
     property int dimensionsRevision: 0
+    property int barWidthsRevision: 0
 
+    // Fully reactive to dimensionsRevision to guarantee immediate persistence and live resize
     function getCapsuleWidth(idStr) {
-        if (capsuleDimensions && capsuleDimensions[idStr] && capsuleDimensions[idStr].width > 0) {
-            return capsuleDimensions[idStr].width;
-        }
+        var _rev = manager.dimensionsRevision;
+        if (capsuleDimensions && capsuleDimensions[idStr] && capsuleDimensions[idStr].width > 0) return capsuleDimensions[idStr].width;
         return 0;
     }
 
     function getCapsuleHeight(idStr) {
-        if (capsuleDimensions && capsuleDimensions[idStr] && capsuleDimensions[idStr].height > 0) {
-            return capsuleDimensions[idStr].height;
-        }
+        var _rev = manager.dimensionsRevision;
+        if (capsuleDimensions && capsuleDimensions[idStr] && capsuleDimensions[idStr].height > 0) return capsuleDimensions[idStr].height;
         return 0;
     }
 
@@ -393,19 +347,33 @@ Item {
         copy[idStr].width = Math.round(w);
         capsuleDimensions = copy;
         dimensionsRevision++;
-        saveToDisk();
+        queueSave();
     }
 
+    function setCapsuleHeight(idStr, h) {
+        var copy = Object.assign({}, capsuleDimensions);
+        if (!copy[idStr]) copy[idStr] = {};
+        copy[idStr].height = Math.round(h);
+        capsuleDimensions = copy;
+        dimensionsRevision++;
+        queueSave();
+    }
+
+    // Fully reactive to barWidthsRevision
     function getCapsuleBarWidth(idStr) {
+        var _rev = manager.barWidthsRevision;
         if (capsuleBarWidths && capsuleBarWidths[idStr] > 0) return capsuleBarWidths[idStr];
         return 0;
     }
+
     function setCapsuleBarWidth(idStr, w) {
         var copy = Object.assign({}, capsuleBarWidths);
         copy[idStr] = Math.round(w);
         capsuleBarWidths = copy;
-        saveToDisk();
+        barWidthsRevision++;
+        queueSave();
     }
+
     function moveToSection(capsuleId, targetSection) {
         barLeftModules = (barLeftModules || []).filter(function(x) { return x !== capsuleId; });
         barCenterModules = (barCenterModules || []).filter(function(x) { return x !== capsuleId; });
@@ -413,15 +381,7 @@ Item {
         if (targetSection === "left") barLeftModules = barLeftModules.concat([capsuleId]);
         else if (targetSection === "right") barRightModules = barRightModules.concat([capsuleId]);
         else barCenterModules = barCenterModules.concat([capsuleId]);
-        saveToDisk();
-    }
-    function setCapsuleHeight(idStr, h) {
-        var copy = Object.assign({}, capsuleDimensions);
-        if (!copy[idStr]) copy[idStr] = {};
-        copy[idStr].height = Math.round(h);
-        capsuleDimensions = copy;
-        dimensionsRevision++;
-        saveToDisk();
+        queueSave();
     }
 
     property var capsuleSlants: ({})
@@ -440,7 +400,7 @@ Item {
         copy[idStr] = slantType;
         capsuleSlants = copy;
         slantRevision++;
-        saveToDisk();
+        queueSave();
     }
 
     property var visibleCapsules: ({
@@ -454,7 +414,7 @@ Item {
         var copy = Object.assign({}, visibleCapsules);
         copy[idStr] = !copy[idStr];
         visibleCapsules = copy;
-        saveToDisk();
+        queueSave();
     }
 
     property var barLeftModules: ["calendar", "music", "alarm", "weather", "unified", "notify"]
@@ -473,7 +433,7 @@ Item {
         if (section === "left") barLeftModules = list;
         else if (section === "center") barCenterModules = list;
         else barRightModules = list;
-        saveToDisk();
+        queueSave();
     }
 
     property int masterVolume: 80
@@ -491,7 +451,7 @@ Item {
 
     Timer {
         id: saveDebounceTimer
-        interval: 100; repeat: false; onTriggered: manager.saveToDisk()
+        interval: 150; repeat: false; onTriggered: manager.saveToDisk()
     }
     function queueSave() { if (manager.isLoaded) saveDebounceTimer.restart(); }
 
@@ -507,7 +467,10 @@ Item {
 
     Process { id: writerProc; running: false }
 
+    // Atomic, foolproof disk persistence
     function saveToDisk() {
+        if (!manager.isLoaded) return;
+
         var data = {
             "useStylix": manager.useStylix,
             "animationsEnabled": manager.animationsEnabled,
@@ -583,28 +546,38 @@ Item {
             "visibleCapsules": manager.visibleCapsules
         };
 
+        var payload = JSON.stringify(data, null, 2);
+
         writerProc.command = [
-            "python3", "-c",
-            "import sys, os\n" +
-            "f_path = os.path.expanduser('~/.config/quickshell/settings.json')\n" +
-            "os.makedirs(os.path.dirname(f_path), exist_ok=True)\n" +
-            "tmp_path = f_path + '.tmp'\n" +
-            "with open(tmp_path, 'w') as f: f.write(sys.argv[1])\n" +
-            "os.replace(tmp_path, f_path)\n",
-            JSON.stringify(data)
+            "sh", "-c",
+            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$PATH"; ' +
+            'mkdir -p "$HOME/.config/quickshell"; ' +
+            'TARGET="$HOME/.config/quickshell/settings.json"; ' +
+            'TMP="$TARGET.tmp.$$"; ' +
+            'printf "%s" "$1" > "$TMP"; ' +
+            'if [ -s "$TMP" ]; then mv -f "$TMP" "$TARGET"; fi; ' +
+            'rm -f "$TMP"',
+            "sh",
+            payload
         ];
+        writerProc.running = false;
         writerProc.running = true;
     }
 
+    // Reliable whole-stream configuration loader
     Process {
         id: loaderProc
         running: true
         command: ["sh", "-c", "F=\"$HOME/.config/quickshell/settings.json\"; [ -f \"$F\" ] && cat \"$F\" || echo '{}'"]
-        stdout: SplitParser {
-            splitMarker: ""
-            onRead: raw => {
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var raw = text ? text.trim() : "";
+                if (!raw || raw === "") {
+                    manager.isLoaded = true;
+                    return;
+                }
                 try {
-                    var obj = JSON.parse(raw.trim());
+                    var obj = JSON.parse(raw);
                     if (obj.useStylix !== undefined) manager.useStylix = obj.useStylix;
                     if (obj.animationsEnabled !== undefined) manager.animationsEnabled = obj.animationsEnabled;
                     if (obj.slantStyleMode !== undefined) manager.slantStyleMode = obj.slantStyleMode;
@@ -699,10 +672,22 @@ Item {
                         manager.barCenterModules = cList;
                     }
 
-                    if (obj.capsuleSlants) manager.capsuleSlants = obj.capsuleSlants;
-                    if (obj.capsuleDimensions) manager.capsuleDimensions = obj.capsuleDimensions;
-                    if (obj.capsuleBarWidths) manager.capsuleBarWidths = obj.capsuleBarWidths;
-                    if (obj.standaloneWindows) manager.standaloneWindows = obj.standaloneWindows;
+                    if (obj.capsuleSlants) {
+                        manager.capsuleSlants = obj.capsuleSlants;
+                        manager.slantRevision++;
+                    }
+                    if (obj.capsuleDimensions) {
+                        manager.capsuleDimensions = obj.capsuleDimensions;
+                        manager.dimensionsRevision++;
+                    }
+                    if (obj.capsuleBarWidths) {
+                        manager.capsuleBarWidths = obj.capsuleBarWidths;
+                        manager.barWidthsRevision++;
+                    }
+                    if (obj.standaloneWindows) {
+                        manager.standaloneWindows = obj.standaloneWindows;
+                        manager.standaloneRevision++;
+                    }
                     if (obj.visibleCapsules) manager.visibleCapsules = obj.visibleCapsules;
 
                     if (obj.masterVolume !== undefined) manager.masterVolume = obj.masterVolume;
@@ -711,7 +696,9 @@ Item {
                     if (obj.notificationsEnabled !== undefined) manager.notificationsEnabled = obj.notificationsEnabled;
                     if (obj.notifHoldDurationSec !== undefined) manager.notifHoldDurationSec = obj.notifHoldDurationSec;
                     if (obj.enableTts !== undefined) manager.enableTts = obj.enableTts;
-                } catch(e) {}
+                } catch(e) {
+                    console.warn("[SettingsManager] Parse error on load: " + e);
+                }
                 manager.isLoaded = true;
             }
         }
@@ -724,37 +711,12 @@ Item {
         if (!baseKey.startsWith("base")) baseKey = "base05";
 
         stylixSaverProc.command = [
-            "python3", "-c",
-            "import os, re, sys, subprocess\n" +
-            "prop = sys.argv[1]\n" +
-            "hex_val = sys.argv[2]\n" +
-            "clean_hex = hex_val.replace('#', '')\n" +
-            "theme_nix = os.path.expanduser(sys.argv[3])\n" +
-            "theme_qml = os.path.expanduser(sys.argv[4])\n" +
-            "updated_nix = False\n" +
-            "if os.path.isfile(theme_nix):\n" +
-            "    try:\n" +
-            "        with open(theme_nix, 'r') as f: content = f.read()\n" +
-            "        new_content = re.sub(r'(' + prop + r'\\s*=\\s*\"#?)[^\"]+(\";)', r'\\g<1>' + clean_hex + r'\\g<2>', content)\n" +
-            "        if new_content != content:\n" +
-            "            with open(theme_nix, 'w') as f: f.write(new_content)\n" +
-            "            updated_nix = True\n" +
-            "    except Exception as e: pass\n" +
-            "updated_qml = False\n" +
-            "if os.path.isfile(theme_qml):\n" +
-            "    try:\n" +
-            "        with open(theme_qml, 'r') as f: qcontent = f.read()\n" +
-            "        new_qcontent = re.sub(r'(property\\s+color\\s+' + prop + r'\\s*:\\s*\")[^\"]+(\")', r'\\g<1>#' + clean_hex + r'\\g<2>', qcontent)\n" +
-            "        if new_qcontent != qcontent:\n" +
-            "            with open(theme_qml, 'w') as f: f.write(new_qcontent)\n" +
-            "            updated_qml = True\n" +
-            "    except Exception as e: pass\n" +
-            "msg = f'Saved {prop} (#{clean_hex})'\n" +
-            "if updated_nix and updated_qml: detail = 'Updated theme.nix and Theme.qml'\n" +
-            "elif updated_nix: detail = 'Updated theme.nix'\n" +
-            "elif updated_qml: detail = 'Updated Theme.qml'\n" +
-            "else: detail = f'Saved locally ({theme_nix} not found)'\n" +
-            "subprocess.run(['notify-send', '-a', 'Settings', '💾 Saved to Stylix', f'{msg}: {detail}'])\n",
+            "sh", "-c",
+            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$PATH"; ' +
+            'SCR="' + Quickshell.shellDir + '/modules/settings/backend/SettingsEngine.lua"; ' +
+            'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
+            '"$CMD" "$SCR" save-stylix "$1" "$2" "$3" "$4"',
+            "sh",
             baseKey,
             hexStr,
             manager.nixThemeFile,

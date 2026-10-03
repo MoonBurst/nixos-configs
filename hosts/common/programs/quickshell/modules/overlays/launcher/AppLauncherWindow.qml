@@ -8,7 +8,7 @@ import "./backend" as Backend
 import "./frontend" as Frontend
 
 PanelWindow {
-    id: window
+    id: launcherWindow
 
     property string windowId: "launcher"
     readonly property string defaultPolicy: "eager"
@@ -28,11 +28,17 @@ PanelWindow {
     property bool isOpenState: false
     visible: isOpenState || isPreviewMode
 
+    property bool isCardActive: true
+
+    // Focused: base03 | Off-focus: base0D
+    readonly property color activeBorderColor: (theme && theme.base03) ? theme.base03 : "#003399"
+    readonly property color inactiveBorderColor: (theme && theme.base0D) ? theme.base0D : "#003399"
+
     property bool inGracePeriod: false
     Timer {
         id: graceTimer
         repeat: false
-        onTriggered: { window.inGracePeriod = false; }
+        onTriggered: { launcherWindow.inGracePeriod = false; }
     }
 
     onIsOpenStateChanged: {
@@ -53,10 +59,9 @@ PanelWindow {
 
     readonly property bool isUiActive: shouldKeepLoaded || isOpenState || isPreviewMode || inGracePeriod
 
-    // High-priority focus timer ensures instant keyboard focus upon opening
     Timer {
         id: focusTimer
-        interval: 30
+        interval: 50
         repeat: false
         onTriggered: {
             if (viewLoader.item && typeof viewLoader.item.clearAndFocus === "function") {
@@ -68,8 +73,9 @@ PanelWindow {
     onVisibleChanged: {
         if (visible && !isPreviewMode) {
             if (safeShell && typeof safeShell.closeOtherOverlays === "function") {
-                safeShell.closeOtherOverlays(window);
+                safeShell.closeOtherOverlays(launcherWindow);
             }
+            launcherWindow.isCardActive = true;
             launcherEngine.scan();
             focusTimer.restart();
         }
@@ -77,37 +83,85 @@ PanelWindow {
 
     WlrLayershell.namespace: "quickshell-applauncher"
     WlrLayershell.layer: isPreviewMode ? WlrLayer.Top : WlrLayer.Overlay
-    // Exclusive focus routes keyboard input immediately upon opening; None in preview mode so Inspector stays interactive
-    WlrLayershell.keyboardFocus: (visible && !isPreviewMode) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: {
+        if (!visible || isPreviewMode) return WlrKeyboardFocus.None;
+        return launcherWindow.isCardActive ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None;
+    }
 
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
 
-    mask: isPreviewMode ? previewMask : null
-    Region { id: previewMask; item: card }
+    mask: launcherWindow.isCardActive ? null : cardMaskRegion
+    Region { id: cardMaskRegion; item: card }
 
     function open() {
         if (safeShell && safeShell.sessionLock && safeShell.sessionLock.locked) return;
+        launcherWindow.isCardActive = true;
         isOpenState = true;
         focusTimer.restart();
     }
+
+    function activateCard() {
+        launcherWindow.isCardActive = true;
+        focusTimer.restart();
+    }
+
     function close() {
         isOpenState = false;
+        launcherWindow.isCardActive = false;
         if (settingsManager && settingsManager.previewWindow === windowId) {
             settingsManager.previewWindow = "";
         }
     }
+
     function toggle() { if (isOpenState) close(); else open(); }
 
     IpcHandler {
         target: "launcher"
-        function toggle(): void { window.toggle(); }
-        function open(): void { window.open(); }
-        function close(): void { window.close(); }
+        function toggle(): void { launcherWindow.toggle(); }
+        function open(): void { launcherWindow.open(); }
+        function close(): void { launcherWindow.close(); }
+    }
+
+    // Background listener for Escape: catches Escape globally while Launcher is open, even when unfocused
+    Process {
+        id: escWatcher
+        running: launcherWindow.isOpenState && !launcherWindow.isPreviewMode
+        command: [
+            "python3", "-u", "-c",
+            "import glob, struct, select, sys\n" +
+            "fds = []\n" +
+            "for dev in glob.glob('/dev/input/by-id/*-event-kbd') + glob.glob('/dev/input/event*'):\n" +
+            "    try:\n" +
+            "        fds.append(open(dev, 'rb', buffering=0))\n" +
+            "    except Exception:\n" +
+            "        pass\n" +
+            "if not fds:\n" +
+            "    sys.exit(0)\n" +
+            "fmt = 'llHHi' if struct.calcsize('l') == 8 else 'iiHHi'\n" +
+            "sz = struct.calcsize(fmt)\n" +
+            "while True:\n" +
+            "    r, _, _ = select.select(fds, [], [])\n" +
+            "    for fd in r:\n" +
+            "        try:\n" +
+            "            d = fd.read(sz)\n" +
+            "            if len(d) == sz:\n" +
+            "                _, _, t, code, val = struct.unpack(fmt, d)\n" +
+            "                if t == 1 and code == 1 and val == 1:\n" +
+            "                    print('ESC', flush=True)\n" +
+            "        except Exception:\n" +
+            "            pass\n"
+        ]
+        stdout: SplitParser {
+            splitMarker: "\n"
+            onRead: data => {
+                if (data.trim() === "ESC") launcherWindow.close();
+            }
+        }
     }
 
     function routeTo(target, param) {
-        window.close();
+        launcherWindow.close();
         if (safeShell) {
             switch (target) {
                 case "settings": if (safeShell.settingsWindow) safeShell.settingsWindow.open(); return;
@@ -133,10 +187,39 @@ PanelWindow {
         ]);
     }
 
+    // Multi-screen click-off detector
+    Variants {
+        model: Quickshell.screens
+        delegate: PanelWindow {
+            id: otherScreenCatcher
+            required property var modelData
+            screen: modelData
+
+            visible: launcherWindow.isOpenState && launcherWindow.isCardActive && !launcherWindow.isPreviewMode && (modelData !== launcherWindow.screen)
+
+            WlrLayershell.namespace: "quickshell-launcher-dismiss"
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+
+            anchors { top: true; bottom: true; left: true; right: true }
+            color: "transparent"
+
+            MouseArea {
+                anchors.fill: parent
+                onPressed: {
+                    launcherWindow.isCardActive = false;
+                }
+            }
+        }
+    }
+
+    // Same-screen click-off detector
     MouseArea {
         anchors.fill: parent
-        enabled: !window.isPreviewMode
-        onClicked: window.close()
+        enabled: launcherWindow.isCardActive && !launcherWindow.isPreviewMode
+        onPressed: {
+            launcherWindow.isCardActive = false;
+        }
     }
 
     Backend.AppLauncherEngine { id: launcherEngine }
@@ -144,39 +227,68 @@ PanelWindow {
     Rectangle {
         id: card
         anchors.centerIn: parent
-        width: settingsManager ? settingsManager.getWindowWidth(window.windowId, 840) : 840
-        height: settingsManager ? settingsManager.getWindowHeight(window.windowId, 700) : 700
+        width: settingsManager ? settingsManager.getWindowWidth(launcherWindow.windowId, 840) : 840
+        height: settingsManager ? settingsManager.getWindowHeight(launcherWindow.windowId, 700) : 700
         radius: theme.defaultCardRadius
         color: theme.base01
-        border.width: theme.globalBorderWidth
-        border.color: theme.base03
+        border.width: (theme && theme.globalBorderWidth !== undefined) ? theme.globalBorderWidth : 3
+
+        // Focused: base03 | Off-focus: base0D
+        border.color: launcherWindow.isCardActive ? launcherWindow.activeBorderColor : launcherWindow.inactiveBorderColor
         clip: true
 
         MouseArea {
             anchors.fill: parent
-            enabled: !window.isPreviewMode
-            preventStealing: true
+            enabled: !launcherWindow.isCardActive && !launcherWindow.isPreviewMode
+            z: 9999
+            cursorShape: Qt.PointingHandCursor
+            onPressed: {
+                launcherWindow.activateCard();
+            }
         }
 
         Loader {
             id: viewLoader
             anchors.fill: parent
-            active: window.isUiActive
+            active: launcherWindow.isUiActive
             sourceComponent: Frontend.AppLauncherView {
                 engine: launcherEngine
-                theme: window.theme
-                onCompleted: window.close()
-                onRouteRequested: (target, param) => window.routeTo(target, param)
+                theme: launcherWindow.theme
+                onCompleted: launcherWindow.close()
+                onRouteRequested: (target, param) => launcherWindow.routeTo(target, param)
             }
             onItemChanged: {
-                if (item && window.isOpenState) item.clearAndFocus();
+                if (item && launcherWindow.isOpenState && launcherWindow.isCardActive) item.clearAndFocus();
+            }
+        }
+
+        Rectangle {
+            anchors.top: parent.top
+            anchors.right: parent.right
+            anchors.margins: 14
+            width: 28; height: 28; radius: 6
+            color: closeHov.hovered ? ((theme && theme.base08 !== undefined) ? theme.base08 : "#ff5555") : "transparent"
+            border.color: (theme && theme.base08 !== undefined) ? theme.base08 : "#ff5555"
+            border.width: 1.5
+            z: 10000
+
+            Text {
+                anchors.centerIn: parent
+                text: "✕"
+                font.bold: true; font.pixelSize: 13
+                color: closeHov.hovered ? ((theme && theme.base00 !== undefined) ? theme.base00 : "#000") : ((theme && theme.base08 !== undefined) ? theme.base08 : "#ff5555")
+            }
+            HoverHandler { id: closeHov }
+            MouseArea {
+                anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                onClicked: launcherWindow.close()
             }
         }
     }
 
     Shortcut {
         sequence: "Escape"
-        enabled: window.visible && !window.isPreviewMode
-        onActivated: window.close()
+        enabled: launcherWindow.visible && !launcherWindow.isPreviewMode
+        onActivated: launcherWindow.close()
     }
 }

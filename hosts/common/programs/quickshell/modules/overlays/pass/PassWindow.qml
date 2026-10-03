@@ -10,32 +10,49 @@ import "./frontend" as Frontend
 
 PanelWindow {
     id: window
-    
+
     property string windowId: "pass"
     readonly property string defaultPolicy: "lazy"
-    
+
     property var shell: null
     readonly property var safeShell: (typeof shell !== "undefined" && shell) ? shell : null
     readonly property var settingsManager: safeShell ? safeShell.settingsManager : null
     readonly property var theme: (safeShell && safeShell.theme) ? safeShell.theme : fallbackTheme
     RootTheme.Theme { id: fallbackTheme }
-    
+
     readonly property string loadPolicy: settingsManager ? settingsManager.getWindowLoadPolicy(windowId, defaultPolicy) : defaultPolicy
     readonly property bool shouldKeepLoaded: loadPolicy === "eager"
-    
+
     screen: (safeShell && safeShell.primaryScreen) ? safeShell.primaryScreen : (Quickshell.screens[0] || null)
-    
+
     readonly property bool isPreviewMode: (settingsManager && settingsManager.previewWindow === windowId)
     property bool isOpenState: false
     visible: isOpenState || isPreviewMode
-    
+
+    property bool isCardActive: true
+
+    // Focused: base03 | Off-focus: base0D
+    readonly property color activeBorderColor: (theme && theme.base03) ? theme.base03 : "#003399"
+    readonly property color inactiveBorderColor: (theme && theme.base0D) ? theme.base0D : "#003399"
+
     property bool inGracePeriod: false
     Timer {
         id: graceTimer
         repeat: false
         onTriggered: { window.inGracePeriod = false; }
     }
-    
+
+    Timer {
+        id: focusTimer
+        interval: 50
+        repeat: false
+        onTriggered: {
+            if (viewLoader.item && typeof viewLoader.item.clearAndFocus === "function") {
+                viewLoader.item.clearAndFocus(window.pendingQuery);
+            }
+        }
+    }
+
     onIsOpenStateChanged: {
         if (isOpenState) {
             graceTimer.stop();
@@ -51,58 +68,140 @@ PanelWindow {
             }
         }
     }
-    
+
     readonly property bool isUiActive: shouldKeepLoaded || isOpenState || isPreviewMode || inGracePeriod
     property string pendingQuery: ""
-    
+
     onVisibleChanged: {
         if (visible && !isPreviewMode) {
             if (safeShell && typeof safeShell.closeOtherOverlays === "function") {
                 safeShell.closeOtherOverlays(window);
             }
+            window.isCardActive = true;
             passEngine.reload();
-            if (viewLoader.item) viewLoader.item.clearAndFocus(pendingQuery);
+            focusTimer.restart();
         }
     }
-    
+
     WlrLayershell.namespace: "quickshell-pass"
     WlrLayershell.layer: isPreviewMode ? WlrLayer.Top : WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: (visible && !isPreviewMode) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
-    
+    WlrLayershell.keyboardFocus: {
+        if (!visible || isPreviewMode) return WlrKeyboardFocus.None;
+        return window.isCardActive ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None;
+    }
+
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
-    
+
+    mask: window.isCardActive ? null : cardMaskRegion
+    Region { id: cardMaskRegion; item: card }
+
     function open(query) {
         if (safeShell && safeShell.sessionLock && safeShell.sessionLock.locked) return;
         pendingQuery = query || "";
+        window.isCardActive = true;
         isOpenState = true;
         passEngine.reload();
-        if (viewLoader.item) viewLoader.item.clearAndFocus(pendingQuery);
+        focusTimer.restart();
     }
+
+    function activateCard() {
+        window.isCardActive = true;
+        focusTimer.restart();
+    }
+
     function close() {
         isOpenState = false;
+        window.isCardActive = false;
         pendingQuery = "";
         if (settingsManager && settingsManager.previewWindow === windowId) {
             settingsManager.previewWindow = "";
         }
     }
+
     function toggle() { if (isOpenState) close(); else open(); }
-    
+
     IpcHandler {
         target: "pass"
         function toggle(): void { window.toggle(); }
         function open(query: string): void { window.open(query); }
         function close(): void { window.close(); }
     }
-    
+
+    // Background listener for Escape: catches Escape globally while Pass is open, even when unfocused
+    Process {
+        id: escWatcher
+        running: window.isOpenState && !window.isPreviewMode
+        command: [
+            "python3", "-u", "-c",
+            "import glob, struct, select, sys\n" +
+            "fds = []\n" +
+            "for dev in glob.glob('/dev/input/by-id/*-event-kbd') + glob.glob('/dev/input/event*'):\n" +
+            "    try:\n" +
+            "        fds.append(open(dev, 'rb', buffering=0))\n" +
+            "    except Exception:\n" +
+            "        pass\n" +
+            "if not fds:\n" +
+            "    sys.exit(0)\n" +
+            "fmt = 'llHHi' if struct.calcsize('l') == 8 else 'iiHHi'\n" +
+            "sz = struct.calcsize(fmt)\n" +
+            "while True:\n" +
+            "    r, _, _ = select.select(fds, [], [])\n" +
+            "    for fd in r:\n" +
+            "        try:\n" +
+            "            d = fd.read(sz)\n" +
+            "            if len(d) == sz:\n" +
+            "                _, _, t, code, val = struct.unpack(fmt, d)\n" +
+            "                if t == 1 and code == 1 and val == 1:\n" +
+            "                    print('ESC', flush=True)\n" +
+            "        except Exception:\n" +
+            "            pass\n"
+        ]
+        stdout: SplitParser {
+            splitMarker: "\n"
+            onRead: data => {
+                if (data.trim() === "ESC") window.close();
+            }
+        }
+    }
+
+    // Multi-screen click-off detector
+    Variants {
+        model: Quickshell.screens
+        delegate: PanelWindow {
+            id: otherScreenCatcher
+            required property var modelData
+            screen: modelData
+
+            visible: window.isOpenState && window.isCardActive && !window.isPreviewMode && (modelData !== window.screen)
+
+            WlrLayershell.namespace: "quickshell-pass-dismiss"
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+
+            anchors { top: true; bottom: true; left: true; right: true }
+            color: "transparent"
+
+            MouseArea {
+                anchors.fill: parent
+                onPressed: {
+                    window.isCardActive = false;
+                }
+            }
+        }
+    }
+
+    // Same-screen click-off detector
     MouseArea {
         anchors.fill: parent
-        enabled: !window.isPreviewMode
-        onClicked: window.close()
+        enabled: window.isCardActive && !window.isPreviewMode
+        onPressed: {
+            window.isCardActive = false;
+        }
     }
-    
+
     Backend.PassEngine { id: passEngine }
-    
+
     Rectangle {
         id: card
         anchors.centerIn: parent
@@ -110,12 +209,22 @@ PanelWindow {
         height: settingsManager ? settingsManager.getWindowHeight(window.windowId, 600) : 600
         radius: theme.defaultCardRadius
         color: theme.base01
-        border.width: theme.globalBorderWidth
-        border.color: theme.base03
+        border.width: (theme && theme.globalBorderWidth !== undefined) ? theme.globalBorderWidth : 3
+
+        // Focused: base03 | Off-focus: base0D
+        border.color: window.isCardActive ? window.activeBorderColor : window.inactiveBorderColor
         clip: true
-        
-        MouseArea { anchors.fill: parent; preventStealing: true }
-        
+
+        MouseArea {
+            anchors.fill: parent
+            enabled: !window.isCardActive && !window.isPreviewMode
+            z: 9999
+            cursorShape: Qt.PointingHandCursor
+            onPressed: {
+                window.activateCard();
+            }
+        }
+
         Loader {
             id: viewLoader
             anchors.fill: parent
@@ -126,11 +235,34 @@ PanelWindow {
                 onCompleted: window.close()
             }
             onItemChanged: {
-                if (item && window.isOpenState) item.clearAndFocus(window.pendingQuery);
+                if (item && window.isOpenState && window.isCardActive) item.clearAndFocus(window.pendingQuery);
+            }
+        }
+
+        Rectangle {
+            anchors.top: parent.top
+            anchors.right: parent.right
+            anchors.margins: 14
+            width: 28; height: 28; radius: 6
+            color: closeHov.hovered ? ((theme && theme.base08 !== undefined) ? theme.base08 : "#ff5555") : "transparent"
+            border.color: (theme && theme.base08 !== undefined) ? theme.base08 : "#ff5555"
+            border.width: 1.5
+            z: 10000
+
+            Text {
+                anchors.centerIn: parent
+                text: "✕"
+                font.bold: true; font.pixelSize: 13
+                color: closeHov.hovered ? ((theme && theme.base00 !== undefined) ? theme.base00 : "#000") : ((theme && theme.base08 !== undefined) ? theme.base08 : "#ff5555")
+            }
+            HoverHandler { id: closeHov }
+            MouseArea {
+                anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                onClicked: window.close()
             }
         }
     }
-    
+
     SettingsTools.PreviewInspector {
         id: previewInspector
         visible: window.isPreviewMode
@@ -138,20 +270,20 @@ PanelWindow {
         anchors.right: (card.x + card.width + width + 20 > window.width) ? card.left : undefined
         anchors.leftMargin: 20; anchors.rightMargin: 20
         anchors.verticalCenter: card.verticalCenter
-        
+
         windowId: window.windowId
         settingsManager: window.settingsManager
         theme: window.theme
         defaultW: 820; defaultH: 600
-            defaultFH: 52; defaultIS: 32
-                hasField: true; hasIcon: false
-                defaultPolicy: window.defaultPolicy
-                    
-                    onDoneRequested: {
-                        if (settingsManager) settingsManager.previewWindow = "";
-                    }
+        defaultFH: 52; defaultIS: 32
+        hasField: true; hasIcon: false
+        defaultPolicy: window.defaultPolicy
+
+        onDoneRequested: {
+            if (settingsManager) settingsManager.previewWindow = "";
+        }
     }
-    
+
     Shortcut {
         sequence: "Escape"
         enabled: window.visible && !window.isPreviewMode

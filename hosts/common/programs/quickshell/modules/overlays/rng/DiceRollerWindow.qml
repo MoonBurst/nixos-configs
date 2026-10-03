@@ -8,15 +8,15 @@ import "../../settings" as SettingsTools
 
 PanelWindow {
     id: root
-    
+
     property string windowId: "rng"
     property var shell: null
     readonly property var safeShell: (typeof shell !== "undefined" && shell) ? shell : null
     readonly property var settingsManager: safeShell ? safeShell.settingsManager : null
     readonly property var theme: (safeShell && safeShell.theme) ? safeShell.theme : null
-    
+
     property string detectedFocusedScreenName: ""
-    
+
     screen: {
         var target = settingsManager ? settingsManager.rngScreenTarget : "focused";
         if (target === "focused" || target === "") {
@@ -30,44 +30,128 @@ PanelWindow {
         if (found) return found;
         return null;
     }
-    
+
     readonly property bool isPreviewMode: (settingsManager && settingsManager.previewWindow === windowId)
     property bool isOpenState: false
     visible: isOpenState || isPreviewMode
-    
+
+    property bool isCardActive: true
+
+    // Focused: base03 | Off-focus: base0D
+    readonly property color activeBorderColor: (theme && theme.base03) ? theme.base03 : "#003399"
+    readonly property color inactiveBorderColor: (theme && theme.base0D) ? theme.base0D : "#003399"
+
     WlrLayershell.layer: isPreviewMode ? WlrLayer.Top : WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: (visible && !isPreviewMode) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
-    
+    WlrLayershell.keyboardFocus: {
+        if (!visible || isPreviewMode) return WlrKeyboardFocus.None;
+        return root.isCardActive ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None;
+    }
+
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
-    
+
+    mask: root.isCardActive ? null : cardMaskRegion
+    Region { id: cardMaskRegion; item: diceCard }
+
     function openWithTarget() {
         var target = settingsManager ? settingsManager.rngScreenTarget : "focused";
         if (target === "focused" || target === "") {
             focusDetector.running = false;
             focusDetector.running = true;
         }
+        root.isCardActive = true;
         root.isOpenState = true;
     }
-    
+
+    function activateCard() {
+        root.isCardActive = true;
+    }
+
     function toggleWithTarget() {
         if (root.isOpenState) root.close();
         else openWithTarget();
     }
-    
+
     function close() {
         root.isOpenState = false;
+        root.isCardActive = false;
         if (settingsManager && settingsManager.previewWindow === windowId) {
             settingsManager.previewWindow = "";
         }
     }
-    
+
+    // Background listener for Escape: catches Escape globally while Dice/RNG is open, even when unfocused
+    Process {
+        id: escWatcher
+        running: root.isOpenState && !root.isPreviewMode
+        command: [
+            "python3", "-u", "-c",
+            "import glob, struct, select, sys\n" +
+            "fds = []\n" +
+            "for dev in glob.glob('/dev/input/by-id/*-event-kbd') + glob.glob('/dev/input/event*'):\n" +
+            "    try:\n" +
+            "        fds.append(open(dev, 'rb', buffering=0))\n" +
+            "    except Exception:\n" +
+            "        pass\n" +
+            "if not fds:\n" +
+            "    sys.exit(0)\n" +
+            "fmt = 'llHHi' if struct.calcsize('l') == 8 else 'iiHHi'\n" +
+            "sz = struct.calcsize(fmt)\n" +
+            "while True:\n" +
+            "    r, _, _ = select.select(fds, [], [])\n" +
+            "    for fd in r:\n" +
+            "        try:\n" +
+            "            d = fd.read(sz)\n" +
+            "            if len(d) == sz:\n" +
+            "                _, _, t, code, val = struct.unpack(fmt, d)\n" +
+            "                if t == 1 and code == 1 and val == 1:\n" +
+            "                    print('ESC', flush=True)\n" +
+            "        except Exception:\n" +
+            "            pass\n"
+        ]
+        stdout: SplitParser {
+            splitMarker: "\n"
+            onRead: data => {
+                if (data.trim() === "ESC") root.close();
+            }
+        }
+    }
+
+    // Multi-screen click-off detector
+    Variants {
+        model: Quickshell.screens
+        delegate: PanelWindow {
+            id: otherScreenCatcher
+            required property var modelData
+            screen: modelData
+
+            visible: root.isOpenState && root.isCardActive && !root.isPreviewMode && (modelData !== root.screen)
+
+            WlrLayershell.namespace: "quickshell-rng-dismiss"
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+
+            anchors { top: true; bottom: true; left: true; right: true }
+            color: "transparent"
+
+            MouseArea {
+                anchors.fill: parent
+                onPressed: {
+                    root.isCardActive = false;
+                }
+            }
+        }
+    }
+
+    // Same-screen click-off detector
     MouseArea {
         anchors.fill: parent
-        enabled: !root.isPreviewMode
-        onClicked: root.close()
+        enabled: root.isCardActive && !root.isPreviewMode
+        onPressed: {
+            root.isCardActive = false;
+        }
     }
-    
+
     Process {
         id: focusDetector
         command: [
@@ -81,7 +165,7 @@ PanelWindow {
             }
         }
     }
-    
+
     Timer {
         interval: 1500; running: true; repeat: true; triggeredOnStart: true
         onTriggered: {
@@ -89,16 +173,15 @@ PanelWindow {
             if (target === "focused" || target === "") focusDetector.running = true;
         }
     }
-    
+
     readonly property color bgBase: theme ? theme.base01 : "#1e1e2e"
     readonly property color bgCard: theme ? theme.base00 : "#181825"
     readonly property color bgHover: theme ? theme.base02 : "#313244"
-    readonly property color borderColor: theme ? theme.base03 : "#45475a"
     readonly property color textColor: theme ? theme.base05 : "#cdd6f4"
     readonly property color accentColor: theme ? theme.base05 : "#a6e3a1"
     readonly property color altAccent: theme ? theme.base05 : "#f38ba8"
     readonly property color highlightColor: theme ? theme.base05 : "#f9e2af"
-    
+
     property int diceCount: 1
     property int strengthVal: 0
     property int flatModVal: 0
@@ -106,7 +189,7 @@ PanelWindow {
     property int selectedSides: 6
     property string keepMode: "all"
     property int keepCount: 1
-    
+
     property string lastRollType: "None"
     property var lastRolls: []
     property var previewRolls: []
@@ -114,12 +197,12 @@ PanelWindow {
     property real lastAverage: 0.0
     property string coinResult: ""
     property bool showHistoryPanel: false
-    
+
     onDiceCountChanged: root.lastRolls = []
     onSelectedSidesChanged: root.lastRolls = []
-    
+
     ListModel { id: historyModel }
-    
+
     Timer {
         id: marioPartyTimer
         interval: 60; repeat: true
@@ -135,24 +218,24 @@ PanelWindow {
             root.previewRolls = tempPreview;
         }
     }
-    
+
     component NumInput : Rectangle {
         id: numBox
         property int value: 0
         property int minVal: 0
         property int maxVal: 100
         property int step: 1
-        
+
         implicitWidth: 130; implicitHeight: 46
         color: root.bgCard; radius: 8
-        border.width: 1; border.color: root.borderColor
-        
+        border.width: 1; border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+
         RowLayout {
             anchors.fill: parent; anchors.margins: 4; spacing: 4
             Rectangle {
                 width: 32; Layout.fillHeight: true; radius: 6
                 color: upM.containsMouse ? root.bgHover : root.bgBase
-                border.width: 1; border.color: root.borderColor
+                border.width: 1; border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
                 Text { text: "▲"; anchors.centerIn: parent; color: root.highlightColor; font.pixelSize: 14; font.bold: true }
                 MouseArea { id: upM; anchors.fill: parent; hoverEnabled: true; onPressed: { if (numBox.value < numBox.maxVal) numBox.value += numBox.step; } }
             }
@@ -170,13 +253,13 @@ PanelWindow {
             Rectangle {
                 width: 32; Layout.fillHeight: true; radius: 6
                 color: downM.containsMouse ? root.bgHover : root.bgBase
-                border.width: 1; border.color: root.borderColor
+                border.width: 1; border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
                 Text { text: "▼"; anchors.centerIn: parent; color: root.highlightColor; font.pixelSize: 14; font.bold: true }
                 MouseArea { id: downM; anchors.fill: parent; hoverEnabled: true; onPressed: { if (numBox.value > numBox.minVal) numBox.value -= numBox.step; } }
             }
         }
     }
-    
+
     function executeRoll() {
         var sides = selectedSides < 2 ? 2 : selectedSides;
         if (sides === 2) {
@@ -218,38 +301,47 @@ PanelWindow {
         lastRolls = rawRollObjects; lastTotal = sum; lastAverage = keptNum > 0 ? (sum / keptNum) : 0;
         addHistory(lastRollType, lastTotal, lastAverage, rollSummaryStrings.join(", "));
     }
-    
+
     function addHistory(type, total, avg, rollsStr) {
         historyModel.insert(0, {
             "timeStr": Qt.formatDateTime(new Date(), "hh:mm:ss"),
-                            "typeStr": type, "totalVal": total, "avgVal": avg > 0 ? avg.toFixed(2) : "-", "rollsStr": rollsStr
+            "typeStr": type, "totalVal": total, "avgVal": avg > 0 ? avg.toFixed(2) : "-", "rollsStr": rollsStr
         });
         if (historyModel.count > 50) historyModel.remove(50, historyModel.count - 50);
     }
-    
+
     Rectangle {
         id: diceCard
         anchors.centerIn: parent
         width: settingsManager ? settingsManager.getWindowWidth(root.windowId, 580) : 580
         height: settingsManager ? settingsManager.getWindowHeight(root.windowId, 840) : 840
         radius: 16; color: root.bgBase
-        border.width: 3; border.color: root.borderColor
-        
-        MouseArea { anchors.fill: parent; preventStealing: true }
-        
+        border.width: (theme && theme.globalBorderWidth !== undefined) ? theme.globalBorderWidth : 3
+        border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+
+        MouseArea {
+            anchors.fill: parent
+            enabled: !root.isCardActive && !root.isPreviewMode
+            z: 9999
+            cursorShape: Qt.PointingHandCursor
+            onPressed: {
+                root.activateCard();
+            }
+        }
+
         ColumnLayout {
             anchors.fill: parent; anchors.margins: 16; spacing: 12
-            
+
             Rectangle {
                 Layout.fillWidth: true; height: 48; color: root.bgCard; radius: 10
-                border.width: 1; border.color: root.borderColor
+                border.width: 1; border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
                 RowLayout {
                     anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 8
                     Text { text: "🎲 Dice, Coin & RNG"; color: root.highlightColor; font.bold: true; font.pixelSize: 20; Layout.fillWidth: true }
                     Rectangle {
                         width: 110; height: 34; radius: 8
                         color: root.showHistoryPanel ? root.accentColor : (histMouse.containsMouse ? root.bgHover : root.bgBase)
-                        border.width: 1; border.color: root.borderColor
+                        border.width: 1; border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
                         Text { anchors.centerIn: parent; text: root.showHistoryPanel ? "🎲 Roller" : "📜 History"; color: root.showHistoryPanel ? "#11111b" : root.highlightColor; font.bold: true; font.pixelSize: 18 }
                         MouseArea { id: histMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.showHistoryPanel = !root.showHistoryPanel }
                     }
@@ -260,11 +352,11 @@ PanelWindow {
                     }
                 }
             }
-            
+
             ColumnLayout {
                 Layout.fillWidth: true; Layout.fillHeight: true; spacing: 12
                 visible: !root.showHistoryPanel
-                
+
                 RowLayout {
                     Layout.fillWidth: true; spacing: 10
                     ColumnLayout {
@@ -283,10 +375,10 @@ PanelWindow {
                         NumInput { id: flatBox; minVal: -100; maxVal: 100; value: root.flatModVal; Layout.fillWidth: true; onValueChanged: root.flatModVal = value }
                     }
                 }
-                
+
                 Rectangle {
                     Layout.fillWidth: true; height: 52; radius: 10; color: root.bgCard
-                    border.width: 1; border.color: root.borderColor
+                    border.width: 1; border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
                     RowLayout {
                         anchors.fill: parent; anchors.margins: 6; spacing: 6
                         Text { text: "Mode:"; color: root.highlightColor; font.bold: true; font.pixelSize: 16 }
@@ -296,7 +388,7 @@ PanelWindow {
                                 readonly property bool isSelected: root.keepMode === modelData.idStr
                                 Layout.fillWidth: true; height: 40; radius: 8
                                 color: isSelected ? root.bgHover : root.bgBase
-                                border.width: isSelected ? 2 : 1; border.color: isSelected ? root.highlightColor : root.borderColor
+                                border.width: isSelected ? 2 : 1; border.color: isSelected ? root.highlightColor : (root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor)
                                 Text { anchors.centerIn: parent; text: modelData.label; color: root.highlightColor; font.bold: isSelected; font.pixelSize: 15 }
                                 MouseArea { anchors.fill: parent; onClicked: root.keepMode = modelData.idStr }
                             }
@@ -304,7 +396,7 @@ PanelWindow {
                         NumInput { id: keepSpin; visible: root.keepMode !== "all"; minVal: 1; maxVal: Math.max(1, root.diceCount); value: root.keepCount; Layout.preferredWidth: 130; onValueChanged: root.keepCount = value }
                     }
                 }
-                
+
                 GridLayout {
                     Layout.fillWidth: true; columns: 4; rowSpacing: 10; columnSpacing: 10
                     Repeater {
@@ -312,17 +404,17 @@ PanelWindow {
                         delegate: Rectangle {
                             readonly property bool isSelected: root.selectedSides === modelData.sides
                             Layout.fillWidth: true; height: 48; radius: 10; color: root.bgCard
-                            border.width: isSelected ? 3 : 1; border.color: isSelected ? root.highlightColor : root.borderColor
+                            border.width: isSelected ? 3 : 1; border.color: isSelected ? root.highlightColor : (root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor)
                             Text { anchors.centerIn: parent; text: modelData.name; color: isSelected ? root.highlightColor : (modelData.sides === 2 ? root.accentColor : root.highlightColor); font.bold: isSelected; font.pixelSize: 18 }
                             MouseArea { anchors.fill: parent; onClicked: root.selectedSides = modelData.sides }
                         }
                     }
                 }
-                
+
                 Rectangle {
                     readonly property bool isCustomActive: root.selectedSides === root.customSidesVal && root.selectedSides !== 2 && root.selectedSides !== 4 && root.selectedSides !== 6 && root.selectedSides !== 8 && root.selectedSides !== 10 && root.selectedSides !== 12 && root.selectedSides !== 20 && root.selectedSides !== 100
                     Layout.fillWidth: true; height: 56; radius: 10; color: isCustomActive ? root.bgHover : root.bgCard
-                    border.width: isCustomActive ? 3 : 1; border.color: isCustomActive ? root.highlightColor : root.borderColor
+                    border.width: isCustomActive ? 3 : 1; border.color: isCustomActive ? root.highlightColor : (root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor)
                     RowLayout {
                         anchors.fill: parent; anchors.leftMargin: 14; anchors.rightMargin: 14; spacing: 12
                         Text { text: "🎲 Custom Die (d" + root.customSidesVal + "):"; color: root.highlightColor; font.bold: true; font.pixelSize: 18 }
@@ -331,7 +423,7 @@ PanelWindow {
                     }
                     MouseArea { anchors.fill: parent; z: -1; onClicked: root.selectedSides = root.customSidesVal }
                 }
-                
+
                 Rectangle {
                     Layout.fillWidth: true; height: 54; radius: 10
                     color: rollMouse.containsMouse ? root.bgHover : root.bgCard
@@ -347,11 +439,11 @@ PanelWindow {
                     }
                     MouseArea { id: rollMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.executeRoll() }
                 }
-                
+
                 Rectangle {
                     Layout.fillWidth: true; Layout.fillHeight: true; radius: 12; color: root.bgCard
-                    border.width: 1; border.color: root.borderColor
-                    
+                    border.width: 1; border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+
                     ColumnLayout {
                         anchors.fill: parent; anchors.margins: 14; spacing: 8
                         visible: root.lastRolls.length > 0 || root.coinResult !== ""
@@ -377,14 +469,14 @@ PanelWindow {
                                         readonly property string displayVal: typeof modelData.value !== "undefined" ? String(modelData.value) : String(modelData.valStr)
                                         width: Math.max(46, valText.implicitWidth + 16); height: 40; radius: 8
                                         color: isKept ? (displayVal === "Heads" ? root.accentColor : (displayVal === "Tails" ? root.bgHover : root.bgBase)) : root.bgCard
-                                        border.width: 1; border.color: isKept ? root.accentColor : root.borderColor; opacity: isKept ? 1.0 : 0.35
+                                        border.width: 1; border.color: isKept ? root.accentColor : (root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor); opacity: isKept ? 1.0 : 0.35
                                         Text { id: valText; anchors.centerIn: parent; text: displayVal; color: isKept ? (displayVal === "Heads" ? "#11111b" : root.highlightColor) : root.highlightColor; font.bold: isKept; font.strikeout: !isKept; font.pixelSize: 18 }
                                     }
                                 }
                             }
                         }
                     }
-                    
+
                     ColumnLayout {
                         anchors.fill: parent; anchors.margins: 14; spacing: 8
                         visible: root.lastRolls.length === 0 && root.coinResult === ""
@@ -392,7 +484,7 @@ PanelWindow {
                             Layout.fillWidth: true
                             Text { text: "🎲 " + root.diceCount + (root.selectedSides === 2 ? (root.diceCount === 1 ? " Coin" : " Coins") : ("d" + root.selectedSides)) + " (Waiting to roll...)"; color: root.highlightColor; font.pixelSize: 18; opacity: 0.8 }
                             Item { Layout.fillWidth: true }
-                            Text { text: "TOTAL: ?"; color: root.borderColor; font.bold: true; font.pixelSize: 22 }
+                            Text { text: "TOTAL: ?"; color: (root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor); font.bold: true; font.pixelSize: 22 }
                         }
                         ScrollView {
                             id: previewScroll; Layout.fillWidth: true; Layout.fillHeight: true; clip: true
@@ -411,10 +503,10 @@ PanelWindow {
                     }
                 }
             }
-            
+
             Rectangle {
                 Layout.fillWidth: true; Layout.fillHeight: true; radius: 12
-                color: root.bgCard; border.width: 1; border.color: root.borderColor
+                color: root.bgCard; border.width: 1; border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
                 visible: root.showHistoryPanel
                 ColumnLayout {
                     anchors.fill: parent; anchors.margins: 14; spacing: 10
@@ -424,7 +516,7 @@ PanelWindow {
                         Item { Layout.fillWidth: true }
                         Rectangle {
                             width: 140; height: 34; radius: 8; color: clearMouse.containsMouse ? root.altAccent : root.bgBase
-                            border.width: 1; border.color: root.borderColor
+                            border.width: 1; border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
                             Text { anchors.centerIn: parent; text: "Clear History"; color: clearMouse.containsMouse ? "#11111b" : root.highlightColor; font.bold: true; font.pixelSize: 16 }
                             MouseArea { id: clearMouse; anchors.fill: parent; hoverEnabled: true; onClicked: historyModel.clear() }
                         }
@@ -434,7 +526,7 @@ PanelWindow {
                         model: historyModel
                         delegate: Rectangle {
                             width: ListView.view ? ListView.view.width : 0; height: 64; radius: 8; color: root.bgBase
-                            border.width: 1; border.color: root.borderColor
+                            border.width: 1; border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
                             ColumnLayout {
                                 anchors.fill: parent; anchors.margins: 8; spacing: 4
                                 RowLayout {
@@ -452,7 +544,7 @@ PanelWindow {
             }
         }
     }
-    
+
     SettingsTools.PreviewInspector {
         id: previewInspector
         visible: root.isPreviewMode
@@ -460,13 +552,13 @@ PanelWindow {
         settingsManager: root.settingsManager
         theme: root.theme
         defaultW: 580; defaultH: 840
-            hasField: false; hasIcon: false
-            defaultPolicy: "lazy"
-                onDoneRequested: {
-                    if (settingsManager) settingsManager.previewWindow = "";
-                }
+        hasField: false; hasIcon: false
+        defaultPolicy: "lazy"
+        onDoneRequested: {
+            if (settingsManager) settingsManager.previewWindow = "";
+        }
     }
-    
+
     Shortcut {
         sequence: "Escape"
         enabled: root.visible && !root.isPreviewMode

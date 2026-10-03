@@ -22,7 +22,6 @@ Item {
     property string slantRight: "Right"
     property int slantWidth: (shell && shell.theme) ? shell.theme.slantWidth : 12
 
-    // Native Memory & ZRAM Allocation Registers
     property real totalGiB: 0.0
     property real availableGiB: 0.0
     property real effectiveAvailGiB: 0.0
@@ -52,7 +51,6 @@ Item {
         slantWidth: ramBox.slantWidth
     }
 
-    // 1. NATIVE FILE VIEW: TRACKS KERNEL STATS WITH ZERO PROCESS FORKS
     FileView {
         id: meminfoFile
         path: "file:///proc/meminfo"
@@ -64,7 +62,6 @@ Item {
             var mt = 0, ma = 0, st = 0, sf = 0;
             var lines = raw.split("\n");
             
-            // Clean native micro-lexer replaces your old background awk parser block
             for (var i = 0; i < lines.length; i++) {
                 var line = lines[i];
                 if (line.startsWith("MemTotal:")) mt = parseFloat(line.replace(/[^0-9]/g, ""));
@@ -82,7 +79,6 @@ Item {
         }
     }
 
-    // 2. NATIVE FILE VIEW: COMPUTES VIRTUAL ZRAM COMPRESSION METRICS
     FileView {
         id: zramFile
         path: "file:///sys/block/zram0/mm_stat"
@@ -93,8 +89,8 @@ Item {
             
             var tokens = raw.split(/\s+/).filter(t => t !== "");
             if (tokens.length >= 2) {
-                var orig = parseFloat(tokens[0]); // Uncompressed data size
-                var compr = parseFloat(tokens[1]); // Compressed size footprint
+                var orig = parseFloat(tokens[0]);
+                var compr = parseFloat(tokens[1]);
                 
                 if (compr > 0) {
                     ramBox.zramRatio = orig / compr;
@@ -104,15 +100,11 @@ Item {
         }
     }
 
-    // 3. LAZY-LOADED TOP MEMORY CONSUMERS PROBE
-    // Stays completely asleep (running: false) until the user opens the tooltip panel
+    // Direct invocation without shell overhead
     Process {
         id: topProcFetcher
         running: false
-        command: [
-            "sh", "-c",
-            "total_mem=$(awk '/MemTotal/ {print $2/1024}' /proc/meminfo); ps -eo pid,comm,%mem --sort=-%mem | awk -v total=\"$total_mem\" 'NR>1 { pid=$1; cmd=$2; pct=$3; mem_mb = (pct / 100) * total; if (mem_mb > 0) { is_raw = 1; sf = \"/proc/\" pid \"/status\"; while ((getline line < sf) > 0) { if (line ~ /^VmSwap:/) { split(line, a, \"[ \\t]+\"); if (a[2] > 0) is_raw = 0; break; } } close(sf); if (mem_mb >= 1024) { size_str = sprintf(\"%.1fG\", mem_mb/1024) } else { size_str = sprintf(\"%dM\", mem_mb) }; printf \"%s|%d|%-10s %5s %4.1f%%\\n\", pid, is_raw, substr(cmd, 1, 10), size_str, pct; count++ } if (count >= 10) exit }'"
-        ]
+        command: ["lua", Quickshell.shellDir + "/modules/bar/ram/backend/RamEngine.lua"]
         stdout: SplitParser {
             splitMarker: "\n"
             onRead: data => { if (data && data.trim() !== "") ramBox.textAccumulatorBuffer += data + "\n"; }
@@ -245,18 +237,17 @@ Item {
         }
     }
 
-// Static Polling Clock: Synchronizes hardware buffers directly inside memory layout
-Timer {
-id: statsRefreshTimer
-interval: (shell && shell.settingsManager && shell.settingsManager.hardwarePollInterval > 0) ? shell.settingsManager.hardwarePollInterval : 2000
-running: true; repeat: true; triggeredOnStart: true
-onTriggered: {
-meminfoFile.reload();
-zramFile.reload();
-if ((ramHoverTracker.hovered || ramBox.pinTooltip) && !ramTooltip.isHovered) {
-ramBox.textAccumulatorBuffer = "";
-topProcFetcher.running = true;
-}
-}
-}
+    Timer {
+        id: statsRefreshTimer
+        interval: (shell && shell.settingsManager && shell.settingsManager.hardwarePollInterval > 0) ? shell.settingsManager.hardwarePollInterval : 2000
+        running: true; repeat: true; triggeredOnStart: true
+        onTriggered: {
+            meminfoFile.reload();
+            zramFile.reload();
+            if ((ramHoverTracker.hovered || ramBox.pinTooltip) && !ramTooltip.isHovered) {
+                ramBox.textAccumulatorBuffer = "";
+                topProcFetcher.running = true;
+            }
+        }
+    }
 }

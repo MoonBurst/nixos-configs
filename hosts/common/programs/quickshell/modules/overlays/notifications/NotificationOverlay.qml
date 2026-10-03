@@ -1,5 +1,4 @@
 import "../../common/Utils.js" as Utils
-// modules/overlays/notifications/NotificationOverlay.qml
 import QtQuick
 import QtQuick.Controls 2
 import Quickshell
@@ -162,7 +161,6 @@ Item {
         bodyHyperlinksSupported: true
         imageSupported: true
         actionsSupported: true
-        // Set to false to prevent old cached notifications from re-popping on hot-reload/save
         keepOnReload: false
 
         onNotification: function(notification) {
@@ -180,7 +178,7 @@ Item {
         anchors.bottom: true
         anchors.left: false
 
-                screen: {
+        screen: {
             if (shell && shell.settingsManager && shell.settingsManager.notifScreenName !== "") {
                 var found = Quickshell.screens.find(s => s.name === shell.settingsManager.notifScreenName);
                 if (found) return found;
@@ -192,7 +190,8 @@ Item {
                 || null;
         }
 
-        implicitWidth: root.cardWidth + 100
+        // Width matches the card exactly so right margins are 1:1 with screen bounds
+        implicitWidth: root.cardWidth
         color: "transparent"
 
         mask: Region {
@@ -269,7 +268,6 @@ Item {
         }
     }
 
-    
     function triggerPreviewNotification(yPos) {
         if (yPos !== undefined) {
             root.overlaysHeightBaseline = yPos;

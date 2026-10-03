@@ -18,18 +18,14 @@ QtObject {
 
     readonly property Process passCheckProc: Process {
         running: true
-        command: ["sh", "-c", "command -v pass >/dev/null 2>&1 && echo 1 || echo 0"]
+        command: ["lua", Quickshell.shellDir + "/modules/overlays/pass/backend/PassEngine.lua", "check"]
         stdout: SplitParser {
             onRead: data => { engine.hasPass = (data.trim() === "1"); }
         }
     }
 
     readonly property Process listKeysProc: Process {
-        command: [
-            "sh", "-c",
-            'dir="${PASSWORD_STORE_DIR:-$HOME/.password-store}"; [ ! -d "$dir" ] && dir="$HOME/.local/share/pass"; ' +
-            '[ -d "$dir" ] && cd "$dir" && find . -type f -name "*.gpg" | sed "s|^\\./||; s|\\.gpg$||" | sort'
-        ]
+        command: ["lua", Quickshell.shellDir + "/modules/overlays/pass/backend/PassEngine.lua", "list"]
         stdout: SplitParser {
             onRead: data => {
                 var lines = data.trim().split("\n");
@@ -69,11 +65,10 @@ QtObject {
     function decryptAndCopy(key) {
         if (!key) return;
         decryptProc.command = [
-            "sh", "-c",
-            'dir="${PASSWORD_STORE_DIR:-$HOME/.password-store}"; [ ! -d "$dir" ] && dir="$HOME/.local/share/pass"; ' +
-            'PASSWORD_STORE_DIR="$dir" pass -c "$1" >/dev/null 2>&1 && ' +
-            'notify-send -a Pass -u normal -i dialog-password "🔑 Password Copied" "Auto-clearing clipboard in 45s..."',
-            "sh", key
+            "lua",
+            Quickshell.shellDir + "/modules/overlays/pass/backend/PassEngine.lua",
+            "copy",
+            key
         ];
         decryptProc.running = true;
     }

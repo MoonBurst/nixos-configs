@@ -103,11 +103,23 @@ Item {
         function toggle(): void {
             if (!overlayHost.shell.sessionLock.locked && amogusWindowInstance) amogusWindowInstance.toggleWindow();
         }
+        function open(): void {
+            if (!overlayHost.shell.sessionLock.locked && amogusWindowInstance) amogusWindowInstance.showWindow();
+        }
+        function close(): void {
+            if (amogusWindowInstance) amogusWindowInstance.hideWindow();
+        }
     }
     IpcHandler {
         target: "rng"
         function toggle(): void {
             if (!overlayHost.shell.sessionLock.locked && diceRollerWindowInstance) diceRollerWindowInstance.toggleWithTarget();
+        }
+        function open(): void {
+            if (!overlayHost.shell.sessionLock.locked && diceRollerWindowInstance) diceRollerWindowInstance.openWithTarget();
+        }
+        function close(): void {
+            if (diceRollerWindowInstance) diceRollerWindowInstance.close();
         }
     }
     IpcHandler {

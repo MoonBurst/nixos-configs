@@ -1,4 +1,3 @@
-// modules/overlays/notifications/NotificationIPC.qml
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -179,10 +178,36 @@ Item {
         Quickshell.execDetached(["sage-tts", speechText]);
     }
 
-    // SANITIZATION HELPER: Prevents arbitrary Sway command injection from untrusted notification D-Bus metadata
-    function sanitizeForSway(str) {
+    // UNIVERSAL SANITIZER: Whitelists only safe characters, stripping all shell metacharacters
+    function sanitizeIdentifier(str) {
         if (!str) return "";
-        return str.replace(/[^a-zA-Z0-9_\-\.]/g, "");
+        return String(str).replace(/[^a-zA-Z0-9_\-\.]/g, "").trim();
+    }
+
+    // COMPOSITOR-AGNOSTIC FOCUS DISPATCHER (Hyprland, Sway, KDE, Generic Wayland)
+    function dispatchCompositorFocus(appId) {
+        let safeId = sanitizeIdentifier(appId);
+        if (!safeId || safeId.length === 0) return;
+
+        let hyprInstance = Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE");
+        let swaySocket = Quickshell.env("SWAYSOCK");
+
+        if (hyprInstance && hyprInstance.length > 0) {
+            Quickshell.execDetached(["hyprctl", "dispatch", "focuswindow", "class:^(" + safeId + ")$"]);
+        } else if (swaySocket && swaySocket.length > 0) {
+            Quickshell.execDetached(["swaymsg", '[app_id="' + safeId + '"] focus, [class="' + safeId + '"] focus']);
+        } else {
+            // Universal fallback for KDE/KWin, X11, or other window managers
+            Quickshell.execDetached([
+                "sh", "-c",
+                'ID="$1"; ' +
+                'if command -v hyprctl >/dev/null 2>&1 && [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]; then hyprctl dispatch focuswindow "class:^($ID)$" 2>/dev/null; ' +
+                'elif command -v swaymsg >/dev/null 2>&1 && [ -n "$SWAYSOCK" ]; then swaymsg "[app_id=\\"$ID\\"] focus, [class=\\"$ID\\"] focus" 2>/dev/null; ' +
+                'elif command -v kdotool >/dev/null 2>&1; then kdotool search --class "$ID" windowactivate 2>/dev/null; ' +
+                'elif command -v wmctrl >/dev/null 2>&1; then wmctrl -x -a "$ID" 2>/dev/null; fi',
+                "focus-dispatcher", safeId
+            ]);
+        }
     }
 
     function activate(card, summary, body, appName, directNotificationObject) {
@@ -193,14 +218,9 @@ Item {
         let rawTarget = appName || desktopHint || "";
         let cleanBase = rawTarget.replace(/-electron/g, "").replace(/-desktop/g, "").replace("vesktop", "discord");
 
-        let safe1 = sanitizeForSway(rawTarget);
-        let safe2 = sanitizeForSway(cleanBase);
-
-        if (safe1.length > 0 || safe2.length > 0) {
-            let criteria = [];
-            if (safe1.length > 0) criteria.push('[app_id="' + safe1 + '"] focus', '[class="' + safe1 + '"] focus');
-            if (safe2.length > 0 && safe2 !== safe1) criteria.push('[app_id="' + safe2 + '"] focus', '[class="' + safe2 + '"] focus');
-            Quickshell.execDetached(["swaymsg", criteria.join(", ")]);
+        let safeTarget = sanitizeIdentifier(cleanBase.length > 0 ? cleanBase : rawTarget);
+        if (safeTarget.length > 0) {
+            dispatchCompositorFocus(safeTarget);
         }
 
         if (liveNotif && liveNotif.actions && liveNotif.actions.length > 0) {

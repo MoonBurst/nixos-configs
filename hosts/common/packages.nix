@@ -25,7 +25,7 @@
     micro
     vlc
     mpd
-
+    lua
     # --- Archives ---
     zip                         # Zip compression
     unzip                       # Zip extraction

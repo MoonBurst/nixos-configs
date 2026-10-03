@@ -23,7 +23,9 @@ QtObject {
     property bool searchCaseSensitive: false
     property int lastFolderIndex: -1
     property double lastDeleteTime: 0
-    property bool himalayaInstalled: true
+
+    // Automatically checked on startup
+    property bool himalayaInstalled: false
 
     property string mailSignature: (typeof shell !== "undefined" && shell && shell.settingsManager && shell.settingsManager.emailSignature)
         ? shell.settingsManager.emailSignature
@@ -33,8 +35,8 @@ QtObject {
     onSearchCaseSensitiveChanged: filterEmailsByActiveFolder()
 
     Component.onCompleted: {
-        readMailCache();
         checkHimalaya();
+        readMailCache();
     }
 
     function checkHimalaya() {
@@ -42,15 +44,19 @@ QtObject {
         himalayaCheckProc.running = true;
     }
 
+    // Checks both that the binary is in PATH and that an account config exists
     readonly property Process himalayaCheckProc: Process {
         running: true
         command: [
             "sh", "-c",
             'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
-            'command -v himalaya >/dev/null 2>&1 && echo "1" || echo "0"'
+            'if command -v himalaya >/dev/null 2>&1 && [ -f "$HOME/.config/himalaya/config.toml" ]; then echo "1"; else echo "0"; fi'
         ]
         stdout: SplitParser {
-            onRead: data => { engine.himalayaInstalled = (data.trim() === "1"); }
+            onRead: data => {
+                engine.himalayaInstalled = (data.trim() === "1");
+                if (engine.himalayaInstalled) engine.readMailCache();
+            }
         }
     }
 

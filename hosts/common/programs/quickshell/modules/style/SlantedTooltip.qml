@@ -2,6 +2,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Io
 
 PanelWindow {
     id: tooltipWindow
@@ -14,6 +15,12 @@ PanelWindow {
     property bool dismissed: false
     property bool isHovered: tooltipAreaHover.hovered
 
+    // True while actively focused on the tooltip; false when clicked off
+    property bool isCardActive: true
+
+    // Bar tooltips always use base05
+    readonly property color borderColor: (shell && shell.theme && shell.theme.base05) ? shell.theme.base05 : "yellow"
+
     readonly property bool isPopupMode: {
         if (!moduleItem) return false;
         if ("popupActive" in moduleItem && moduleItem.popupActive) return true;
@@ -23,15 +30,24 @@ PanelWindow {
         return false;
     }
 
+    readonly property bool isInteractive: tooltipWindow.pin || tooltipWindow.isPopupMode || tooltipWindow.isPreviewingFromSettings
+
     onTooltipActiveChanged: {
         if (!tooltipActive && !pin && !isPopupMode) dismissed = false;
-        if (tooltipActive) refreshTrigger++;
+        if (tooltipActive) {
+            isCardActive = true;
+            refreshTrigger++;
+        }
     }
 
     onPinChanged: {
-        if (pin) dismissed = false;
-        else if (!tooltipActive && !isPopupMode) dismissed = false;
-        if (pin) refreshTrigger++;
+        if (pin) {
+            dismissed = false;
+            isCardActive = true;
+            refreshTrigger++;
+        } else if (!tooltipActive && !isPopupMode) {
+            dismissed = false;
+        }
     }
 
     readonly property string moduleKey: (moduleItem && typeof moduleItem.moduleName !== "undefined") ? moduleItem.moduleName : ""
@@ -122,14 +138,16 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "quickshell-slanted-tooltip"
 
+    // Exclusive when active; None when clicked off so all other apps have full control
     WlrLayershell.keyboardFocus: {
         if (!tooltipWindow.visible || !tooltipWindow.isEngaged) return WlrKeyboardFocus.None;
-        if (tooltipWindow.pin || tooltipWindow.isPopupMode || tooltipWindow.isHovered) {
+        if (tooltipWindow.isCardActive && (tooltipWindow.pin || tooltipWindow.isPopupMode || tooltipWindow.isHovered)) {
             return WlrKeyboardFocus.Exclusive;
         }
         return WlrKeyboardFocus.None;
     }
 
+    // Mask is strictly the visual tooltip shape
     mask: Region {
         item: (tooltipWindow.backgroundStyle === "Hexagon" || tooltipWindow.effectiveAlignSide === "Center") ? tooltipBgHexagon : tooltipBgSlant
     }
@@ -138,23 +156,39 @@ PanelWindow {
     onIsPreviewingFromSettingsChanged: {
         if (isPreviewingFromSettings) {
             dismissed = false;
+            isCardActive = true;
             refreshTrigger++;
         }
     }
 
     readonly property bool isEngaged: !dismissed && (tooltipActive || pin || isPopupMode || isPreviewingFromSettings)
-    onIsEngagedChanged: if (isEngaged) refreshTrigger++
+    onIsEngagedChanged: {
+        if (isEngaged) {
+            isCardActive = true;
+            refreshTrigger++;
+        }
+    }
 
+    // Anchored at capsule coordinates with implicit geometry only (eliminates deprecation warnings)
     anchors.top: true
     anchors.left: true
 
     WlrLayershell.margins.top: targetTopMargin
     WlrLayershell.margins.left: calculatedLeftMargin
 
+    implicitWidth: tooltipWidth
+    implicitHeight: effectiveHeight
+    color: "transparent"
+
     visible: (isEngaged || animContainer.animHeight > 0) && isReady
+
+    function activateCard() {
+        tooltipWindow.isCardActive = true;
+    }
 
     function closeTooltip() {
         tooltipWindow.dismissed = true;
+        tooltipWindow.isCardActive = false;
         if (shell && shell.settingsManager && shell.settingsManager.previewCapsule === moduleKey) {
             shell.settingsManager.previewCapsule = "";
         }
@@ -167,15 +201,74 @@ PanelWindow {
         }
     }
 
+    // Background listener for Escape: catches Escape globally while an interactive tooltip is open, even when unfocused
+    Process {
+        id: escWatcher
+        running: tooltipWindow.visible && tooltipWindow.isEngaged && tooltipWindow.isInteractive
+        command: [
+            "python3", "-u", "-c",
+            "import glob, struct, select, sys\n" +
+            "fds = []\n" +
+            "for dev in glob.glob('/dev/input/by-id/*-event-kbd') + glob.glob('/dev/input/event*'):\n" +
+            "    try:\n" +
+            "        fds.append(open(dev, 'rb', buffering=0))\n" +
+            "    except Exception:\n" +
+            "        pass\n" +
+            "if not fds:\n" +
+            "    sys.exit(0)\n" +
+            "fmt = 'llHHi' if struct.calcsize('l') == 8 else 'iiHHi'\n" +
+            "sz = struct.calcsize(fmt)\n" +
+            "while True:\n" +
+            "    r, _, _ = select.select(fds, [], [])\n" +
+            "    for fd in r:\n" +
+            "        try:\n" +
+            "            d = fd.read(sz)\n" +
+            "            if len(d) == sz:\n" +
+            "                _, _, t, code, val = struct.unpack(fmt, d)\n" +
+            "                if t == 1 and code == 1 and val == 1:\n" +
+            "                    print('ESC', flush=True)\n" +
+            "        except Exception:\n" +
+            "            pass\n"
+        ]
+        stdout: SplitParser {
+            splitMarker: "\n"
+            onRead: data => {
+                if (data.trim() === "ESC") tooltipWindow.closeTooltip();
+            }
+        }
+    }
+
+    // Multi-screen click-off detector
+    Variants {
+        model: Quickshell.screens
+        delegate: PanelWindow {
+            id: otherScreenCatcher
+            required property var modelData
+            screen: modelData
+
+            visible: tooltipWindow.visible && tooltipWindow.isEngaged && tooltipWindow.isInteractive && tooltipWindow.isCardActive && (modelData !== tooltipWindow.screen)
+
+            WlrLayershell.namespace: "quickshell-tooltip-dismiss"
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+
+            anchors { top: true; bottom: true; left: true; right: true }
+            color: "transparent"
+
+            MouseArea {
+                anchors.fill: parent
+                onPressed: {
+                    tooltipWindow.isCardActive = false;
+                }
+            }
+        }
+    }
+
     Shortcut {
         sequence: "Escape"
         enabled: tooltipWindow.visible
         onActivated: tooltipWindow.closeTooltip()
     }
-
-    implicitWidth: tooltipWidth
-    implicitHeight: effectiveHeight
-    color: "transparent"
 
     readonly property bool isReady: moduleItem !== null && moduleItem.width > 0
 
@@ -196,7 +289,6 @@ PanelWindow {
 
     property int refreshTrigger: 0
 
-    // Strict type-checked traversal guarantees no undefined/NaN values
     function getCapsuleScreenX() {
         if (!moduleItem) return 0;
         var x = 0;
@@ -257,6 +349,7 @@ PanelWindow {
 
     onShouldExpandChanged: {
         if (shouldExpand) {
+            isCardActive = true;
             refreshTrigger++;
             closeAnimation.stop();
             openAnimation.start();
@@ -301,6 +394,17 @@ PanelWindow {
         property real animHeight: 0
         property real visualCoreWidth: tooltipWindow.collapsedCoreWidth
         property real textOpacity: 0
+
+        // Re-focuses the tooltip when clicked from an inactive state
+        MouseArea {
+            anchors.fill: parent
+            enabled: tooltipWindow.isInteractive && !tooltipWindow.isCardActive
+            z: 9999
+            cursorShape: Qt.PointingHandCursor
+            onPressed: {
+                tooltipWindow.activateCard();
+            }
+        }
 
         HoverHandler {
             id: tooltipAreaHover
@@ -352,6 +456,10 @@ PanelWindow {
             width: Math.round(animContainer.visualCoreWidth + slantWidth)
             slantLeft: tooltipWindow.slantLeft
             slantRight: tooltipWindow.slantRight
+
+            // Bar tooltips always use base05
+            borderColor: tooltipWindow.borderColor
+            borderWidth: (shell && shell.theme && shell.theme.globalBorderWidth !== undefined) ? shell.theme.globalBorderWidth : 3
         }
 
         Canvas {
@@ -362,9 +470,8 @@ PanelWindow {
             height: animContainer.animHeight
             width: animContainer.visualCoreWidth
 
-            readonly property real borderW: (shell && shell.theme) ? (shell.theme.globalBorderWidth || 3) : 3
+            readonly property real borderW: (shell && shell.theme && shell.theme.globalBorderWidth !== undefined) ? shell.theme.globalBorderWidth : 3
             readonly property real halfB: borderW / 2
-            readonly property color colorBase05: (shell && shell.theme) ? (shell.theme.base05 || "yellow") : "yellow"
             readonly property color colorBase00: (shell && shell.theme) ? (shell.theme.base00 || "black") : "black"
             readonly property real sw: tooltipWindow.slantWidth
 
@@ -372,7 +479,9 @@ PanelWindow {
                 var ctx = getContext("2d");
                 ctx.reset();
                 ctx.lineWidth = borderW;
-                ctx.strokeStyle = colorBase05;
+
+                // Bar tooltips always use base05
+                ctx.strokeStyle = tooltipWindow.borderColor;
                 ctx.fillStyle = colorBase00;
 
                 var topChamferY = Math.min(height / 2, sw + halfB);

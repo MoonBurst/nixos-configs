@@ -31,11 +31,10 @@ PanelWindow {
         right: 40
     }
 
-    implicitWidth: 330
+    implicitWidth: 340
     implicitHeight: inspectorCard.implicitHeight
     color: "transparent"
 
-    // Crucial: Limit Wayland mouse input region strictly to the inspector card
     mask: Region {
         item: inspectorCard
     }
@@ -75,7 +74,7 @@ PanelWindow {
 
     Rectangle {
         id: inspectorCard
-        width: 330
+        width: 340
         implicitHeight: contentCol.implicitHeight + 28
         height: implicitHeight
         radius: (theme && theme.defaultCardRadius) ? theme.defaultCardRadius : 10
@@ -173,6 +172,44 @@ PanelWindow {
                     if (settingsManager) {
                         settingsManager.setWindowProp(inspectorWindow.previewId, "iconSize", v);
                         settingsManager.setWindowProp(inspectorWindow.previewId, "imageSize", v);
+                    }
+                }
+            }
+
+            // Apply to All Overlays Button
+            Rectangle {
+                Layout.fillWidth: true
+                height: 32
+                radius: 6
+                color: applyAllHov.hovered ? inspectorCard.base0C : inspectorCard.base02
+                border.color: inspectorCard.base0C
+                border.width: 1.5
+
+                Row {
+                    anchors.centerIn: parent
+                    spacing: 6
+                    Text {
+                        text: "🌐"
+                        font.pixelSize: 12
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                    Text {
+                        text: "Apply Size to All Overlays"
+                        font.bold: true
+                        font.pixelSize: 11
+                        color: applyAllHov.hovered ? "#000000" : inspectorCard.base0C
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                }
+
+                HoverHandler { id: applyAllHov }
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        if (settingsManager) {
+                            settingsManager.applyDimensionsToAll(inspectorWindow.previewId);
+                        }
                     }
                 }
             }

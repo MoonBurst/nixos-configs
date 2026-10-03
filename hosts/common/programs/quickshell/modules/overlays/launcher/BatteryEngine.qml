@@ -34,7 +34,22 @@ Item {
                     engine.batteryName = name;
                     engine.hasBattery = true;
                     pollProc.running = true;
+                    powerEventListener.running = true;
                 }
+            }
+        }
+    }
+
+    // Zero-polling kernel event listener (Triggers instantly when power changes)
+    Process {
+        id: powerEventListener
+        running: false
+        command: ["udevadm", "monitor", "--udev", "--subsystem-match=power_supply"]
+        stdout: SplitParser {
+            splitMarker: "\n"
+            onRead: data => {
+                pollProc.running = false;
+                pollProc.running = true;
             }
         }
     }
@@ -57,17 +72,6 @@ Item {
                     engine.power = parts[2];
                 }
             }
-        }
-    }
-
-    Timer {
-        id: pollTimer
-        interval: 10000
-        running: engine.hasBattery
-        repeat: true
-        onTriggered: {
-            pollProc.running = false;
-            pollProc.running = true;
         }
     }
 }

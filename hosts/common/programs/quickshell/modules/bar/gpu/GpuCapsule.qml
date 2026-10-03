@@ -73,7 +73,7 @@ Item {
         return processLinesArray.filter(line => line.toLowerCase().indexOf(q) !== -1);
     }
 
-    implicitWidth: Math.max(260, gpuText.implicitWidth + bg.leftPadding + bg.rightPadding + 28)
+    implicitWidth: Math.max(200, gpuText.implicitWidth + bg.leftPadding + bg.rightPadding + 28)
     width: implicitWidth
     height: parent ? parent.height : 40
 
@@ -89,29 +89,9 @@ Item {
         id: gpuStatsProc
         running: true
         command: [
-            "sh", "-c",
-            'card_id="$1"; ven="$2"; is_nv="$3"; nv_idx="$4"; ' +
-            '[ -z "$nv_idx" ] && nv_idx="0"; ' +
-            'if command -v nvidia-smi >/dev/null 2>&1 && ([ "$is_nv" = "1" ] || [ "$ven" = "10de" ]); then ' +
-            '  nv_out=$(nvidia-smi -i "$nv_idx" --query-gpu=utilization.gpu,temperature.gpu,power.draw,memory.free --format=csv,noheader,nounits 2>/dev/null | head -n 1); ' +
-            '  if [ -n "$nv_out" ]; then ' +
-            '    echo "$nv_out" | awk -F, \'{usage=int($1); temp=int($2); pwr=int($3); vram=int($4/1024); printf "%d:%d:%d:%d\\n", usage, temp, pwr, vram}\'; exit 0; ' +
-            '  fi; ' +
-            'fi; ' +
-            'card_dir="/sys/class/drm/$card_id/device"; ' +
-            '[ ! -d "$card_dir" ] && echo "0:0:0:0" && exit 0; ' +
-            'usage=$(cat "$card_dir/gpu_busy_percent" 2>/dev/null | tr -dc "0-9"); [ -z "$usage" ] && usage="0"; ' +
-            'temp=$(awk \'{print int($1/1000); exit}\' "$card_dir/hwmon"/hwmon*/temp*_input 2>/dev/null || echo "0"); ' +
-            'power=$(awk \'{print int($1/1000000); exit}\' "$card_dir/hwmon"/hwmon*/power1_* 2>/dev/null || echo "0"); ' +
-            'total=$(cat "$card_dir/mem_info_vram_total" 2>/dev/null || echo "0"); ' +
-            'used=$(cat "$card_dir/mem_info_vram_used" 2>/dev/null || echo "0"); ' +
-            'if [ "$total" = "0" ] || [ -z "$total" ]; then ' +
-            '  total=$(cat "$card_dir/mem_info_gtt_total" 2>/dev/null || echo "0"); ' +
-            '  used=$(cat "$card_dir/mem_info_gtt_used" 2>/dev/null || echo "0"); ' +
-            'fi; ' +
-            'free_vram=$(awk -v t="$total" -v u="$used" \'BEGIN {if(t>u) printf "%.0f", (t-u)/1073741824; else print "0"}\'); ' +
-            'printf "%s:%s:%s:%s\\n" "$usage" "$temp" "$power" "$free_vram"',
-            "sh",
+            "lua",
+            Quickshell.shellDir + "/modules/bar/gpu/backend/GpuEngine.lua",
+            "stats",
             gpuBox.currentGpu ? gpuBox.currentGpu.id : "card0",
             gpuBox.currentGpu ? (gpuBox.currentGpu.vendor || "") : "",
             gpuBox.isNvidia ? "1" : "0",
@@ -134,70 +114,8 @@ Item {
         id: gpuProcFetcher
         running: false
         command: [
-            "python3", "-c",
-            "import os, time, sys, subprocess, glob\n" +
-            "card_id = sys.argv[1]\n" +
-            "vendor = sys.argv[2]\n" +
-            "is_nv = sys.argv[3] == '1'\n" +
-            "nv_idx = sys.argv[4]\n" +
-            "results = []\n" +
-            "if is_nv or vendor == '10de':\n" +
-            "    try:\n" +
-            "        out = subprocess.check_output(['nvidia-smi', '-i', nv_idx, '--query-compute-apps=pid,process_name,used_memory', '--format=csv,noheader,nounits'], stderr=subprocess.DEVNULL).decode('utf-8', errors='ignore')\n" +
-            "        out += subprocess.check_output(['nvidia-smi', '-i', nv_idx, '--query-graphics-apps=pid,process_name,used_memory', '--format=csv,noheader,nounits'], stderr=subprocess.DEVNULL).decode('utf-8', errors='ignore')\n" +
-            "        seen_pids = set()\n" +
-            "        for line in out.strip().splitlines():\n" +
-            "            p = [x.strip() for x in line.split(',')]\n" +
-            "            if len(p) >= 3 and p[0] not in seen_pids:\n" +
-            "                seen_pids.add(p[0])\n" +
-            "                pid, name, mib = p[0], os.path.basename(p[1]), int(float(p[2]))\n" +
-            "                vstr = f'{mib/1024:3.1f}G' if mib >= 1024 else f'{mib:3d}M'\n" +
-            "                results.append((mib, f'{pid}|{name[:12]:<12} {vstr:>5}    -  '))\n" +
-            "    except: pass\n" +
-            "if not results:\n" +
-            "    drm_nodes = set([card_id])\n" +
-            "    dev_path = f'/sys/class/drm/{card_id}/device/drm'\n" +
-            "    if os.path.isdir(dev_path):\n" +
-            "        for n in os.listdir(dev_path): drm_nodes.add(n)\n" +
-            "    def scan_clients():\n" +
-            "        data = {}\n" +
-            "        for pid in os.listdir('/proc'):\n" +
-            "            if not pid.isdigit(): continue\n" +
-            "            fd_dir, fdinfo_dir = f'/proc/{pid}/fd', f'/proc/{pid}/fdinfo'\n" +
-            "            try:\n" +
-            "                p_engine, p_vram, matched = 0, 0, False\n" +
-            "                for fd in os.listdir(fd_dir):\n" +
-            "                    try:\n" +
-            "                        link = os.readlink(f'{fd_dir}/{fd}')\n" +
-            "                        if any(n in link for n in drm_nodes):\n" +
-            "                            matched = True\n" +
-            "                            try:\n" +
-            "                                with open(f'{fdinfo_dir}/{fd}', 'r') as f:\n" +
-            "                                    for l in f:\n" +
-            "                                        if l.startswith(('drm-engine-gfx:', 'drm-engine-compute:')):\n" +
-            "                                            p_engine += int(l.split()[1])\n" +
-            "                                        elif l.startswith(('drm-total-vram:', 'drm-resident-vram:', 'drm-memory-vram:')):\n" +
-            "                                            v = int(l.split()[1])\n" +
-            "                                            if 'KiB' in l: v *= 1024\n" +
-            "                                            p_vram = max(p_vram, v)\n" +
-            "                            except: pass\n" +
-            "                    except: continue\n" +
-            "                if matched: data[pid] = (p_engine, p_vram)\n" +
-            "            except: continue\n" +
-            "        return data\n" +
-            "    s1 = scan_clients(); time.sleep(0.1); s2 = scan_clients()\n" +
-            "    for pid, (e2, vram) in s2.items():\n" +
-            "        e1 = s1.get(pid, (e2, 0))[0]\n" +
-            "        pct = (max(0, e2 - e1) / 100000000.0) * 100.0\n" +
-            "        mib = int(vram / (1024 * 1024))\n" +
-            "        if mib <= 0 and pct < 0.1: continue\n" +
-            "        try: comm = open(f'/proc/{pid}/comm').read().strip()\n" +
-            "        except: comm = 'unknown'\n" +
-            "        vstr = f'{mib/1024:3.1f}G' if mib >= 1024 else f'{mib:3d}M'\n" +
-            "        results.append((mib, f'{pid}|{comm[:12]:<12} {vstr:>5} {pct:4.1f}%'))\n" +
-            "results.sort(key=lambda x: x[0], reverse=True)\n" +
-            "lines = [r[1] for r in results[:10]]\n" +
-            "print('\\n'.join(lines) if lines else 'No active clients on this GPU')",
+            "lua",
+            Quickshell.shellDir + "/modules/bar/gpu/backend/GpuEngine.lua",
             gpuBox.currentGpu ? gpuBox.currentGpu.id : "card0",
             gpuBox.currentGpu ? (gpuBox.currentGpu.vendor || "") : "",
             gpuBox.isNvidia ? "1" : "0",
@@ -257,10 +175,9 @@ Item {
             if (currentFreeVram <= vDanger) vramColor = ((shell && shell.theme) ? shell.theme.base08 : "#ff0000").toString();
             else if (currentFreeVram <= vWarn) vramColor = ((shell && shell.theme) ? shell.theme.base09 : "#fe8019").toString();
 
-            // Uses clean model name directly on the bar (e.g. "RX 7900 XTX:" or "RX 6400:")
-            const prefix = (gpuBox.currentGpu && gpuBox.currentGpu.name)
-                ? (gpuBox.currentGpu.name + ":")
-                : "GPU:";
+            // Fully dynamic label from detected hardware: no hardcoded strings
+            const label = (gpuBox.currentGpu && gpuBox.currentGpu.name) ? gpuBox.currentGpu.name : "GPU";
+            const prefix = label + ":";
 
             return "<font color='" + ((shell && shell.theme) ? shell.theme.base0C : "#04f100") + "'>" + prefix + "</font> " +
                 "<font color='" + ((shell && shell.theme) ? shell.theme.base05 : "yellow") + "'>" + usageVal + "%</font> " +
@@ -344,7 +261,7 @@ Item {
                     Text {
                         id: gpuBtnText
                         anchors.centerIn: parent
-                        text: (modelData.name || modelData.id)
+                        text: modelData.name || modelData.id
                         font.family: (shell && shell.theme) ? shell.theme.fontFamily : "monospace"
                         font.pixelSize: 11; font.bold: true
                         color: gpuBox.selectedGpuIndex === index ? ((shell && shell.theme) ? shell.theme.base00 : "black") : ((shell && shell.theme) ? shell.theme.base05 : "yellow")

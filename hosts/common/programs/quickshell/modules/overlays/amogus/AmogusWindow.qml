@@ -3,6 +3,7 @@ import QtQuick.Controls 2
 import QtQuick.Layouts 1.15
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Io
 
 PanelWindow {
     id: root
@@ -15,13 +16,21 @@ PanelWindow {
     property bool isOpenState: false
     visible: isOpenState || isPreviewMode
 
+    property bool isCardActive: true
+
+    // Focused: base03 | Off-focus: base0D
+    readonly property color activeBorderColor: (shell && shell.theme && shell.theme.base03) ? shell.theme.base03 : "#003399"
+    readonly property color inactiveBorderColor: (shell && shell.theme && shell.theme.base0D) ? shell.theme.base0D : "#003399"
+
     onVisibleChanged: {
-        if (visible && !isPreviewMode && shell && typeof shell.closeOtherOverlays === "function") {
-            shell.closeOtherOverlays(root);
+        if (visible && !isPreviewMode) {
+            if (shell && typeof shell.closeOtherOverlays === "function") {
+                shell.closeOtherOverlays(root);
+            }
+            root.isCardActive = true;
         }
     }
 
-    // Assign to chosen screen (defaults to second screen if available, else first)
     screen: {
         if (Quickshell.screens.length > currentScreenIndex) {
             return Quickshell.screens[currentScreenIndex];
@@ -30,16 +39,22 @@ PanelWindow {
     }
 
     function toggleWindow() {
-        if (root.visible) hideWindow();
+        if (root.isOpenState) hideWindow();
         else showWindow();
     }
 
     function showWindow() {
+        root.isCardActive = true;
         root.isOpenState = true;
+    }
+
+    function activateCard() {
+        root.isCardActive = true;
     }
 
     function hideWindow() {
         root.isOpenState = false;
+        root.isCardActive = false;
         if (shell && shell.settingsManager && shell.settingsManager.previewWindow === windowId) {
             shell.settingsManager.previewWindow = "";
         }
@@ -49,10 +64,49 @@ PanelWindow {
         hideWindow();
     }
 
-    // Layer-shell configuration: in preview mode sit underneath SettingsWindow
+    // Background listener for Escape: catches Escape globally while Among Us is open, even when unfocused
+    Process {
+        id: escWatcher
+        running: root.isOpenState && !root.isPreviewMode
+        command: [
+            "python3", "-u", "-c",
+            "import glob, struct, select, sys\n" +
+            "fds = []\n" +
+            "for dev in glob.glob('/dev/input/by-id/*-event-kbd') + glob.glob('/dev/input/event*'):\n" +
+            "    try:\n" +
+            "        fds.append(open(dev, 'rb', buffering=0))\n" +
+            "    except Exception:\n" +
+            "        pass\n" +
+            "if not fds:\n" +
+            "    sys.exit(0)\n" +
+            "fmt = 'llHHi' if struct.calcsize('l') == 8 else 'iiHHi'\n" +
+            "sz = struct.calcsize(fmt)\n" +
+            "while True:\n" +
+            "    r, _, _ = select.select(fds, [], [])\n" +
+            "    for fd in r:\n" +
+            "        try:\n" +
+            "            d = fd.read(sz)\n" +
+            "            if len(d) == sz:\n" +
+            "                _, _, t, code, val = struct.unpack(fmt, d)\n" +
+            "                if t == 1 and code == 1 and val == 1:\n" +
+            "                    print('ESC', flush=True)\n" +
+            "        except Exception:\n" +
+            "            pass\n"
+        ]
+        stdout: SplitParser {
+            splitMarker: "\n"
+            onRead: data => {
+                if (data.trim() === "ESC") root.close();
+            }
+        }
+    }
+
     WlrLayershell.namespace: "quickshell-amogus"
     WlrLayershell.layer: isPreviewMode ? WlrLayer.Top : WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: {
+        if (!visible || isPreviewMode) return WlrKeyboardFocus.None;
+        return root.isCardActive ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None;
+    }
 
     anchors {
         top: true
@@ -61,12 +115,45 @@ PanelWindow {
         right: true
     }
 
-    // Only the card intercepts mouse events; all empty space passes through completely
-    mask: Region {
-        item: amogusCard
-    }
+    mask: root.isCardActive ? null : cardMaskRegion
+    Region { id: cardMaskRegion; item: amogusCard }
 
     color: "transparent"
+
+    // Multi-screen click-off detector
+    Variants {
+        model: Quickshell.screens
+        delegate: PanelWindow {
+            id: otherScreenCatcher
+            required property var modelData
+            screen: modelData
+
+            visible: root.isOpenState && root.isCardActive && !root.isPreviewMode && (modelData !== root.screen)
+
+            WlrLayershell.namespace: "quickshell-amogus-dismiss"
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+
+            anchors { top: true; bottom: true; left: true; right: true }
+            color: "transparent"
+
+            MouseArea {
+                anchors.fill: parent
+                onPressed: {
+                    root.isCardActive = false;
+                }
+            }
+        }
+    }
+
+    // Same-screen click-off detector
+    MouseArea {
+        anchors.fill: parent
+        enabled: root.isCardActive && !root.isPreviewMode
+        onPressed: {
+            root.isCardActive = false;
+        }
+    }
 
     readonly property color themeBase00: (shell && shell.theme && shell.theme.base00) ? shell.theme.base00 : "#11111b"
     readonly property color themeBase01: (shell && shell.theme && shell.theme.base01) ? shell.theme.base01 : "#181825"
@@ -78,7 +165,6 @@ PanelWindow {
     readonly property color themeBase0C: (shell && shell.theme && shell.theme.base0C) ? shell.theme.base0C : "#04f100"
     readonly property string themeFont: (shell && shell.theme && shell.theme.fontFamily) ? shell.theme.fontFamily : "monospace"
 
-    // 18 Official Among Us Astronaut Colors
     property var crewmates: [
         { name: "Red",     hex: "#C51111", darkHex: "#7A0808", dead: false },
         { name: "Blue",    hex: "#132ED1", darkHex: "#09158E", dead: false },
@@ -142,17 +228,26 @@ PanelWindow {
 
     readonly property int deadCount: crewModel.length - aliveCount
 
-    // Floating Draggable Card
     Rectangle {
         id: amogusCard
         x: 80
         y: 80
         width: (shell && shell.settingsManager) ? shell.settingsManager.getWindowWidth(root.windowId, 580) : 580
         height: (shell && shell.settingsManager) ? shell.settingsManager.getWindowHeight(root.windowId, 440) : 440
-        radius: 14
+        radius: (shell && shell.theme && shell.theme.defaultCardRadius !== undefined) ? shell.theme.defaultCardRadius : 14
         color: root.themeBase00
-        border.color: root.themeBase05
-        border.width: 2.5
+        border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+        border.width: (shell && shell.theme && shell.theme.globalBorderWidth !== undefined) ? shell.theme.globalBorderWidth : 2.5
+
+        MouseArea {
+            anchors.fill: parent
+            enabled: !root.isCardActive && !root.isPreviewMode
+            z: 9999
+            cursorShape: Qt.PointingHandCursor
+            onPressed: {
+                root.activateCard();
+            }
+        }
 
         ColumnLayout {
             anchors.fill: parent
@@ -176,13 +271,12 @@ PanelWindow {
                 }
             }
 
-            // Header Bar (Acts as the drag handle)
             Rectangle {
                 Layout.fillWidth: true
                 height: 38
                 radius: 8
                 color: root.themeBase01
-                border.color: root.themeBase03
+                border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
                 border.width: 1
 
                 MouseArea {
@@ -210,7 +304,6 @@ PanelWindow {
                         color: root.themeBase05
                     }
 
-                    // Screen Switcher Pills (DP-1, DP-2, etc.)
                     Row {
                         spacing: 4
                         visible: Quickshell.screens.length > 1
@@ -247,7 +340,6 @@ PanelWindow {
 
                     Item { Layout.fillWidth: true }
 
-                    // Counter pill
                     Text {
                         text: root.aliveCount + " alive • " + root.deadCount + " dead"
                         font.family: "monospace"
@@ -256,7 +348,6 @@ PanelWindow {
                         color: root.deadCount > 0 ? root.themeBase09 : root.themeBase0C
                     }
 
-                    // Reset button
                     Rectangle {
                         width: 72
                         height: 24
@@ -281,7 +372,6 @@ PanelWindow {
                         }
                     }
 
-                    // Close button
                     Rectangle {
                         width: 24
                         height: 24
@@ -306,7 +396,6 @@ PanelWindow {
                 }
             }
 
-            // 6 x 3 Crewmate Grid
             Grid {
                 id: crewGrid
                 Layout.fillWidth: true
@@ -341,7 +430,6 @@ PanelWindow {
                             anchors.centerIn: parent
                             spacing: 6
 
-                            // Visor Icon
                             Rectangle {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 width: Math.min(parent.parent.width * 0.45, 42)
@@ -400,5 +488,11 @@ PanelWindow {
                 }
             }
         }
+    }
+
+    Shortcut {
+        sequence: "Escape"
+        enabled: root.visible && !root.isPreviewMode
+        onActivated: root.close()
     }
 }

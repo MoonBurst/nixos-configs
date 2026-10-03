@@ -50,21 +50,11 @@ Item {
         slantWidth: cpuBox.slantWidth
     }
 
-    // Dynamic CPU sensor discovery: prevents 0°C across reboots
+    // Direct invocation without shell overhead
     Process {
         id: hwmonFinder
         running: true
-        command: [
-            "sh", "-c",
-            'for h in /sys/class/hwmon/hwmon*; do ' +
-            '  name=$(cat "$h/name" 2>/dev/null); ' +
-            '  if [ "$name" = "k10temp" ] || [ "$name" = "coretemp" ] || [ "$name" = "zenpower" ]; then ' +
-            '    f=$(ls "$h"/temp*_input 2>/dev/null | head -n 1); ' +
-            '    [ -n "$f" ] && echo "$f" && exit 0; ' +
-            '  fi; ' +
-            'done; ' +
-            'echo "/sys/class/thermal/thermal_zone0/temp"'
-        ]
+        command: ["lua", Quickshell.shellDir + "/modules/bar/cpu/backend/CpuEngine.lua", "find-hwmon"]
         stdout: SplitParser {
             onRead: data => {
                 var clean = data.trim();
@@ -75,7 +65,6 @@ Item {
             }
         }
     }
-
 
     FileView {
         id: cpuStatFile
@@ -115,11 +104,11 @@ Item {
         }
     }
 
-
+    // Direct invocation without shell overhead
     Process {
         id: topProcFetcher
         running: false
-        command: ["sh", "-c", "ncpu=$(nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1); ps -eo pid,comm,%cpu --sort=-%cpu | head -n 11 | awk -v ncpu=\"$ncpu\" 'NR>1 { cpu_tot = $3 / ncpu; printf \"%s|%-10s %4.1f%%\\n\", $1, substr($2,1,10), cpu_tot }'"]
+        command: ["lua", Quickshell.shellDir + "/modules/bar/cpu/backend/CpuEngine.lua", "top-procs"]
         stdout: SplitParser {
             splitMarker: "\n"
             onRead: data => { if (data && data.trim() !== "") cpuBox.textAccumulatorBuffer += data + "\n"; }
@@ -209,7 +198,7 @@ Item {
 
         ProcessMonitorList {
             tooltip: cpuTooltip
-            startY: 102
+            startY: 100
             listWidth: 345
             lines: cpuBox.filteredProcessLinesArray
             slantLeft: cpuBox.slantLeft

@@ -33,8 +33,23 @@ Item {
     }
 
     Process { id: micMuteCmd; command: ["wpctl", "set-mute", "@DEFAULT_AUDIO_SOURCE@", "toggle"] }
+
+    // Persistent PipeWire event listener (Zero timer polling)
     Process {
-        id: micProc
+        id: micListener
+        running: true
+        command: ["sh", "-c", "wpctl get-volume @DEFAULT_AUDIO_SOURCE@; pw-mon -b | grep --line-buffered -E 'sources|source|volume|mute'"]
+        stdout: SplitParser {
+            splitMarker: "\n"
+            onRead: data => {
+                micQueryProc.running = false;
+                micQueryProc.running = true;
+            }
+        }
+    }
+
+    Process {
+        id: micQueryProc
         running: true
         command: ["sh", "-c", "wpctl get-volume @DEFAULT_AUDIO_SOURCE@ 2>/dev/null || echo 'Volume: 0.00'"]
         stdout: SplitParser {
@@ -59,7 +74,6 @@ Item {
                 var statusColor = isMuted ? micBox.themeBase08.toString() : micBox.themeBase05.toString();
                 micBox.micDisplayText = "<font color='" + micBox.themeBase0C + "'>Mic:</font> <font color='" + statusColor + "'>" + mNum + "</font>";
 
-                // Bidirectional real-time sync with SettingsManager
                 if (shell && shell.settingsManager) {
                     shell.settingsManager.updateMicFromSystem(isMuted, volVal);
                 }
@@ -70,7 +84,7 @@ Item {
     TapHandler {
         onTapped: {
             micMuteCmd.running = false; micMuteCmd.running = true;
-            micProc.running = false; micProc.running = true;
+            micQueryProc.running = false; micQueryProc.running = true;
         }
     }
 
@@ -90,6 +104,4 @@ Item {
         elide: Text.ElideRight
         clip: true
     }
-
-    Timer { interval: 2000; running: true; repeat: true; onTriggered: micProc.running = true }
 }

@@ -1,4 +1,3 @@
-// SysHealthEngine.qml
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -28,7 +27,6 @@ Item {
         onTriggered: slowHealthProc.running = true
     }
 
-    // Pure POSIX: No jq required
     Process {
         id: fastHealthProc
         command: [
@@ -67,21 +65,7 @@ Item {
 
     Process {
         id: slowHealthProc
-        command: [
-            "bash", "-c",
-            "GEN_COUNT=0; " +
-            "[ -d /nix/var/nix/profiles ] && GEN_COUNT=$(find /nix/var/nix/profiles/ -maxdepth 1 -name 'system-*-link' 2>/dev/null | wc -l); " +
-            "[ \"$GEN_COUNT\" -eq 0 ] && command -v nix-env >/dev/null && GEN_COUNT=$(nix-env --list-generations -p /nix/var/nix/profiles/system 2>/dev/null | wc -l); " +
-            "CUR_KERNEL=$(uname -r); " +
-            "SYS_KERNEL=$(ls /run/current-system/kernel-modules/lib/modules 2>/dev/null | head -n 1); " +
-            "[ -z \"$SYS_KERNEL\" ] && SYS_KERNEL=$(ls /lib/modules 2>/dev/null | sort -V | tail -n 1); " +
-            "[ -z \"$SYS_KERNEL\" ] && SYS_KERNEL=\"$CUR_KERNEL\"; " +
-            "REBOOT_REQ=$([ \"$CUR_KERNEL\" != \"$SYS_KERNEL\" ] && echo 1 || echo 0); " +
-            "GIT_DIRTY=0; [ -d \"$HOME/nix\" ] && GIT_DIRTY=$(git -C \"$HOME/nix\" status --porcelain 2>/dev/null | wc -l); " +
-            "FLAKE_FILE=\"$HOME/nix/flake.lock\"; FLAKE_AGE=0; " +
-            "[ -f \"$FLAKE_FILE\" ] && FLAKE_AGE=$(( ($(date +%s) - $(stat -c %Y \"$FLAKE_FILE\")) / 86400 )); " +
-            "echo '{\"gens\": '$GEN_COUNT', \"cur_k\": \"'$CUR_KERNEL'\", \"sys_k\": \"'$SYS_KERNEL'\", \"reboot\": '$REBOOT_REQ', \"git_dirty\": '$GIT_DIRTY', \"flake_age\": '$FLAKE_AGE'}'"
-        ]
+        command: ["lua", Quickshell.shellDir + "/modules/bar/unified/backend/SysHealthEngine.lua"]
         stdout: SplitParser {
             onRead: data => {
                 try {

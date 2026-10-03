@@ -129,33 +129,6 @@ Flickable {
         }
 
         CyberSlider {
-            label: "Global Search & Input Field Height (All Windows)"
-            from: 36; to: 200; stepSize: 2; unit: "px"
-            value: settingsManager ? settingsManager.globalFieldHeight : 52
-            fontSize: panelRoot.liveFontSize
-            theme: panelRoot.theme
-            onValueModified: (v) => { if (settingsManager) settingsManager.globalFieldHeight = Math.round(v); }
-        }
-
-        CyberSlider {
-            label: "Global Overlay Window Width"
-            from: 500; to: 1600; stepSize: 20; unit: "px"
-            value: settingsManager ? settingsManager.globalOverlayWidth : 840
-            fontSize: panelRoot.liveFontSize
-            theme: panelRoot.theme
-            onValueModified: (v) => { if (settingsManager) settingsManager.globalOverlayWidth = Math.round(v); }
-        }
-
-        CyberSlider {
-            label: "Global Overlay Window Height"
-            from: 300; to: 1050; stepSize: 25; unit: "px"
-            value: settingsManager ? settingsManager.globalOverlayHeight : 650
-            fontSize: panelRoot.liveFontSize
-            theme: panelRoot.theme
-            onValueModified: (v) => { if (settingsManager) settingsManager.globalOverlayHeight = Math.round(v); }
-        }
-
-        CyberSlider {
             label: "Top Bar Height"
             from: 32; to: 64; stepSize: 2; unit: "px"
             value: settingsManager ? settingsManager.barHeight : 42

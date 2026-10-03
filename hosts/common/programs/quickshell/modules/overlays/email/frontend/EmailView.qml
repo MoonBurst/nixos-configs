@@ -39,7 +39,7 @@ Item {
     onVisibleChanged: if (visible) Qt.callLater(() => mailListView.forceActiveFocus())
     
     function isModalActive() {
-        return (typeof himalayaInstallModalOverlay !== "undefined" && himalayaInstallModalOverlay && himalayaInstallModalOverlay.visible)
+        return (typeof himalayaSetupOverlay !== "undefined" && himalayaSetupOverlay && himalayaSetupOverlay.visible)
         || (typeof contactModalOverlay !== "undefined" && contactModalOverlay && contactModalOverlay.visible)
         || (typeof helpModalOverlay !== "undefined" && helpModalOverlay && helpModalOverlay.visible);
     }
@@ -174,38 +174,24 @@ Item {
             }
             onAttachmentRequested: fileDialog.open()
         }
-        
-        Rectangle {
-            id: himalayaInstallModalOverlay
-            anchors.fill: parent; color: "#EE000000"; visible: !viewRoot.engine.himalayaInstalled; z: 300
-            function openInstallPrompt() { visible = true; pkgModal.openPrompt(); }
-            MouseArea { anchors.fill: parent; onClicked: himalayaInstallModalOverlay.visible = false }
-            
-            Rectangle {
-                width: 480; height: 240
-                color: viewRoot.windowBgColor; border.color: viewRoot.innerBorderColor
-                border.width: viewRoot.innerCardActiveThickness; radius: 10
-                anchors.centerIn: parent
-                
-                PackageInstallerModal {
-                    id: pkgModal
-                    anchors.fill: parent; anchors.margins: 16
-                    title: "🔑 INSTALL HIMALAYA (OFFICIAL REPOS)"
-                    description: "Enter your sudo password to install himalaya from official repositories:"
-                    pacmanPkg: "himalaya"
-                    aptPkg: "himalaya"
-                    dnfPkg: "himalaya"
-                    zypperPkg: "himalaya"
-                    nixPkg: "himalaya"
-                    onInstalled: {
-                        engine.himalayaInstalled = true;
-                        himalayaInstallModalOverlay.visible = false;
-                        engine.readMailCache();
-                    }
-                    onCancelled: himalayaInstallModalOverlay.visible = false
-                }
+
+        // Dedicated Himalaya Setup & Configuration Overlay
+        HimalayaSetupModal {
+            id: himalayaSetupOverlay
+            anchors.fill: parent
+            visible: !viewRoot.engine.himalayaInstalled
+            engine: viewRoot.engine
+            theme: viewRoot.theme
+            overlayFontSize: viewRoot.overlayFontSize
+            onConfigured: {
+                viewRoot.engine.himalayaInstalled = true;
+                viewRoot.engine.readMailCache();
+                mailListView.forceActiveFocus();
             }
-            Shortcut { sequence: "Escape"; enabled: himalayaInstallModalOverlay.visible; onActivated: himalayaInstallModalOverlay.visible = false }
+            onCancelled: {
+                viewRoot.engine.himalayaInstalled = true;
+                mailListView.forceActiveFocus();
+            }
         }
         
         Rectangle {

@@ -74,18 +74,27 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: panelRoot.livePadding
+        spacing: Math.max(8, panelRoot.livePadding)
 
-        // Tab Headers
+        // 1. Tab Headers Row (Strict height, never expands vertically)
         RowLayout {
+            id: tabHeadersRow
             Layout.fillWidth: true
-            spacing: 6
+            Layout.fillHeight: false
+            Layout.preferredHeight: Math.max(34, Math.round(panelRoot.liveFontSize * 2.0))
+            Layout.minimumHeight: Layout.preferredHeight
+            Layout.maximumHeight: Layout.preferredHeight
+            spacing: 8
 
             Repeater {
                 model: ["Stylix & Sliders", "Color Palette", "GPU & Hardware", "Bar Layout & Slants", "Overlays & Windows"]
                 delegate: Item {
                     Layout.fillWidth: true
-                    height: Math.max(34, panelRoot.liveFontSize * 2.0)
+                    Layout.fillHeight: false
+                    Layout.preferredHeight: tabHeadersRow.Layout.preferredHeight
+                    Layout.minimumHeight: tabHeadersRow.Layout.preferredHeight
+                    Layout.maximumHeight: tabHeadersRow.Layout.preferredHeight
+                    height: tabHeadersRow.Layout.preferredHeight
                     clip: true
 
                     SlantedBox {
@@ -99,13 +108,13 @@ Item {
 
                     Text {
                         anchors.fill: parent
-                        anchors.leftMargin: panelRoot.liveSlantWidth + 2
-                        anchors.rightMargin: panelRoot.liveSlantWidth + 2
+                        anchors.leftMargin: panelRoot.liveSlantWidth + 4
+                        anchors.rightMargin: panelRoot.liveSlantWidth + 4
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         text: modelData
                         font.family: panelRoot.liveFontFamily
-                        font.pixelSize: Math.max(10, Math.min(14, panelRoot.liveFontSize - 3))
+                        font.pixelSize: Math.max(10, Math.min(18, Math.round(panelRoot.liveFontSize * 0.72)))
                         font.bold: true
                         elide: Text.ElideRight
                         color: panelRoot.activeTab === index ? panelRoot.liveBase00 : panelRoot.liveBase05
@@ -121,38 +130,52 @@ Item {
             }
         }
 
+        // 2. Horizontal Divider Line (Always sits cleanly underneath the tab row)
         Rectangle {
             Layout.fillWidth: true
-            height: panelRoot.liveBorderWidth
+            Layout.fillHeight: false
+            Layout.preferredHeight: Math.max(1, panelRoot.liveBorderWidth)
+            Layout.minimumHeight: Layout.preferredHeight
+            Layout.maximumHeight: Layout.preferredHeight
             color: panelRoot.liveBase03
         }
 
-        // TAB VIEWS
+        // 3. Tab Content Views (These fill all remaining height)
         TabStylixSliders {
             panelRoot: panelRoot
             visible: panelRoot.activeTab === 0
+            Layout.fillWidth: true
+            Layout.fillHeight: true
         }
 
         TabColorPalette {
             panelRoot: panelRoot
             guiColorPicker: guiColorPicker
             visible: panelRoot.activeTab === 1
+            Layout.fillWidth: true
+            Layout.fillHeight: true
         }
 
         TabGpuHardware {
             panelRoot: panelRoot
             visible: panelRoot.activeTab === 2
+            Layout.fillWidth: true
+            Layout.fillHeight: true
         }
 
         TabBarLayout {
             panelRoot: panelRoot
             visible: panelRoot.activeTab === 3
+            Layout.fillWidth: true
+            Layout.fillHeight: true
         }
 
         TabOverlaysWindows {
             panelRoot: panelRoot
             guiColorPicker: guiColorPicker
             visible: panelRoot.activeTab === 4
+            Layout.fillWidth: true
+            Layout.fillHeight: true
         }
     }
 }

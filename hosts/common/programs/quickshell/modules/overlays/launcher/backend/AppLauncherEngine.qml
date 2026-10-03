@@ -21,70 +21,10 @@ QtObject {
 
     readonly property Process appLoader: Process {
         command: [
-            "python3", "-c",
-            "import os, glob, sys\n" +
-            "seen = set()\n" +
-            "dirs = []\n" +
-            "xdg_data = os.environ.get('XDG_DATA_HOME', os.path.expanduser('~/.local/share'))\n" +
-            "dirs.append(xdg_data)\n" +
-            "if os.environ.get('XDG_DATA_DIRS'):\n" +
-            "    dirs.extend(os.environ['XDG_DATA_DIRS'].split(':'))\n" +
-            "u = os.environ.get('USER', '')\n" +
-            "dirs.extend([\n" +
-            "    os.path.expanduser('~/.local/share'),\n" +
-            "    os.path.expanduser('~/.nix-profile/share'),\n" +
-            "    f'/etc/profiles/per-user/{u}/share',\n" +
-            "    '/run/current-system/sw/share',\n" +
-            "    '/nix/var/nix/profiles/default/share',\n" +
-            "    '/usr/local/share',\n" +
-            "    '/usr/share',\n" +
-            "    '/var/lib/flatpak/exports/share',\n" +
-            "    os.path.expanduser('~/.local/share/flatpak/exports/share'),\n" +
-            "    os.path.expanduser('~/.local/share/applications'),\n" +
-            "    os.path.expanduser('~/Desktop'),\n" +
-            "    '/var/lib/snapd/desktop'\n" +
-            "])\n" +
-            "# Scan all applications directories\n" +
-            "checked = set()\n" +
-            "for d in dirs:\n" +
-            "    if not d: continue\n" +
-            "    p = os.path.abspath(os.path.expanduser(d))\n" +
-            "    if p in checked or not os.path.isdir(p): continue\n" +
-            "    checked.add(p)\n" +
-            "    app_dir = p if p.endswith('applications') else os.path.join(p, 'applications')\n" +
-            "    if not os.path.isdir(app_dir): continue\n" +
-            "    for root, _, files in os.walk(app_dir):\n" +
-            "        for f in files:\n" +
-            "            if not f.endswith('.desktop'): continue\n" +
-            "            fp = os.path.join(root, f)\n" +
-            "            name, exec_cmd, icon = '', '', 'application-x-executable'\n" +
-            "            nodisp = False\n" +
-            "            try:\n" +
-            "                with open(fp, 'r', encoding='utf-8', errors='ignore') as df:\n" +
-            "                    in_entry = False\n" +
-            "                    for line in df:\n" +
-            "                        line = line.strip()\n" +
-            "                        if line == '[Desktop Entry]': in_entry = True\n" +
-            "                        elif line.startswith('[') and in_entry: break\n" +
-            "                        if not in_entry: continue\n" +
-            "                        if line.startswith('Name=') and not name: name = line[5:].strip()\n" +
-            "                        elif line.startswith('Exec=') and not exec_cmd: exec_cmd = line[5:].split('%')[0].strip()\n" +
-            "                        elif line.startswith('Icon=') and icon == 'application-x-executable': icon = line[5:].strip()\n" +
-            "                        elif line.lower() == 'nodisplay=true': nodisp = True\n" +
-            "                if nodisp and 'steam' not in exec_cmd.lower(): continue\n" +
-            "                if name and exec_cmd and exec_cmd.lower() not in seen:\n" +
-            "                    seen.add(exec_cmd.lower())\n" +
-            "                    print(f'{name}|{exec_cmd}|{icon}')\n" +
-            "            except Exception: pass\n" +
-            "# Also index executables in PATH\n" +
-            "for p in os.environ.get('PATH', '').split(':'):\n" +
-            "    if os.path.isdir(p):\n" +
-            "        try:\n" +
-            "            for entry in os.scandir(p):\n" +
-            "                if entry.name not in seen and entry.is_file() and os.access(entry.path, os.X_OK):\n" +
-            "                    seen.add(entry.name)\n" +
-            "                    print(f'{entry.name}|{entry.name}|application-x-executable')\n" +
-            "        except Exception: pass\n"
+            "sh", "-c",
+            'SCR="' + Quickshell.shellDir + '/modules/overlays/launcher/backend/AppLauncherEngine.lua"; ' +
+            'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
+            '"$CMD" "$SCR"'
         ]
         stdout: SplitParser {
             splitMarker: "\n"
@@ -102,6 +42,7 @@ QtObject {
                             name: p[0],
                             exec: p[1],
                             icon: icon,
+                            recentRank: parseInt(p[3]) || 0,
                             searchName: p[0].toLowerCase(),
                             searchExec: key
                         });
@@ -114,6 +55,17 @@ QtObject {
             engine.allApps = engine.pendingApps;
             engine.refreshFilter(engine.currentQuery);
         }
+    }
+
+    function recordRecent(cmd) {
+        if (!cmd) return;
+        Quickshell.execDetached([
+            "sh", "-c",
+            'F="$HOME/.cache/quickshell/recent_apps.txt"; mkdir -p "$(dirname "$F")"; touch "$F"; ' +
+            'grep -Fxv "$1" "$F" > "$F.tmp" 2>/dev/null; ' +
+            'printf "%s\\n" "$1" | cat - "$F.tmp" | head -n 50 > "$F"; rm -f "$F.tmp"',
+            "sh", cmd
+        ]);
     }
 
     function refreshFilter(query) {
@@ -141,7 +93,11 @@ QtObject {
             else if (exec.includes(q)) score = 40;
             else if (Utils.fuzzyMatch(q, name)) score = 20;
 
-            if (score > 0) matches.push({ app: app, score: score });
+            if (score > 0) {
+                // Boost recently used apps in search results
+                if (app.recentRank > 0) score += Math.min(30, Math.round(app.recentRank / 30));
+                matches.push({ app: app, score: score });
+            }
         }
         matches.sort((a, b) => b.score - a.score);
         for (let j = 0; j < matches.length; ++j) fModel.append(matches[j].app);
@@ -151,6 +107,7 @@ QtObject {
 
     function launch(command) {
         if (!command) return;
+        recordRecent(command);
         launcherProc.running = false;
         launcherProc.command = [
             "sh", "-c",

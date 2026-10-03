@@ -12,6 +12,7 @@ Item {
     property string dnfPkg: ""
     property string zypperPkg: ""
     property string nixPkg: ""
+    property var customCommand: null
 
     property color themeBase00: (shell && shell.theme && shell.theme.base00) ? shell.theme.base00 : "#11111b"
     property color themeBase02: (shell && shell.theme && shell.theme.base02) ? shell.theme.base02 : "#313244"
@@ -42,18 +43,23 @@ Item {
         if (!pass || pass.trim() === "" || isInstalling) return;
         isInstalling = true;
         installError = false;
-        statusMsg = "Installing from official repositories...";
+        statusMsg = "Installing Himalaya...";
 
-        installerProc.command = [
-            "sudo", "-S", "-k", "bash", "-c",
-            "if command -v pacman >/dev/null 2>&1; then pacman -Sy --noconfirm " + pacmanPkg + "; " +
-            "elif command -v apt-get >/dev/null 2>&1; then apt-get update && apt-get install -y " + aptPkg + "; " +
-            "elif command -v dnf >/dev/null 2>&1; then dnf install -y " + dnfPkg + "; " +
-            "elif command -v zypper >/dev/null 2>&1; then zypper install -y " + zypperPkg + "; " +
-            "else echo 'No supported package manager found' >&2; exit 1; fi"
-        ];
-        installerProc.running = true;
-        installerProc.write(pass + "\n");
+        if (customCommand) {
+            installerProc.command = typeof customCommand === "function" ? customCommand(pass) : customCommand;
+            installerProc.running = true;
+        } else {
+            installerProc.command = [
+                "sudo", "-S", "-k", "bash", "-c",
+                "if command -v pacman >/dev/null 2>&1; then pacman -Sy --noconfirm " + pacmanPkg + "; " +
+                "elif command -v apt-get >/dev/null 2>&1; then apt-get update && apt-get install -y " + aptPkg + "; " +
+                "elif command -v dnf >/dev/null 2>&1; then dnf install -y " + dnfPkg + "; " +
+                "elif command -v zypper >/dev/null 2>&1; then zypper install -y " + zypperPkg + "; " +
+                "else echo 'No supported package manager found' >&2; exit 1; fi"
+            ];
+            installerProc.running = true;
+            installerProc.write(pass + "\n");
+        }
     }
 
     Process {
@@ -68,7 +74,9 @@ Item {
                 root.installed();
             } else {
                 root.installError = true;
-                root.statusMsg = "Install failed. Check password & repos.";
+                root.statusMsg = "Install failed or incorrect password.";
+                sudoField.text = "";
+                Qt.callLater(() => sudoField.forceActiveFocus());
             }
         }
     }

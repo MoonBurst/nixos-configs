@@ -29,11 +29,28 @@ PanelWindow {
     property bool isOpenState: false
     visible: isOpenState || isPreviewMode
 
+    property bool isCardActive: true
+
+    // Focused: base03 | Off-focus: base0D
+    readonly property color activeBorderColor: (theme && theme.base03) ? theme.base03 : "#003399"
+    readonly property color inactiveBorderColor: (theme && theme.base0D) ? theme.base0D : "#003399"
+
     property bool inGracePeriod: false
     Timer {
         id: graceTimer
         repeat: false
         onTriggered: { window.inGracePeriod = false; }
+    }
+
+    Timer {
+        id: focusTimer
+        interval: 50
+        repeat: false
+        onTriggered: {
+            if (viewLoader.item && typeof viewLoader.item.clearAndFocus === "function") {
+                viewLoader.item.clearAndFocus(window.pendingExpr);
+            }
+        }
     }
 
     onIsOpenStateChanged: {
@@ -60,30 +77,46 @@ PanelWindow {
             if (safeShell && typeof safeShell.closeOtherOverlays === "function") {
                 safeShell.closeOtherOverlays(window);
             }
-            if (viewLoader.item) viewLoader.item.clearAndFocus(pendingExpr);
+            window.isCardActive = true;
+            focusTimer.restart();
         }
     }
 
     WlrLayershell.namespace: "quickshell-calc"
     WlrLayershell.layer: isPreviewMode ? WlrLayer.Top : WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: (visible && !isPreviewMode) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: {
+        if (!visible || isPreviewMode) return WlrKeyboardFocus.None;
+        return window.isCardActive ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None;
+    }
 
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
 
+    mask: window.isCardActive ? null : cardMaskRegion
+    Region { id: cardMaskRegion; item: card }
+
     function open(initialExpr) {
         if (safeShell && safeShell.sessionLock && safeShell.sessionLock.locked) return;
         pendingExpr = initialExpr || "";
+        window.isCardActive = true;
         isOpenState = true;
-        if (viewLoader.item) viewLoader.item.clearAndFocus(pendingExpr);
+        focusTimer.restart();
     }
+
+    function activateCard() {
+        window.isCardActive = true;
+        focusTimer.restart();
+    }
+
     function close() {
         isOpenState = false;
+        window.isCardActive = false;
         pendingExpr = "";
         if (settingsManager && settingsManager.previewWindow === windowId) {
             settingsManager.previewWindow = "";
         }
     }
+
     function toggle() { if (isOpenState) close(); else open(); }
 
     IpcHandler {
@@ -93,10 +126,76 @@ PanelWindow {
         function close(): void { window.close(); }
     }
 
+    // Background listener for Escape: catches Escape globally while Calc is open, even when unfocused
+    Process {
+        id: escWatcher
+        running: window.isOpenState && !window.isPreviewMode
+        command: [
+            "python3", "-u", "-c",
+            "import glob, struct, select, sys\n" +
+            "fds = []\n" +
+            "for dev in glob.glob('/dev/input/by-id/*-event-kbd') + glob.glob('/dev/input/event*'):\n" +
+            "    try:\n" +
+            "        fds.append(open(dev, 'rb', buffering=0))\n" +
+            "    except Exception:\n" +
+            "        pass\n" +
+            "if not fds:\n" +
+            "    sys.exit(0)\n" +
+            "fmt = 'llHHi' if struct.calcsize('l') == 8 else 'iiHHi'\n" +
+            "sz = struct.calcsize(fmt)\n" +
+            "while True:\n" +
+            "    r, _, _ = select.select(fds, [], [])\n" +
+            "    for fd in r:\n" +
+            "        try:\n" +
+            "            d = fd.read(sz)\n" +
+            "            if len(d) == sz:\n" +
+            "                _, _, t, code, val = struct.unpack(fmt, d)\n" +
+            "                if t == 1 and code == 1 and val == 1:\n" +
+            "                    print('ESC', flush=True)\n" +
+            "        except Exception:\n" +
+            "            pass\n"
+        ]
+        stdout: SplitParser {
+            splitMarker: "\n"
+            onRead: data => {
+                if (data.trim() === "ESC") window.close();
+            }
+        }
+    }
+
+    // Multi-screen click-off detector
+    Variants {
+        model: Quickshell.screens
+        delegate: PanelWindow {
+            id: otherScreenCatcher
+            required property var modelData
+            screen: modelData
+
+            visible: window.isOpenState && window.isCardActive && !window.isPreviewMode && (modelData !== window.screen)
+
+            WlrLayershell.namespace: "quickshell-calc-dismiss"
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+
+            anchors { top: true; bottom: true; left: true; right: true }
+            color: "transparent"
+
+            MouseArea {
+                anchors.fill: parent
+                onPressed: {
+                    window.isCardActive = false;
+                }
+            }
+        }
+    }
+
+    // Same-screen click-off detector
     MouseArea {
         anchors.fill: parent
-        enabled: !window.isPreviewMode
-        onClicked: window.close()
+        enabled: window.isCardActive && !window.isPreviewMode
+        onPressed: {
+            window.isCardActive = false;
+        }
     }
 
     Backend.CalcEngine { id: calcEngine }
@@ -108,14 +207,20 @@ PanelWindow {
         height: settingsManager ? settingsManager.getWindowHeight(window.windowId, 580) : 580
         radius: theme.defaultCardRadius
         color: theme.base01
-        border.width: theme.globalBorderWidth
-        border.color: theme.base03
+        border.width: (theme && theme.globalBorderWidth !== undefined) ? theme.globalBorderWidth : 3
+
+        // Focused: base03 | Off-focus: base0D
+        border.color: window.isCardActive ? window.activeBorderColor : window.inactiveBorderColor
         clip: true
 
         MouseArea {
             anchors.fill: parent
-            enabled: !window.isPreviewMode
-            preventStealing: true
+            enabled: !window.isCardActive && !window.isPreviewMode
+            z: 9999
+            cursorShape: Qt.PointingHandCursor
+            onPressed: {
+                window.activateCard();
+            }
         }
 
         Loader {
@@ -128,12 +233,34 @@ PanelWindow {
                 onCompleted: window.close()
             }
             onItemChanged: {
-                if (item && window.isOpenState) item.clearAndFocus(window.pendingExpr);
+                if (item && window.isOpenState && window.isCardActive) item.clearAndFocus(window.pendingExpr);
+            }
+        }
+
+        Rectangle {
+            anchors.top: parent.top
+            anchors.right: parent.right
+            anchors.margins: 14
+            width: 28; height: 28; radius: 6
+            color: closeHov.hovered ? ((theme && theme.base08 !== undefined) ? theme.base08 : "#ff5555") : "transparent"
+            border.color: (theme && theme.base08 !== undefined) ? theme.base08 : "#ff5555"
+            border.width: 1.5
+            z: 10000
+
+            Text {
+                anchors.centerIn: parent
+                text: "✕"
+                font.bold: true; font.pixelSize: 13
+                color: closeHov.hovered ? ((theme && theme.base00 !== undefined) ? theme.base00 : "#000") : ((theme && theme.base08 !== undefined) ? theme.base08 : "#ff5555")
+            }
+            HoverHandler { id: closeHov }
+            MouseArea {
+                anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                onClicked: window.close()
             }
         }
     }
 
-    // STATIC POSITIONED INSPECTOR
     SettingsTools.PreviewInspector {
         id: previewInspector
         visible: window.isPreviewMode
@@ -155,13 +282,7 @@ PanelWindow {
 
     Shortcut {
         sequence: "Escape"
-        enabled: window.visible
-        onActivated: {
-            if (window.isPreviewMode) {
-                if (settingsManager) settingsManager.previewWindow = "";
-            } else {
-                window.close();
-            }
-        }
+        enabled: window.visible && !window.isPreviewMode
+        onActivated: window.close()
     }
 }
