@@ -233,29 +233,6 @@ PanelWindow {
                 if (item && window.isOpenState && window.isCardActive) item.clearAndFocus();
             }
         }
-
-        Rectangle {
-            anchors.top: parent.top
-            anchors.right: parent.right
-            anchors.margins: 14
-            width: 28; height: 28; radius: 6
-            color: closeHov.hovered ? ((theme && theme.base08 !== undefined) ? theme.base08 : "#ff5555") : "transparent"
-            border.color: (theme && theme.base08 !== undefined) ? theme.base08 : "#ff5555"
-            border.width: 1.5
-            z: 10000
-
-            Text {
-                anchors.centerIn: parent
-                text: "✕"
-                font.bold: true; font.pixelSize: 13
-                color: closeHov.hovered ? ((theme && theme.base00 !== undefined) ? theme.base00 : "#000") : ((theme && theme.base08 !== undefined) ? theme.base08 : "#ff5555")
-            }
-            HoverHandler { id: closeHov }
-            MouseArea {
-                anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                onClicked: window.close()
-            }
-        }
     }
 
     SettingsTools.PreviewInspector {
