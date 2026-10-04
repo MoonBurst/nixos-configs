@@ -33,8 +33,8 @@ def get_secret(path):
         print(f"Warning: Could not read secret {path}: {e}")
     return None
 
-GMAIL_USER = get_secret("${config.sops.secrets.gmail_address.path}") or "moonburstplays@gmail.com"
-GMAIL_PASS = get_secret("${config.sops.secrets.gmail_app_password.path}")
+GMAIL_USER = get_secret("${config.sops.secrets.gmail_address_website.path}")
+GMAIL_PASS = get_secret("${config.sops.secrets.gmail_code_website.path}")
 
 def send_recovery_email(to_email, username, code):
     if not GMAIL_PASS:
@@ -568,11 +568,16 @@ if __name__ == "__main__":
 in
 {
   # Explicitly grant continuwuity user access to the Gmail secrets
-  sops.secrets."gmail_address" = {
-    mode = lib.mkForce "0444";
+sops.secrets.gmail_address_website = {
+    key = "gmail_code_website";
+    owner = "moonburst";
+    mode = "0400";
   };
-  sops.secrets."gmail_app_password" = {
-    mode = lib.mkForce "0444";
+
+  sops.secrets.gmail_code_website = {
+    key = "gmail_code_website";
+    owner = "moonburst";
+    mode = "0400";
   };
 
   systemd.services.matrix-registration-portal = {

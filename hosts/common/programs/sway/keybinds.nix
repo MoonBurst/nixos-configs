@@ -37,7 +37,7 @@ in
     "${super}+l" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call lockscreen lock";
     "${super}+m" = "exec sh -c 'echo toggle > /tmp/magnifier-state'";
     "${super}+o" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call todo toggle";
-    "${super}+SHIFT+m" = "exec ${pkgs.evolution}/bin/evolution";
+    "${super}+v" = "exec dictate";
 
     # ░█▀▀░█░█░█▀▀░▀█▀░█▀▀░█▄█
     # ░▀▀█░░█░░▀▀█░░█░░█▀▀░█░█

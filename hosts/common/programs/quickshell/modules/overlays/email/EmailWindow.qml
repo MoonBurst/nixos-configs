@@ -30,6 +30,7 @@ PanelWindow {
     visible: isOpenState || isPreviewMode
 
     property bool isCardActive: true
+    readonly property bool isModalOpen: viewLoader.item ? viewLoader.item.isModalActive() : false
 
     readonly property color activeBorderColor: (theme && theme.base03) ? theme.base03 : "#003399"
     readonly property color inactiveBorderColor: (theme && theme.base0D) ? theme.base0D : "#003399"
@@ -110,31 +111,35 @@ PanelWindow {
                 safeShell.closeOtherOverlays(window);
             }
             window.isCardActive = true;
+            emailEngine.checkHimalaya();
             emailEngine.readMailCache();
-            emailEngine.syncMail();
             focusTimer.restart();
         }
     }
 
     WlrLayershell.namespace: "quickshell-email-window"
     WlrLayershell.layer: isPreviewMode ? WlrLayer.Top : WlrLayer.Overlay
+
+    // While setting up login, use OnDemand focus so you can freely type into your web browser
     WlrLayershell.keyboardFocus: {
         if (!visible || isPreviewMode) return WlrKeyboardFocus.None;
+        if (window.isModalOpen) return WlrKeyboardFocus.OnDemand;
         return window.isCardActive ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None;
     }
 
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
 
-    mask: window.isCardActive ? null : cardMaskRegion
+    // When modal is active or window unfocused, shrink mask to the card so clicks outside pass to your browser
+    mask: (window.isCardActive && !window.isModalOpen) ? null : cardMaskRegion
     Region { id: cardMaskRegion; item: emailCard }
 
     function open() {
         if (safeShell && safeShell.sessionLock && safeShell.sessionLock.locked) return;
         window.isCardActive = true;
         isOpenState = true;
+        emailEngine.checkHimalaya();
         emailEngine.readMailCache();
-        emailEngine.syncMail();
         focusTimer.restart();
     }
 
@@ -202,6 +207,7 @@ PanelWindow {
         }
     }
 
+    // Multi-screen click-off detector (Disabled while login modal is open)
     Variants {
         model: Quickshell.screens
         delegate: PanelWindow {
@@ -209,7 +215,7 @@ PanelWindow {
             required property var modelData
             screen: modelData
 
-            visible: window.isOpenState && window.isCardActive && !window.isPreviewMode && (modelData !== window.screen)
+            visible: window.isOpenState && window.isCardActive && !window.isPreviewMode && !window.isModalOpen && (modelData !== window.screen)
 
             WlrLayershell.namespace: "quickshell-email-dismiss"
             WlrLayershell.layer: WlrLayer.Overlay
@@ -227,9 +233,10 @@ PanelWindow {
         }
     }
 
+    // Same-screen click-off detector (Disabled while login modal is open)
     MouseArea {
         anchors.fill: parent
-        enabled: window.isCardActive && !window.isPreviewMode
+        enabled: window.isCardActive && !window.isPreviewMode && !window.isModalOpen
         onPressed: {
             window.isCardActive = false;
         }
@@ -239,13 +246,14 @@ PanelWindow {
 
     Item {
         id: emailCard
-        anchors.centerIn: parent
         width: settingsManager ? settingsManager.getWindowWidth(window.windowId, 1500) : 1500
         height: settingsManager ? settingsManager.getWindowHeight(window.windowId, 900) : 900
+        x: Math.round(Math.max(20, (window.width - width) / 2))
+        y: Math.round(Math.max(20, (window.height - height) / 2))
 
         MouseArea {
             anchors.fill: parent
-            enabled: !window.isCardActive && !window.isPreviewMode
+            enabled: !window.isCardActive && !window.isPreviewMode && !window.isModalOpen
             z: 9999
             cursorShape: Qt.PointingHandCursor
             onPressed: {
@@ -303,13 +311,13 @@ PanelWindow {
         settingsManager: window.settingsManager
         theme: window.theme
         defaultW: 1500; defaultH: 900
-        defaultFH: 48; defaultIS: 32
-        hasField: true; hasIcon: false
-        defaultPolicy: window.defaultPolicy
+            defaultFH: 48; defaultIS: 32
+                hasField: true; hasIcon: false
+                defaultPolicy: window.defaultPolicy
 
-        onDoneRequested: {
-            if (settingsManager) settingsManager.previewWindow = "";
-        }
+                    onDoneRequested: {
+                        if (settingsManager) settingsManager.previewWindow = "";
+                    }
     }
 
     Shortcut {

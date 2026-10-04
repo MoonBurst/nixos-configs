@@ -13,7 +13,6 @@
     ./zsh.nix
     ./programs/brave.nix
     ./programs/librewolf.nix
-    ./programs/mpd.nix
     ./programs/nemo.nix
     ./programs/quickshell.nix
   ];
@@ -23,7 +22,6 @@
   home-manager.users.moonburst = {
     imports = [
       ./programs/ghostty.nix
-      ./programs/himalaya.nix
       ./programs/sway/sway.nix
     ];
 

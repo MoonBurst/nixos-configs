@@ -3,9 +3,6 @@ import QtQuick
 Rectangle {
     id: sidebarComp
 
-    // ============================================================================
-    // SAFE VARIABLE CHECKS AGAINST THE CENTRAL THEME OBJECT
-    // ============================================================================
     property color sidebarBgColor: (typeof theme !== 'undefined') ? theme.base00 : "#121212"
     property color itemSelectedBg: (typeof theme !== 'undefined') ? theme.base00 : "#121212"
     property color itemBorderColor: (typeof theme !== 'undefined') ? theme.base01 : "#0f0f0f"
@@ -16,7 +13,6 @@ Rectangle {
     property int fontSize: (typeof theme !== 'undefined') ? theme.globalFontSize : 20
     property string sidebarFontFamily: (typeof theme !== 'undefined') ? theme.fontFamily : "Fira Sans"
 
-    // Custom Border Configuration Bindings
     property color outerBorderColor: (typeof theme !== 'undefined') ? theme.outerBorderColor : "#003399"
     property int outerBorderThickness: (typeof theme !== 'undefined') ? theme.globalBorderWidth : 3
     property color innerCardActiveBorder: (typeof theme !== 'undefined') ? theme.innerBorderColor : "#fabd2f"
@@ -28,6 +24,7 @@ Rectangle {
     property var countsDictionary: ({})
 
     signal helpRequested()
+    signal settingsRequested()
 
     color: sidebarBgColor
     border.color: outerBorderColor
@@ -72,15 +69,25 @@ Rectangle {
         }
     }
 
-    // ============================================================================
-    // DYNAMIC LOWER-LEFT HELP BUTTON
-    // ============================================================================
-    Rectangle {
-        id: helpButton; width: 34; height: 34; radius: 17; color: sidebarComp.sidebarBgColor
-        border.color: mouseArea.containsMouse ? sidebarComp.innerCardActiveBorder : sidebarComp.itemBorderColor; border.width: mouseArea.containsMouse ? 2 : 1
+    // Lower-Left Quick Actions (Help & Account Settings)
+    Row {
         anchors.left: parent.left; anchors.leftMargin: sidebarComp.sidebarPadding; anchors.bottom: parent.bottom; anchors.bottomMargin: sidebarComp.sidebarPadding
+        spacing: 10
 
-        Text { text: "?"; font.family: sidebarComp.sidebarFontFamily; font.pixelSize: sidebarComp.fontSize; font.bold: true; color: mouseArea.containsMouse ? sidebarComp.folderTextColor : sidebarComp.countTextColor; anchors.centerIn: parent }
-        MouseArea { id: mouseArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: sidebarComp.helpRequested() }
+        Rectangle {
+            id: helpButton; width: 34; height: 34; radius: 17; color: sidebarComp.sidebarBgColor
+            border.color: helpMouse.containsMouse ? sidebarComp.innerCardActiveBorder : sidebarComp.itemBorderColor; border.width: helpMouse.containsMouse ? 2 : 1
+
+            Text { text: "?"; font.family: sidebarComp.sidebarFontFamily; font.pixelSize: sidebarComp.fontSize; font.bold: true; color: helpMouse.containsMouse ? sidebarComp.folderTextColor : sidebarComp.countTextColor; anchors.centerIn: parent }
+            MouseArea { id: helpMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: sidebarComp.helpRequested() }
+        }
+
+        Rectangle {
+            id: settingsButton; width: 34; height: 34; radius: 17; color: sidebarComp.sidebarBgColor
+            border.color: setMouse.containsMouse ? sidebarComp.innerCardActiveBorder : sidebarComp.itemBorderColor; border.width: setMouse.containsMouse ? 2 : 1
+
+            Text { text: "⚙"; font.pixelSize: sidebarComp.fontSize - 4; anchors.centerIn: parent }
+            MouseArea { id: setMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: sidebarComp.settingsRequested() }
+        }
     }
 }

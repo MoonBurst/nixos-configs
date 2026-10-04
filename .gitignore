@@ -2,3 +2,5 @@
 hosts/common/assets/*.onnx
 hosts/common/assets/*.index
 hosts/common/assets/*.pth
+.*.kate-swp
+*.kate-swp

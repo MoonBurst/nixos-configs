@@ -7,55 +7,66 @@ import "../backend"
 
 Item {
     id: viewRoot
-    
+
     required property EmailEngine engine
     property var theme: null
     property var settingsManager: null
-    
+
     readonly property color windowBgColor: (theme && theme.base00) ? theme.base00 : "#121212"
     readonly property color outerBorderColor: (theme && theme.outerBorderColor) ? theme.outerBorderColor : "#003399"
     readonly property color innerBorderColor: (theme && theme.innerBorderColor) ? theme.innerBorderColor : "#FABD2F"
     readonly property int outerBorderThickness: 5
     readonly property int innerCardActiveThickness: 5
-    
+
     readonly property int overlayFontSize: (settingsManager && settingsManager.overlayFontSize > 0)
     ? settingsManager.overlayFontSize
     : ((theme && theme.overlayFontSize) ? theme.overlayFontSize : 16)
-    
+
     property int sidebarColumnWidth: Math.max(180, Math.round(width * 0.17))
     property int listingColumnWidth: Math.max(300, Math.round(width * 0.33))
     property int previewColumnWidth: Math.max(380, width - sidebarColumnWidth - listingColumnWidth)
-    
+
     signal closeRequested()
-    
+
     focus: true
-    
+
     function clearAndFocus() {
         mailListView.focus = true;
+        if (!viewRoot.engine.himalayaInstalled) {
+            himalayaSetupOverlay.currentStep = 1;
+            himalayaSetupOverlay.inspectExistingCredentials();
+            himalayaSetupOverlay.visible = true;
+        }
         Qt.callLater(() => mailListView.forceActiveFocus());
     }
-    
+
     Component.onCompleted: Qt.callLater(() => mailListView.forceActiveFocus())
     onVisibleChanged: if (visible) Qt.callLater(() => mailListView.forceActiveFocus())
-    
+
     function isModalActive() {
         return (typeof himalayaSetupOverlay !== "undefined" && himalayaSetupOverlay && himalayaSetupOverlay.visible)
         || (typeof contactModalOverlay !== "undefined" && contactModalOverlay && contactModalOverlay.visible)
         || (typeof helpModalOverlay !== "undefined" && helpModalOverlay && helpModalOverlay.visible);
     }
-    
+
     Shortcut {
         sequence: "Ctrl+F"
         enabled: !engine.isComposing && !viewRoot.isModalActive()
         onActivated: mailListView.toggleSearch()
     }
-    
+
     Shortcut {
         sequence: "/"
         enabled: !engine.isComposing && !viewRoot.isModalActive()
         onActivated: mailListView.toggleSearch()
     }
-    
+
+    Shortcut {
+        sequence: "Ctrl+R"
+        enabled: !engine.isComposing && !viewRoot.isModalActive()
+        onActivated: engine.syncMail()
+    }
+
     function initiateEmailReply() {
         var activeItem = engine.selectedMail;
         if (!activeItem) return;
@@ -64,7 +75,7 @@ Item {
         engine.isComposing = true;
         composeWindowOverlay.prepopulateForm(replyTo, activeItem.subject.startsWith("Re:") ? activeItem.subject : "Re: " + activeItem.subject, conversationLog);
     }
-    
+
     function initiateDraftEdit() {
         var activeItem = engine.selectedMail;
         if (!activeItem) return;
@@ -74,11 +85,11 @@ Item {
         engine.isComposing = true;
         composeWindowOverlay.restoreDraftForm(draftTo, draftSubject, draftBody);
     }
-    
+
     Keys.onPressed: (event) => {
         if (engine.isComposing || viewRoot.isModalActive()) return;
         var isAltPressed = (event.modifiers === Qt.AltModifier) || (event.modifiers & Qt.AltModifier) !== 0;
-        
+
         if (isAltPressed) {
             if (event.key === Qt.Key_Up) { engine.cycleFolder(false); event.accepted = true; }
             else if (event.key === Qt.Key_Down) { engine.cycleFolder(true); event.accepted = true; }
@@ -102,25 +113,26 @@ Item {
             else if (event.text === "?") { helpModalOverlay.visible = true; event.accepted = true; }
         }
     }
-    
+
     Rectangle {
         anchors.fill: parent
         color: viewRoot.windowBgColor
         border.color: viewRoot.outerBorderColor
         border.width: viewRoot.outerBorderThickness
         radius: (theme && theme.defaultCardRadius) ? theme.defaultCardRadius : 10
-        
+
         Row {
             anchors.fill: parent
-            
+
             SidebarView {
                 width: viewRoot.sidebarColumnWidth; height: parent.height
                 folderListModel: engine.folderList; activeFolderIndex: engine.currentFolderIndex
                 countsDictionary: engine.folderCountMap
                 fontSize: viewRoot.overlayFontSize
                 onHelpRequested: helpModalOverlay.visible = true
+                onSettingsRequested: himalayaSetupOverlay.visible = true
             }
-            
+
             EmailListView {
                 id: mailListView
                 width: viewRoot.listingColumnWidth; height: parent.height
@@ -128,13 +140,13 @@ Item {
                 focus: true
                 textMainSize: viewRoot.overlayFontSize
                 textSubSize: Math.max(11, viewRoot.overlayFontSize - 2)
-                
+
                 onSearchQueryChanged: engine.searchString = searchQuery
                 onSearchCaseSensitiveChanged: engine.searchCaseSensitive = searchCaseSensitive
                 onStarToggled: (index) => { engine.currentMailIndex = index; engine.selectedMail = engine.filteredMails[index]; engine.handleStarToggle(); }
                 onReadToggled: (index) => { engine.currentMailIndex = index; engine.selectedMail = engine.filteredMails[index]; engine.handleReadToggle(); }
             }
-            
+
             EmailPreview {
                 width: viewRoot.previewColumnWidth; height: parent.height
                 activeMailObject: engine.selectedMail
@@ -156,7 +168,7 @@ Item {
                 }
             }
         }
-        
+
         ComposeModal {
             id: composeWindowOverlay
             anchors.fill: parent
@@ -175,7 +187,6 @@ Item {
             onAttachmentRequested: fileDialog.open()
         }
 
-        // Dedicated Himalaya Setup & Configuration Overlay
         HimalayaSetupModal {
             id: himalayaSetupOverlay
             anchors.fill: parent
@@ -186,29 +197,30 @@ Item {
             onConfigured: {
                 viewRoot.engine.himalayaInstalled = true;
                 viewRoot.engine.readMailCache();
+                viewRoot.engine.syncMail();
+                himalayaSetupOverlay.visible = false;
                 mailListView.forceActiveFocus();
             }
             onCancelled: {
-                viewRoot.engine.himalayaInstalled = true;
-                mailListView.forceActiveFocus();
+                viewRoot.closeRequested();
             }
         }
-        
+
         Rectangle {
             id: contactModalOverlay; anchors.fill: parent; color: "#F40F0F0F"; visible: false
             property string targetEmail: ""
             function openContactPrompt(email) { targetEmail = email; nicknameInput.text = ""; visible = true; nicknameInput.forceActiveFocus(); }
             MouseArea { anchors.fill: parent; onClicked: contactModalOverlay.visible = false }
-            
+
             Rectangle {
                 width: 400; height: 220; color: viewRoot.windowBgColor; border.color: viewRoot.innerBorderColor
                 border.width: viewRoot.innerCardActiveThickness; radius: 10; anchors.centerIn: parent
-                
+
                 Column {
                     anchors.fill: parent; anchors.margins: 20; spacing: 15
                     Text { text: "ADD TO CONTACTS"; font.bold: true; font.pixelSize: viewRoot.overlayFontSize; color: (theme && theme.base05) ? theme.base05 : "yellow" }
                     Text { text: "Email: " + contactModalOverlay.targetEmail; font.pixelSize: viewRoot.overlayFontSize - 2; color: (theme && theme.base06) ? theme.base06 : "white" }
-                    
+
                     Rectangle {
                         width: parent.width; height: Math.max(38, viewRoot.overlayFontSize * 2); color: viewRoot.windowBgColor; border.color: (theme && theme.base03) ? theme.base03 : "#45475a"; border.width: 1; radius: 6
                         TextInput {
@@ -226,19 +238,19 @@ Item {
             }
             Shortcut { sequence: "Escape"; enabled: contactModalOverlay.visible; onActivated: { contactModalOverlay.visible = false; mailListView.forceActiveFocus(); } }
         }
-        
+
         Rectangle {
             id: helpModalOverlay
             anchors.fill: parent
             color: "#F40F0F0F"
             visible: false
             z: 320
-            
+
             MouseArea {
                 anchors.fill: parent
                 onClicked: helpModalOverlay.visible = false
             }
-            
+
             Rectangle {
                 width: 520
                 height: 440
@@ -247,14 +259,14 @@ Item {
                 border.width: viewRoot.innerCardActiveThickness
                 radius: 10
                 anchors.centerIn: parent
-                
+
                 MouseArea { anchors.fill: parent }
-                
+
                 Column {
                     anchors.fill: parent
                     anchors.margins: 22
                     spacing: 14
-                    
+
                     RowLayout {
                         width: parent.width
                         Text {
@@ -273,9 +285,9 @@ Item {
                             }
                         }
                     }
-                    
+
                     Rectangle { width: parent.width; height: 1; color: (theme && theme.base03) ? theme.base03 : "#45475a" }
-                    
+
                     Grid {
                         columns: 2; columnSpacing: 24; rowSpacing: 10; width: parent.width
                         Text { text: "Alt + ↑ / ↓"; font.bold: true; font.pixelSize: viewRoot.overlayFontSize; color: (theme && theme.base05) ? theme.base05 : "yellow" }
@@ -284,6 +296,8 @@ Item {
                         Text { text: "Cycle Emails in List"; font.pixelSize: viewRoot.overlayFontSize - 2; color: "#ccc" }
                         Text { text: "Ctrl + F or /"; font.bold: true; font.pixelSize: viewRoot.overlayFontSize; color: (theme && theme.base05) ? theme.base05 : "yellow" }
                         Text { text: "Search Emails"; font.pixelSize: viewRoot.overlayFontSize - 2; color: "#ccc" }
+                        Text { text: "Ctrl + R"; font.bold: true; font.pixelSize: viewRoot.overlayFontSize; color: (theme && theme.base05) ? theme.base05 : "yellow" }
+                        Text { text: "Sync / Refresh Mail"; font.pixelSize: viewRoot.overlayFontSize - 2; color: "#ccc" }
                         Text { text: "Enter / Return"; font.bold: true; font.pixelSize: viewRoot.overlayFontSize; color: (theme && theme.base05) ? theme.base05 : "yellow" }
                         Text { text: "Reply to Selected Email"; font.pixelSize: viewRoot.overlayFontSize - 2; color: "#ccc" }
                         Text { text: "N"; font.bold: true; font.pixelSize: viewRoot.overlayFontSize; color: (theme && theme.base05) ? theme.base05 : "yellow" }
@@ -295,7 +309,7 @@ Item {
                         Text { text: "R"; font.bold: true; font.pixelSize: viewRoot.overlayFontSize; color: (theme && theme.base05) ? theme.base05 : "yellow" }
                         Text { text: "Toggle Read"; font.pixelSize: viewRoot.overlayFontSize - 2; color: "#ccc" }
                     }
-                    
+
                     Text {
                         text: "Press [ESC], [?], or click outside to dismiss"
                         font.pixelSize: Math.max(10, viewRoot.overlayFontSize - 4); color: "#666"
@@ -315,7 +329,7 @@ Item {
             }
         }
     }
-    
+
     FileDialog {
         id: fileDialog
         title: "Select File(s) to Attach"

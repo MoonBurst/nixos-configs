@@ -3,9 +3,6 @@ import QtQuick
 Rectangle {
     id: previewComp
 
-    // ============================================================================
-    // THEME & STYLE SAFE PROPERTY FALLBACKS
-    // ============================================================================
     property color previewBgColor: (typeof theme !== 'undefined' && theme.base00) ? theme.base00 : "#121212"
     property color headerSectionBg: (typeof theme !== 'undefined' && theme.base00) ? theme.base00 : "#121212"
     property color titleColor: (typeof theme !== 'undefined' && theme.base05) ? theme.base05 : "#f7f700"
@@ -23,12 +20,10 @@ Rectangle {
     property color innerCardActiveBorder: (typeof theme !== 'undefined' && theme.innerBorderColor) ? theme.innerBorderColor : "#fabd2f"
     property int innerCardActiveThickness: 5
 
-    // Controller Bindings
     property var activeMailObject: null
     property string activeMailBodyText: ""
     property bool hasAttachments: activeMailObject ? !!(activeMailObject["has-attachment"] || activeMailObject.has_attachment || (activeMailObject.attachments && activeMailObject.attachments.length > 0)) : false
 
-    // Automated Unsubscribe URL Scanner
     property string unsubscribeUrl: findUnsubscribeUrl(activeMailBodyText)
 
     signal contactRequested(string email)
@@ -51,7 +46,12 @@ Rectangle {
     function formatBody(rawText) {
         if (!rawText) return "";
 
-        var escaped = rawText
+        // Strip MML tags like <#part type=text/html> and <#/part>
+        var cleaned = rawText
+            .replace(/<#part[^>]*>/gi, "")
+            .replace(/<#\/part>/gi, "");
+
+        var escaped = cleaned
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;");
@@ -74,7 +74,6 @@ Rectangle {
         return formatted;
     }
 
-    // Header section
     Rectangle {
         id: headerRect
         anchors.top: parent.top
@@ -181,7 +180,6 @@ Rectangle {
         }
     }
 
-    // Scrollable body viewport
     Flickable {
         id: bodyFlickableCanvas
         anchors.top: headerRect.bottom; anchors.bottom: parent.bottom; anchors.left: parent.left; anchors.right: parent.right
@@ -197,73 +195,6 @@ Rectangle {
                 textFormat: Text.StyledText; font.family: previewComp.previewFontFamily; font.pixelSize: previewComp.bodySize; color: previewComp.bodyTextColor
                 linkColor: previewComp.innerCardActiveBorder; wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 onLinkActivated: (link) => Qt.openUrlExternally(link)
-            }
-
-            Column {
-                id: attachmentPreviewsSection; width: parent.width; spacing: 15; visible: previewComp.hasAttachments
-
-                Repeater {
-                    model: activeMailObject && activeMailObject.attachments ? activeMailObject.attachments : []
-                    delegate: Column {
-                        width: parent.width; spacing: 8
-
-                        property bool isImage: {
-                            if (!modelData) return false;
-                            var mime = (modelData.mime || "").toLowerCase();
-                            var fname = (modelData.filename || "").toLowerCase();
-                            return (mime.indexOf("image/") === 0) ||
-                                fname.endsWith(".png") || fname.endsWith(".jpg") ||
-                                fname.endsWith(".jpeg") || fname.endsWith(".gif") ||
-                                fname.endsWith(".bmp") || fname.endsWith(".webp");
-                        }
-
-                        property bool isText: modelData.filename ? (modelData.filename.endsWith(".txt") || modelData.filename.endsWith(".log") || modelData.filename.endsWith(".sh") || modelData.filename.endsWith(".ini") || modelData.filename.endsWith(".zshrc") || modelData.filename.endsWith(".conf")) : false
-
-                        Rectangle {
-                            width: parent.width; height: 32; color: previewComp.scrollTrackBg; radius: 4; border.color: "#3c3836"; border.width: 1
-                            Row {
-                                anchors.fill: parent; anchors.leftMargin: 10; spacing: 8
-                                Text { text: "📎"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
-                                Text {
-                                    text: modelData.filename + " (" + (modelData.mime || "unknown") + ")"
-                                    font.family: previewComp.previewFontFamily; font.pixelSize: previewComp.metaSize - 4; color: previewComp.bodyTextColor
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-                            }
-                        }
-
-                        Image {
-                            visible: isImage && modelData.local_path && modelData.local_path !== ""
-                            source: visible ? "file://" + modelData.local_path : ""
-                            width: Math.min(parent.width, 320); height: width * 0.625; fillMode: Image.PreserveAspectFit
-                            asynchronous: true
-                        }
-
-                        Rectangle {
-                            visible: isText && modelData.local_path && modelData.local_path !== ""
-                            width: parent.width; height: 180; color: "#0f0f0f"; radius: 4; border.color: "#3c3836"; border.width: 1
-
-                            Flickable {
-                                anchors.fill: parent; anchors.margins: 10; contentWidth: width; contentHeight: previewText.height; clip: true
-                                Text { id: previewText; width: parent.width; wrapMode: Text.Wrap; font.family: "Fira Code"; font.pixelSize: previewComp.bodySize - 4; color: "#bdae93" }
-                            }
-
-                            Component.onCompleted: {
-                                if (visible && modelData.local_path) {
-                                    var xhr = new XMLHttpRequest();
-                                    xhr.open("GET", "file://" + modelData.local_path, true);
-                                    xhr.onreadystatechange = function() {
-                                        if (xhr.readyState === XMLHttpRequest.DONE) {
-                                            previewText.text = xhr.responseText;
-                                            xhr = null;
-                                        }
-                                    }
-                                    xhr.send();
-                                }
-                            }
-                        }
-                    }
-                }
             }
         }
     }

@@ -9,7 +9,7 @@ QtObject {
     property string cacheFilePath: "file://" + (Quickshell.env("HOME") || "") + "/.cache/himalaya/emails.json"
     property var fullMailCacheList: []
     property var filteredMails: []
-    property var folderList: ["inbox", "starred", "steam", "all", "sent", "drafts", "trash", "spam"]
+    property var folderList: ["inbox", "starred", "steam", "reddit", "all", "sent", "drafts", "trash", "spam"]
 
     property int currentFolderIndex: 0
     property int currentMailIndex: 0
@@ -27,8 +27,8 @@ QtObject {
     property bool himalayaInstalled: false
 
     property string mailSignature: (typeof shell !== "undefined" && shell && shell.settingsManager && shell.settingsManager.emailSignature)
-        ? shell.settingsManager.emailSignature
-        : "\n\n--\nSeekers of light..\nBelieve not in justice...\nBelieve not in truth...\nFor they are empty and inconsistent, as are all things..."
+    ? shell.settingsManager.emailSignature
+    : "\n\n--\nSeekers of light..\nBelieve not in justice...\nBelieve not in truth...\nFor they are empty and inconsistent, as are all things..."
 
     onSearchStringChanged: filterEmailsByActiveFolder()
     onSearchCaseSensitiveChanged: filterEmailsByActiveFolder()
@@ -44,9 +44,30 @@ QtObject {
     }
 
     function syncMail() {
-        if (!engine.himalayaInstalled) return;
+        if (!engine.himalayaInstalled || mailSyncProc.running) return;
         mailSyncProc.running = false;
         mailSyncProc.running = true;
+    }
+
+    // Direct, push-based IMAP IDLE watcher
+    readonly property Process mailWatcherProcess: Process {
+        running: engine.himalayaInstalled
+        command: [
+            "sh", "-c",
+            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
+            'SCR="' + Quickshell.shellDir + '/modules/overlays/email/backend/HimalayaEngine.lua"; ' +
+            'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
+            '"$CMD" "$SCR" watch'
+        ]
+        stdout: SplitParser {
+            splitMarker: "\n"
+            onRead: data => {
+                var clean = data.trim();
+                if (clean === "SYNC" || clean === "NEW_MAIL") {
+                    engine.syncMail();
+                }
+            }
+        }
     }
 
     readonly property Process mailSyncProc: Process {
@@ -63,6 +84,20 @@ QtObject {
         }
     }
 
+    // Stream-based body fetcher without timer polling
+    readonly property Process bodyFetchProc: Process {
+        running: false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                engine.activeMailBody = text || "(Empty body)";
+                if (engine.selectedMail) {
+                    engine.selectedMail.body_content = engine.activeMailBody;
+                }
+            }
+        }
+    }
+
+    // Checks configuration strictly. If config.toml is missing, triggers login modal.
     readonly property Process himalayaCheckProc: Process {
         running: true
         command: [
@@ -75,44 +110,8 @@ QtObject {
                 engine.himalayaInstalled = (data.trim() === "1");
                 if (engine.himalayaInstalled) {
                     engine.readMailCache();
-                    engine.syncMail();
                 }
             }
-        }
-    }
-
-    readonly property Timer bodyFetchPoller: Timer {
-        interval: 100
-        running: false
-        repeat: true
-        property string lastTargetId: ""
-        property int attempts: 0
-        onTriggered: {
-            attempts++;
-            if (attempts > 30) {
-                running = false;
-                return;
-            }
-            var xhr = new XMLHttpRequest();
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
-                    var lines = xhr.responseText.split("\n");
-                    if (lines.length >= 2) {
-                        var bodyId = lines[0].trim();
-                        if (bodyId === bodyFetchPoller.lastTargetId) {
-                            var bodyText = lines.slice(1).join("\n");
-                            engine.activeMailBody = bodyText;
-                            if (engine.selectedMail && engine.selectedMail.id.toString() === bodyId) {
-                                engine.selectedMail.body_content = bodyText;
-                            }
-                            running = false;
-                        }
-                    }
-                }
-            }
-            var bodyFilePath = "file://" + (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/qmail_active_body.txt";
-            xhr.open("GET", bodyFilePath, true);
-            xhr.send();
         }
     }
 
@@ -123,13 +122,19 @@ QtObject {
         if (activeItem.body_content && activeItem.body_content.trim() !== "") {
             activeMailBody = activeItem.body_content;
         } else {
-            activeMailBody = "Fetching message body from server...";
-            bodyFetchPoller.lastTargetId = activeItem.id.toString();
-            bodyFetchPoller.attempts = 0;
-            bodyFetchPoller.start();
-
+            activeMailBody = "Loading message body...";
             var folderArg = getMaildirFolder(activeItem.folder);
-            writeToQueue("FETCH_BODY", activeItem.id.toString(), folderArg, "");
+
+            bodyFetchProc.running = false;
+            bodyFetchProc.command = [
+                "sh", "-c",
+                'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
+                'SCR="' + Quickshell.shellDir + '/modules/overlays/email/backend/HimalayaEngine.lua"; ' +
+                'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
+                '"$CMD" "$SCR" FETCH_BODY "$1" "$2"',
+                "sh", activeItem.id.toString(), folderArg
+            ];
+            bodyFetchProc.running = true;
         }
 
         var flags = activeItem.flags || [];
@@ -178,31 +183,50 @@ QtObject {
         var label = (folderLabel || "").toLowerCase();
         var map = {
             "inbox": "INBOX",
-            "starred": ".[Gmail].Starred",
-            "all": ".[Gmail].All Mail",
-            "steam": ".Steam",
-            "drafts": ".[Gmail].Drafts",
-            "sent": ".[Gmail].Sent Mail",
-            "trash": ".[Gmail].Trash",
-            "spam": ".[Gmail].Spam"
+            "starred": "[Gmail]/Starred",
+            "steam": "Steam",
+            "reddit": "INBOX",
+            "all": "[Gmail]/All Mail",
+            "drafts": "[Gmail]/Drafts",
+            "sent": "[Gmail]/Sent Mail",
+            "trash": "[Gmail]/Trash",
+            "spam": "[Gmail]/Spam"
         };
         return map[label] || "INBOX";
+    }
+
+    readonly property Process cacheWriterProc: Process {}
+
+    function saveMailCacheDisk() {
+        cacheWriterProc.command = [
+            "sh", "-c",
+            'printf "%s" "$1" > "$HOME/.cache/himalaya/emails.json"',
+            "sh", JSON.stringify(engine.fullMailCacheList)
+        ];
+        cacheWriterProc.running = false;
+        cacheWriterProc.running = true;
     }
 
     function readMailCache() {
         if (cacheFilePath === "") return;
         var xhr = new XMLHttpRequest();
         xhr.onreadystatechange = function() {
-            if (xhr.readyState === XMLHttpRequest.DONE && (xhr.status === 200 || xhr.status === 0)) {
-                try {
-                    var parsedData = JSON.parse(xhr.responseText);
-                    if (Array.isArray(parsedData)) {
-                        engine.fullMailCacheList = parsedData;
-                        engine.recalculateFolderStats();
-                        engine.filterEmailsByActiveFolder();
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200 || xhr.status === 0) {
+                    var raw = xhr.responseText ? xhr.responseText.trim() : "";
+                    if (!raw || raw.length === 0 || !raw.startsWith("[")) {
+                        return;
                     }
-                } catch (e) {
-                    console.log("[Controller Error] JSON Index Extraction Fault: " + e.message);
+                    try {
+                        var parsedData = JSON.parse(raw);
+                        if (Array.isArray(parsedData)) {
+                            engine.fullMailCacheList = parsedData;
+                            engine.recalculateFolderStats();
+                            engine.filterEmailsByActiveFolder();
+                        }
+                    } catch (e) {
+                        console.log("[EmailEngine] Index extraction fault: " + e.message);
+                    }
                 }
             }
         }
@@ -211,8 +235,17 @@ QtObject {
         xhr.send();
     }
 
+    function getNormalizedDateKey(dateStr) {
+        if (!dateStr || dateStr.trim() === "") return "";
+        var parsed = Date.parse(dateStr);
+        if (!isNaN(parsed) && parsed > 0) {
+            return String(Math.floor(parsed / 60000));
+        }
+        return dateStr.trim();
+    }
+
     function recalculateFolderStats() {
-        var counts = { "inbox": 0, "starred": 0, "steam": 0, "all": 0, "sent": 0, "drafts": 0, "trash": 0, "spam": 0 };
+        var counts = { "inbox": 0, "starred": 0, "steam": 0, "reddit": 0, "all": 0, "sent": 0, "drafts": 0, "trash": 0, "spam": 0 };
         var seenStarredIds = {}, seenAllIds = {};
 
         fullMailCacheList.forEach(mail => {
@@ -221,18 +254,17 @@ QtObject {
             var flags = (mail.flags || []).map(f => f.toLowerCase());
             var isStarred = flags.includes("flagged");
             var sender = (mail.from ? (mail.from.addr || mail.from.name || "") : (mail.sender || "")).trim();
-            var sig = (mail.subject || "").trim() + "|" + (mail.date || "").trim() + "|" + sender;
+            var timeKey = engine.getNormalizedDateKey(mail.date);
+            var sig = (mail.subject || "").trim() + "|" + timeKey + "|" + sender;
 
             if (isStarred && !seenStarredIds[sig]) {
                 counts["starred"]++; seenStarredIds[sig] = true;
             }
             if (folder !== "trash" && folder !== "spam" && !seenAllIds[sig]) {
-                if (folder === "all" && !isStarred) {
-                    counts["all"]++;
-                }
+                counts["all"]++;
                 seenAllIds[sig] = true;
             }
-            if (folder !== "starred" && folder !== "all" && counts[folder] !== undefined) {
+            if (counts[folder] !== undefined && folder !== "all" && folder !== "starred") {
                 counts[folder]++;
             }
         });
@@ -241,17 +273,6 @@ QtObject {
 
     function filterEmailsByActiveFolder() {
         var targetFolder = folderList[currentFolderIndex];
-        var isFolderSwitch = (currentFolderIndex !== lastFolderIndex);
-
-        var oldFilteredMails = engine.filteredMails || [];
-        var oldMailIds = {};
-        oldFilteredMails.forEach(oldMail => {
-            if (!oldMail) return;
-            var oldSender = oldMail.from ? (oldMail.from.addr || oldMail.from.name || "") : (oldMail.sender || "");
-            var oldKey = (oldMail.subject || "").trim() + "|" + (oldMail.date || "").trim() + "|" + oldSender.trim();
-            oldMailIds[oldKey] = true;
-        });
-
         var matchingMails = [];
         var seenIds = {};
         var query = searchString.trim();
@@ -262,23 +283,23 @@ QtObject {
             if (mail) {
                 var belongsToFolder = (mail.folder === targetFolder);
 
-                if (targetFolder === "inbox") {
-                    belongsToFolder = (mail.folder === "inbox");
-                } else if (targetFolder === "all") {
-                    var isStarred = (mail.flags || []).map(f => f.toLowerCase()).includes("flagged");
-                    belongsToFolder = (mail.folder === "all" && !isStarred);
+                if (targetFolder === "all") {
+                    belongsToFolder = (mail.folder !== "trash" && mail.folder !== "spam");
                 } else if (targetFolder === "starred") {
                     var isStarred = (mail.flags || []).map(f => f.toLowerCase()).includes("flagged");
-                    var senderPart = (mail.from ? (mail.from.addr || mail.from.name || "") : (mail.sender || "")).trim();
-                    var compoundKey = (mail.subject || "").trim() + "|" + (mail.date || "").trim() + "|" + senderPart;
-
-                    belongsToFolder = isFolderSwitch ? (isStarred || mail.folder === "starred")
-                    : (isStarred || mail.folder === "starred" || oldMailIds[compoundKey] === true);
+                    belongsToFolder = isStarred;
+                } else if (targetFolder === "steam") {
+                    var sText = ((mail.from ? (mail.from.name || mail.from.addr || "") : "") + " " + (mail.subject || "")).toLowerCase();
+                    belongsToFolder = (mail.folder === "steam") || sText.includes("steampowered.com") || sText.includes("steam");
+                } else if (targetFolder === "reddit") {
+                    var rText = ((mail.from ? (mail.from.name || mail.from.addr || "") : "") + " " + (mail.subject || "")).toLowerCase();
+                    belongsToFolder = (mail.folder === "reddit") || rText.includes("redditmail.com") || rText.includes("reddit");
                 }
 
                 if (belongsToFolder) {
                     var senderPart = (mail.from ? (mail.from.addr || mail.from.name || "") : (mail.sender || "")).trim();
-                    var compoundKey = (mail.subject || "").trim() + "|" + (mail.date || "").trim() + "|" + senderPart;
+                    var timeKey = engine.getNormalizedDateKey(mail.date);
+                    var compoundKey = (mail.subject || "").trim() + "|" + timeKey + "|" + senderPart;
 
                     if (seenIds[compoundKey]) continue;
 
@@ -329,6 +350,10 @@ QtObject {
         engine.selectedMail = filteredMails[currentMailIndex];
     }
 
+    // 30-DAY TRASH WORKFLOW (WITH STARRED PROTECTION):
+    // 1. Starred emails CANNOT be deleted.
+    // 2. Normal emails move to [Gmail]/Trash (held 30 days by Google, then auto-deleted).
+    // 3. Deleting inside Trash permanently expunges.
     function handleDeletion() {
         var activeItem = selectedMail;
         if (!activeItem) return;
@@ -337,35 +362,64 @@ QtObject {
         if (currentTime - lastDeleteTime < 200) return;
         lastDeleteTime = currentTime;
 
+        // ---- STARRED EMAIL PROTECTION ----
         var isStarred = (activeItem.flags || []).map(f => f.toLowerCase()).some(f => f === "flagged" || f === "starred");
-        if (isStarred) return;
+        var isStarredFolder = (folderList[currentFolderIndex] === "starred");
 
-        var folderArg = getMaildirFolder(activeItem.folder);
-        writeToQueue("DELETE", activeItem.id.toString(), folderArg, "");
+        if (isStarred || isStarredFolder) {
+            Quickshell.execDetached([
+                "notify-send", "-a", "Himalaya", "-i", "starred",
+                "⭐ Starred Email Protected",
+                "Starred emails cannot be deleted. Press 'S' to unstar first."
+            ]);
+            return; // Hard stop: refuse to delete starred emails
+        }
 
+        var currentFolder = (activeItem.folder || "").toLowerCase();
         var targetId = activeItem.id !== undefined ? activeItem.id.toString() : "";
         var targetMsgId = activeItem["message-id"] || "";
         var targetSub = activeItem.subject || "";
         var targetDate = activeItem.date || "";
         var targetSender = (activeItem.from ? (activeItem.from.addr || activeItem.from.name || "") : (activeItem.sender || "")).trim();
+        var targetTimeKey = engine.getNormalizedDateKey(targetDate);
 
-        fullMailCacheList = fullMailCacheList.filter(item => {
-            if (!item) return false;
-            if (targetId !== "" && item.id !== undefined && item.id.toString() === targetId) {
-                return false;
-            }
-            if (targetMsgId !== "" && item["message-id"] && item["message-id"] === targetMsgId) {
-                return false;
-            }
-            var s = (item.from ? (item.from.addr || item.from.name || "") : (item.sender || "")).trim();
-            if ((item.subject || "") === targetSub && (item.date || "") === targetDate && s === targetSender) {
-                return false;
-            }
-            return true;
-        });
+        var trashFolderArg = getMaildirFolder("trash");     // "[Gmail]/Trash"
+        var sourceFolderArg = getMaildirFolder(currentFolder);
+
+        if (currentFolder === "trash") {
+            // Permanently delete if already inside Trash
+            writeToQueue("DELETE", targetId, trashFolderArg, "");
+
+            fullMailCacheList = fullMailCacheList.filter(item => {
+                if (!item) return false;
+                if (targetId !== "" && item.id !== undefined && item.id.toString() === targetId) return false;
+                if (targetMsgId !== "" && item["message-id"] && item["message-id"] === targetMsgId) return false;
+                var s = (item.from ? (item.from.addr || item.from.name || "") : (item.sender || "")).trim();
+                return !((item.subject || "") === targetSub && (item.date || "") === targetDate && s === targetSender);
+            });
+        } else {
+            // Move to [Gmail]/Trash
+            writeToQueue("MOVE", targetId, sourceFolderArg, trashFolderArg);
+
+            // Move matching unstarred duplicate copies to trash in memory immediately
+            fullMailCacheList.forEach(item => {
+                if (!item) return;
+                var s = (item.from ? (item.from.addr || item.from.name || "") : (item.sender || "")).trim();
+                var timeKey = engine.getNormalizedDateKey(item.date);
+
+                var isDirectMatch = (targetId !== "" && item.id !== undefined && item.id.toString() === targetId)
+                || (targetMsgId !== "" && item["message-id"] && item["message-id"] === targetMsgId);
+                var isDuplicateMatch = (targetSub !== "" && item.subject === targetSub && s === targetSender && (targetTimeKey === "" || timeKey === targetTimeKey));
+
+                if (isDirectMatch || isDuplicateMatch) {
+                    item.folder = "trash";
+                }
+            });
+        }
 
         recalculateFolderStats();
         filterEmailsByActiveFolder();
+        saveMailCacheDisk();
     }
 
     function handleRestoreFromTrash() {
@@ -373,14 +427,12 @@ QtObject {
         if (!activeItem || activeItem.folder.toLowerCase() !== "trash") return;
 
         var emailId = activeItem.id.toString();
-        writeToQueue("MOVE", emailId, "trash", "inbox");
+        writeToQueue("MOVE", emailId, getMaildirFolder("trash"), getMaildirFolder("inbox"));
 
-        fullMailCacheList = fullMailCacheList.filter(item => {
-            return !(item.id.toString() === emailId && item.folder.toLowerCase() === "trash");
-        });
-
+        activeItem.folder = "inbox";
         recalculateFolderStats();
         filterEmailsByActiveFolder();
+        saveMailCacheDisk();
     }
 
     function handleStarToggle() {
@@ -406,6 +458,7 @@ QtObject {
             }
         });
         filterEmailsByActiveFolder();
+        saveMailCacheDisk();
     }
 
     function handleReadToggle(targetItem, forceRead) {
@@ -435,6 +488,7 @@ QtObject {
         });
         recalculateFolderStats();
         filterEmailsByActiveFolder();
+        saveMailCacheDisk();
     }
 
     function handleOutboundDelivery(toAddress, subjectLine, bodyContent) {
