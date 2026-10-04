@@ -35,7 +35,6 @@ Item {
 
         if (names.length > 1) {
             var batchCmd = setupCmd;
-            var firstOut = "";
 
             for (var i = 0; i < names.length; i++) {
                 var target = names[i];
@@ -43,23 +42,21 @@ Item {
                 var outPath = baseDir + "/quickshot_" + ts + "_" + safeTarget + ".png";
                 var histImg = histDir + "/quickshot_" + ts + "_" + safeTarget + ".png";
                 var histMeta = histDir + "/quickshot_" + ts + "_" + safeTarget + ".json";
-                if (i === 0) firstOut = outPath;
 
+                // Injects wl-copy directly inside each parallel sub-shell thread so everything hits cliphist in sequence
                 batchCmd += "(magick " + ShotState.shQuote(rawPath) + " " +
-                            "\\( -size 240x220 xc:none -fill 'rgba(100, 0, 255, 0.008)' " +
-                            "-font 'Liberation-Sans-Bold' -pointsize 20 -gravity Center " +
-                            "-annotate +0+0 " + ShotState.shQuote(target) + " " +
-                            "-distort ScaleRotateTranslate 30 -write mpr:text +delete \\) " +
-                            "\\( +clone -tile mpr:text -draw 'color 0,0 reset' \\) " +
-                            "-compose Over -composite -define png:compression-level=1 " + ShotState.shQuote(outPath) + "; " +
-                            "cp -f " + ShotState.shQuote(outPath) + " " + ShotState.shQuote(histImg) + "; " +
-                            "echo '{\"name\":\"" + safeTarget + "\",\"path\":\"" + histImg + "\"}' > " + ShotState.shQuote(histMeta) + ") & ";
+                "\\( -size 240x220 xc:none -fill 'rgba(100, 0, 255, 0.008)' " +
+                "-font 'Liberation-Sans-Bold' -pointsize 20 -gravity Center " +
+                "-annotate +0+0 " + ShotState.shQuote(target) + " " +
+                "-distort ScaleRotateTranslate 30 -write mpr:text +delete \\) " +
+                "\\( +clone -tile mpr:text -draw 'color 0,0 reset' \\) " +
+                "-compose Over -composite -define png:compression-level=1 " + ShotState.shQuote(outPath) + " && " +
+                "cp -f " + ShotState.shQuote(outPath) + " " + ShotState.shQuote(histImg) + " && " +
+                "echo '{\"name\":\"" + safeTarget + "\",\"path\":\"" + histImg + "\"}' > " + ShotState.shQuote(histMeta) +
+                (mode === "copy" ? " && wl-copy --type image/png < " + ShotState.shQuote(outPath) : "") + ") & ";
             }
 
             batchCmd += "wait; ";
-            if (mode === "copy") {
-                batchCmd += "wl-copy --type image/png < " + ShotState.shQuote(firstOut) + " && ";
-            }
             batchCmd += "notify-send -a Quickshot 'Batch Watermarked (" + names.length + " copies)' " + ShotState.shQuote("Saved for: " + names.join(", "));
 
             Quickshell.execDetached(["sh", "-c", batchCmd]);
@@ -71,15 +68,15 @@ Item {
             var histMeta = histDir + "/quickshot_" + ts + "_" + safeSingle + ".json";
 
             var cmd = setupCmd +
-                      "magick " + ShotState.shQuote(rawPath) + " " +
-                      "\\( -size 240x220 xc:none -fill 'rgba(100, 0, 255, 0.008)' " +
-                      "-font 'Liberation-Sans-Bold' -pointsize 20 -gravity Center " +
-                      "-annotate +0+0 " + ShotState.shQuote(single) + " " +
-                      "-distort ScaleRotateTranslate 30 -write mpr:text +delete \\) " +
-                      "\\( +clone -tile mpr:text -draw 'color 0,0 reset' \\) " +
-                      "-compose Over -composite -define png:compression-level=1 " + ShotState.shQuote(rawPath) + "; " +
-                      "cp -f " + ShotState.shQuote(rawPath) + " " + ShotState.shQuote(histImg) + "; " +
-                      "echo '{\"name\":\"" + safeSingle + "\",\"path\":\"" + histImg + "\"}' > " + ShotState.shQuote(histMeta) + "; ";
+            "magick " + ShotState.shQuote(rawPath) + " " +
+            "\\( -size 240x220 xc:none -fill 'rgba(100, 0, 255, 0.008)' " +
+            "-font 'Liberation-Sans-Bold' -pointsize 20 -gravity Center " +
+            "-annotate +0+0 " + ShotState.shQuote(single) + " " +
+            "-distort ScaleRotateTranslate 30 -write mpr:text +delete \\) " +
+            "\\( +clone -tile mpr:text -draw 'color 0,0 reset' \\) " +
+            "-compose Over -composite -define png:compression-level=1 " + ShotState.shQuote(rawPath) + " && " +
+            "cp -f " + ShotState.shQuote(rawPath) + " " + ShotState.shQuote(histImg) + " && " +
+            "echo '{\"name\":\"" + safeSingle + "\",\"path\":\"" + histImg + "\"}' > " + ShotState.shQuote(histMeta) + "; ";
 
             if (mode === "copy") {
                 cmd += "wl-copy --type image/png < " + ShotState.shQuote(rawPath) + " && notify-send -a Quickshot 'Copied to clipboard' 'Watermark: " + single + "'";
@@ -94,8 +91,8 @@ Item {
             var cleanHistMeta = histDir + "/quickshot_" + ts + "_clean.json";
 
             var cleanCmd = setupCmd +
-                           "cp -f " + ShotState.shQuote(rawPath) + " " + ShotState.shQuote(cleanHistImg) + "; " +
-                           "echo '{\"name\":\"Screenshot\",\"path\":\"" + cleanHistImg + "\"}' > " + ShotState.shQuote(cleanHistMeta) + "; ";
+            "cp -f " + ShotState.shQuote(rawPath) + " " + ShotState.shQuote(cleanHistImg) + " && " +
+            "echo '{\"name\":\"Screenshot\",\"path\":\"" + cleanHistImg + "\"}' > " + ShotState.shQuote(cleanHistMeta) + "; ";
 
             if (mode === "copy") {
                 cleanCmd += "wl-copy --type image/png < " + ShotState.shQuote(rawPath) + " && notify-send -a Quickshot 'Copied to clipboard' " + ShotState.shQuote(rawPath);
@@ -139,13 +136,13 @@ Item {
         var histMeta = histDir + "/quickshot_" + ts + "_REVEALED.json";
 
         var cmd = "mkdir -p " + ShotState.shQuote(baseDir) + " " + ShotState.shQuote(histDir) + "; " +
-                  "cp -f " + ShotState.shQuote(engine.activeRevealedPath) + " " + ShotState.shQuote(proofPath) + "; " +
-                  "cp -f " + ShotState.shQuote(proofPath) + " " + ShotState.shQuote(histImg) + "; " +
-                  "echo '{\"name\":\"REVEALED PROOF\",\"path\":\"" + histImg + "\"}' > " + ShotState.shQuote(histMeta) + "; ";
+        "cp -f " + ShotState.shQuote(engine.activeRevealedPath) + " " + ShotState.shQuote(proofPath) + "; " +
+        "cp -f " + ShotState.shQuote(proofPath) + " " + ShotState.shQuote(histImg) + "; " +
+        "echo '{\"name\":\"REVEALED PROOF\",\"path\":\"" + histImg + "\"}' > " + ShotState.shQuote(histMeta) + "; ";
 
         var action = (mode === "copy")
-            ? ("wl-copy --type image/png < " + ShotState.shQuote(proofPath) + " && notify-send -a Quickshot 'Revealed Proof Copied' 'Stored as [Image: REVEALED PROOF]'; ")
-            : ("notify-send -a Quickshot 'Revealed Proof Saved' " + ShotState.shQuote(proofPath) + "; ");
+        ? ("wl-copy --type image/png < " + ShotState.shQuote(proofPath) + " && notify-send -a Quickshot 'Revealed Proof Copied' 'Stored as [Image: REVEALED PROOF]'; ")
+        : ("notify-send -a Quickshot 'Revealed Proof Saved' " + ShotState.shQuote(proofPath) + "; ");
 
         Quickshell.execDetached(["sh", "-c", cmd + action]);
     }

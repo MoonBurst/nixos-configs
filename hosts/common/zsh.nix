@@ -140,6 +140,7 @@
     NPM_CONFIG_INIT_MODULE = "$HOME/.config/npm/config/npm-init.js";
     PASSWORD_STORE_DIR = "$HOME/.local/share/pass";
     RUSTUP_HOME = "$HOME/.local/share/rustup";
+    CLIPHIST_DB_PATH = "/tmp/cliphist_db";
 
     # Disable Qt's internal font database debug tracing globally
     QT_LOGGING_RULES = "qt.text.font.db.debug=false";

@@ -31,7 +31,6 @@ PanelWindow {
 
     property bool isCardActive: true
 
-    // Outer frame: focused = base03 | off-focus = base0D
     readonly property color activeBorderColor: (theme && theme.base03) ? theme.base03 : "#003399"
     readonly property color inactiveBorderColor: (theme && theme.base0D) ? theme.base0D : "#003399"
 
@@ -65,10 +64,7 @@ PanelWindow {
         property int globalFontSize: (src && src.globalFontSize) ? src.globalFontSize : 14
         property color scrollHandleColor: (src && src.scrollHandleColor) ? src.scrollHandleColor : "#003399"
 
-        // Active selectors in email list and mailbox tree always use base05
         property color innerBorderColor: (src && src.base05) ? src.base05 : "yellow"
-
-        // Outer window frame follows focus: base03 (focused) / base0D (off-focus)
         property color outerBorderColor: window.isCardActive ? window.activeBorderColor : window.inactiveBorderColor
     }
 
@@ -115,6 +111,7 @@ PanelWindow {
             }
             window.isCardActive = true;
             emailEngine.readMailCache();
+            emailEngine.syncMail();
             focusTimer.restart();
         }
     }
@@ -137,6 +134,7 @@ PanelWindow {
         window.isCardActive = true;
         isOpenState = true;
         emailEngine.readMailCache();
+        emailEngine.syncMail();
         focusTimer.restart();
     }
 
@@ -162,7 +160,6 @@ PanelWindow {
         function close(): void { window.close(); }
     }
 
-    // Background listener for Escape: catches Escape globally while Email is open, even when unfocused
     Process {
         id: escWatcher
         running: window.isOpenState && !window.isPreviewMode && (!viewLoader.item || !viewLoader.item.isModalActive())
@@ -196,10 +193,8 @@ PanelWindow {
             onRead: data => {
                 if (data.trim() === "ESC") {
                     if (emailEngine.isComposing) {
-                        // STEP BACK: Close composer, reset focus, consume event
                         emailEngine.isComposing = false;
                     } else {
-                        // Otherwise, close the main application window
                         window.close();
                     }
                 }
@@ -207,7 +202,6 @@ PanelWindow {
         }
     }
 
-    // Multi-screen click-off detector
     Variants {
         model: Quickshell.screens
         delegate: PanelWindow {
@@ -233,7 +227,6 @@ PanelWindow {
         }
     }
 
-    // Same-screen click-off detector
     MouseArea {
         anchors.fill: parent
         enabled: window.isCardActive && !window.isPreviewMode

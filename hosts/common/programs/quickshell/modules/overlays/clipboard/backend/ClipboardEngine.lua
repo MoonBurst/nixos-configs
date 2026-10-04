@@ -1,157 +1,293 @@
 #!/usr/bin/env lua
+-- modules/overlays/clipboard/backend/ClipboardEngine.lua
+-- High-performance cliphist & wl-clipboard backend for Quickshell
 
-local cmd = arg[1]
+local action = arg[1] or "list"
+local target_id = arg[2]
 
--- Action: Delete a specific item
-if cmd == "--delete" then
-    local target = arg[2] or ""
-    local state_file = "/tmp/native_clipboard_history.txt"
-    local f = io.open(state_file, "r")
-    if not f then return end
-    local content = f:read("*a")
+local path_prefix = 'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin:$PATH"; '
+
+local function run_cmd(cmd)
+    local p = io.popen(path_prefix .. cmd)
+    if not p then return "" end
+    local out = p:read("*a") or ""
+    p:close()
+    return out
+end
+
+local function escape_json(s)
+    if not s then return '""' end
+    local escapes = {
+        ['\\'] = '\\\\',
+        ['"']  = '\\"',
+        ['\b'] = '\\b',
+        ['\f'] = '\\f',
+        ['\n'] = '\\n',
+        ['\r'] = '\\r',
+        ['\t'] = '\\t'
+    }
+    return '"' .. s:gsub('[%z\1-\31\\"]', function(c)
+        return escapes[c] or string.format('\\u%04x', c:byte())
+    end) .. '"'
+end
+
+local function format_bytes(bytes)
+    if not bytes or bytes <= 0 then return "" end
+    if bytes >= 1048576 then
+        return string.format("%.1f MB", bytes / 1048576)
+    elseif bytes >= 1024 then
+        return string.format("%.0f KB", bytes / 1024)
+    else
+        return string.format("%d B", bytes)
+    end
+end
+
+-- Reads binary PNG header directly to obtain dimensions in <0.01ms
+local function get_png_dimensions(path)
+    local f = io.open(path, "rb")
+    if not f then return nil, nil end
+    local header = f:read(24)
+    f:close()
+    if header and #header >= 24 and header:sub(1, 4) == "\137PNG" then
+        local w = header:byte(17) * 16777216 + header:byte(18) * 65536 + header:byte(19) * 256 + header:byte(20)
+        local h = header:byte(21) * 16777216 + header:byte(22) * 65536 + header:byte(23) * 256 + header:byte(24)
+        return w, h
+    end
+    return nil, nil
+end
+
+local function decode_image(id_num, dest_path)
+    local existing = io.open(dest_path, "rb")
+    if existing then
+        local sz = existing:seek("end")
+        existing:close()
+        if sz and sz > 0 then return true end
+    end
+
+    -- Universal invocation: piped via stdin with tab delimiter so it never deadlocks
+    local cmd = string.format("%sprintf '%%s\\t\\n' %s | cliphist decode > %q 2>/dev/null", path_prefix, id_num, dest_path)
+    os.execute(cmd)
+
+    local f = io.open(dest_path, "rb")
+    if not f then return false end
+    local sz = f:seek("end") or 0
+    f:seek("set", 0)
+    local header = f:read(8) or ""
     f:close()
 
-    local out = io.open(state_file, "w")
-    if not out then return end
-    for b in content:gmatch("([^\0]+)") do
-        local txt = b
-        if b:sub(1, 5) == "##TS:" then
-            local sep = b:find("|", 1, true)
-            if sep then txt = b:sub(sep + 1) end
-        end
-        if txt:gsub("^%s*(.-)%s*$", "%1") ~= target:gsub("^%s*(.-)%s*$", "%1") then
-            out:write(b .. "\0")
-        end
+    if sz == 0 then
+        os.remove(dest_path)
+        return false
     end
-    out:close()
-    os.exit(0)
+
+    local is_valid = header:sub(1, 4) == "\137PNG"
+                  or header:sub(1, 3) == "\255\216\255"
+                  or header:sub(1, 4) == "GIF8"
+                  or header:sub(1, 4) == "RIFF"
+                  or header:sub(1, 2) == "BM"
+
+    if not is_valid then
+        os.remove(dest_path)
+        return false
+    end
+    return true
 end
 
--- Action: Load and Interleave History
-local items_pool = {}
+-- Index recent Quickshot files for screenshot name & watermark tag matching
+local function load_screenshot_index()
+    local index = {}
+    local home_dir = os.getenv("HOME") or "/tmp"
+    local hist_dir = home_dir .. "/.cache/quickshot_history"
+    local meta_list = run_cmd(string.format("ls -1t %q/*.json 2>/dev/null | head -n 40", hist_dir))
 
--- 1. Harvest Quickshot History images
-local hist_dir = (os.getenv("HOME") or "") .. "/.cache/quickshot_history"
-local p = io.popen("find " .. string.format("%q", hist_dir) .. " -maxdepth 1 -name '*.json' 2>/dev/null")
-if p then
-    for jfile in p:lines() do
-        local img = jfile:gsub("%.json$", ".png")
-        local check = io.open(img, "r")
-        if check then
-            check:close()
-            local ts = 0
-            local stat_p = io.popen("stat -c %Y " .. string.format("%q", jfile) .. " 2>/dev/null")
-            if stat_p then
-                local res = stat_p:read("*l")
-                ts = tonumber(res) or 0
-                stat_p:close()
-            end
-            local jf = io.open(jfile, "r")
-            local name = "Screenshot"
-            if jf then
-                local txt = jf:read("*a")
-                jf:close()
-                name = txt:match('"name"%s*:%s*"([^"]+)"') or name
-            end
-            table.insert(items_pool, {
-                ts = ts,
-                data = {
-                    id = img,
-                    text = "[Image: " .. name .. "]",
-                    searchText = name:lower(),
-                    isImage = true,
-                    imagePath = img,
-                    fullRawText = ""
-                }
-            })
-        end
-    end
-    p:close()
-end
+    for json_file in meta_list:gmatch("[^\r\n]+") do
+        local f = io.open(json_file, "r")
+        if f then
+            local data = f:read("*a") or ""
+            f:close()
+            local name = data:match('"name"%s*:%s*"([^"]+)"')
+            local img_path = data:match('"path"%s*:%s*"([^"]+)"')
+            local ts = json_file:match("quickshot_(%d%d%d%d%d%d%d%d_%d%d%d%d%d%d)")
 
--- 2. Harvest Null-Terminated Text Blocks
-local state_file = "/tmp/native_clipboard_history.txt"
-local sf = io.open(state_file, "r")
-if sf then
-    local content = sf:read("*a")
-    sf:close()
-    local stat_p = io.popen("stat -c %Y " .. state_file .. " 2>/dev/null")
-    local file_ts = tonumber(stat_p and stat_p:read("*l")) or os.time()
-    if stat_p then stat_p:close() end
-
-    local blocks = {}
-    for b in content:gmatch("([^\0]+)") do
-        local clean = b:gsub("^%s*(.-)%s*$", "%1")
-        if clean ~= "" then table.insert(blocks, clean) end
-    end
-
-    local fallback_ts = 0
-    for i = #blocks, 1, -1 do
-        local b = blocks[i]
-        local txt = b
-        local ts = file_ts - fallback_ts
-        fallback_ts = fallback_ts + 1
-
-        if b:sub(1, 5) == "##TS:" then
-            local sep = b:find("|", 1, true)
-            if sep then
-                ts = tonumber(b:sub(6, sep - 1)) or ts
-                txt = b:sub(sep + 1)
+            if img_path then
+                local inf = io.open(img_path, "rb")
+                if inf then
+                    local sz = inf:seek("end")
+                    inf:close()
+                    if sz and sz > 0 then
+                        index[sz] = {
+                            name = name or "Screenshot",
+                            timestamp = ts
+                        }
+                    end
+                end
             end
         end
-
-        local first_line = txt:match("[^\r\n]+") or txt
-        first_line = first_line:gsub("^%s*(.-)%s*$", "%1")
-        local display_text = first_line
-        if #first_line >= 55 then display_text = first_line:sub(1, 52) .. "..." end
-        if txt:find("[\r\n]") then display_text = display_text .. " ↵" end
-
-        table.insert(items_pool, {
-            ts = ts,
-            data = {
-                id = "",
-                text = display_text,
-                searchText = txt:lower(),
-                isImage = false,
-                imagePath = "",
-                fullRawText = txt
-            }
-        })
     end
+    return index
 end
 
--- 3. Sort Chronologically & Deduplicate
-table.sort(items_pool, function(a, b) return a.ts > b.ts end)
+-- ============================================================================
+-- COMMAND ROUTING
+-- ============================================================================
 
-local final_items = {}
-local seen_text = {}
-for _, item in ipairs(items_pool) do
-    local d = item.data
-    if not d.isImage then
-        if not seen_text[d.fullRawText] then
-            seen_text[d.fullRawText] = true
-            table.insert(final_items, d)
+if action == "list" then
+    if run_cmd("command -v cliphist") == "" then
+        io.stderr:write("cliphist binary not found in PATH\n")
+        print("[]")
+        return
+    end
+
+    local raw_list = run_cmd("cliphist list 2>/dev/null")
+    if not raw_list or #raw_list == 0 then
+        io.stderr:write("cliphist database is currently empty\n")
+        print("[]")
+        return
+    end
+
+    local shot_index = load_screenshot_index()
+    local entries = {}
+    local max_items = 120
+    local count = 0
+
+    for line in raw_list:gmatch("[^\r\n]+") do
+        count = count + 1
+        if count > max_items then break end
+
+        -- Capture ID (digits) and preview payload
+        local raw_id, raw_prev = line:match("^(%d+)%s+(.*)$")
+        if not raw_id then
+            raw_id = line:match("^(%d+)")
+            if raw_id then
+                raw_prev = line:sub(#raw_id + 1):gsub("^%s+", "")
+            end
         end
-    else
-        table.insert(final_items, d)
+
+        local clip_id = raw_id and raw_id:match("(%d+)")
+
+        if clip_id and raw_prev then
+            raw_prev = raw_prev:gsub("^%s+", ""):gsub("%s+$", "")
+
+            local is_img = raw_prev:match("^%[%[%s*binary%s+data") ~= nil
+                        or raw_prev:match("^image/") ~= nil
+                        or raw_prev:match("%.png") ~= nil
+                        or raw_prev:match("%.jpg") ~= nil
+
+            local img_path = "/tmp/qs-cliphist-preview-" .. clip_id .. ".png"
+            local is_decoded = false
+
+            if is_img then
+                is_decoded = decode_image(clip_id, img_path)
+            end
+
+            if is_img and is_decoded then
+                local f = io.open(img_path, "rb")
+                local f_size = f and f:seek("end") or 0
+                if f then f:close() end
+
+                local w, h = get_png_dimensions(img_path)
+                local dim_str = (w and h) and string.format("%d×%d", w, h) or (raw_prev:match("(%d+x%d+)") or "Image")
+                local size_str = format_bytes(f_size)
+
+                local matched_meta = shot_index[f_size]
+                local title_name = "Screenshot"
+                local date_display = ""
+
+                if matched_meta then
+                    if matched_meta.name and matched_meta.name ~= "" and matched_meta.name ~= "clean" and matched_meta.name ~= "Screenshot" then
+                        title_name = "Shot (" .. matched_meta.name .. ")"
+                    end
+                    if matched_meta.timestamp then
+                        local y, m, d, hh, mm = matched_meta.timestamp:match("(%d%d%d%d)(%d%d)(%d%d)_(%d%d)(%d%d)")
+                        if y and m and d and hh and mm then
+                            date_display = string.format("%s-%s-%s %s:%s", y, m, d, hh, mm)
+                        end
+                    end
+                end
+
+                if date_display == "" then
+                    local f_attr = io.open(img_path, "r")
+                    if f_attr then
+                        f_attr:close()
+                        date_display = os.date("%Y-%m-%d %H:%M")
+                    end
+                end
+
+                local primary_label = string.format("📸 %s • %s [%s]",
+                    title_name,
+                    date_display,
+                    dim_str .. (size_str ~= "" and (" • " .. size_str) or "")
+                )
+
+                local search_kw = string.format("image screenshot %s %s %s %s",
+                    title_name:lower(),
+                    date_display,
+                    dim_str,
+                    size_str
+                )
+
+                table.insert(entries, string.format(
+                    '{"id":%q,"text":%s,"searchText":%s,"isImage":true,"title":%s,"date":%s,"dims":%s,"size":%s,"thumbPath":%q}',
+                    clip_id,
+                    escape_json(primary_label),
+                    escape_json(search_kw),
+                    escape_json(title_name),
+                    escape_json(date_display),
+                    escape_json(dim_str),
+                    escape_json(size_str),
+                    "file://" .. img_path
+                ))
+            else
+                local clean_text = raw_prev:gsub("[\r\n\t]+", " "):gsub("%s+", " ")
+                if #clean_text > 120 then
+                    clean_text = clean_text:sub(1, 117) .. "..."
+                end
+
+                local date_display = os.date("%Y-%m-%d %H:%M")
+
+                table.insert(entries, string.format(
+                    '{"id":%q,"text":%s,"searchText":%s,"isImage":false,"title":%s,"date":%s,"dims":"","size":"","thumbPath":""}',
+                    clip_id,
+                    escape_json(clean_text),
+                    escape_json(clean_text:lower()),
+                    escape_json("Text"),
+                    escape_json(date_display)
+                ))
+            end
+        end
     end
-end
 
-for idx, item in ipairs(final_items) do
-    if not item.isImage then item.id = tostring(#final_items - idx + 1) end
-end
+    print("[" .. table.concat(entries, ",") .. "]")
 
--- JSON Output
-local function json_escape(s)
-    return s:gsub('\\', '\\\\'):gsub('"', '\\"'):gsub('\n', '\\n'):gsub('\r', '\\r'):gsub('\t', '\\t')
-end
+elseif action == "preview" and target_id then
+    local id_num = target_id:match("(%d+)")
+    if id_num then
+        local cmd = string.format("%sprintf '%%s\\t\\n' %s | cliphist decode 2>/dev/null", path_prefix, id_num)
+        local content = run_cmd(cmd)
+        io.write(content)
+    end
 
-local json_parts = {}
-for _, it in ipairs(final_items) do
-    table.insert(json_parts, string.format(
-        '{"id":"%s","text":"%s","searchText":"%s","isImage":%s,"imagePath":"%s","fullRawText":"%s"}',
-        json_escape(it.id), json_escape(it.text), json_escape(it.searchText),
-        it.isImage and "true" or "false", json_escape(it.imagePath), json_escape(it.fullRawText)
-    ))
+elseif action == "copy" and target_id then
+    local id_num = target_id:match("(%d+)")
+    if id_num then
+        local img_path = "/tmp/qs-cliphist-preview-" .. id_num .. ".png"
+        local f = io.open(img_path, "rb")
+        if f then
+            f:close()
+            os.execute(string.format('%swl-copy --type image/png < %q', path_prefix, img_path))
+        else
+            os.execute(string.format('%sprintf \'%%s\\t\\n\' %s | cliphist decode | wl-copy', path_prefix, id_num))
+        end
+    end
+
+elseif action == "delete" and target_id then
+    local id_num = target_id:match("(%d+)")
+    if id_num then
+        os.execute(string.format("%sprintf '%%s\\t\\n' %s | cliphist delete 2>/dev/null", path_prefix, id_num))
+        os.remove("/tmp/qs-cliphist-preview-" .. id_num .. ".png")
+    end
+
+elseif action == "wipe" then
+    os.execute(path_prefix .. "cliphist wipe 2>/dev/null")
+    os.execute("rm -f /tmp/qs-cliphist-preview-*.png 2>/dev/null")
 end
-io.write("[" .. table.concat(json_parts, ",") .. "]\n")

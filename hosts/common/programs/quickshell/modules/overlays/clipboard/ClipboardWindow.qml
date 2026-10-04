@@ -5,7 +5,6 @@ import Quickshell.Wayland
 import Quickshell.Io
 import "../../../" as RootTheme
 import "../../settings" as SettingsTools
-import "./backend" as Backend
 import "./frontend" as Frontend
 
 PanelWindow {
@@ -31,7 +30,6 @@ PanelWindow {
 
     property bool isCardActive: true
 
-    // Focused: base03 | Off-focus: base0D
     readonly property color activeBorderColor: (theme && theme.base03) ? theme.base03 : "#003399"
     readonly property color inactiveBorderColor: (theme && theme.base0D) ? theme.base0D : "#003399"
 
@@ -123,7 +121,6 @@ PanelWindow {
         function close(): void { window.close(); }
     }
 
-    // Background listener for Escape: catches Escape globally while Clipboard is open, even when unfocused
     Process {
         id: escWatcher
         running: window.isOpenState && !window.isPreviewMode
@@ -160,7 +157,6 @@ PanelWindow {
         }
     }
 
-    // Multi-screen click-off detector
     Variants {
         model: Quickshell.screens
         delegate: PanelWindow {
@@ -186,7 +182,6 @@ PanelWindow {
         }
     }
 
-    // Same-screen click-off detector
     MouseArea {
         anchors.fill: parent
         enabled: window.isCardActive && !window.isPreviewMode
@@ -194,8 +189,6 @@ PanelWindow {
             window.isCardActive = false;
         }
     }
-
-    Backend.ClipboardEngine { id: clipboardEngine }
 
     Rectangle {
         id: card
@@ -205,8 +198,6 @@ PanelWindow {
         radius: theme.defaultCardRadius
         color: theme.base01
         border.width: (theme && theme.globalBorderWidth !== undefined) ? theme.globalBorderWidth : 3
-
-        // Focused: base03 | Off-focus: base0D
         border.color: window.isCardActive ? window.activeBorderColor : window.inactiveBorderColor
         clip: true
 
@@ -225,7 +216,6 @@ PanelWindow {
             anchors.fill: parent
             active: window.isUiActive
             sourceComponent: Frontend.ClipboardView {
-                engine: clipboardEngine
                 theme: window.theme
                 onCompleted: window.close()
             }

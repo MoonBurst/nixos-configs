@@ -3,37 +3,233 @@ import QtQuick.Controls 2
 import QtQuick.Layouts 1.15
 import Quickshell
 import Quickshell.Io
-import "../backend"
-import "../../../common"
 
 Item {
     id: viewRoot
 
-    required property ClipboardEngine engine
     property var theme: null
 
     readonly property int fieldHeight: (shell && shell.settingsManager)
-    ? shell.settingsManager.getWindowFieldHeight("clipboard", 52) : 52
+        ? shell.settingsManager.getWindowFieldHeight("clipboard", 52) : 52
     readonly property int overlayFontSize: (shell && shell.settingsManager && shell.settingsManager.overlayFontSize > 0)
-    ? shell.settingsManager.overlayFontSize : 15
+        ? shell.settingsManager.overlayFontSize : 15
 
     signal completed()
 
+    property var rawItems: []
+    property int selectedIndex: 0
+    property string previewImage: ""
+    property string previewText: ""
+    property string previewTitle: ""
+    property string previewDate: ""
+    property string previewDims: ""
+    property string previewSize: ""
+
+    // Diagnostic state
+    property string debugError: ""
+    property string debugStatus: "Initializing..."
+    property bool isFetching: false
+
+    ListModel {
+        id: clipModel
+    }
+
     function clearAndFocus() {
         searchField.clear();
-        engine.loadClipboard();
+        reload();
         Qt.callLater(() => searchField.forceActiveFocus());
     }
 
-    Component.onCompleted: Qt.callLater(() => searchField.forceActiveFocus())
-    onVisibleChanged: if (visible) Qt.callLater(() => searchField.forceActiveFocus())
+    function reload() {
+        viewRoot.isFetching = true;
+        viewRoot.debugError = "";
+        viewRoot.debugStatus = "Querying cliphist via Lua...";
+        listProc.running = false;
+        rawItems = [];
+        clipModel.clear();
+        listProc.running = true;
+    }
+
+    function filterList(query) {
+        var q = (query || "").toLowerCase().trim();
+        var isImgFilter = (q === "image" || q === "images" || q === "shot" || q === "screenshots" || q.startsWith("image:"));
+
+        if (q.startsWith("image:")) {
+            q = q.substring(6).trim();
+        }
+
+        clipModel.clear();
+        for (var i = 0; i < rawItems.length; i++) {
+            var item = rawItems[i];
+            if (isImgFilter && !item.isImage) continue;
+
+            if (q === "" || item.searchText.indexOf(q) !== -1 || (item.isImage && (q === "image" || q === "shot"))) {
+                clipModel.append(item);
+            }
+        }
+        viewRoot.selectedIndex = 0;
+        updatePreview();
+    }
+
+    function updatePreview() {
+        if (selectedIndex < 0 || selectedIndex >= clipModel.count) {
+            previewImage = "";
+            previewText = "";
+            previewTitle = "";
+            previewDate = "";
+            previewDims = "";
+            previewSize = "";
+            return;
+        }
+
+        var item = clipModel.get(selectedIndex);
+        if (item.isImage) {
+            previewImage = item.thumbPath;
+            previewText = "";
+            previewTitle = item.title || "Screenshot";
+            previewDate = item.date || "";
+            previewDims = item.dims || "";
+            previewSize = item.size || "";
+        } else {
+            previewImage = "";
+            previewTitle = "Text";
+            previewDate = item.date || "";
+            previewDims = "";
+            previewSize = "";
+            previewProc.running = false;
+            previewProc.command = [
+                "sh", "-c",
+                'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin:$PATH"; ' +
+                'SCR="' + Quickshell.shellDir + '/modules/overlays/clipboard/backend/ClipboardEngine.lua"; ' +
+                'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
+                '"$CMD" "$SCR" preview "$1"',
+                "sh", String(item.id)
+            ];
+            previewProc.running = true;
+        }
+    }
+
+    function copyCurrent() {
+        if (selectedIndex < 0 || selectedIndex >= clipModel.count) return;
+        var item = clipModel.get(selectedIndex);
+        copyProc.command = [
+            "sh", "-c",
+            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin:$PATH"; ' +
+            'SCR="' + Quickshell.shellDir + '/modules/overlays/clipboard/backend/ClipboardEngine.lua"; ' +
+            'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
+                '"$CMD" "$SCR" copy "$1"',
+            "sh", String(item.id)
+        ];
+        copyProc.running = false;
+        copyProc.running = true;
+        viewRoot.completed();
+    }
+
+    function deleteCurrent() {
+        if (selectedIndex < 0 || selectedIndex >= clipModel.count) return;
+        var item = clipModel.get(selectedIndex);
+        deleteProc.command = [
+            "sh", "-c",
+            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin:$PATH"; ' +
+            'SCR="' + Quickshell.shellDir + '/modules/overlays/clipboard/backend/ClipboardEngine.lua"; ' +
+            'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
+            '"$CMD" "$SCR" delete "$1"',
+            "sh", String(item.id)
+        ];
+        deleteProc.running = false;
+        deleteProc.running = true;
+
+        for (var i = 0; i < rawItems.length; i++) {
+            if (rawItems[i].id === item.id) {
+                rawItems.splice(i, 1);
+                break;
+            }
+        }
+        clipModel.remove(selectedIndex);
+        if (selectedIndex >= clipModel.count) selectedIndex = Math.max(0, clipModel.count - 1);
+        updatePreview();
+    }
+
+    function wipeAll() {
+        wipeProc.running = false;
+        wipeProc.running = true;
+        rawItems = [];
+        clipModel.clear();
+        previewImage = "";
+        previewText = "";
+        previewTitle = "";
+        previewDate = "";
+        previewDims = "";
+        previewSize = "";
+    }
+
+    Process {
+        id: listProc
+        command: [
+            "sh", "-c",
+            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin:$PATH"; ' +
+            'SCR="' + Quickshell.shellDir + '/modules/overlays/clipboard/backend/ClipboardEngine.lua"; ' +
+            'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
+            '"$CMD" "$SCR" list'
+        ]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                viewRoot.isFetching = false;
+                var raw = text ? text.trim() : "";
+                if (!raw) {
+                    viewRoot.debugStatus = "cliphist database is currently empty.";
+                    return;
+                }
+                try {
+                    var parsed = JSON.parse(raw);
+                    viewRoot.rawItems = parsed;
+                    viewRoot.debugStatus = parsed.length === 0 ? "cliphist database is currently empty." : "Loaded " + parsed.length + " entries.";
+                    viewRoot.filterList(searchField.text);
+                } catch(e) {
+                    viewRoot.debugError = "JSON parse error: " + e.message;
+                }
+            }
+        }
+        stderr: StdioCollector {
+            onStreamFinished: {
+                if (text && text.trim() !== "") {
+                    viewRoot.debugError = text.trim();
+                }
+            }
+        }
+    }
+
+    Process {
+        id: previewProc
+        stdout: StdioCollector {
+            onStreamFinished: {
+                viewRoot.previewText = text || "";
+            }
+        }
+    }
+
+    Process { id: copyProc }
+    Process { id: deleteProc }
+    Process {
+        id: wipeProc
+        command: [
+            "sh", "-c",
+            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin:$PATH"; ' +
+            'SCR="' + Quickshell.shellDir + '/modules/overlays/clipboard/backend/ClipboardEngine.lua"; ' +
+            'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
+            '"$CMD" "$SCR" wipe'
+        ]
+    }
+
+    Component.onCompleted: clearAndFocus()
+    onVisibleChanged: if (visible) clearAndFocus()
 
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: (viewRoot.theme && viewRoot.theme.globalPadding) ? viewRoot.theme.globalPadding : 16
-        spacing: 14
+        spacing: 12
 
-        // Fixed-Height Search Bar Row
+        // Top Search Bar Row
         RowLayout {
             Layout.fillWidth: true
             Layout.preferredHeight: viewRoot.fieldHeight
@@ -68,12 +264,12 @@ Item {
                         selectByMouse: true
                         focus: true
                         verticalAlignment: TextInput.AlignVCenter
-                        onTextChanged: engine.refreshFilter(text)
+                        onTextChanged: viewRoot.filterList(text)
 
                         Text {
                             anchors.fill: parent
                             verticalAlignment: Text.AlignVCenter
-                            text: "Search clipboard history... [image: for shots, Del to remove]"
+                            text: "Search clipboard... [type 'image:' or 'shot' for images, Del to remove]"
                             color: "#666"
                             font.pixelSize: viewRoot.overlayFontSize
                             visible: parent.text === "" && !parent.activeFocus
@@ -82,23 +278,24 @@ Item {
 
                         Keys.onPressed: (event) => {
                             if (event.key === Qt.Key_Down) {
-                                if (engine.selectedIndex < engine.filteredClipboardModel.count - 1) {
-                                    engine.selectedIndex++; engine.updatePreview();
-                                    clipList.positionViewAtIndex(engine.selectedIndex, ListView.Contain);
+                                if (viewRoot.selectedIndex < clipModel.count - 1) {
+                                    viewRoot.selectedIndex++;
+                                    viewRoot.updatePreview();
+                                    clipList.positionViewAtIndex(viewRoot.selectedIndex, ListView.Contain);
                                 }
                                 event.accepted = true;
                             } else if (event.key === Qt.Key_Up) {
-                                if (engine.selectedIndex > 0) {
-                                    engine.selectedIndex--; engine.updatePreview();
-                                    clipList.positionViewAtIndex(engine.selectedIndex, ListView.Contain);
+                                if (viewRoot.selectedIndex > 0) {
+                                    viewRoot.selectedIndex--;
+                                    viewRoot.updatePreview();
+                                    clipList.positionViewAtIndex(viewRoot.selectedIndex, ListView.Contain);
                                 }
                                 event.accepted = true;
                             } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                                engine.copySelected();
-                                viewRoot.completed();
+                                viewRoot.copyCurrent();
                                 event.accepted = true;
                             } else if (event.key === Qt.Key_Delete) {
-                                engine.deleteSelected();
+                                viewRoot.deleteCurrent();
                                 event.accepted = true;
                             }
                         }
@@ -107,7 +304,7 @@ Item {
             }
 
             Rectangle {
-                Layout.preferredWidth: 100
+                Layout.preferredWidth: 84
                 Layout.fillHeight: true
                 radius: 8
                 color: wipeHov.hovered ? "#ff5555" : ((theme && theme.base00) ? theme.base00 : "#11111b")
@@ -126,80 +323,184 @@ Item {
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: engine.wipeHistory()
+                    onClicked: viewRoot.wipeAll()
                 }
             }
         }
 
-        // Content Area (List + Preview Panels)
+        // Two-Column Split (List & Preview)
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             spacing: 14
 
-            ListView {
-                id: clipList
+            Item {
                 Layout.preferredWidth: Math.round(viewRoot.width * 0.48)
                 Layout.fillHeight: true
-                clip: true
-                spacing: 6
-                model: engine.filteredClipboardModel
-                currentIndex: engine.selectedIndex
 
-                delegate: Rectangle {
-                    readonly property bool isSelected: index === engine.selectedIndex
-                    width: clipList.width - 12
-                    height: model.isImage ? 80 : 54
-                    radius: 6
-                    color: isSelected ? ((theme && theme.base02) ? theme.base02 : "#333") : "transparent"
-                    border.width: isSelected ? 2 : 1
-                    border.color: isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : "#444"
+                // Informative Empty State
+                ColumnLayout {
+                    anchors.centerIn: parent
+                    width: parent.width - 40
+                    spacing: 12
+                    visible: clipModel.count === 0
 
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 10
-                        spacing: 12
-
-                        Rectangle {
-                            visible: model.isImage
-                            width: 60
-                            height: 60
-                            radius: 4
-                            color: "#000"
-                            clip: true
-                            Image {
-                                anchors.fill: parent
-                                source: model.isImage && model.imagePath ? ("file://" + model.imagePath) : ""
-                                fillMode: Image.PreserveAspectFit
-                            }
-                        }
-
-                        Text {
-                            text: model.text
-                            font.family: (theme && theme.fontFamily) ? theme.fontFamily : "monospace"
-                            font.pixelSize: viewRoot.overlayFontSize
-                            color: isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : "#ccc"
-                            elide: Text.ElideRight
-                            Layout.fillWidth: true
-                        }
+                    Text {
+                        text: viewRoot.isFetching ? "⏳ Fetching clipboard..." : "ℹ️ No Clipboard Items"
+                        font.bold: true
+                        font.pixelSize: viewRoot.overlayFontSize
+                        color: (theme && theme.base05) ? theme.base05 : "yellow"
+                        Layout.alignment: Qt.AlignHCenter
                     }
 
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            engine.selectedIndex = index;
-                            engine.updatePreview();
-                        }
-                        onDoubleClicked: {
-                            engine.selectedIndex = index;
-                            engine.copySelected();
-                            viewRoot.completed();
+                    Rectangle {
+                        Layout.fillWidth: true
+                        implicitHeight: diagCol.implicitHeight + 20
+                        radius: 8
+                        color: (theme && theme.base00) ? theme.base00 : "#11111b"
+                        border.color: viewRoot.debugError !== "" ? "#ff5555" : ((theme && theme.base03) ? theme.base03 : "#45475a")
+                        border.width: 1
+
+                        ColumnLayout {
+                            id: diagCol
+                            anchors.fill: parent
+                            anchors.margins: 10
+                            spacing: 6
+
+                            Text {
+                                text: "Diagnostics:"
+                                font.bold: true
+                                font.pixelSize: 12
+                                color: (theme && theme.base0C) ? theme.base0C : "#04f100"
+                            }
+                            Text {
+                                text: "Status: " + viewRoot.debugStatus
+                                font.pixelSize: 11
+                                font.family: "monospace"
+                                color: "#ccc"
+                                wrapMode: Text.Wrap
+                                Layout.fillWidth: true
+                            }
+                            Text {
+                                visible: viewRoot.debugError !== ""
+                                text: "Error: " + viewRoot.debugError
+                                font.pixelSize: 11
+                                font.family: "monospace"
+                                color: "#ff5555"
+                                wrapMode: Text.Wrap
+                                Layout.fillWidth: true
+                            }
+                            Rectangle { Layout.fillWidth: true; height: 1; color: "#333" }
+                            Text {
+                                text: "💡 Ensure cliphist watcher is active in your config:\n• wl-paste --watch cliphist store\n• wl-paste --type image --watch cliphist store"
+                                font.pixelSize: 10
+                                font.family: "monospace"
+                                color: "#888"
+                                wrapMode: Text.Wrap
+                                Layout.fillWidth: true
+                            }
                         }
                     }
                 }
-                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+                ListView {
+                    id: clipList
+                    anchors.fill: parent
+                    clip: true
+                    spacing: 6
+                    model: clipModel
+                    currentIndex: viewRoot.selectedIndex
+                    visible: clipModel.count > 0
+
+                    delegate: Rectangle {
+                        readonly property bool isSelected: index === viewRoot.selectedIndex
+                        width: clipList.width - 12
+                        height: model.isImage ? 80 : 54
+                        radius: 6
+                        color: isSelected ? ((theme && theme.base02) ? theme.base02 : "#333") : "transparent"
+                        border.width: isSelected ? 2 : 1
+                        border.color: isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : "#444"
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 8
+                            spacing: 12
+
+                            Rectangle {
+                                width: 60
+                                height: 60
+                                radius: 4
+                                color: (theme && theme.base02) ? theme.base02 : "#1a1a1a"
+                                border.color: (theme && theme.base03) ? theme.base03 : "#45475a"
+                                border.width: 1
+                                clip: true
+
+                                Text {
+                                    visible: !model.isImage
+                                    text: "📋"
+                                    font.pixelSize: 24
+                                    anchors.centerIn: parent
+                                }
+
+                                Image {
+                                    visible: model.isImage
+                                    anchors.fill: parent
+                                    anchors.margins: 2
+                                    fillMode: Image.PreserveAspectFit
+                                    cache: false
+                                    asynchronous: true
+                                    source: model.isImage ? model.thumbPath : ""
+                                }
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 3
+
+                                Text {
+                                    text: model.isImage ? model.title : model.text
+                                    font.family: (theme && theme.fontFamily) ? theme.fontFamily : "monospace"
+                                    font.pixelSize: viewRoot.overlayFontSize
+                                    font.bold: model.isImage
+                                    color: isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : "#ccc"
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+
+                                Text {
+                                    text: {
+                                        if (!model.isImage) return model.date || "";
+                                        var d = model.date || "";
+                                        if (model.dims && model.dims !== "") d += (d !== "" ? " • " : "") + model.dims;
+                                        if (model.size && model.size !== "") d += (d !== "" ? " (" : "") + model.size + (d !== "" ? ")" : "");
+                                        return d;
+                                    }
+                                    font.family: (theme && theme.fontFamily) ? theme.fontFamily : "monospace"
+                                    font.pixelSize: Math.max(10, viewRoot.overlayFontSize - 4)
+                                    color: isSelected ? ((theme && theme.base0C) ? theme.base0C : "#04f100") : "#888"
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+                            }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: {
+                                viewRoot.selectedIndex = index;
+                                viewRoot.updatePreview();
+                            }
+                            onDoubleClicked: {
+                                viewRoot.selectedIndex = index;
+                                viewRoot.copyCurrent();
+                            }
+                        }
+                    }
+                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                }
             }
 
+            // Right Pane: Preview Canvas
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -209,21 +510,62 @@ Item {
                 border.color: (theme && theme.base03) ? theme.base03 : "#45475a"
                 clip: true
 
-                Image {
+                // Image Preview Mode
+                ColumnLayout {
                     anchors.fill: parent
                     anchors.margins: 14
-                    visible: engine.previewImage !== ""
-                    source: engine.previewImage
-                    fillMode: Image.PreserveAspectFit
+                    spacing: 10
+                    visible: viewRoot.previewImage !== ""
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Text {
+                            text: "🖼️ " + viewRoot.previewTitle
+                            font.bold: true
+                            font.pixelSize: viewRoot.overlayFontSize + 1
+                            color: (theme && theme.base05) ? theme.base05 : "yellow"
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
+                        }
+                        Text {
+                            text: viewRoot.previewDate
+                            font.pixelSize: viewRoot.overlayFontSize - 3
+                            color: "#888"
+                        }
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 1
+                        color: (theme && theme.base03) ? theme.base03 : "#45475a"
+                    }
+
+                    Image {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        source: viewRoot.previewImage
+                        fillMode: Image.PreserveAspectFit
+                        cache: false
+                        asynchronous: true
+                    }
+
+                    Text {
+                        text: "Resolution: " + viewRoot.previewDims + "  •  Size: " + viewRoot.previewSize
+                        font.pixelSize: viewRoot.overlayFontSize - 3
+                        color: (theme && theme.base0C) ? theme.base0C : "#04f100"
+                        Layout.alignment: Qt.AlignHCenter
+                    }
                 }
 
+                // Text Preview Mode
                 ScrollView {
                     anchors.fill: parent
                     anchors.margins: 14
-                    visible: engine.previewImage === ""
+                    visible: viewRoot.previewImage === ""
                     clip: true
+
                     TextArea {
-                        text: engine.previewText
+                        text: viewRoot.previewText
                         wrapMode: Text.WrapAnywhere
                         readOnly: true
                         selectByMouse: true

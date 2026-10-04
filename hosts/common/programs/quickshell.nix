@@ -1,31 +1,42 @@
 { config, lib, pkgs, ... }: {
 
   # =========================================================================
-  # MODULAR FEATURE FLAGS
+  # 1. CORE DECLARATIONS
   # =========================================================================
   options.programs.quickshell = {
     enable = lib.mkEnableOption "Quickshell desktop shell environment";
     package = lib.mkPackageOption pkgs "quickshell" { };
-
-    features = {
-      pass = lib.mkOption { type = lib.types.bool; default = true; description = "GPG password store via pass"; };
-      email = lib.mkOption { type = lib.types.bool; default = true; description = "Email composition via himalaya"; };
-      watermark = lib.mkOption { type = lib.types.bool; default = true; description = "Watermarking via imagemagick"; };
-      ocr = lib.mkOption { type = lib.types.bool; default = true; description = "OCR text extraction via tesseract"; };
-      recording = lib.mkOption { type = lib.types.bool; default = true; description = "Screen recording via wf-recorder"; };
-    };
-
-    extraPackages = lib.mkOption {
-      type = lib.types.listOf lib.types.package;
-      default = [ ];
-      description = "Additional custom packages to make available for Quickshell";
-    };
   };
 
+  # =========================================================================
+  # 2. SYSTEM CONFIGURATION
+  # =========================================================================
   config = lib.mkIf config.programs.quickshell.enable {
+
     # -------------------------------------------------------------------------
-    # 1. PAM AUTHENTICATION (Lockscreen Support)
+    # Installs the packages globally for the system environment
     # -------------------------------------------------------------------------
+    environment.systemPackages = [
+      config.programs.quickshell.package
+      pkgs.cliphist
+      pkgs.wl-clipboard
+      pkgs.inotify-tools
+      pkgs.pass
+      pkgs.himalaya
+      pkgs.imagemagick
+      pkgs.tesseract
+      pkgs.wf-recorder
+    ];
+
+    # -------------------------------------------------------------------------
+    # FORCE SYMLINKS INTO YOUR USER PROFILE (Fixes Zsh Path Misses)
+    # -------------------------------------------------------------------------
+    users.users.moonburst.packages = [
+      pkgs.cliphist
+      pkgs.wl-clipboard
+    ];
+
+    # PAM AUTHENTICATION (Lockscreen Support)
     security.pam.services.quickshell = {
       allowNullPassword = false;
       startSession = true;

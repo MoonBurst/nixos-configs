@@ -54,7 +54,12 @@ in
     orca-slicer
     openscad
   ];
-
+programs.vscode = {
+  enable = true;
+  extensions = with pkgs.vscode-extensions; [
+    # Installs the stable, native version of Continue directly from the Nix store
+    continue.continue
+  ];};
   # --- Desktop Entry for Launcher ---
   xdg.desktopEntries = {
     horizon = {

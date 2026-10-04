@@ -24,7 +24,6 @@ QtObject {
     property int lastFolderIndex: -1
     property double lastDeleteTime: 0
 
-    // Automatically checked on startup
     property bool himalayaInstalled: false
 
     property string mailSignature: (typeof shell !== "undefined" && shell && shell.settingsManager && shell.settingsManager.emailSignature)
@@ -44,7 +43,26 @@ QtObject {
         himalayaCheckProc.running = true;
     }
 
-    // Checks both that the binary is in PATH and that an account config exists
+    function syncMail() {
+        if (!engine.himalayaInstalled) return;
+        mailSyncProc.running = false;
+        mailSyncProc.running = true;
+    }
+
+    readonly property Process mailSyncProc: Process {
+        running: false
+        command: [
+            "sh", "-c",
+            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
+            'SCR="' + Quickshell.shellDir + '/modules/overlays/email/backend/HimalayaEngine.lua"; ' +
+            'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
+            '"$CMD" "$SCR" sync'
+        ]
+        onExited: {
+            engine.readMailCache();
+        }
+    }
+
     readonly property Process himalayaCheckProc: Process {
         running: true
         command: [
@@ -55,7 +73,10 @@ QtObject {
         stdout: SplitParser {
             onRead: data => {
                 engine.himalayaInstalled = (data.trim() === "1");
-                if (engine.himalayaInstalled) engine.readMailCache();
+                if (engine.himalayaInstalled) {
+                    engine.readMailCache();
+                    engine.syncMail();
+                }
             }
         }
     }
@@ -83,7 +104,6 @@ QtObject {
                             engine.activeMailBody = bodyText;
                             if (engine.selectedMail && engine.selectedMail.id.toString() === bodyId) {
                                 engine.selectedMail.body_content = bodyText;
-                                engine.readMailCache();
                             }
                             running = false;
                         }
@@ -139,6 +159,19 @@ QtObject {
         } catch (err) {
             console.log("[Local Queue Error]: " + err);
         }
+
+        Quickshell.execDetached([
+            "sh", "-c",
+            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
+            'SCR="' + Quickshell.shellDir + '/modules/overlays/email/backend/HimalayaEngine.lua"; ' +
+            'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
+            '"$CMD" "$SCR" "$1" "$2" "$3" "$4"',
+            "sh",
+            action || "",
+            arg1 || "",
+            arg2 || "",
+            arg3 || ""
+        ]);
     }
 
     function getMaildirFolder(folderLabel) {

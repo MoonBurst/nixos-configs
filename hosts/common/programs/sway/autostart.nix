@@ -22,6 +22,9 @@ in
     { command = "${pkgs.corectrl}/bin/corectrl"; }
 
     # **Clipboard Monitoring Loop**
-    { command = "exec ${pkgs.wl-clipboard}/bin/wl-paste --type text --watch ${pkgs.bash}/bin/bash -c 'NEW_CLIP=$(${pkgs.wl-clipboard}/bin/wl-paste -n); [ -z \"$NEW_CLIP\" ] && exit 0; SF=\"/tmp/native_clipboard_history.txt\"; touch \"$SF\"; LAST_CLIP=$(tr \"\\0\" \"\\n\" < \"$SF\" 2>/dev/null | sed \"s/^##TS:[0-9]*|//\" | tail -n 1); if [ \"$NEW_CLIP\" != \"$LAST_CLIP\" ]; then printf \"##TS:%s|%s\\0\" \"$(date +%s)\" \"$NEW_CLIP\" >> \"$SF\"; SNIPPET=$(echo \"$NEW_CLIP\" | head -n 1 | cut -c1-40); ${pkgs.libnotify}/bin/notify-send -a \"System Clipboard\" -i \"edit-copy\" \"📋 Text Copied\" \"$SNIPPET...\"; fi' &"; }
+    # **Clipboard Management (Cliphist)**
+{ command = "${pkgs.wl-clipboard}/bin/wl-paste --type text --watch ${pkgs.cliphist}/bin/cliphist store -max-items 500"; }
+{ command = "${pkgs.wl-clipboard}/bin/wl-paste --type image --watch ${pkgs.cliphist}/bin/cliphist store -max-items 50"; }
+
   ];
 }
