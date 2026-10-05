@@ -67,6 +67,10 @@ Item {
     property string inputFieldShape: "rounded"
     onInputFieldShapeChanged: queueSave()
 
+    // Overlay Card Slant Direction: "left", "right", "center"
+    property string overlaySlantDirection: "left"
+    onOverlaySlantDirectionChanged: queueSave()
+
     // Shape Angle & Chamfer Sliders
     property int overlaySlantAngle: 32
     onOverlaySlantAngleChanged: queueSave()
@@ -506,6 +510,7 @@ Item {
             "globalFieldHeight": manager.globalFieldHeight,
             "overlayCardShape": manager.overlayCardShape,
             "inputFieldShape": manager.inputFieldShape,
+            "overlaySlantDirection": manager.overlaySlantDirection,
             "overlaySlantAngle": manager.overlaySlantAngle,
             "overlayHexagonCut": manager.overlayHexagonCut,
             "inputSlantAngle": manager.inputSlantAngle,
@@ -621,6 +626,7 @@ Item {
                     if (obj.globalFieldHeight !== undefined) manager.globalFieldHeight = obj.globalFieldHeight;
                     if (obj.overlayCardShape !== undefined) manager.overlayCardShape = obj.overlayCardShape;
                     if (obj.inputFieldShape !== undefined) manager.inputFieldShape = obj.inputFieldShape;
+                    if (obj.overlaySlantDirection !== undefined) manager.overlaySlantDirection = obj.overlaySlantDirection;
                     if (obj.overlaySlantAngle !== undefined) manager.overlaySlantAngle = obj.overlaySlantAngle;
                     if (obj.overlayHexagonCut !== undefined) manager.overlayHexagonCut = obj.overlayHexagonCut;
                     if (obj.inputSlantAngle !== undefined) manager.inputSlantAngle = obj.inputSlantAngle;

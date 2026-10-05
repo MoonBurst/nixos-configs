@@ -99,7 +99,6 @@ Item {
             previewDate = item.date || "";
             previewDims = item.dims || "";
             previewSize = item.size || "";
-            // Automatically fetch OCR text in the background for screenshots
             runOcr(true);
         } else {
             previewImage = "";
@@ -428,44 +427,40 @@ Item {
                         id: delegateCard
                         readonly property bool isSelected: index === viewRoot.selectedIndex
                         width: clipList.width - 12
-                        height: model.isImage ? 80 : 54
+                        // Proper height bounds: 80 for screenshots, 50 for text
+                        height: model.isImage ? 80 : 50
 
                         Style.ShapeBox {
                             anchors.fill: parent
                             role: "input"
                             color: delegateCard.isSelected ? ((theme && theme.base02) ? theme.base02 : "#333") : "transparent"
-                            borderColor: delegateCard.isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : "#444"
-                            borderWidth: delegateCard.isSelected ? viewRoot.globalBorderWidth : 1
+                            borderColor: delegateCard.isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : ((theme && theme.base03) ? theme.base03 : "#555")
+                            borderWidth: viewRoot.globalBorderWidth
                             slantWidth: 10
                         }
 
                         RowLayout {
                             anchors.fill: parent
-                            // Padded from left so thumbnail does not cut into the chamfer
-                            anchors.leftMargin: Math.max(16, viewRoot.inputPad.left)
+                            // Safe inset: elements never clip into left/right chamfers
+                            anchors.leftMargin: Math.max(20, viewRoot.inputPad.left + 4)
                             anchors.rightMargin: Math.max(16, viewRoot.inputPad.right)
-                            anchors.topMargin: 8
-                            anchors.bottomMargin: 8
-                            spacing: 12
+                            anchors.topMargin: model.isImage ? 8 : 4
+                            anchors.bottomMargin: model.isImage ? 8 : 4
+                            spacing: 10
 
+                            // 1. Image Thumbnail (Only for actual screenshots)
                             Rectangle {
-                                width: 56
-                                height: 56
+                                visible: model.isImage
+                                Layout.preferredWidth: 54
+                                Layout.preferredHeight: 54
+                                Layout.alignment: Qt.AlignVCenter
                                 radius: 4
                                 color: (theme && theme.base02) ? theme.base02 : "#1a1a1a"
                                 border.color: (theme && theme.base03) ? theme.base03 : "#45475a"
                                 border.width: 1
                                 clip: true
 
-                                Text {
-                                    visible: !model.isImage
-                                    text: "📋"
-                                    font.pixelSize: 22
-                                    anchors.centerIn: parent
-                                }
-
                                 Image {
-                                    visible: model.isImage
                                     anchors.fill: parent
                                     anchors.margins: 2
                                     fillMode: Image.PreserveAspectFit
@@ -475,21 +470,41 @@ Item {
                                 }
                             }
 
+                            // 2. Compact Text Badge (Never overflows vertically or horizontally)
+                            Rectangle {
+                                visible: !model.isImage
+                                Layout.preferredWidth: 28
+                                Layout.preferredHeight: 28
+                                Layout.alignment: Qt.AlignVCenter
+                                radius: 4
+                                color: (theme && theme.base02) ? theme.base02 : "#222"
+                                border.color: (theme && theme.base03) ? theme.base03 : "#45475a"
+                                border.width: 1
+
+                                Text {
+                                    text: "📄"
+                                    font.pixelSize: 15
+                                    anchors.centerIn: parent
+                                }
+                            }
+
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 3
+                                Layout.alignment: Qt.AlignVCenter
+                                spacing: 2
 
                                 Text {
                                     text: model.isImage ? (model.title || "Screenshot") : (model.displayText || model.text || "")
                                     font.family: (theme && theme.fontFamily) ? theme.fontFamily : "monospace"
                                     font.pixelSize: viewRoot.overlayFontSize
-                                    font.bold: model.isImage
+                                    font.bold: delegateCard.isSelected
                                     color: delegateCard.isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : "#ccc"
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
                                 }
 
                                 Text {
+                                    visible: model.isImage || (model.date && model.date !== "")
                                     text: {
                                         if (!model.isImage) return model.date || "";
                                         var d = model.date || "";

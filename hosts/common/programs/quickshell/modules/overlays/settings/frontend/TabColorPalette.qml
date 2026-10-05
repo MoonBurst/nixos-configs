@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls 2
 import QtQuick.Layouts 1.15
 import "../../../settings"
+import "../../../style" as Style
 
 Flickable {
     id: root
@@ -51,7 +52,7 @@ Flickable {
                     height: width
                     radius: 6
                     color: settingsManager ? settingsManager[modelData.prop] : modelData.def
-                    border.width: 2
+                    border.width: panelRoot.liveBorderWidth
                     border.color: "#ffffff"
                     MouseArea {
                         anchors.fill: parent
@@ -84,7 +85,7 @@ Flickable {
             color: panelRoot.liveBase0C
         }
 
-        // 1. Overlay Window Cards Shape Selector
+        // 1. Overlay Window Cards Shape Selector: Each button renders in its own shape style
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 8
@@ -98,38 +99,51 @@ Flickable {
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 10
+                spacing: 12
 
                 Repeater {
                     model: [
-                        { id: "rounded", label: "⬛ Rounded Rectangle", desc: "Clean modern rounded borders" },
-                        { id: "slant",   label: "▱ Slanted Box",       desc: "Cyberpunk angled parallel edges" },
-                        { id: "hexagon", label: "⬡ Hexagon (Wide Top)", desc: "Chamfered hexagonal card geometry" }
+                        { id: "rounded", label: "Rounded Rectangle", desc: "Clean modern rounded borders" },
+                        { id: "slant",   label: "Slanted Box",       desc: "Cyberpunk angled parallel edges" },
+                        { id: "hexagon", label: "Hexagon (Wide Top)", desc: "Chamfered hexagonal card geometry" }
                     ]
-                    delegate: Rectangle {
+                    delegate: Item {
                         readonly property bool isSelected: (settingsManager ? settingsManager.overlayCardShape : "rounded") === modelData.id
                         Layout.fillWidth: true
-                        height: Math.max(40, panelRoot.liveFontSize * 2.2)
-                        radius: 8
-                        color: isSelected ? panelRoot.liveBase05 : panelRoot.liveBase00
-                        border.color: panelRoot.liveBase05
-                        border.width: isSelected ? 2 : 1
+                        height: Math.max(54, panelRoot.liveFontSize * 2.8)
+
+                        Style.ShapeBox {
+                            anchors.fill: parent
+                            shapeType: modelData.id
+                            role: "custom"
+                            slantWidth: 16
+                            hexCut: 14
+                            radius: 8
+                            color: isSelected ? panelRoot.liveBase05 : panelRoot.liveBase00
+                            borderColor: isSelected ? panelRoot.liveBase05 : panelRoot.liveBase03
+                            borderWidth: panelRoot.liveBorderWidth
+                        }
 
                         Column {
                             anchors.centerIn: parent
-                            spacing: 2
+                            spacing: 3
+                            width: parent.width - 24
+
                             Text {
-                                text: modelData.label
+                                text: (modelData.id === "rounded" ? "▢ " : (modelData.id === "slant" ? "▱ " : "⬡ ")) + modelData.label
                                 font.bold: true
-                                font.pixelSize: Math.max(11, panelRoot.liveFontSize - 2)
+                                font.pixelSize: Math.max(12, panelRoot.liveFontSize - 1)
                                 color: isSelected ? panelRoot.liveBase00 : panelRoot.liveBase05
                                 anchors.horizontalCenter: parent.horizontalCenter
                             }
                             Text {
                                 text: modelData.desc
-                                font.pixelSize: 9
-                                color: isSelected ? "#333" : "#888"
+                                font.pixelSize: 10
+                                color: isSelected ? "#333333" : "#888888"
                                 anchors.horizontalCenter: parent.horizontalCenter
+                                elide: Text.ElideRight
+                                width: parent.width
+                                horizontalAlignment: Text.AlignHCenter
                             }
                         }
 
@@ -143,7 +157,65 @@ Flickable {
             }
         }
 
-        // Live Sliders for Card Slant Angle and Hexagon Chamfer Cut
+        // Slant Direction Options: Left (\ \), Right (/ /), Center (\ /)
+        ColumnLayout {
+            visible: (settingsManager ? settingsManager.overlayCardShape : "rounded") === "slant"
+            Layout.fillWidth: true
+            spacing: 8
+
+            Text {
+                text: "Slant Direction for Cards:"
+                font.bold: true
+                color: panelRoot.liveBase05
+                font.pixelSize: panelRoot.liveFontSize - 1
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 12
+
+                Repeater {
+                    model: [
+                        { id: "left",   label: "\\ Left Slant",   sL: "Left",  sR: "Left" },
+                        { id: "right",  label: "/ Right Slant",  sL: "Right", sR: "Right" },
+                        { id: "center", label: "\\ / Center",     sL: "Left",  sR: "Right" }
+                    ]
+                    delegate: Item {
+                        readonly property bool isCur: (settingsManager ? settingsManager.overlaySlantDirection : "left") === modelData.id
+                        Layout.fillWidth: true
+                        height: 38
+
+                        Style.ShapeBox {
+                            anchors.fill: parent
+                            shapeType: "slant"
+                            role: "custom"
+                            slantWidth: 14
+                            slantLeft: modelData.sL
+                            slantRight: modelData.sR
+                            color: isCur ? panelRoot.liveBase05 : panelRoot.liveBase00
+                            borderColor: isCur ? panelRoot.liveBase05 : panelRoot.liveBase03
+                            borderWidth: panelRoot.liveBorderWidth
+                        }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: modelData.label
+                            font.bold: true
+                            font.pixelSize: Math.max(11, panelRoot.liveFontSize - 2)
+                            color: isCur ? panelRoot.liveBase00 : panelRoot.liveBase05
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: if (settingsManager) settingsManager.overlaySlantDirection = modelData.id
+                        }
+                    }
+                }
+            }
+        }
+
+        // Sliders for Card Slant Angle and Hexagon Chamfer Cut
         RowLayout {
             Layout.fillWidth: true
             spacing: 14
@@ -169,7 +241,7 @@ Flickable {
             }
         }
 
-        // 2. Input Fields & Bubble Selectors Shape Selector
+        // 2. Input Fields Shape Selector: Each button renders in its own shape style
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 8
@@ -183,38 +255,51 @@ Flickable {
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 10
+                spacing: 12
 
                 Repeater {
                     model: [
-                        { id: "rounded", label: "⬛ Standard Rounded", desc: "Soft border curves" },
-                        { id: "slant",   label: "▱ Slanted Parallelogram", desc: "Angled input fields" },
-                        { id: "hexagon", label: "⬡ Hexagonal Chamfer", desc: "Corner chamfered inputs" }
+                        { id: "rounded", label: "Standard Rounded", desc: "Soft border curves" },
+                        { id: "slant",   label: "Slanted Parallelogram", desc: "Angled input fields" },
+                        { id: "hexagon", label: "Hexagonal Chamfer", desc: "Corner chamfered inputs" }
                     ]
-                    delegate: Rectangle {
+                    delegate: Item {
                         readonly property bool isSelected: (settingsManager ? settingsManager.inputFieldShape : "rounded") === modelData.id
                         Layout.fillWidth: true
-                        height: Math.max(40, panelRoot.liveFontSize * 2.2)
-                        radius: 8
-                        color: isSelected ? panelRoot.liveBase0C : panelRoot.liveBase00
-                        border.color: panelRoot.liveBase0C
-                        border.width: isSelected ? 2 : 1
+                        height: Math.max(54, panelRoot.liveFontSize * 2.8)
+
+                        Style.ShapeBox {
+                            anchors.fill: parent
+                            shapeType: modelData.id
+                            role: "custom"
+                            slantWidth: 16
+                            hexCut: 14
+                            radius: 8
+                            color: isSelected ? panelRoot.liveBase0C : panelRoot.liveBase00
+                            borderColor: isSelected ? panelRoot.liveBase0C : panelRoot.liveBase03
+                            borderWidth: panelRoot.liveBorderWidth
+                        }
 
                         Column {
                             anchors.centerIn: parent
-                            spacing: 2
+                            spacing: 3
+                            width: parent.width - 24
+
                             Text {
-                                text: modelData.label
+                                text: (modelData.id === "rounded" ? "▢ " : (modelData.id === "slant" ? "▱ " : "⬡ ")) + modelData.label
                                 font.bold: true
-                                font.pixelSize: Math.max(11, panelRoot.liveFontSize - 2)
+                                font.pixelSize: Math.max(12, panelRoot.liveFontSize - 1)
                                 color: isSelected ? "#000000" : panelRoot.liveBase0C
                                 anchors.horizontalCenter: parent.horizontalCenter
                             }
                             Text {
                                 text: modelData.desc
-                                font.pixelSize: 9
-                                color: isSelected ? "#222" : "#888"
+                                font.pixelSize: 10
+                                color: isSelected ? "#112211" : "#888888"
                                 anchors.horizontalCenter: parent.horizontalCenter
+                                elide: Text.ElideRight
+                                width: parent.width
+                                horizontalAlignment: Text.AlignHCenter
                             }
                         }
 
@@ -228,7 +313,7 @@ Flickable {
             }
         }
 
-        // Live Sliders for Input Slant Angle and Hexagon Chamfer Cut
+        // Sliders for Input Slant Angle and Hexagon Chamfer Cut
         RowLayout {
             Layout.fillWidth: true
             spacing: 14

@@ -219,8 +219,8 @@ Item {
                     anchors.fill: parent
                     role: "input"
                     color: delegateItem.isSelected ? ((theme && theme.base02) ? theme.base02 : "#333") : "transparent"
-                    borderColor: delegateItem.isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : "#444"
-                    borderWidth: delegateItem.isSelected ? viewRoot.globalBorderWidth : 1
+                    borderColor: delegateItem.isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : ((theme && theme.base03) ? theme.base03 : "#555")
+                    borderWidth: viewRoot.globalBorderWidth
                     slantWidth: 10
                 }
 

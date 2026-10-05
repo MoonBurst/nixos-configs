@@ -1,4 +1,3 @@
-import "../../common" as Common
 import QtQuick
 import QtQuick.Controls 2
 import QtQuick.Layouts 1.15
@@ -7,6 +6,7 @@ import Quickshell.Wayland
 import Quickshell.Io
 import "../../../" as RootTheme
 import "../../style" as Style
+import "../../common/Utils.js" as Utils
 import "./frontend" as Frontend
 
 PanelWindow {
@@ -93,7 +93,6 @@ PanelWindow {
         }
     }
 
-    // Dynamic Shape Card Powered by ShapeBox
     Item {
         id: card
         width: settingsManager ? settingsManager.getWindowWidth(window.windowId, 1040) : 1040
@@ -101,14 +100,7 @@ PanelWindow {
         x: Math.round(Math.max(20, (window.width - width) / 2))
         y: Math.round(Math.max(20, (window.height - height) / 2))
 
-        readonly property int cardCornerCut: {
-            if (!settingsManager) return 0;
-            if (settingsManager.overlayCardShape === "hexagon") return Math.round(settingsManager.overlayHexagonCut || 36);
-            if (settingsManager.overlayCardShape === "slant") return Math.round(settingsManager.overlaySlantAngle || 32);
-            return 0;
-        }
-        readonly property int cardPadH: Math.max(16, Math.round(cardCornerCut * 0.65) + 6)
-        readonly property int cardPadV: Math.max(12, Math.round(cardCornerCut * 0.5) + 4)
+        readonly property var safePad: Utils.getSafeCardPadding(settingsManager)
 
         Style.ShapeBox {
             anchors.fill: parent
@@ -122,10 +114,10 @@ PanelWindow {
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.leftMargin: (settingsManager && settingsManager.overlayCardShape !== "rounded") ? card.cardPadH : theme.globalBorderWidth
-            anchors.rightMargin: (settingsManager && settingsManager.overlayCardShape !== "rounded") ? card.cardPadH : theme.globalBorderWidth
-            anchors.topMargin: (settingsManager && settingsManager.overlayCardShape !== "rounded") ? card.cardPadV : theme.globalBorderWidth
-            anchors.bottomMargin: (settingsManager && settingsManager.overlayCardShape !== "rounded") ? card.cardPadV : theme.globalBorderWidth
+            anchors.leftMargin: (settingsManager && settingsManager.overlayCardShape !== "rounded") ? card.safePad.h : theme.globalBorderWidth
+            anchors.rightMargin: (settingsManager && settingsManager.overlayCardShape !== "rounded") ? card.safePad.h : theme.globalBorderWidth
+            anchors.topMargin: (settingsManager && settingsManager.overlayCardShape !== "rounded") ? card.safePad.v : theme.globalBorderWidth
+            anchors.bottomMargin: (settingsManager && settingsManager.overlayCardShape !== "rounded") ? card.safePad.v : theme.globalBorderWidth
             spacing: 8
 
             // Title Bar
@@ -135,12 +127,7 @@ PanelWindow {
                 Layout.preferredHeight: Math.max(46, Math.round(window.overlayFontSize * 2.4))
                 Layout.minimumHeight: Layout.preferredHeight
 
-                readonly property int inputCut: {
-                    if (!settingsManager) return 8;
-                    if (settingsManager.inputFieldShape === "hexagon") return Math.round(settingsManager.inputHexagonCut || 14);
-                    if (settingsManager.inputFieldShape === "slant") return Math.round(settingsManager.inputSlantAngle || 14);
-                    return 8;
-                }
+                readonly property var inputPad: Utils.getSafeInputPadding(settingsManager)
 
                 Style.ShapeBox {
                     anchors.fill: parent
@@ -163,8 +150,8 @@ PanelWindow {
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: Math.max(16, titleBarBox.inputCut + 8)
-                    anchors.rightMargin: Math.max(16, titleBarBox.inputCut + 8)
+                    anchors.leftMargin: Math.max(16, titleBarBox.inputPad.left)
+                    anchors.rightMargin: Math.max(16, titleBarBox.inputPad.right)
                     spacing: 10
 
                     Text {
@@ -179,7 +166,6 @@ PanelWindow {
                         color: theme.base05
                         Layout.fillWidth: true
                     }
-                    // Red "X" square removed from corner
                 }
             }
 

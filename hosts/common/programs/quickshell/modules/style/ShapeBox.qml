@@ -5,9 +5,8 @@ Item {
     id: root
 
     property string shapeType: "auto"
-    property string role: "card" // "card" or "input"
+    property string role: "card" // "card", "input", or "custom"
 
-    // Allow callers to either set slantWidth directly or let it follow the global angle slider
     property int slantWidth: effectiveSlantWidth
     property int hexCut: effectiveHexCut
 
@@ -24,8 +23,30 @@ Item {
     property real borderWidth: (typeof shell !== "undefined" && shell && shell.theme && shell.theme.globalBorderWidth !== undefined) ? shell.theme.globalBorderWidth : 2
     property real radius: (typeof shell !== "undefined" && shell && shell.theme && shell.theme.defaultCardRadius !== undefined) ? shell.theme.defaultCardRadius : 10
 
-    property string slantLeft: "Left"
-    property string slantRight: "Right"
+    readonly property string effectiveSlantDirection: {
+        if (role === "card" && typeof shell !== "undefined" && shell && shell.settingsManager) {
+            return shell.settingsManager.overlaySlantDirection || "left";
+        }
+        return "left";
+    }
+
+    property string slantLeft: {
+        if (role === "card") {
+            if (effectiveSlantDirection === "right") return "Right";
+            if (effectiveSlantDirection === "center") return "Left";
+            return "Left"; // left
+        }
+        return "Left";
+    }
+
+    property string slantRight: {
+        if (role === "card") {
+            if (effectiveSlantDirection === "right") return "Right";
+            if (effectiveSlantDirection === "center") return "Right";
+            return "Left"; // left
+        }
+        return "Right";
+    }
 
     readonly property int effectiveSlantWidth: {
         if (typeof shell !== "undefined" && shell && shell.settingsManager) {
@@ -118,6 +139,7 @@ Item {
             function onBorderWidthChanged() { hexCanvas.requestPaint(); }
             function onHexCutChanged() { hexCanvas.requestPaint(); }
             function onSlantWidthChanged() { hexCanvas.requestPaint(); }
+            function onEffectiveSlantDirectionChanged() { hexCanvas.requestPaint(); }
         }
     }
 }
