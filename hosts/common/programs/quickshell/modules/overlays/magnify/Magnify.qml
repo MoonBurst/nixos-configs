@@ -26,11 +26,22 @@ ShellRoot {
         }
     }
 
+    // Suppress any stale command file written by a previous shell session.
+    // The shell root clears /tmp/magnifier-state at boot, but give it a small
+    // grace window anyway to eliminate the startup-flash race entirely.
+    property bool startupGuardPassed: false
+    Timer {
+        interval: 1500
+        running: true
+        repeat: false
+        onTriggered: root.startupGuardPassed = true
+    }
+
     // Standard QML file polling (requires no background scripts or socket types)
     Timer {
         id: ipcPollTimer
         interval: 150 // Check for commands 6 times a second
-        running: false
+        running: root.startupGuardPassed
         repeat: true
         onTriggered: {
             var xhr = new XMLHttpRequest();

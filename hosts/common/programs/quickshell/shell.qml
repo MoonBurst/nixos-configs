@@ -24,7 +24,13 @@ ShellRoot {
     Process {
         id: tmpCacheCleaner
         running: true
-        command: ["sh", "-c", "rm -f /tmp/qs_avatar_notif_*.png /tmp/quickshot_crop_*.png /tmp/qs_dict*.json 2>/dev/null || true"]
+        command: [
+            "sh", "-c",
+            'rm -f /tmp/qs_avatar_notif_*.png /tmp/quickshot_crop_*.png /tmp/qs_dict*.json 2>/dev/null || true; ' +
+            '# Clear stale IPC command files so overlays do not pop open on a fresh boot\n' +
+            '> /tmp/magnifier-state 2>/dev/null || true; ' +
+            'rm -f /tmp/magnifier-state 2>/dev/null || true'
+        ]
     }
 
     Settings.SettingsManager { id: settingsManagerInstance }

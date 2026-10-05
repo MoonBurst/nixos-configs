@@ -107,10 +107,10 @@ Item {
 
         Quickshell.execDetached([
             "sh", "-c",
-            'SCR="' + Quickshell.shellDir + '/modules/bar/music/backend/MusicEngine.lua"; ' +
+            'SCR="$1/modules/bar/music/backend/MusicEngine.lua"; ' +
             'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
-            '"$CMD" "$SCR" open-dir "$1"',
-            "sh", rawUrl
+            '"$CMD" "$SCR" open-dir "$2"',
+            "sh", Quickshell.shellDir, rawUrl
         ]);
     }
 
@@ -121,10 +121,10 @@ Item {
 
         Quickshell.execDetached([
             "sh", "-c",
-            'SCR="' + Quickshell.shellDir + '/modules/bar/music/backend/MusicEngine.lua"; ' +
+            'SCR="$1/modules/bar/music/backend/MusicEngine.lua"; ' +
             'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
-            '"$CMD" "$SCR" trash-track "$1"',
-            "sh", rawUrl
+            '"$CMD" "$SCR" trash-track "$2"',
+            "sh", Quickshell.shellDir, rawUrl
         ]);
 
         if (musicBox.activePlayer && musicBox.activePlayer.canGoNext) {

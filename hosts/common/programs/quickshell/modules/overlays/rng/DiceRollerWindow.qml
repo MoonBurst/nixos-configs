@@ -7,7 +7,6 @@ import Quickshell.Io
 import "../../style" as Style
 import "../../common" as Common
 import "../../common/Utils.js" as Utils
-import "../../settings" as SettingsTools
 
 PanelWindow {
     id: root
@@ -465,14 +464,15 @@ PanelWindow {
                 }
 
                 Item {
+                    id: customDieRow
                     readonly property bool isCustomActive: root.selectedSides === root.customSidesVal && root.selectedSides !== 2 && root.selectedSides !== 4 && root.selectedSides !== 6 && root.selectedSides !== 8 && root.selectedSides !== 10 && root.selectedSides !== 12 && root.selectedSides !== 20 && root.selectedSides !== 100
                     Layout.fillWidth: true; height: 52
                     Style.ShapeBox {
                         anchors.fill: parent
                         role: "input"
                         slantWidth: 10
-                        color: isCustomActive ? root.bgHover : root.bgCard
-                        borderColor: isCustomActive ? root.highlightColor : (root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor)
+                        color: customDieRow.isCustomActive ? root.bgHover : root.bgCard
+                        borderColor: customDieRow.isCustomActive ? root.highlightColor : (root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor)
                         borderWidth: root.controlBorderWidth
                     }
                     RowLayout {
@@ -667,20 +667,6 @@ PanelWindow {
                     }
                 }
             }
-        }
-    }
-
-    SettingsTools.PreviewInspector {
-        id: previewInspector
-        visible: root.isPreviewMode
-        windowId: root.windowId
-        settingsManager: root.settingsManager
-        theme: root.theme
-        defaultW: 620; defaultH: 840
-        hasField: false; hasIcon: false
-        defaultPolicy: "lazy"
-        onDoneRequested: {
-            if (settingsManager) settingsManager.previewWindow = "";
         }
     }
 

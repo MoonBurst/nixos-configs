@@ -4,7 +4,7 @@ import QtQuick.Layouts 1.15
 import Quickshell
 import Quickshell.Io
 import "../../style"
-import "../../overlays/launcher" as Launcher
+import "../../common" as Common
 
 Item {
     id: batBox
@@ -21,7 +21,7 @@ Item {
     readonly property int themeFontSize: (shell && shell.theme) ? shell.theme.globalFontSize : 14
     readonly property string themeFontFamily: (shell && shell.theme) ? shell.theme.fontFamily : "monospace"
 
-    Launcher.BatteryEngine {
+    Common.BatteryEngine {
         id: batEngine
     }
 

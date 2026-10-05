@@ -383,3 +383,42 @@ elseif action == "CONTACT" then
         end
     end
 end
+
+-- flush-queue v1
+-- Drain any queued mail actions (MOVE/DELETE/STAR/UNSTAR/READ/UNREAD/SEND)
+-- left over from a previous session. Invoked by EmailEngine.qml on startup
+-- before the IMAP watcher is allowed to sync.
+if arg and arg[1] == "flush" then
+    local ok_sqlite, sqlite3 = pcall(require, "lsqlite3")
+    if not ok_sqlite then
+        io.stderr:write("lsqlite3 not available; queue flush skipped\n")
+        os.exit(0)
+    end
+    local home = os.getenv("HOME") or ""
+    local db_path = home .. "/.local/share/quickshell/QMailQueue"
+    local db = sqlite3.open(db_path)
+    if not db then
+        os.exit(0)
+    end
+    local rows = {}
+    for row in db:nrows("SELECT id, action, arg1, arg2, arg3 FROM queue ORDER BY id ASC") do
+        table.insert(rows, row)
+    end
+    for _, r in ipairs(rows) do
+        local cmd
+        if r.action == "MOVE" then
+            cmd = string.format("himalaya message move -m %q %q %q >/dev/null 2>&1", r.arg2, r.arg3, r.arg1)
+        elseif r.action == "DELETE" then
+            cmd = string.format("himalaya message delete -m %q %q >/dev/null 2>&1", r.arg2, r.arg1)
+        elseif r.action == "STAR" or r.action == "UNSTAR" then
+            cmd = string.format("himalaya message flag -m %q %q %s >/dev/null 2>&1", r.arg2, r.arg1, (r.action == "STAR") and "add flagged" or "remove flagged")
+        elseif r.action == "READ" or r.action == "UNREAD" then
+            cmd = string.format("himalaya message flag -m %q %q %s >/dev/null 2>&1", r.arg2, r.arg1, (r.action == "READ") and "add seen" or "remove seen")
+        end
+        if cmd then os.execute(cmd) end
+        db:exec(string.format("DELETE FROM queue WHERE id = %d", r.id))
+    end
+    db:close()
+    os.exit(0)
+end
+

@@ -7,6 +7,7 @@ import Quickshell.Io
 import "../../../" as RootTheme
 import "../../style" as Style
 import "../../common/Utils.js" as Utils
+import "../../common/FallbackTheme.js" as FallbackTheme
 import "./frontend" as Frontend
 
 PanelWindow {
@@ -16,8 +17,7 @@ PanelWindow {
     property var shell: null
     readonly property var safeShell: (typeof shell !== "undefined" && shell) ? shell : null
     readonly property var settingsManager: safeShell ? safeShell.settingsManager : null
-    readonly property var theme: (safeShell && safeShell.theme) ? safeShell.theme : fallbackTheme
-    RootTheme.Theme { id: fallbackTheme }
+    readonly property var theme: (safeShell && safeShell.theme) ? safeShell.theme : FallbackTheme.theme
 
     property bool isFileDialogActive: false
 

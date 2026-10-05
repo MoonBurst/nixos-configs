@@ -110,14 +110,18 @@ QtObject {
         if (!command) return;
         recordRecent(command);
         launcherProc.running = false;
+        // --scope makes the app a child of the caller (qs) and puts it in
+        // qs's cgroup, so qs exiting kills it. Without --scope, systemd-run
+        // creates a transient .service that is fully independent and survives
+        // a quickshell restart.
         launcherProc.command = [
             "sh", "-c",
             'if command -v systemd-run >/dev/null 2>&1; then\n' +
-            '    systemd-run --user --scope --slice=app.slice sh -c "$1" >/dev/null 2>&1 &\n' +
+            '    systemd-run --user --collect --quiet --slice=app.slice sh -c "$1"\n' +
             'elif command -v swaymsg >/dev/null 2>&1; then\n' +
-            '    swaymsg exec -- "$1" >/dev/null 2>&1\n' +
+            '    swaymsg exec -- "$1"\n' +
             'else\n' +
-            '    ( nohup setsid -f sh -c "$1" >/dev/null 2>&1 & )\n' +
+            '    setsid -f sh -c "$1"\n' +
             'fi',
             "launcher-exec", command
         ];

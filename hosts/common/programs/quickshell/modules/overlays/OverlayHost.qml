@@ -90,7 +90,7 @@ Item {
     RNG.DiceRollerWindow { id: diceRollerWindowInstance; shell: overlayHost.shell }
     AmogusModule.AmogusWindow { id: amogusWindowInstance; shell: overlayHost.shell }
 
-    Notifications.NotificationOverlay {
+    Notifications.NotificationWindow {
         id: notificationOverlay
         showHistoryMode: overlayHost.shell.showHistoryMode
         notificationsEnabled: overlayHost.shell.notificationsEnabled

@@ -6,7 +6,7 @@ import Quickshell.Io
 import "../../../" as RootTheme
 import "../../style" as Style
 import "../../common" as Common
-import "../../settings" as SettingsTools
+import "../../common/FallbackTheme.js" as FallbackTheme
 import "./backend" as Backend
 import "./frontend" as Frontend
 
@@ -19,8 +19,7 @@ PanelWindow {
     property var shell: null
     readonly property var safeShell: (typeof shell !== "undefined" && shell) ? shell : null
     readonly property var settingsManager: safeShell ? safeShell.settingsManager : null
-    readonly property var theme: (safeShell && safeShell.theme) ? safeShell.theme : fallbackTheme
-    RootTheme.Theme { id: fallbackTheme }
+    readonly property var theme: (safeShell && safeShell.theme) ? safeShell.theme : FallbackTheme.theme
 
     readonly property string loadPolicy: settingsManager ? settingsManager.getWindowLoadPolicy(windowId, defaultPolicy) : defaultPolicy
     readonly property bool shouldKeepLoaded: loadPolicy === "eager"
@@ -155,9 +154,15 @@ PanelWindow {
         // and run them in a separate process session completely unlinked from Quickshell
         if (target && target !== "sh" && !target.includes(":") && !target.includes("apps")) {
             Quickshell.execDetached([
-                "setsid",
                 "sh", "-c",
-                "nohup " + target + " " + (param || "") + " >/dev/null 2>&1 &"
+                'if command -v systemd-run >/dev/null 2>&1; then\n' +
+                '    systemd-run --user --collect --quiet --slice=app.slice sh -c "$1"\n' +
+                'elif command -v swaymsg >/dev/null 2>&1; then\n' +
+                '    swaymsg exec -- "$1"\n' +
+                'else\n' +
+                '    setsid -f sh -c "$1"\n' +
+                'fi',
+                "launcher-exec", target + " " + (param || "")
             ]);
             return;
         }

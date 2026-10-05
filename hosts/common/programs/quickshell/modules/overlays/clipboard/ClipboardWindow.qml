@@ -6,8 +6,8 @@ import Quickshell.Io
 import "../../../" as RootTheme
 import "../../style" as Style
 import "../../common" as Common
+import "../../common/FallbackTheme.js" as FallbackTheme
 import "../../common/Utils.js" as Utils
-import "../../settings" as SettingsTools
 import "./frontend" as Frontend
 
 PanelWindow {
@@ -19,8 +19,7 @@ PanelWindow {
     property var shell: null
     readonly property var safeShell: (typeof shell !== "undefined" && shell) ? shell : null
     readonly property var settingsManager: safeShell ? safeShell.settingsManager : null
-    readonly property var theme: (safeShell && safeShell.theme) ? safeShell.theme : fallbackTheme
-    RootTheme.Theme { id: fallbackTheme }
+    readonly property var theme: (safeShell && safeShell.theme) ? safeShell.theme : FallbackTheme.theme
 
     readonly property string loadPolicy: settingsManager ? settingsManager.getWindowLoadPolicy(windowId, defaultPolicy) : defaultPolicy
     readonly property bool shouldKeepLoaded: loadPolicy === "eager"
@@ -219,22 +218,6 @@ PanelWindow {
             onItemChanged: {
                 if (item && window.isOpenState && window.isCardActive) item.clearAndFocus();
             }
-        }
-    }
-
-    SettingsTools.PreviewInspector {
-        id: previewInspector
-        visible: window.isPreviewMode
-        windowId: window.windowId
-        settingsManager: window.settingsManager
-        theme: window.theme
-        defaultW: 1080; defaultH: 700
-        defaultFH: 52; defaultIS: 36
-        hasField: true; hasIcon: false
-        defaultPolicy: window.defaultPolicy
-
-        onDoneRequested: {
-            if (settingsManager) settingsManager.previewWindow = "";
         }
     }
 

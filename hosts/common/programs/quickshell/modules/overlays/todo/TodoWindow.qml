@@ -6,7 +6,7 @@ import Quickshell.Io
 import "../../../" as RootTheme
 import "../../style" as Style
 import "../../common" as Common
-import "../../settings" as SettingsTools
+import "../../common/FallbackTheme.js" as FallbackTheme
 import "./backend" as Backend
 import "./frontend" as Frontend
 
@@ -19,8 +19,7 @@ PanelWindow {
     property var shell: null
     readonly property var safeShell: (typeof shell !== "undefined" && shell) ? shell : null
     readonly property var settingsManager: safeShell ? safeShell.settingsManager : null
-    readonly property var theme: (safeShell && safeShell.theme) ? safeShell.theme : fallbackTheme
-    RootTheme.Theme { id: fallbackTheme }
+    readonly property var theme: (safeShell && safeShell.theme) ? safeShell.theme : FallbackTheme.theme
 
     readonly property string loadPolicy: settingsManager ? settingsManager.getWindowLoadPolicy(windowId, defaultPolicy) : defaultPolicy
     readonly property bool shouldKeepLoaded: loadPolicy === "eager"
@@ -226,26 +225,6 @@ PanelWindow {
                     item.clearAndFocus();
                 }
             }
-        }
-    }
-
-    SettingsTools.PreviewInspector {
-        id: previewInspector
-        visible: todoWindow.isPreviewMode
-        anchors.left: card.right
-        anchors.leftMargin: 20
-        anchors.verticalCenter: card.verticalCenter
-
-        windowId: todoWindow.windowId
-        settingsManager: todoWindow.settingsManager
-        theme: todoWindow.theme
-        defaultW: 860; defaultH: 740
-        defaultFH: 58; defaultIS: 32
-        hasField: true; hasIcon: false
-        defaultPolicy: todoWindow.defaultPolicy
-
-        onDoneRequested: {
-            if (settingsManager) settingsManager.previewWindow = "";
         }
     }
 

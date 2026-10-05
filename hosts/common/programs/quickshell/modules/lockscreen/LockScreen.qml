@@ -5,7 +5,7 @@ import Quickshell
 import Quickshell.Wayland
 import "../style" as Style
 import "../../"
-import "../overlays/launcher" as Launcher
+import "../common" as Common
 import Quickshell.Io
 
 WlSessionLockSurface {
@@ -30,7 +30,7 @@ WlSessionLockSurface {
             id: stylixTheme
         }
 
-        Launcher.BatteryEngine { id: lockBat }
+        Common.BatteryEngine { id: lockBat }
 
         Process {
             id: capslockDetector

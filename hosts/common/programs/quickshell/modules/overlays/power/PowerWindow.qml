@@ -6,7 +6,7 @@ import Quickshell.Io
 import "../../../" as RootTheme
 import "../../style" as Style
 import "../../common" as Common
-import "../../settings" as SettingsTools
+import "../../common/FallbackTheme.js" as FallbackTheme
 import "./backend" as Backend
 import "./frontend" as Frontend
 
@@ -19,8 +19,7 @@ PanelWindow {
     property var shell: null
     readonly property var safeShell: (typeof shell !== "undefined" && shell) ? shell : null
     readonly property var settingsManager: safeShell ? safeShell.settingsManager : null
-    readonly property var theme: (safeShell && safeShell.theme) ? safeShell.theme : fallbackTheme
-    RootTheme.Theme { id: fallbackTheme }
+    readonly property var theme: (safeShell && safeShell.theme) ? safeShell.theme : FallbackTheme.theme
 
     readonly property string loadPolicy: settingsManager ? settingsManager.getWindowLoadPolicy(windowId, defaultPolicy) : defaultPolicy
     readonly property bool shouldKeepLoaded: loadPolicy === "eager"
@@ -207,20 +206,6 @@ PanelWindow {
         }
 
         // Red "X" square removed from corner
-    }
-
-    SettingsTools.PreviewInspector {
-        id: previewInspector
-        visible: window.isPreviewMode
-        windowId: window.windowId
-        settingsManager: window.settingsManager
-        theme: window.theme
-        defaultW: 720; defaultH: 560
-        hasField: false; hasIcon: false
-        defaultPolicy: window.defaultPolicy
-        onDoneRequested: {
-            if (settingsManager) settingsManager.previewWindow = "";
-        }
     }
 
     Shortcut {

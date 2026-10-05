@@ -26,6 +26,13 @@ Item {
 
     property bool himalayaInstalled: false
 
+    // Set of compound signatures (subject|timeKey|sender) that have been
+    // queued for deletion locally but may not have propagated server-side yet.
+    // These are filtered out during every refresh so a stale IMAP fetch cannot
+    // resurrect an email the user already dismissed.
+    property var pendingDeletions: ({})
+    property string pendingDeletionsPath: "file://" + (Quickshell.env("HOME") || "") + "/.cache/himalaya/pending_deletions.json"
+
     property string mailSignature: (typeof shell !== "undefined" && shell && shell.settingsManager && shell.settingsManager.emailSignature)
         ? shell.settingsManager.emailSignature
         : "\n\n--\nSeekers of light..\nBelieve not in justice...\nBelieve not in truth...\nFor they are empty and inconsistent, as are all things..."
@@ -34,6 +41,7 @@ Item {
     onSearchCaseSensitiveChanged: filterEmailsByActiveFolder()
 
     Component.onCompleted: {
+        loadPendingDeletions();
         checkHimalaya();
         readMailCache();
     }
@@ -61,6 +69,33 @@ Item {
     }
     // FIX: Declare the boot loader gate right above your process definition
     property bool isInitialLoad: true
+
+    // One-shot: replay any queued delete/star/read actions from a previous
+    // session *before* the watcher is allowed to kick off a fresh IMAP sync.
+    // This guarantees the server sees the queued actions in a well-defined
+    // order and prevents the sync from resurrecting items the user removed.
+    readonly property Process queueFlushProc: Process {
+        running: false
+        command: [
+            "sh", "-c",
+            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
+            'SCR="' + Quickshell.shellDir + '/modules/overlays/email/backend/HimalayaEngine.lua"; ' +
+            'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
+            '[ -f "$SCR" ] && "$CMD" "$SCR" flush || true'
+        ]
+        onExited: {
+            // After the queue drains, refresh from disk then let the watcher
+            // take over for live SYNC events.
+            engine.readMailCache();
+        }
+    }
+
+    onHimalayaInstalledChanged: {
+        if (himalayaInstalled) {
+            queueFlushProc.running = false;
+            queueFlushProc.running = true;
+        }
+    }
 
     readonly property Process mailWatcherProcess: Process {
         running: engine.himalayaInstalled
@@ -95,20 +130,17 @@ Item {
         }
     }
 
-    // FIX: Automatically unlock live notifications 4 seconds after shell initialization
-    Timer {
-        id: bootAlertGuardTimer
-        interval: 4000
-        running: true
-        repeat: false
-        onTriggered: isInitialLoad = false
-    }
-
-
     readonly property Process mailSyncProc: Process {
         running: false
         onExited: {
             engine.readMailCache();
+            // The very first completed sync is our real "boot sync finished"
+            // signal — no more arbitrary wall-clock guesswork. Any SYNC/NEW_MAIL
+            // events that arrive after this point are genuine new mail and are
+            // allowed to play sounds / show notifications.
+            if (engine.isInitialLoad) {
+                engine.isInitialLoad = false;
+            }
         }
     }
 
@@ -297,6 +329,79 @@ Item {
         ]);
     }
 
+    function makeSignature(subject, date, sender) {
+        var timeKey = engine.getNormalizedDateKey(date);
+        return String(subject || "") + "|" + timeKey + "|" + String(sender || "");
+    }
+
+    function loadPendingDeletions() {
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                var raw = xhr.responseText ? xhr.responseText.trim() : "";
+                if (!raw) return;
+                try {
+                    var parsed = JSON.parse(raw);
+                    if (parsed && typeof parsed === "object") {
+                        engine.pendingDeletions = parsed;
+                        engine.filterEmailsByActiveFolder();
+                    }
+                } catch (e) {}
+            }
+        };
+        xhr.open("GET", engine.pendingDeletionsPath + "?t=" + Date.now(), true);
+        xhr.send();
+    }
+
+    readonly property Process pendingDeletionsWriter: Process {}
+
+    function savePendingDeletions() {
+        pendingDeletionsWriter.command = [
+            "sh", "-c",
+            'mkdir -p "$HOME/.cache/himalaya"; printf "%s" "$1" > "$HOME/.cache/himalaya/pending_deletions.json"',
+            "sh", JSON.stringify(engine.pendingDeletions)
+        ];
+        pendingDeletionsWriter.running = false;
+        pendingDeletionsWriter.running = true;
+    }
+
+    function markPendingDeletion(subject, date, sender) {
+        var sig = engine.makeSignature(subject, date, sender);
+        var copy = Object.assign({}, engine.pendingDeletions);
+        copy[sig] = Date.now();
+        engine.pendingDeletions = copy;
+        engine.savePendingDeletions();
+    }
+
+    function clearPendingDeletion(subject, date, sender) {
+        var sig = engine.makeSignature(subject, date, sender);
+        if (engine.pendingDeletions[sig] === undefined) return;
+        var copy = Object.assign({}, engine.pendingDeletions);
+        delete copy[sig];
+        engine.pendingDeletions = copy;
+        engine.savePendingDeletions();
+    }
+
+    // Force any mail matching a pending deletion to display as belonging to
+    // trash. Without this, a fresh IMAP sync would reset the local folder
+    // field back to "inbox" and the mail would silently disappear from both
+    // views (hidden from inbox by the pending filter, absent from trash).
+    function reconcilePendingDeletions(list) {
+        if (!list || !Array.isArray(list)) return list;
+        var keys = Object.keys(engine.pendingDeletions);
+        if (keys.length === 0) return list;
+        for (var i = 0; i < list.length; i++) {
+            var m = list[i];
+            if (!m) continue;
+            var s = (m.from ? (m.from.addr || m.from.name || "") : (m.sender || "")).trim();
+            var sig = engine.makeSignature(m.subject, m.date, s);
+            if (engine.pendingDeletions[sig] !== undefined) {
+                m.folder = "trash";
+            }
+        }
+        return list;
+    }
+
     function getMaildirFolder(folderLabel) {
         var label = (folderLabel || "").toLowerCase();
         var map = {
@@ -315,7 +420,23 @@ Item {
 
     readonly property Process cacheWriterProc: Process {}
 
+    // Rolling cap: the on-disk cache is never allowed to exceed this many
+    // entries. Prevents the emails.json file (and every in-memory copy that
+    // gets serialized into it) from growing without bound over long uptimes.
+    property int maxCacheItems: 500
+
+    function pruneCache() {
+        if (!engine.fullMailCacheList || engine.fullMailCacheList.length <= engine.maxCacheItems) return;
+        var sorted = engine.fullMailCacheList.slice().sort(function(a, b) {
+            var ta = Date.parse(a && a.date) || 0;
+            var tb = Date.parse(b && b.date) || 0;
+            return tb - ta;
+        });
+        engine.fullMailCacheList = sorted.slice(0, engine.maxCacheItems);
+    }
+
     function saveMailCacheDisk() {
+        engine.pruneCache();
         cacheWriterProc.command = [
             "sh", "-c",
             'printf "%s" "$1" > "$HOME/.cache/himalaya/emails.json"',
@@ -338,7 +459,32 @@ Item {
                     try {
                         var parsedData = JSON.parse(raw);
                         if (Array.isArray(parsedData)) {
+                            parsedData = engine.reconcilePendingDeletions(parsedData);
                             engine.fullMailCacheList = parsedData;
+
+                            // Reconcile pending deletions: any signature that is
+                            // no longer present in the server response has been
+                            // confirmed deleted and can be dropped from the set.
+                            if (Object.keys(engine.pendingDeletions).length > 0) {
+                                var presentSigs = {};
+                                for (var pi = 0; pi < parsedData.length; pi++) {
+                                    var pm = parsedData[pi];
+                                    if (!pm) continue;
+                                    var ps = (pm.from ? (pm.from.addr || pm.from.name || "") : (pm.sender || "")).trim();
+                                    presentSigs[engine.makeSignature(pm.subject, pm.date, ps)] = true;
+                                }
+                                var next = {};
+                                var changed = false;
+                                for (var key in engine.pendingDeletions) {
+                                    if (presentSigs[key]) next[key] = engine.pendingDeletions[key];
+                                    else changed = true;
+                                }
+                                if (changed) {
+                                    engine.pendingDeletions = next;
+                                    engine.savePendingDeletions();
+                                }
+                            }
+
                             engine.recalculateFolderStats();
                             engine.filterEmailsByActiveFolder();
 
@@ -423,6 +569,7 @@ Item {
                     var timeKey = engine.getNormalizedDateKey(mail.date);
                     var compoundKey = (mail.subject || "").trim() + "|" + timeKey + "|" + senderPart;
 
+                    if (targetFolder !== "trash" && engine.pendingDeletions[compoundKey] !== undefined) continue;
                     if (seenIds[compoundKey]) continue;
 
                     if (query !== "") {
@@ -503,6 +650,10 @@ Item {
 
         var trashFolderArg = getMaildirFolder("trash");
         var sourceFolderArg = getMaildirFolder(currentFolder);
+
+        // Record locally so a stale IMAP fetch on the next startup cannot
+        // bring this item back. Cleared once the server round-trip confirms.
+        markPendingDeletion(targetSub, targetDate, targetSender);
 
         if (currentFolder === "trash") {
             writeToQueue("DELETE", targetId, trashFolderArg, "");
