@@ -465,7 +465,7 @@ Item {
                 }
 
                 Rectangle {
-                    width: browseRText.implicitWidth + 28
+                    width: browseRText.implicitWidth + 80
                     height: Math.max(42, panelRoot.liveFontSize * 2.4)
                     radius: 8
                     color: bRMouse.containsMouse ? panelRoot.liveBase05 : panelRoot.liveBase02
@@ -490,7 +490,7 @@ Item {
                 }
 
                 Rectangle {
-                    width: testRText.implicitWidth + 28
+                    width: testRText.implicitWidth + 80
                     height: Math.max(42, panelRoot.liveFontSize * 2.4)
                     radius: 8
                     color: tRMouse.containsMouse ? panelRoot.liveBase0C : panelRoot.liveBase02
@@ -555,7 +555,7 @@ Item {
                 }
 
                 Rectangle {
-                    width: browseSText.implicitWidth + 28
+                    width: browseSText.implicitWidth + 80
                     height: Math.max(42, panelRoot.liveFontSize * 2.4)
                     radius: 8
                     color: bSMouse.containsMouse ? panelRoot.liveBase05 : panelRoot.liveBase02
@@ -580,7 +580,7 @@ Item {
                 }
 
                 Rectangle {
-                    width: testSText.implicitWidth + 28
+                    width: testSText.implicitWidth + 80
                     height: Math.max(42, panelRoot.liveFontSize * 2.4)
                     radius: 8
                     color: tSMouse.containsMouse ? panelRoot.liveBase0C : panelRoot.liveBase02

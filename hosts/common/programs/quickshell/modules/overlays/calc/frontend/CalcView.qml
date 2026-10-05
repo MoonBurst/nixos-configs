@@ -79,8 +79,11 @@ Item {
                     }
 
                     Keys.onPressed: (event) => {
+                        var inGrid = engine.resultString.indexOf("\n") !== -1;
+                        var rowCount = inGrid ? engine.resultString.split("\n").length : 0;
+
                         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                            if (engine.resultString.indexOf("\n") !== -1) {
+                            if (inGrid) {
                                 var rows = engine.resultString.split("\n");
                                 if (engine.selectedGridIndex >= 0 && engine.selectedGridIndex < rows.length) {
                                     var p = rows[engine.selectedGridIndex].split("|");
@@ -91,6 +94,18 @@ Item {
                                 engine.copyResult(engine.resultString);
                                 viewRoot.completed();
                             }
+                            event.accepted = true;
+                        } else if (inGrid && (event.key === Qt.Key_Down || event.key === Qt.Key_Up ||
+                                             event.key === Qt.Key_Right || event.key === Qt.Key_Left)) {
+                            var cols = 3;
+                            var cur = engine.selectedGridIndex;
+                            if (event.key === Qt.Key_Down)       cur += cols;
+                            else if (event.key === Qt.Key_Up)    cur -= cols;
+                            else if (event.key === Qt.Key_Right) cur += 1;
+                            else if (event.key === Qt.Key_Left)  cur -= 1;
+                            if (cur < 0) cur = 0;
+                            if (cur >= rowCount) cur = rowCount - 1;
+                            engine.selectedGridIndex = cur;
                             event.accepted = true;
                         }
                     }
@@ -146,9 +161,23 @@ Item {
                             }
 
                             Column {
-                                anchors.fill: parent; anchors.margins: 8; spacing: 4
-                                Text { text: cCode; font.bold: true; font.pixelSize: Math.max(11, viewRoot.overlayFontSize - 4); color: isSelected ? "#04f100" : "yellow" }
-                                Text { text: cVal; font.bold: true; font.pixelSize: Math.max(14, viewRoot.overlayFontSize); color: isSelected ? "#04f100" : "yellow" }
+                                anchors.centerIn: parent
+                                spacing: 6
+
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: cCode
+                                    font.bold: true
+                                    font.pixelSize: Math.max(11, viewRoot.overlayFontSize - 4)
+                                    color: isSelected ? "#04f100" : "yellow"
+                                }
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: cVal
+                                    font.bold: true
+                                    font.pixelSize: Math.max(14, viewRoot.overlayFontSize)
+                                    color: isSelected ? "#04f100" : "yellow"
+                                }
                             }
                             MouseArea {
                                 anchors.fill: parent

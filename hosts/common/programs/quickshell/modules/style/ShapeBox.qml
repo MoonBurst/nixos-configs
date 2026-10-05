@@ -106,16 +106,14 @@ Item {
     // the shape itself and downstream content can reference the same value.
 readonly property real hexCutEffective: {
         if (effectiveShape !== "hexagon") return 0;
-        // Reserve a minimum flat span so content always has somewhere to live,
-        // even at the largest hexCut setting. Without this, a 30px-tall button
-        // with hexCut=36 would leave no interior at all.
+        // Width-only cap. Height-dependent factors would create a binding
+        // loop with content height in scrollable delegates: shape height
+        // feeds chamfer → chamfer feeds padding → padding feeds text width
+        // → text width feeds text height → back to shape height.
         var minFlatH = role === "input" ? 40 : 60;
-        var minFlatV = role === "input" ? 16 : 20;
-        var byHeight    = Math.round(height * 0.45);
-        var bySmallDim  = Math.round(Math.min(width, height) * 0.20);
-        var byContentH  = Math.max(0, (width  - minFlatH) / 2);
-        var byContentV  = Math.max(0, (height - minFlatV) / 2);
-        return Math.max(2, Math.min(byHeight, hexCut, bySmallDim, byContentH, byContentV));
+        var byWidth   = Math.round(width * 0.20);
+        var byContent = Math.max(0, (width - minFlatH) / 2);
+        return Math.max(2, Math.min(hexCut, byWidth, byContent));
     }
 
     // Safe-area insets. Content placed at these margins is guaranteed to be

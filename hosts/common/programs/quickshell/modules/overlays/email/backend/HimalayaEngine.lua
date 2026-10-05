@@ -235,14 +235,28 @@ elseif action == "watch" then
 elseif action == "sync" or action == "" then
     os.execute(string.format('mkdir -p %q', cache_dir))
 
+    -- Fetch limit comes from the caller (EmailEngine.qml passes the user's
+    -- "Max Emails to Download" setting as the second positional argument).
+    -- "all" or a non-numeric value falls back to a generous 100000 so the
+    -- whole mailbox is pulled.
+    local limit_arg = arg and arg[2] or ""
+    local limit = tonumber(limit_arg)
+    if not limit or limit <= 0 then
+        if tostring(limit_arg):lower() == "all" then
+            limit = 100000
+        else
+            limit = 500
+        end
+    end
+
     local sync_script = script_dir .. "HimalayaSync.py"
     local fetch_cmd = string.format([[
 %s
-RAW=$(himalaya envelope list --folder INBOX -s 150 --output json 2>/dev/null || himalaya envelope list -s 150 --json 2>/dev/null)
+RAW=$(himalaya envelope list --folder INBOX -s %d --output json 2>/dev/null || himalaya envelope list -s %d --json 2>/dev/null)
 if [ -n "$RAW" ]; then
     printf '%%s' "$RAW" | python3 %q
 fi
-]], path_prefix, sync_script)
+]], path_prefix, limit, limit, sync_script)
 
     os.execute(fetch_cmd)
 

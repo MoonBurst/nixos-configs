@@ -259,7 +259,6 @@ Item {
             spacing: 8
             focus: engine.editingTaskId === -1
             cacheBuffer: 600
-            reuseItems: true
             boundsBehavior: Flickable.StopAtBounds
             ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 

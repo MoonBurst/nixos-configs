@@ -334,6 +334,7 @@ Rectangle {
                     width: parent.width; height: composeComp.fieldInputHeight
 
                     Style.ShapeBox {
+                        id: subjectFieldBg
                         anchors.fill: parent
                         role: "input"
                         slantWidth: 10
