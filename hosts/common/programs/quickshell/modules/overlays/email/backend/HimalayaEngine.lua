@@ -237,8 +237,7 @@ elseif action == "sync" or action == "" then
 
     -- Fetch limit comes from the caller (EmailEngine.qml passes the user's
     -- "Max Emails to Download" setting as the second positional argument).
-    -- "all" or a non-numeric value falls back to a generous 100000 so the
-    -- whole mailbox is pulled.
+    -- "all" or a non-numeric value falls back to a generous 100000.
     local limit_arg = arg and arg[2] or ""
     local limit = tonumber(limit_arg)
     if not limit or limit <= 0 then
@@ -250,13 +249,39 @@ elseif action == "sync" or action == "" then
     end
 
     local sync_script = script_dir .. "HimalayaSync.py"
+
+    -- Every folder we want in the cache. Order matters less now that the
+    -- python script handles priority, but keep All Mail last so the shell
+    -- loop is deterministic in the shell log.
+    local folder_list = table.concat({
+        "INBOX",
+        "[Gmail]/Sent Mail",
+        "[Gmail]/Drafts",
+        "[Gmail]/Spam",
+        "[Gmail]/Trash",
+        "[Gmail]/Starred",
+        "[Gmail]/All Mail"
+    }, "\n")
+
+    -- Emits "FOLDER<TAB>JSON_LINE\n" for every folder that returns data,
+    -- then pipes the whole stream to HimalayaSync.py which deduplicates
+    -- and merges into the existing cache.
     local fetch_cmd = string.format([[
 %s
-RAW=$(himalaya envelope list --folder INBOX -s %d --output json 2>/dev/null || himalaya envelope list -s %d --json 2>/dev/null)
-if [ -n "$RAW" ]; then
-    printf '%%s' "$RAW" | python3 %q
-fi
-]], path_prefix, limit, limit, sync_script)
+{
+while IFS= read -r FOLDER; do
+    [ -z "$FOLDER" ] && continue
+    RAW=$(himalaya envelope list --folder "$FOLDER" -s %d --output json 2>/dev/null)
+    [ -z "$RAW" ] && RAW=$(himalaya envelope list --mailbox "$FOLDER" -s %d --output json 2>/dev/null)
+    [ -z "$RAW" ] && RAW=$(himalaya envelope list -m "$FOLDER" -s %d --json 2>/dev/null)
+    if [ -n "$RAW" ]; then
+        printf '%%s\t%%s\n' "$FOLDER" "$RAW"
+    fi
+done << 'HIMALAYA_FOLDERLIST_END'
+%s
+HIMALAYA_FOLDERLIST_END
+} | python3 '%s'
+]], path_prefix, limit, limit, limit, folder_list, sync_script)
 
     os.execute(fetch_cmd)
 

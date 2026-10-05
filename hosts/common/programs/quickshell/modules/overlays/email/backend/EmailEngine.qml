@@ -174,6 +174,7 @@ Item {
         stdout: StdioCollector {
             onStreamFinished: {
                 var body = text ? text.trim() : "";
+                console.log("[EmailEngine] prefetch result len=" + body.length + " id=" + (engine.currentPrefetchItem ? engine.currentPrefetchItem.id : "?"));
                 if (engine.currentPrefetchItem) {
                     if (body.length > 0 && body !== "(Empty body)" && body !== "(No content)") {
                         engine.currentPrefetchItem.body_content = body;
@@ -203,34 +204,28 @@ Item {
 
             var item = engine.fullMailCacheList[engine.prefetchIndex];
             engine.prefetchIndex++;
+            console.log("[EmailEngine] prefetch tick idx=" + engine.prefetchIndex + "/" + engine.fullMailCacheList.length + " id=" + (item ? item.id : "?") + " folder=" + (item ? (item.physical_folder || item.folder) : "?"));
 
             if (!item) return;
             if (item.body_content && item.body_content.trim() !== "" && item.body_content !== "(Empty body)" && item.body_content !== "(No content)" && item.body_content !== "(No message body content)") {
                 return;
             }
 
-            var folderArg = engine.getMaildirFolder(item.folder);
+            var folderArg = item.physical_folder || engine.getMaildirFolder(item.folder);
             engine.currentPrefetchItem = item;
 
             singlePrefetchProc.command = [
                 "sh", "-c",
                 'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
-                'ID="$1"; FOLDER="$2"; ' +
-                'BODY=$(himalaya message read -m "$FOLDER" "$ID" 2>/dev/null); ' +
+                'ID="$2"; FOLDER="$3"; ' +
+                // Current himalaya uses --folder. Try it first so we do not
+                // burn four failed IMAP round-trips per message.
+                'BODY=$(himalaya message read --folder "$FOLDER" "$ID" 2>/dev/null); ' +
                 'if [ -z "$BODY" ] || [ "$BODY" = "(Empty body)" ]; then ' +
-                '  BODY=$(himalaya message read --mailbox "$FOLDER" "$ID" 2>/dev/null); ' +
+                '  BODY=$(himalaya message read -f "$FOLDER" "$ID" 2>/dev/null); ' +
                 'fi; ' +
-                'if [ -z "$BODY" ] || [ "$BODY" = "(Empty body)" ]; then ' +
-                '  BODY=$(himalaya -m "$FOLDER" message read "$ID" 2>/dev/null); ' +
-                'fi; ' +
-                'if [ -z "$BODY" ] || [ "$BODY" = "(Empty body)" ]; then ' +
-                '  BODY=$(himalaya message read "$ID" 2>/dev/null); ' +
-                'fi; ' +
-                'if [ -z "$BODY" ] || [ "$BODY" = "(Empty body)" ]; then ' +
-                '  BODY=$(himalaya message read --folder "$FOLDER" "$ID" 2>/dev/null); ' +
-                'fi; ' +
-                'printf "%s" "$BODY"',
-                "sh", item.id.toString(), folderArg
+                'printf "%s" "$BODY" | python3 "$1/modules/overlays/email/backend/StripMailHeaders.py"',
+                "sh", Quickshell.shellDir, item.id.toString(), folderArg
             ];
             singlePrefetchProc.running = true;
         }
@@ -246,6 +241,7 @@ Item {
         stdout: SplitParser {
             onRead: data => {
                 engine.himalayaInstalled = (data.trim() === "1");
+                console.log("[EmailEngine] himalayaInstalled =", engine.himalayaInstalled, "raw:", JSON.stringify(data.trim()));
                 if (engine.himalayaInstalled) {
                     engine.readMailCache();
                 }
@@ -261,28 +257,21 @@ Item {
             activeMailBody = activeItem.body_content;
         } else {
             activeMailBody = "⏳ Loading message body from server...";
-            var folderArg = getMaildirFolder(activeItem.folder);
+            var folderArg = activeItem.physical_folder || getMaildirFolder(activeItem.folder);
 
             bodyFetchProc.running = false;
             bodyFetchProc.command = [
                 "sh", "-c",
                 'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
-                'ID="$1"; FOLDER="$2"; ' +
-                'BODY=$(himalaya message read -m "$FOLDER" "$ID" 2>/dev/null); ' +
+                'ID="$2"; FOLDER="$3"; ' +
+                // Current himalaya uses --folder. Try it first so we do not
+                // burn four failed IMAP round-trips per message.
+                'BODY=$(himalaya message read --folder "$FOLDER" "$ID" 2>/dev/null); ' +
                 'if [ -z "$BODY" ] || [ "$BODY" = "(Empty body)" ]; then ' +
-                '  BODY=$(himalaya message read --mailbox "$FOLDER" "$ID" 2>/dev/null); ' +
+                '  BODY=$(himalaya message read -f "$FOLDER" "$ID" 2>/dev/null); ' +
                 'fi; ' +
-                'if [ -z "$BODY" ] || [ "$BODY" = "(Empty body)" ]; then ' +
-                '  BODY=$(himalaya -m "$FOLDER" message read "$ID" 2>/dev/null); ' +
-                'fi; ' +
-                'if [ -z "$BODY" ] || [ "$BODY" = "(Empty body)" ]; then ' +
-                '  BODY=$(himalaya message read "$ID" 2>/dev/null); ' +
-                'fi; ' +
-                'if [ -z "$BODY" ] || [ "$BODY" = "(Empty body)" ]; then ' +
-                '  BODY=$(himalaya message read --folder "$FOLDER" "$ID" 2>/dev/null); ' +
-                'fi; ' +
-                'printf "%s" "$BODY"',
-                "sh", activeItem.id.toString(), folderArg
+                'printf "%s" "$BODY" | python3 "$1/modules/overlays/email/backend/StripMailHeaders.py"',
+                "sh", Quickshell.shellDir, activeItem.id.toString(), folderArg
             ];
             bodyFetchProc.running = true;
         }
@@ -407,9 +396,11 @@ Item {
         var map = {
             "inbox": "INBOX",
             "starred": "[Gmail]/Starred",
+            "important": "[Gmail]/Important",
             "steam": "Steam",
             "reddit": "INBOX",
             "all": "[Gmail]/All Mail",
+            "archive": "[Gmail]/All Mail",
             "drafts": "[Gmail]/Drafts",
             "sent": "[Gmail]/Sent Mail",
             "trash": "[Gmail]/Trash",
@@ -418,7 +409,6 @@ Item {
         return map[label] || "INBOX";
     }
 
-    readonly property Process cacheWriterProc: Process {}
 
     // Rolling cap: the on-disk cache is never allowed to exceed this many
     // entries. Prevents the emails.json file (and every in-memory copy that
@@ -437,13 +427,40 @@ Item {
 
     function saveMailCacheDisk() {
         engine.pruneCache();
+        var payload = JSON.stringify(engine.fullMailCacheList);
+        console.log("[EmailEngine] saveMailCacheDisk payload bytes=" + payload.length);
+
+        // Read stdin with a short timeout. QML's Process.write never closes
+        // the child's stdin, so cat would block forever waiting for EOF.
+        // 200 ms is plenty for a few hundred KB over a pipe. The character-
+        // count trap also goes away because we no longer need a byte length.
         cacheWriterProc.command = [
             "sh", "-c",
-            'printf "%s" "$1" > "$HOME/.cache/himalaya/emails.json"',
-            "sh", JSON.stringify(engine.fullMailCacheList)
+            'mkdir -p "$HOME/.cache/himalaya"; ' +
+            'TMP="$HOME/.cache/himalaya/emails.json.tmp.$$"; ' +
+            'timeout 0.2 cat > "$TMP" 2>/dev/null; ' +
+            '[ -s "$TMP" ] && mv -f "$TMP" "$HOME/.cache/himalaya/emails.json" || rm -f "$TMP"'
         ];
+        cacheWriterProc.pendingPayload = payload;
         cacheWriterProc.running = false;
         cacheWriterProc.running = true;
+    }
+
+    // Writes via stdin so a large cache does not overflow ARG_MAX. Uses a
+    // temp file + mv so a failed write never truncates the good cache.
+    // Writes via stdin so a large cache does not overflow ARG_MAX. Uses
+    // `head -c $BYTES` because QML's Process.write does not signal EOF to
+    // the child; without a byte limit, `cat` would block forever and the
+    // mv would never execute. Atomic temp-file + mv so a failed write
+    // never truncates the existing cache.
+    Process {
+        id: cacheWriterProc
+        property string pendingPayload: ""
+        onStarted: {
+            if (cacheWriterProc.pendingPayload.length > 0) {
+                cacheWriterProc.write(cacheWriterProc.pendingPayload);
+            }
+        }
     }
 
     function readMailCache() {
@@ -460,7 +477,32 @@ Item {
                         var parsedData = JSON.parse(raw);
                         if (Array.isArray(parsedData)) {
                             parsedData = engine.reconcilePendingDeletions(parsedData);
+
+                            // Preserve bodies already fetched in this session.
+                            // The disk file may lag memory by one save cycle
+                            // when the watcher triggers a fresh sync; without
+                            // this merge, the in-memory bodies would be lost.
+                            if (engine.fullMailCacheList && engine.fullMailCacheList.length > 0) {
+                                var memBodies = {};
+                                for (var _i = 0; _i < engine.fullMailCacheList.length; _i++) {
+                                    var _m = engine.fullMailCacheList[_i];
+                                    if (_m && _m.body_content && _m.body_content.trim() !== "") {
+                                        var _key = (_m.subject || "") + "|" + (_m.date || "") + "|" +
+                                                   ((_m.from && _m.from.addr) ? _m.from.addr : "");
+                                        memBodies[_key] = _m.body_content;
+                                    }
+                                }
+                                for (var _j = 0; _j < parsedData.length; _j++) {
+                                    var _p = parsedData[_j];
+                                    if (!_p || (_p.body_content && _p.body_content.trim() !== "")) continue;
+                                    var _pk = (_p.subject || "") + "|" + (_p.date || "") + "|" +
+                                              ((_p.from && _p.from.addr) ? _p.from.addr : "");
+                                    if (memBodies[_pk]) _p.body_content = memBodies[_pk];
+                                }
+                            }
+
                             engine.fullMailCacheList = parsedData;
+                            console.log("[EmailEngine] cache loaded:", parsedData.length, "items; prefetchIndex reset");
 
                             // Reconcile pending deletions: any signature that is
                             // no longer present in the server response has been
