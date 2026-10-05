@@ -78,14 +78,14 @@ Flickable {
         }
 
         Text {
-            text: "📐 OVERLAY SHAPES & ANGLE ADJUSTMENTS"
+            text: "📐 OVERLAY SHAPES"
             font.family: panelRoot.liveFontFamily
             font.pixelSize: panelRoot.liveFontSize + 1
             font.bold: true
             color: panelRoot.liveBase0C
         }
 
-        // 1. Overlay Window Cards Shape Selector: Each button renders in its own shape style
+        // 1. Overlay Window Cards Shape Selector
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 8
@@ -104,7 +104,6 @@ Flickable {
                 Repeater {
                     model: [
                         { id: "rounded", label: "Rounded Rectangle", desc: "Clean modern rounded borders" },
-                        { id: "slant",   label: "Slanted Box",       desc: "Cyberpunk angled parallel edges" },
                         { id: "hexagon", label: "Hexagon (Wide Top)", desc: "Chamfered hexagonal card geometry" }
                     ]
                     delegate: Item {
@@ -130,7 +129,7 @@ Flickable {
                             width: parent.width - 24
 
                             Text {
-                                text: (modelData.id === "rounded" ? "▢ " : (modelData.id === "slant" ? "▱ " : "⬡ ")) + modelData.label
+                                text: (modelData.id === "rounded" ? "▢ " : "⬡ ") + modelData.label
                                 font.bold: true
                                 font.pixelSize: Math.max(12, panelRoot.liveFontSize - 1)
                                 color: isSelected ? panelRoot.liveBase00 : panelRoot.liveBase05
@@ -157,78 +156,10 @@ Flickable {
             }
         }
 
-        // Slant Direction Options: Left (\ \), Right (/ /), Center (\ /)
-        ColumnLayout {
-            visible: (settingsManager ? settingsManager.overlayCardShape : "rounded") === "slant"
-            Layout.fillWidth: true
-            spacing: 8
-
-            Text {
-                text: "Slant Direction for Cards:"
-                font.bold: true
-                color: panelRoot.liveBase05
-                font.pixelSize: panelRoot.liveFontSize - 1
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 12
-
-                Repeater {
-                    model: [
-                        { id: "left",   label: "\\ Left Slant",   sL: "Left",  sR: "Left" },
-                        { id: "right",  label: "/ Right Slant",  sL: "Right", sR: "Right" },
-                        { id: "center", label: "\\ / Center",     sL: "Left",  sR: "Right" }
-                    ]
-                    delegate: Item {
-                        readonly property bool isCur: (settingsManager ? settingsManager.overlaySlantDirection : "left") === modelData.id
-                        Layout.fillWidth: true
-                        height: 38
-
-                        Style.ShapeBox {
-                            anchors.fill: parent
-                            shapeType: "slant"
-                            role: "custom"
-                            slantWidth: 14
-                            slantLeft: modelData.sL
-                            slantRight: modelData.sR
-                            color: isCur ? panelRoot.liveBase05 : panelRoot.liveBase00
-                            borderColor: isCur ? panelRoot.liveBase05 : panelRoot.liveBase03
-                            borderWidth: panelRoot.liveBorderWidth
-                        }
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: modelData.label
-                            font.bold: true
-                            font.pixelSize: Math.max(11, panelRoot.liveFontSize - 2)
-                            color: isCur ? panelRoot.liveBase00 : panelRoot.liveBase05
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: if (settingsManager) settingsManager.overlaySlantDirection = modelData.id
-                        }
-                    }
-                }
-            }
-        }
-
-        // Sliders for Card Slant Angle and Hexagon Chamfer Cut
+        // Card chamfer slider (hexagon only)
         RowLayout {
             Layout.fillWidth: true
             spacing: 14
-
-            CyberSlider {
-                visible: (settingsManager ? settingsManager.overlayCardShape : "rounded") === "slant"
-                label: "Overlay Slant Width / Angle"
-                from: 8; to: 100; stepSize: 2; unit: "px"
-                value: settingsManager ? settingsManager.overlaySlantAngle : 32
-                fontSize: panelRoot.liveFontSize - 2
-                theme: panelRoot.theme; Layout.fillWidth: true
-                onValueModified: (v) => { if (settingsManager) settingsManager.overlaySlantAngle = Math.round(v); }
-            }
 
             CyberSlider {
                 visible: (settingsManager ? settingsManager.overlayCardShape : "rounded") === "hexagon"
@@ -241,7 +172,7 @@ Flickable {
             }
         }
 
-        // 2. Input Fields Shape Selector: Each button renders in its own shape style
+        // 2. Input Fields Shape Selector
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 8
@@ -260,7 +191,6 @@ Flickable {
                 Repeater {
                     model: [
                         { id: "rounded", label: "Standard Rounded", desc: "Soft border curves" },
-                        { id: "slant",   label: "Slanted Parallelogram", desc: "Angled input fields" },
                         { id: "hexagon", label: "Hexagonal Chamfer", desc: "Corner chamfered inputs" }
                     ]
                     delegate: Item {
@@ -286,7 +216,7 @@ Flickable {
                             width: parent.width - 24
 
                             Text {
-                                text: (modelData.id === "rounded" ? "▢ " : (modelData.id === "slant" ? "▱ " : "⬡ ")) + modelData.label
+                                text: (modelData.id === "rounded" ? "▢ " : "⬡ ") + modelData.label
                                 font.bold: true
                                 font.pixelSize: Math.max(12, panelRoot.liveFontSize - 1)
                                 color: isSelected ? "#000000" : panelRoot.liveBase0C
@@ -313,20 +243,10 @@ Flickable {
             }
         }
 
-        // Sliders for Input Slant Angle and Hexagon Chamfer Cut
+        // Input chamfer slider (hexagon only)
         RowLayout {
             Layout.fillWidth: true
             spacing: 14
-
-            CyberSlider {
-                visible: (settingsManager ? settingsManager.inputFieldShape : "rounded") === "slant"
-                label: "Input Field Slant Angle"
-                from: 4; to: 40; stepSize: 1; unit: "px"
-                value: settingsManager ? settingsManager.inputSlantAngle : 14
-                fontSize: panelRoot.liveFontSize - 2
-                theme: panelRoot.theme; Layout.fillWidth: true
-                onValueModified: (v) => { if (settingsManager) settingsManager.inputSlantAngle = Math.round(v); }
-            }
 
             CyberSlider {
                 visible: (settingsManager ? settingsManager.inputFieldShape : "rounded") === "hexagon"

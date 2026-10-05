@@ -35,6 +35,7 @@ Item {
     readonly property var inputPad: Utils.getSafeInputPadding(settingsManager)
 
     property int pillBtnHeight: Math.max(44, globalFontSize + 24)
+    property int todoRowHeight: Math.max(48, overlayFontSize + 22)
 
     focus: true
 
@@ -79,6 +80,7 @@ Item {
                     spacing: 8
                     model: engine.categoryModel
                     clip: true
+                    cacheBuffer: 200
 
                     delegate: Item {
                         width: catText.implicitWidth + 28
@@ -243,187 +245,206 @@ Item {
             }
         }
 
-        // Task List View
-        ScrollView {
+        // Task List — ListView handles its own scrolling and clipping.
+        // The per-delegate TextEdit for inline editing is now lazily
+        // instantiated via a Loader so scrolling cost stays flat regardless
+        // of how many tasks exist.
+        ListView {
+            id: todoListView
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
             visible: engine.activeCategory !== ""
+            model: engine.todoModel
+            spacing: 8
+            focus: engine.editingTaskId === -1
+            cacheBuffer: 600
+            reuseItems: true
+            boundsBehavior: Flickable.StopAtBounds
+            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
-            ListView {
-                id: todoListView
-                anchors.fill: parent
-                model: engine.todoModel
-                spacing: 8
-                focus: engine.editingTaskId === -1
-
-                Keys.onPressed: (event) => {
-                    if (engine.editingTaskId !== -1) return;
-                    var isAltShiftPressed = (event.modifiers & Qt.AltModifier) && (event.modifiers & Qt.ShiftModifier);
-                    if (isAltShiftPressed) {
-                        if (event.key === Qt.Key_Up) { engine.moveTodo(currentIndex, true); event.accepted = true; }
-                        else if (event.key === Qt.Key_Down) { engine.moveTodo(currentIndex, false); event.accepted = true; }
-                    } else if (event.key === Qt.Key_Up) {
-                        if (currentIndex <= 0) {
-                            todoListView.currentIndex = -1;
-                            taskInput.forceActiveFocus();
-                        } else {
-                            currentIndex--;
-                        }
-                        event.accepted = true;
-                    } else if (event.key === Qt.Key_Down) {
-                        if (currentIndex < count - 1) currentIndex++;
-                        event.accepted = true;
-                    } else if (event.key === Qt.Key_Space || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                        var item = engine.todoModel.get(currentIndex);
-                        if (item) { engine.toggleTodo(item.id, item.completed); event.accepted = true; }
-                    } else if (event.key === Qt.Key_Delete) {
-                        var delItem = engine.todoModel.get(currentIndex);
-                        if (delItem) { engine.deleteTodo(delItem.id); event.accepted = true; }
-                    } else if (event.key === Qt.Key_E) {
-                        var editItem = engine.todoModel.get(currentIndex);
-                        if (editItem) { engine.editingTaskId = editItem.id; event.accepted = true; }
+            Keys.onPressed: (event) => {
+                if (engine.editingTaskId !== -1) return;
+                var isAltShiftPressed = (event.modifiers & Qt.AltModifier) && (event.modifiers & Qt.ShiftModifier);
+                if (isAltShiftPressed) {
+                    if (event.key === Qt.Key_Up) { engine.moveTodo(currentIndex, true); event.accepted = true; }
+                    else if (event.key === Qt.Key_Down) { engine.moveTodo(currentIndex, false); event.accepted = true; }
+                } else if (event.key === Qt.Key_Up) {
+                    if (currentIndex <= 0) {
+                        todoListView.currentIndex = -1;
+                        taskInput.forceActiveFocus();
+                    } else {
+                        currentIndex--;
                     }
+                    event.accepted = true;
+                } else if (event.key === Qt.Key_Down) {
+                    if (currentIndex < count - 1) currentIndex++;
+                    event.accepted = true;
+                } else if (event.key === Qt.Key_Space || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                    var item = engine.todoModel.get(currentIndex);
+                    if (item) { engine.toggleTodo(item.id, item.completed); event.accepted = true; }
+                } else if (event.key === Qt.Key_Delete) {
+                    var delItem = engine.todoModel.get(currentIndex);
+                    if (delItem) { engine.deleteTodo(delItem.id); event.accepted = true; }
+                } else if (event.key === Qt.Key_E) {
+                    var editItem = engine.todoModel.get(currentIndex);
+                    if (editItem) { engine.editingTaskId = editItem.id; event.accepted = true; }
+                }
+            }
+
+            // Delegate is now a plain positioned Item with no Row / no
+            // anchors.fill Row that would force a second layout pass per
+            // scroll frame. The row height is derived directly from the
+            // wrapped Text contentHeight, so boxes grow to fit every line.
+            readonly property int scrollbarGutter: 16
+
+            delegate: Item {
+                id: delegateCard
+                readonly property bool isSelected: (index === todoListView.currentIndex) && todoListView.activeFocus
+                readonly property bool isThisItemEditing: engine.editingTaskId === model.id
+
+                // Width is a plain function of list width and a constant
+                // gutter — no dependency on ScrollBar.visible, which used to
+                // cause a full relayout every time the bar faded in or out.
+                width: todoListView.width - todoListView.scrollbarGutter
+                height: isThisItemEditing
+                    ? Math.max(viewRoot.todoRowHeight, editLoader.item ? editLoader.item.implicitHeight + 24 : 60)
+                    : Math.max(viewRoot.todoRowHeight, taskText.contentHeight + 20)
+
+                Style.ShapeBox {
+                    id: delegateBg
+                    anchors.fill: parent
+                    role: "input"
+                    color: viewRoot.fieldBg
+                    borderColor: delegateCard.isThisItemEditing
+                        ? ((theme && theme.base08) ? theme.base08 : "#ff5555")
+                        : (delegateCard.isSelected ? viewRoot.innerCardActiveBorder : viewRoot.innerCardInactiveBorder)
+                    borderWidth: viewRoot.controlBorderWidth
+                    slantWidth: 10
                 }
 
-                delegate: Item {
-                    id: delegateCard
-                    readonly property bool isSelected: (index === todoListView.currentIndex) && todoListView.activeFocus
-                    readonly property bool isThisItemEditing: engine.editingTaskId === model.id
-                    width: todoListView.width - 12
-                    height: isThisItemEditing ? Math.max(54, inlineEditLayout.implicitHeight + 16) : Math.max(50, taskRowLayout.implicitHeight + 16)
+                // Checkbox — positioned by the ShapeBox's own padding so it
+                // always clears the hexagon chamfer and any thick border.
+                Rectangle {
+                    id: checkbox
+                    x: delegateBg.leftPadding + 4
+                    y: delegateCard.isThisItemEditing ? (delegateCard.height - height) / 2 : delegateBg.topPadding + 2
+                    width: 24
+                    height: 24
+                    radius: 4
+                    visible: !delegateCard.isThisItemEditing
+                    color: model.completed ? viewRoot.innerCardActiveBorder : "transparent"
+                    border.color: model.completed ? viewRoot.innerCardActiveBorder : viewRoot.placeholderTextColor
+                    border.width: 1.5
 
-                    Style.ShapeBox {
-                        anchors.fill: parent
-                        role: "input"
-                        color: viewRoot.fieldBg
-                        borderColor: delegateCard.isThisItemEditing
-                            ? ((theme && theme.base08) ? theme.base08 : "#ff5555")
-                            : (delegateCard.isSelected ? viewRoot.innerCardActiveBorder : viewRoot.innerCardInactiveBorder)
-                        borderWidth: viewRoot.controlBorderWidth
-                        slantWidth: 10
+                    Text {
+                        anchors.centerIn: parent
+                        visible: model.completed
+                        text: "✔"
+                        font.bold: true
+                        font.pixelSize: 13
+                        color: (theme && theme.base00) ? theme.base00 : "#000"
                     }
-
-                    onIsThisItemEditingChanged: {
-                        if (isThisItemEditing) {
-                            Qt.callLater(() => {
-                                inlineEditInput.forceActiveFocus();
-                                inlineEditInput.cursorPosition = inlineEditInput.text.length;
-                            });
-                        }
-                    }
-
-                    RowLayout {
-                        id: taskRowLayout
-                        anchors.fill: parent
-                        anchors.leftMargin: Math.max(14, viewRoot.inputPad.left)
-                        anchors.rightMargin: Math.max(14, viewRoot.inputPad.right)
-                        anchors.topMargin: 10
-                        anchors.bottomMargin: 10
-                        spacing: 12
-                        visible: !delegateCard.isThisItemEditing
-
-                        Rectangle {
-                            width: 24
-                            height: 24
-                            radius: 4
-                            color: model.completed ? viewRoot.innerCardActiveBorder : "transparent"
-                            border.color: model.completed ? viewRoot.innerCardActiveBorder : viewRoot.placeholderTextColor
-                            border.width: 1.5
-
-                            Text {
-                                anchors.centerIn: parent
-                                visible: model.completed
-                                text: "✔"
-                                font.bold: true
-                                font.pixelSize: 13
-                                color: (theme && theme.base00) ? theme.base00 : "#000"
-                            }
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    todoListView.currentIndex = index;
-                                    todoListView.forceActiveFocus();
-                                    engine.toggleTodo(model.id, model.completed);
-                                }
-                            }
-                        }
-
-                        Text {
-                            text: model.task
-                            font.family: viewRoot.todoFontFamily
-                            font.pixelSize: viewRoot.overlayFontSize
-                            font.strikeout: model.completed
-                            color: model.completed ? viewRoot.placeholderTextColor : viewRoot.titleColor
-                            Layout.fillWidth: true
-                            wrapMode: Text.Wrap
-                        }
-                    }
-
-                    Item {
-                        id: inlineEditLayout
-                        anchors.fill: parent
-                        anchors.margins: 8
-                        visible: delegateCard.isThisItemEditing
-                        property real implicitHeight: inlineEditInput.implicitHeight
-
-                        TextEdit {
-                            id: inlineEditInput
-                            anchors.fill: parent
-                            font.pixelSize: viewRoot.overlayFontSize
-                            font.family: viewRoot.todoFontFamily
-                            color: viewRoot.titleColor
-                            text: model.task
-                            wrapMode: Text.Wrap
-                            selectByMouse: true
-                            verticalAlignment: TextEdit.AlignVCenter
-
-                            onActiveFocusChanged: {
-                                if (!activeFocus && engine.editingTaskId === model.id) {
-                                    viewRoot.forceExitEdit(index);
-                                }
-                            }
-
-                            Keys.onPressed: (event) => {
-                                if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                                    engine.saveInlineEdit(model.id, text);
-                                    viewRoot.forceExitEdit(index);
-                                    event.accepted = true;
-                                } else if (event.key === Qt.Key_Escape) {
-                                    viewRoot.forceExitEdit(index);
-                                    event.accepted = true;
-                                } else if (event.key === Qt.Key_Up) {
-                                    engine.saveInlineEdit(model.id, text);
-                                    engine.editingTaskId = -1;
-                                    todoListView.forceActiveFocus();
-                                    if (index > 0) todoListView.currentIndex = index - 1;
-                                    event.accepted = true;
-                                } else if (event.key === Qt.Key_Down) {
-                                    engine.saveInlineEdit(model.id, text);
-                                    engine.editingTaskId = -1;
-                                    todoListView.forceActiveFocus();
-                                    if (index < todoListView.count - 1) todoListView.currentIndex = index + 1;
-                                    event.accepted = true;
-                                }
-                            }
-                        }
-                    }
-
                     MouseArea {
                         anchors.fill: parent
-                        z: -1
-                        visible: !delegateCard.isThisItemEditing
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             todoListView.currentIndex = index;
                             todoListView.forceActiveFocus();
+                            engine.toggleTodo(model.id, model.completed);
                         }
-                        onDoubleClicked: {
-                            todoListView.currentIndex = index;
-                            todoListView.forceActiveFocus();
-                            engine.editingTaskId = model.id;
+                    }
+                }
+
+                // Task text — width is set before contentHeight is queried,
+                // and the delegate height above reads contentHeight so the
+                // box always fits the wrapped text exactly.
+                Text {
+                    id: taskText
+                    x: checkbox.x + checkbox.width + 12
+                    y: delegateBg.topPadding + 2
+                    width: delegateCard.width - x - delegateBg.rightPadding - 4
+                    visible: !delegateCard.isThisItemEditing
+                    text: model.task
+                    font.family: viewRoot.todoFontFamily
+                    font.pixelSize: viewRoot.overlayFontSize
+                    font.strikeout: model.completed
+                    color: model.completed ? viewRoot.placeholderTextColor : viewRoot.titleColor
+                    wrapMode: Text.Wrap
+                    textFormat: Text.PlainText
+                }
+
+                Loader {
+                    id: editLoader
+                    anchors.fill: parent
+                    anchors.margins: 8
+                    active: delegateCard.isThisItemEditing
+                    visible: active
+                    sourceComponent: editFieldComponent
+                }
+
+                Component {
+                    id: editFieldComponent
+                    TextEdit {
+                        id: inlineEditInput
+                        anchors.fill: parent
+                        font.pixelSize: viewRoot.overlayFontSize
+                        font.family: viewRoot.todoFontFamily
+                        color: viewRoot.titleColor
+                        text: model.task
+                        wrapMode: Text.Wrap
+                        selectByMouse: true
+                        verticalAlignment: TextEdit.AlignVCenter
+
+                        Component.onCompleted: Qt.callLater(() => {
+                            inlineEditInput.forceActiveFocus();
+                            inlineEditInput.cursorPosition = inlineEditInput.text.length;
+                        });
+
+                        onActiveFocusChanged: {
+                            if (!activeFocus && engine.editingTaskId === model.id) {
+                                viewRoot.forceExitEdit(index);
+                            }
                         }
+
+                        Keys.onPressed: (event) => {
+                            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                                engine.saveInlineEdit(model.id, text);
+                                viewRoot.forceExitEdit(index);
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Escape) {
+                                viewRoot.forceExitEdit(index);
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Up) {
+                                engine.saveInlineEdit(model.id, text);
+                                engine.editingTaskId = -1;
+                                todoListView.forceActiveFocus();
+                                if (index > 0) todoListView.currentIndex = index - 1;
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Down) {
+                                engine.saveInlineEdit(model.id, text);
+                                engine.editingTaskId = -1;
+                                todoListView.forceActiveFocus();
+                                if (index < todoListView.count - 1) todoListView.currentIndex = index + 1;
+                                event.accepted = true;
+                            }
+                        }
+                    }
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    z: -1
+                    visible: !delegateCard.isThisItemEditing
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        todoListView.currentIndex = index;
+                        todoListView.forceActiveFocus();
+                    }
+                    onDoubleClicked: {
+                        todoListView.currentIndex = index;
+                        todoListView.forceActiveFocus();
+                        engine.editingTaskId = model.id;
                     }
                 }
             }

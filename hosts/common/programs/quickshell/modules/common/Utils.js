@@ -76,24 +76,38 @@ function fuzzyMatch(needle, haystack) {
     return nIdx === nlen;
 }
 
-// Proportional safe padding: prevents clipping without creating giant empty voids
+// Safe padding inside a card of the given shape. Guarantees the returned
+// rectangle is fully contained within the visible shape outline so no
+// content spills past a chamfered corner or slanted edge.
+//
+// Hexagon geometry: the top-left chamfer runs from (0, c) to (c, 0), so the
+// only horizontal span that is safe at *every* y is x ∈ [c + border, W - c -
+// border]. The top and bottom edges are flat between x=c and x=W-c, so no
+// vertical compensation is needed beyond the border itself.
+//
+// Slant geometry: the top-left corner sits at (border, border) and the
+// bottom-left at (slant + border, H - border); the horizontal inset must be
+// at least `slant + border` to keep content inside the parallelogram.
 function getSafeCardPadding(settingsManager) {
     if (!settingsManager) return { h: 18, v: 16 };
     var shape = settingsManager.overlayCardShape || "rounded";
+    var border = Math.max(1, settingsManager.globalBorderWidth || 3);
+
     if (shape === "hexagon") {
-        var cut = Math.min(60, Math.max(16, Math.round(settingsManager.overlayHexagonCut || 36)));
+        var cut = Math.min(120, Math.max(4, Math.round(settingsManager.overlayHexagonCut || 36)));
         return {
-            h: Math.max(20, Math.round(cut * 0.75) + 12),
-            v: Math.max(16, Math.round(cut * 0.35) + 8)
-        };
-    } else if (shape === "slant") {
-        var angle = Math.min(50, Math.max(14, Math.round(settingsManager.overlaySlantAngle || 32)));
-        return {
-            h: Math.max(20, Math.round(angle * 0.70) + 12),
-            v: 16
+            h: cut + border + 6,
+            v: border + 8
         };
     }
-    return { h: 18, v: 16 };
+    if (shape === "slant") {
+        var angle = Math.min(100, Math.max(8, Math.round(settingsManager.overlaySlantAngle || 32)));
+        return {
+            h: angle + border + 6,
+            v: border + 8
+        };
+    }
+    return { h: border + 8, v: border + 8 };
 }
 
 function getSafeInputPadding(settingsManager) {

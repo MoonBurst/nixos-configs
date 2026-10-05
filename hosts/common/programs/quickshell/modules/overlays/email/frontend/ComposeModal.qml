@@ -74,15 +74,6 @@ Rectangle {
         }
     }
 
-    Shortcut {
-        sequence: "Ctrl+Enter"
-        enabled: composeComp.visible
-        onActivated: {
-            composeComp.wasSent = true;
-            composeComp.dispatchMailRequested(toInput.text, subjectInput.text, bodyInput.text);
-        }
-    }
-
     function prepopulateForm(toField, subjectField, historyLog) {
         composeComp.wasSent = false;
         toInput.text = toField;
@@ -257,23 +248,6 @@ Rectangle {
                         onClicked: composeComp.attachmentRequested()
                     }
                 }
-
-                Rectangle {
-                    width: 30; height: 30; radius: 4
-                    color: "transparent"; border.color: "#ff5555"; border.width: 1
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "✕"
-                        font.bold: true; font.pixelSize: 13
-                        color: "#ff5555"
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                        onClicked: composeComp.dismissSelf()
-                    }
-                }
             }
 
             Column {
@@ -284,6 +258,7 @@ Rectangle {
                 Item {
                     width: parent.width; height: composeComp.fieldInputHeight
                     Style.ShapeBox {
+                        id: toFieldBg
                         anchors.fill: parent
                         role: "input"
                         slantWidth: 10
@@ -294,7 +269,11 @@ Rectangle {
 
 
                     Item {
-                        anchors.fill: parent; anchors.margins: 10
+                        anchors.fill: parent
+                        anchors.leftMargin:   toFieldBg.leftPadding
+                        anchors.rightMargin:  toFieldBg.rightPadding
+                        anchors.topMargin:    toFieldBg.topPadding
+                        anchors.bottomMargin: toFieldBg.bottomPadding
 
                         Text {
                             anchors.fill: parent
@@ -365,7 +344,11 @@ Rectangle {
 
 
                     Item {
-                        anchors.fill: parent; anchors.margins: 10
+                        anchors.fill: parent
+                        anchors.leftMargin:   subjectFieldBg.leftPadding
+                        anchors.rightMargin:  subjectFieldBg.rightPadding
+                        anchors.topMargin:    subjectFieldBg.topPadding
+                        anchors.bottomMargin: subjectFieldBg.bottomPadding
 
                         TextInput {
                             id: subjectInput
@@ -378,7 +361,6 @@ Rectangle {
                             verticalAlignment: TextInput.AlignVCenter
                             selectByMouse: true
                             clip: true
-                            onTextChanged: composeComp.subjectText = text
 
                             Keys.onPressed: (event) => {
                                 if (event.key === Qt.Key_Escape) {

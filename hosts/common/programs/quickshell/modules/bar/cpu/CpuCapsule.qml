@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import "../../style"
 import "../common"
+import "../../common" as Common
 
 Item {
     id: cpuBox
@@ -54,7 +55,7 @@ Item {
     Process {
         id: hwmonFinder
         running: true
-        command: ["lua", Quickshell.shellDir + "/modules/bar/cpu/backend/CpuEngine.lua", "find-hwmon"]
+        command: Common.LuaRunner.cmd("/modules/bar/cpu/backend/CpuEngine.lua", "find-hwmon")
         stdout: SplitParser {
             onRead: data => {
                 var clean = data.trim();
@@ -108,7 +109,7 @@ Item {
     Process {
         id: topProcFetcher
         running: false
-        command: ["lua", Quickshell.shellDir + "/modules/bar/cpu/backend/CpuEngine.lua", "top-procs"]
+        command: Common.LuaRunner.cmd("/modules/bar/cpu/backend/CpuEngine.lua", "top-procs")
         stdout: SplitParser {
             splitMarker: "\n"
             onRead: data => { if (data && data.trim() !== "") cpuBox.textAccumulatorBuffer += data + "\n"; }

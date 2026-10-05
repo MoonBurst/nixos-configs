@@ -6,6 +6,7 @@ import Quickshell.Io
 import "../../../" as RootTheme
 import "../../style" as Style
 import "../../common" as Common
+import "../../common/Utils.js" as Utils
 import "../../common/FallbackTheme.js" as FallbackTheme
 import "./backend" as Backend
 import "./frontend" as Frontend
@@ -218,18 +219,7 @@ PanelWindow {
         x: Math.round(Math.max(20, (window.width - width) / 2))
         y: Math.round(Math.max(20, (window.height - height) / 2))
 
-        readonly property int cardCornerCut: {
-            if (!settingsManager) return 0;
-            if (settingsManager.overlayCardShape === "hexagon") return Math.round(settingsManager.overlayHexagonCut || 36);
-            if (settingsManager.overlayCardShape === "slant") return Math.round(settingsManager.overlaySlantAngle || 32);
-            return 0;
-        }
-        readonly property int cardPadH: (settingsManager && settingsManager.overlayCardShape !== "rounded")
-            ? Math.max(24, Math.round(cardCornerCut * 1.0) + 16)
-            : 0
-        readonly property int cardPadV: (settingsManager && settingsManager.overlayCardShape !== "rounded")
-            ? Math.max(18, Math.round(cardCornerCut * 0.5) + 12)
-            : 0
+        readonly property var safePad: Utils.getSafeCardPadding(settingsManager)
 
         Style.ShapeBox {
             anchors.fill: parent
@@ -252,10 +242,10 @@ PanelWindow {
         Loader {
             id: viewLoader
             anchors.fill: parent
-            anchors.leftMargin: emailCard.cardPadH
-            anchors.rightMargin: emailCard.cardPadH
-            anchors.topMargin: emailCard.cardPadV
-            anchors.bottomMargin: emailCard.cardPadV
+            anchors.leftMargin: emailCard.safePad.h
+            anchors.rightMargin: emailCard.safePad.h
+            anchors.topMargin: emailCard.safePad.v
+            anchors.bottomMargin: emailCard.safePad.v
             active: window.isUiActive
             sourceComponent: Frontend.EmailView {
                 engine: emailEngine

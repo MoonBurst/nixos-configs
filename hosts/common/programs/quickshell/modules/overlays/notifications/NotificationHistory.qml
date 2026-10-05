@@ -1,5 +1,6 @@
 import "../../common" as Common
 import "../../common/Utils.js" as Utils
+import "../../style" as Style
 import QtQuick
 import QtQuick.Controls 2
 import Quickshell
@@ -148,16 +149,15 @@ Item {
             }
         }
 
-        Rectangle {
+        Style.ShapeBox {
             id: historyPanel
             width: 1500
             height: 900
             anchors.centerIn: parent
-            radius: 16
+            role: "card"
             color: shell.theme.base00 || "#11111b"
-            border.width: shell.theme.globalBorderWidth || 3
-            border.color: shell.theme.base03 || "#45475a"
-            clip: true
+            borderColor: shell.theme.base03 || "#45475a"
+            borderWidth: shell.theme.globalBorderWidth || 3
 
             MouseArea {
                 anchors.fill: parent

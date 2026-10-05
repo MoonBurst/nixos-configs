@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "../../common" as Common
 
 Item {
     id: twitchEngine
@@ -28,7 +29,7 @@ Item {
 
     Process {
         id: twitchProc
-        command: ["lua", Quickshell.shellDir + "/modules/bar/unified/backend/PodmanTwitchEngine.lua"]
+        command: Common.LuaRunner.cmd("/modules/bar/unified/backend/PodmanTwitchEngine.lua")
         stdout: SplitParser {
             onRead: data => {
                 try {

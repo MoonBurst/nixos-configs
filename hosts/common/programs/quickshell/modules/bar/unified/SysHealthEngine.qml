@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "../../common" as Common
 
 Item {
     id: sysHealth
@@ -65,7 +66,7 @@ Item {
 
     Process {
         id: slowHealthProc
-        command: ["lua", Quickshell.shellDir + "/modules/bar/unified/backend/SysHealthEngine.lua"]
+        command: Common.LuaRunner.cmd("/modules/bar/unified/backend/SysHealthEngine.lua")
         stdout: SplitParser {
             onRead: data => {
                 try {

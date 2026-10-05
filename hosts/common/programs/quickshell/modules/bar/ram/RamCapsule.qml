@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import "../../style"
 import "../common"
+import "../../common" as Common
 
 Item {
     id: ramBox
@@ -104,7 +105,7 @@ Item {
     Process {
         id: topProcFetcher
         running: false
-        command: ["lua", Quickshell.shellDir + "/modules/bar/ram/backend/RamEngine.lua"]
+        command: Common.LuaRunner.cmd("/modules/bar/ram/backend/RamEngine.lua")
         stdout: SplitParser {
             splitMarker: "\n"
             onRead: data => { if (data && data.trim() !== "") ramBox.textAccumulatorBuffer += data + "\n"; }

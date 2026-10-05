@@ -754,6 +754,10 @@ Item {
                 } catch(e) {
                     console.warn("[SettingsManager] Parse error on load: " + e);
                 }
+                // Slant is no longer offered as an overlay shape; migrate any
+                // persisted value back to rounded so ShapeBox renders cleanly.
+                if (manager.overlayCardShape === "slant") manager.overlayCardShape = "rounded";
+                if (manager.inputFieldShape === "slant") manager.inputFieldShape = "rounded";
                 manager.isLoaded = true;
             }
         }

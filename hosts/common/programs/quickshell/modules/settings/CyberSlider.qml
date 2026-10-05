@@ -18,16 +18,6 @@ Item {
 
     signal valueModified(real newVal)
 
-    onValueChanged: {
-        if (!sliderControl.pressed && sliderControl.value !== root.value) {
-            sliderControl.value = root.value;
-        }
-    }
-
-    Component.onCompleted: {
-        sliderControl.value = root.value;
-    }
-
     Layout.fillWidth: true
     width: parent ? parent.width : 600
     implicitWidth: 600
@@ -78,10 +68,22 @@ Item {
             from: root.from
             to: root.to
             stepSize: root.stepSize
-            value: root.value
+
+            // Do NOT use `value: root.value` — a user drag would destroy the
+            // binding and sever all future external updates. A conditional
+            // Binding suspended during drag is the correct two-way pattern.
+            Binding {
+                target: sliderControl
+                property: "value"
+                value: root.value
+                when: !sliderControl.pressed
+                restoreMode: Binding.RestoreBindingOrValue
+            }
 
             onMoved: {
-                root.value = value;
+                // Do NOT write back to root.value here — that would sever the
+                // caller's own binding (`value: settingsManager.foo`). Just
+                // emit and let the caller decide.
                 root.valueModified(value);
             }
 

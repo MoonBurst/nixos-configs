@@ -167,6 +167,11 @@ PanelWindow {
     property string lastRollType: "None"
     property var lastRolls: []
     property var previewRolls: []
+    // Stable number of preview slots. The Repeater below is bound to this
+    // fixed count (not to the array), so its delegates are only created once
+    // per diceCount change — never on every preview tick. Each delegate
+    // reads its current value dynamically, so only the Text re-renders.
+    readonly property int previewCount: Math.min(30, diceCount)
     property int lastTotal: 0
     property real lastAverage: 0.0
     property string coinResult: ""
@@ -584,8 +589,12 @@ PanelWindow {
                             Flow {
                                 width: previewScroll.availableWidth > 0 ? previewScroll.availableWidth : 480; spacing: 8
                                 Repeater {
-                                    model: root.previewRolls
+                                    // Fixed model count: the delegates below are
+                                    // created exactly once and then only their
+                                    // currentVal binding re-evaluates on each tick.
+                                    model: root.previewCount
                                     delegate: Item {
+                                        readonly property var currentVal: (index < root.previewRolls.length) ? root.previewRolls[index] : ""
                                         width: 44; height: 38
                                         Style.ShapeBox {
                                             anchors.fill: parent
@@ -595,7 +604,13 @@ PanelWindow {
                                             borderColor: root.highlightColor
                                             borderWidth: root.controlBorderWidth
                                         }
-                                        Text { anchors.centerIn: parent; text: String(modelData); color: root.highlightColor; font.bold: true; font.pixelSize: 16 }
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: String(currentVal)
+                                            color: root.highlightColor
+                                            font.bold: true
+                                            font.pixelSize: 16
+                                        }
                                     }
                                 }
                             }

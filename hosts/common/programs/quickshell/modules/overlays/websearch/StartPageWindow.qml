@@ -6,6 +6,7 @@ import Quickshell.Io
 import "../../../" as RootTheme
 import "../../style" as Style
 import "../../common" as Common
+import "../../common/Utils.js" as Utils
 import "../../common/FallbackTheme.js" as FallbackTheme
 import "./backend" as Backend
 import "./frontend" as Frontend
@@ -176,18 +177,7 @@ PanelWindow {
         readonly property color currentBorderColor: window.isCardActive ? window.activeBorderColor : window.inactiveBorderColor
         readonly property int currentBorderWidth: (theme && theme.globalBorderWidth !== undefined) ? theme.globalBorderWidth : 3
 
-        readonly property int cardCornerCut: {
-            if (!settingsManager) return 0;
-            if (settingsManager.overlayCardShape === "hexagon") return Math.round(settingsManager.overlayHexagonCut || 36);
-            if (settingsManager.overlayCardShape === "slant") return Math.round(settingsManager.overlaySlantAngle || 32);
-            return 0;
-        }
-        readonly property int cardPadH: (settingsManager && settingsManager.overlayCardShape !== "rounded")
-            ? Math.max(28, Math.round(cardCornerCut * 1.0) + 20)
-            : 0
-        readonly property int cardPadV: (settingsManager && settingsManager.overlayCardShape !== "rounded")
-            ? Math.max(20, Math.round(cardCornerCut * 0.45) + 14)
-            : 0
+        readonly property var safePad: Utils.getSafeCardPadding(settingsManager)
 
         Style.ShapeBox {
             anchors.fill: parent
@@ -210,10 +200,10 @@ PanelWindow {
         Loader {
             id: viewLoader
             anchors.fill: parent
-            anchors.leftMargin: card.cardPadH
-            anchors.rightMargin: card.cardPadH
-            anchors.topMargin: card.cardPadV
-            anchors.bottomMargin: card.cardPadV
+            anchors.leftMargin: card.safePad.h
+            anchors.rightMargin: card.safePad.h
+            anchors.topMargin: card.safePad.v
+            anchors.bottomMargin: card.safePad.v
             active: window.isUiActive
             sourceComponent: Frontend.WebSearchView {
                 engine: webEngine

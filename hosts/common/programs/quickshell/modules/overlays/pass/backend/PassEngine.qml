@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "../../../common" as Common
 
 QtObject {
     id: engine
@@ -18,14 +19,14 @@ QtObject {
 
     readonly property Process passCheckProc: Process {
         running: true
-        command: ["lua", Quickshell.shellDir + "/modules/overlays/pass/backend/PassEngine.lua", "check"]
+        command: Common.LuaRunner.cmd("/modules/overlays/pass/backend/PassEngine.lua", "check")
         stdout: SplitParser {
             onRead: data => { engine.hasPass = (data.trim() === "1"); }
         }
     }
 
     readonly property Process listKeysProc: Process {
-        command: ["lua", Quickshell.shellDir + "/modules/overlays/pass/backend/PassEngine.lua", "list"]
+        command: Common.LuaRunner.cmd("/modules/overlays/pass/backend/PassEngine.lua", "list")
         stdout: SplitParser {
             onRead: data => {
                 var lines = data.trim().split("\n");
@@ -38,7 +39,29 @@ QtObject {
         }
     }
 
-    readonly property Process decryptProc: Process {}
+    // How long a decrypted password is allowed to sit on the clipboard
+    // before it is cleared automatically. The clipboard is also cleared on
+    // the next pass-copy so overlapping sessions cannot leak into each other.
+    property int clipboardClearSeconds: 20
+
+    readonly property Process clipboardSweeper: Process {}
+
+    readonly property Process decryptProc: Process {
+        onExited: (code) => {
+            if (code !== 0) return;
+            // Spawn a detached shell that sleeps, then wipes the clipboard.
+            // A second pass-copy within the window restarts the sweep, so
+            // only the most recent password ever lives on the clipboard, and
+            // only for the configured window.
+            engine.clipboardSweeper.running = false;
+            engine.clipboardSweeper.command = [
+                "sh", "-c",
+                'sleep "$1"; printf "" | wl-copy --clear 2>/dev/null || printf "" | wl-copy 2>/dev/null || true',
+                "sh", String(engine.clipboardClearSeconds)
+            ];
+            engine.clipboardSweeper.running = true;
+        }
+    }
 
     function reload() {
         pModel.clear();

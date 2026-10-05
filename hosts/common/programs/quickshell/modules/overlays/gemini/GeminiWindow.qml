@@ -6,6 +6,7 @@ import Quickshell.Io
 import "../../../" as RootTheme
 import "../../style" as Style
 import "../../common" as Common
+import "../../common/Utils.js" as Utils
 import "../../common/FallbackTheme.js" as FallbackTheme
 import "./backend" as Backend
 import "./frontend" as Frontend
@@ -168,6 +169,7 @@ PanelWindow {
 
     Item {
         id: card
+        readonly property var safePad: Utils.getSafeCardPadding(settingsManager)
         anchors.centerIn: parent
         width: settingsManager ? settingsManager.getWindowWidth(window.windowId, 880) : 880
         height: settingsManager ? settingsManager.getWindowHeight(window.windowId, 720) : 720
@@ -196,6 +198,10 @@ PanelWindow {
         Loader {
             id: viewLoader
             anchors.fill: parent
+            anchors.leftMargin: card.safePad.h
+            anchors.rightMargin: card.safePad.h
+            anchors.topMargin: card.safePad.v
+            anchors.bottomMargin: card.safePad.v
             active: window.isUiActive
             sourceComponent: Frontend.GeminiView {
                 engine: geminiEngine

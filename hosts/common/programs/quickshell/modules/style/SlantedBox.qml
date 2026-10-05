@@ -36,7 +36,11 @@ Item {
 
     Shape {
         anchors.fill: parent
-        layer.enabled: false
+        // Cache the vector path as a GPU texture so repeated scrolls over a
+        // list full of SlantedBoxes do not re-tessellate the shape each frame.
+        layer.enabled: true
+        layer.smooth: true
+        layer.mipmap: false
 
         ShapePath {
             strokeColor: root.borderColor

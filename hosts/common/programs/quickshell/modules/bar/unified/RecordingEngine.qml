@@ -1,7 +1,11 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "../../common" as Common
 
+// Front-end facade for RecordingEngine.lua. Polls the lua backend on a
+// cadence that adapts to whether capture is active, and exposes the same
+// public properties the UnifiedMonitor relies on.
 Item {
     id: recordingEngine
 
@@ -29,14 +33,7 @@ Item {
 
     Process {
         id: checkProc
-        command: [
-            "bash", "-c",
-            "REC=0; [ -f ${XDG_RUNTIME_DIR:-/tmp}/record-region.pid ] && kill -0 $(cat ${XDG_RUNTIME_DIR:-/tmp}/record-region.pid 2>/dev/null) 2>/dev/null && REC=1; " +
-            "if [ $REC -eq 0 ]; then pgrep -x wf-recorder >/dev/null 2>&1 && REC=1; fi; " +
-            "STREAM=0; [ -f ${XDG_RUNTIME_DIR:-/tmp}/twitch-stream.pid ] && kill -0 $(cat ${XDG_RUNTIME_DIR:-/tmp}/twitch-stream.pid 2>/dev/null) 2>/dev/null && STREAM=1; " +
-            "if [ $STREAM -eq 0 ]; then pgrep -f '[r]tmp://live.twitch.tv' >/dev/null 2>&1 && STREAM=1; fi; " +
-            "echo \"$REC $STREAM\""
-        ]
+        command: Common.LuaRunner.cmd("modules/bar/unified/backend/RecordingEngine.lua")
         stdout: SplitParser {
             onRead: data => {
                 let parts = data.trim().split(" ");
@@ -48,6 +45,9 @@ Item {
         }
     }
 
+    // Stop-all is a one-shot action, still handled by the existing external
+    // commands. These are user-triggered (rare) so forking a shell here is
+    // fine; no polling.
     function stopAll() {
         Quickshell.execDetached([
             "bash", "-c",

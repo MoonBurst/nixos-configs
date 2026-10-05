@@ -54,7 +54,9 @@ Item {
                     shell.notificationsEnabled = !shell.notificationsEnabled;
                 }
             } else if (mouse.button === Qt.RightButton) {
-                if (typeof Ipc !== "undefined" && Ipc.call) { Ipc.call("global_notif", "toggleHistory"); } else if (typeof shell !== "undefined" && shell) { shell.showHistoryMode = !shell.showHistoryMode; }
+                if (typeof shell !== "undefined" && shell) {
+                    shell.showHistoryMode = !shell.showHistoryMode;
+                }
             }
         }
     }

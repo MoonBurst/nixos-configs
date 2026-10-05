@@ -5,6 +5,7 @@ import QtQuick.Layouts 1.15
 import Quickshell
 import Quickshell.Io
 import "../../style"
+import "../../common" as Common
 
 Item {
     id: netBox
@@ -213,7 +214,7 @@ Item {
     Process {
         id: netStatsProc
         running: true
-        command: ["lua", Quickshell.shellDir + "/modules/bar/network/backend/NetEngine.lua", "stats"]
+        command: Common.LuaRunner.cmd("/modules/bar/network/backend/NetEngine.lua", "stats")
 
         property real lastDown: 0
         property real lastUp: 0
@@ -268,7 +269,7 @@ Item {
     Process {
         id: pingProc
         running: false
-        command: ["lua", Quickshell.shellDir + "/modules/bar/network/backend/NetEngine.lua", "ping"]
+        command: Common.LuaRunner.cmd("/modules/bar/network/backend/NetEngine.lua", "ping")
         stdout: SplitParser {
             onRead: data => {
                 var clean = data.trim();

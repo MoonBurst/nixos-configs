@@ -123,6 +123,7 @@ Item {
             height: viewRoot.fieldHeight
 
             Style.ShapeBox {
+                id: searchFieldBg
                 anchors.fill: parent
                 role: "input"
                 color: (theme && theme.base00) ? theme.base00 : "#11111b"
@@ -135,8 +136,8 @@ Item {
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: viewRoot.inputPad.left
-                anchors.rightMargin: viewRoot.inputPad.right
+                anchors.leftMargin: Math.max(viewRoot.inputPad.left, searchFieldBg.leftPadding)
+                anchors.rightMargin: Math.max(viewRoot.inputPad.right, searchFieldBg.rightPadding)
                 spacing: 10
 
                 Text {

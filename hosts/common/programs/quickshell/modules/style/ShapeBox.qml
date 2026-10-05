@@ -101,6 +101,36 @@ Item {
     }
 
     readonly property real halfBorder: borderWidth / 2
+
+    // Effective chamfer for the hexagon shape. Defined on the root so both
+    // the shape itself and downstream content can reference the same value.
+readonly property real hexCutEffective: {
+        if (effectiveShape !== "hexagon") return 0;
+        // Reserve a minimum flat span so content always has somewhere to live,
+        // even at the largest hexCut setting. Without this, a 30px-tall button
+        // with hexCut=36 would leave no interior at all.
+        var minFlatH = role === "input" ? 40 : 60;
+        var minFlatV = role === "input" ? 16 : 20;
+        var byHeight    = Math.round(height * 0.45);
+        var bySmallDim  = Math.round(Math.min(width, height) * 0.20);
+        var byContentH  = Math.max(0, (width  - minFlatH) / 2);
+        var byContentV  = Math.max(0, (height - minFlatV) / 2);
+        return Math.max(2, Math.min(byHeight, hexCut, bySmallDim, byContentH, byContentV));
+    }
+
+    // Safe-area insets. Content placed at these margins is guaranteed to be
+    // inside the visible shape outline, regardless of shape or size.
+    readonly property real contentInsetH: effectiveShape === "hexagon" ? (hexCutEffective + halfBorder) : 0
+    readonly property real contentInsetV: contentInsetH
+
+    // Canonical content insets. Sibling content anchored at these margins
+    // will always sit inside the visible shape, at any size, border width,
+    // or chamfer setting. Mirrors SlantedBox's leftPadding/rightPadding API
+    // so both shape primitives are interchangeable in layout code.
+    readonly property real leftPadding:   contentInsetH + (role === "input" ? 8 : 12)
+    readonly property real rightPadding:  leftPadding
+    readonly property real topPadding:    contentInsetV + (role === "input" ? 4 : 8)
+    readonly property real bottomPadding: topPadding
     readonly property real x1: (slantLeft === "Right") ? (slantWidth + halfBorder) : halfBorder
     readonly property real x2: (slantLeft === "Left") ? (slantWidth + halfBorder) : halfBorder
     readonly property real x3: (slantRight === "Left") ? (width - slantWidth - halfBorder) : (width - halfBorder)
@@ -120,6 +150,9 @@ Item {
     Shape {
         anchors.fill: parent
         visible: root.effectiveShape === "slant"
+        layer.enabled: true
+        layer.smooth: true
+        layer.mipmap: false
 
         ShapePath {
             strokeColor: root.borderColor
@@ -136,49 +169,40 @@ Item {
         }
     }
 
-    // 3. Wide-Top Hexagon
-    Canvas {
-        id: hexCanvas
+    // 3. Wide-Top Hexagon (Shape renders synchronously in the scene graph;
+    //    frame whenever a delegate was recycled mid-scroll.)
+    Shape {
+        id: hexShape
         anchors.fill: parent
         visible: root.effectiveShape === "hexagon"
+        layer.enabled: true
+        layer.smooth: true
+        layer.mipmap: false
 
-        onPaint: {
-            var ctx = getContext("2d");
-            ctx.reset();
-            ctx.lineWidth = root.borderWidth;
-            ctx.strokeStyle = root.borderColor;
-            ctx.fillStyle = root.color;
+        // Chamfer size. Capped by height*0.45 to preserve the hexagon
+        // silhouette, and additionally by 20% of the smaller dimension so
+        // the corners never eat more space than the flat middle band can
+        // offer to content laid out edge-to-edge (text, badges, chips).
+        readonly property real c: root.hexCutEffective
 
-            var w = width, h = height;
-            var c = Math.max(4, Math.min(Math.round(h * 0.45), root.hexCut));
+        ShapePath {
+            strokeColor: root.borderColor
+            strokeWidth: root.borderWidth
+            fillColor: root.color
+            joinStyle: ShapePath.MiterJoin
 
-            ctx.beginPath();
-            ctx.moveTo(c, root.halfBorder);
-            ctx.lineTo(w - c, root.halfBorder);
-            ctx.lineTo(w - root.halfBorder, c);
-            ctx.lineTo(w - root.halfBorder, h - c);
-            ctx.lineTo(w - c, h - root.halfBorder);
-            ctx.lineTo(c, h - root.halfBorder);
-            ctx.lineTo(root.halfBorder, h - c);
-            ctx.lineTo(root.halfBorder, c);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
-        }
+            startX: hexShape.c + root.halfBorder
+            startY: root.halfBorder
 
-        onVisibleChanged: if (visible) requestPaint()
-        onWidthChanged: requestPaint()
-        onHeightChanged: requestPaint()
-
-        Connections {
-            target: root
-            function onBorderColorChanged() { hexCanvas.requestPaint(); }
-            function onColorChanged() { hexCanvas.requestPaint(); }
-            function onBorderWidthChanged() { hexCanvas.requestPaint(); }
-            function onHexCutChanged() { hexCanvas.requestPaint(); }
-            function onSlantWidthChanged() { hexCanvas.requestPaint(); }
-            function onEffectiveSlantDirectionChanged() { hexCanvas.requestPaint(); }
-            function onEffectiveShapeChanged() { hexCanvas.requestPaint(); }
+            PathLine { x: hexShape.width  - hexShape.c - root.halfBorder; y: root.halfBorder }
+            PathLine { x: hexShape.width  - root.halfBorder;             y: hexShape.c + root.halfBorder }
+            PathLine { x: hexShape.width  - root.halfBorder;             y: hexShape.height - hexShape.c - root.halfBorder }
+            PathLine { x: hexShape.width  - hexShape.c - root.halfBorder; y: hexShape.height - root.halfBorder }
+            PathLine { x: hexShape.c + root.halfBorder;                  y: hexShape.height - root.halfBorder }
+            PathLine { x: root.halfBorder;                               y: hexShape.height - hexShape.c - root.halfBorder }
+            PathLine { x: root.halfBorder;                               y: hexShape.c + root.halfBorder }
+            PathLine { x: hexShape.c + root.halfBorder;                  y: root.halfBorder }
         }
     }
+
 }

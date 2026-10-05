@@ -267,18 +267,30 @@ Item {
                 anchors.fill: parent
                 visible: !alarmBox.hasPwPlay
 
-                PackageInstallerModal {
+                Column {
                     anchors.centerIn: parent
+                    spacing: 12
                     width: parent.width - 60
-                    height: 200
-                    title: "⚠️ PIPEWIRE REQUIRED"
-                    description: "Timer playback requires pw-play (official repos only):"
-                    pacmanPkg: "pipewire"
-                    aptPkg: "pipewire-bin"
-                    dnfPkg: "pipewire-utils"
-                    zypperPkg: "pipewire-tools"
-                    nixPkg: "pipewire"
-                    onInstalled: { alarmBox.hasPwPlay = true; }
+
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: "⚠️  PIPEWIRE REQUIRED"
+                        color: themeBase05
+                        font.family: themeFontFamily
+                        font.bold: true
+                        font.pixelSize: 20
+                    }
+
+                    Text {
+                        width: parent.width
+                        text: "Timer playback requires the pw-play tool.\n\nInstall the pipewire package through your system package manager, then reload the shell."
+                        color: themeBase05
+                        opacity: 0.85
+                        font.family: themeFontFamily
+                        font.pixelSize: 13
+                        wrapMode: Text.WordWrap
+                        horizontalAlignment: Text.AlignHCenter
+                    }
                 }
             }
 
