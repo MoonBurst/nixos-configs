@@ -3,39 +3,20 @@ import QtQuick.Controls 2
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
-import "../../../" as RootTheme
-import "../../style" as Style
 import "../../common" as Common
-import "../../common/FallbackTheme.js" as FallbackTheme
-import "../../common/Utils.js" as Utils
 import "./frontend" as Frontend
 
-PanelWindow {
-    id: window
+Common.OverlayWindow {
+    id: clipboardWindow
 
-    property string windowId: "clipboard"
-    readonly property string defaultPolicy: "lazy"
+    windowId: "clipboard"
+    defaultW: 1080
+    defaultH: 700
+    defaultPolicy: "lazy"
 
-    property var shell: null
-    readonly property var safeShell: (typeof shell !== "undefined" && shell) ? shell : null
-    readonly property var settingsManager: safeShell ? safeShell.settingsManager : null
-    readonly property var theme: (safeShell && safeShell.theme) ? safeShell.theme : FallbackTheme.theme
-
-    readonly property string loadPolicy: settingsManager ? settingsManager.getWindowLoadPolicy(windowId, defaultPolicy) : defaultPolicy
-    readonly property bool shouldKeepLoaded: loadPolicy === "eager"
-
-    screen: (safeShell && safeShell.primaryScreen) ? safeShell.primaryScreen : (Quickshell.screens[0] || null)
-
-    readonly property bool isPreviewMode: (settingsManager && settingsManager.previewWindow === windowId)
-    property bool isOpenState: false
-    visible: isOpenState || isPreviewMode
-
-    property bool isCardActive: true
-
-    readonly property color activeBorderColor: (theme && theme.base03) ? theme.base03 : "#003399"
-    readonly property color inactiveBorderColor: (theme && theme.base0D) ? theme.base0D : "#003399"
-
-    // Background cliphist daemons: guarantees all copied text and images are saved on Wayland
+    // Background cliphist watchers. Run for the shell's whole lifetime so
+    // every clipboard copy is captured regardless of whether the clipboard
+    // window has been opened this session.
     Process {
         id: cliphistWatcherText
         running: true
@@ -47,183 +28,11 @@ PanelWindow {
         command: ["wl-paste", "--type", "image", "--watch", "cliphist", "store"]
     }
 
-    property bool inGracePeriod: false
-    Timer {
-        id: graceTimer
-        repeat: false
-        onTriggered: { window.inGracePeriod = false; }
-    }
-
-    Timer {
-        id: focusTimer
-        interval: 50
-        repeat: false
-        onTriggered: {
-            if (viewLoader.item && typeof viewLoader.item.clearAndFocus === "function") {
-                viewLoader.item.clearAndFocus();
-            }
+    viewComponent: Component {
+        Frontend.ClipboardView {
+            theme: clipboardWindow.theme
+            settingsManager: clipboardWindow.settingsManager
+            onCompleted: clipboardWindow.close()
         }
-    }
-
-    onIsOpenStateChanged: {
-        if (isOpenState) {
-            graceTimer.stop();
-            inGracePeriod = false;
-        } else if (!isPreviewMode) {
-            var timeoutSec = settingsManager ? settingsManager.overlayGraceTimeoutSec : 10;
-            if (timeoutSec > 0 && !shouldKeepLoaded) {
-                inGracePeriod = true;
-                graceTimer.interval = timeoutSec * 1000;
-                graceTimer.restart();
-            } else {
-                inGracePeriod = false;
-            }
-        }
-    }
-
-    readonly property bool isUiActive: shouldKeepLoaded || isOpenState || isPreviewMode || inGracePeriod
-
-    onVisibleChanged: {
-        if (visible && !isPreviewMode) {
-            if (safeShell && typeof safeShell.closeOtherOverlays === "function") {
-                safeShell.closeOtherOverlays(window);
-            }
-            window.isCardActive = true;
-            focusTimer.restart();
-        }
-    }
-
-    WlrLayershell.namespace: "quickshell-clipboard"
-    WlrLayershell.layer: isPreviewMode ? WlrLayer.Top : WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: {
-        if (!visible || isPreviewMode) return WlrKeyboardFocus.None;
-        return window.isCardActive ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None;
-    }
-
-    anchors { top: true; bottom: true; left: true; right: true }
-    color: "transparent"
-
-    mask: window.isCardActive ? null : cardMaskRegion
-    Region { id: cardMaskRegion; item: card }
-
-    function open() {
-        if (safeShell && safeShell.sessionLock && safeShell.sessionLock.locked) return;
-        window.isCardActive = true;
-        isOpenState = true;
-        focusTimer.restart();
-    }
-
-    function activateCard() {
-        window.isCardActive = true;
-        focusTimer.restart();
-    }
-
-    function close() {
-        isOpenState = false;
-        window.isCardActive = false;
-        if (settingsManager && settingsManager.previewWindow === windowId) {
-            settingsManager.previewWindow = "";
-        }
-    }
-
-    function toggle() { if (isOpenState) close(); else open(); }
-
-    IpcHandler {
-        target: "clipboard"
-        function toggle(): void { window.toggle(); }
-        function open(): void { window.open(); }
-        function close(): void { window.close(); }
-    }
-
-    Common.GlobalEscWatcher {
-        active: window.isOpenState && !window.isPreviewMode
-        onEscapePressed: window.close()
-    }
-
-    Variants {
-        model: Quickshell.screens
-        delegate: PanelWindow {
-            id: otherScreenCatcher
-            required property var modelData
-            screen: modelData
-
-            visible: window.isOpenState && window.isCardActive && !window.isPreviewMode && (modelData !== window.screen)
-
-            WlrLayershell.namespace: "quickshell-clipboard-dismiss"
-            WlrLayershell.layer: WlrLayer.Overlay
-            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-
-            anchors { top: true; bottom: true; left: true; right: true }
-            color: "transparent"
-
-            MouseArea {
-                anchors.fill: parent
-                onPressed: {
-                    window.isCardActive = false;
-                }
-            }
-        }
-    }
-
-    MouseArea {
-        anchors.fill: parent
-        enabled: window.isCardActive && !window.isPreviewMode
-        onPressed: {
-            window.isCardActive = false;
-        }
-    }
-
-    Item {
-        id: card
-        anchors.centerIn: parent
-        width: settingsManager ? settingsManager.getWindowWidth(window.windowId, 1080) : 1080
-        height: settingsManager ? settingsManager.getWindowHeight(window.windowId, 700) : 700
-
-        readonly property color currentBorderColor: window.isCardActive ? window.activeBorderColor : window.inactiveBorderColor
-        readonly property int currentBorderWidth: (theme && theme.globalBorderWidth !== undefined) ? theme.globalBorderWidth : 3
-
-        readonly property var safePad: Utils.getSafeCardPadding(settingsManager)
-
-        Style.ShapeBox {
-            anchors.fill: parent
-            role: "card"
-            color: theme.base01
-            borderColor: card.currentBorderColor
-            borderWidth: card.currentBorderWidth
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            enabled: !window.isCardActive && !window.isPreviewMode
-            z: 9999
-            cursorShape: Qt.PointingHandCursor
-            onPressed: {
-                window.activateCard();
-            }
-        }
-
-        Loader {
-            id: viewLoader
-            anchors.fill: parent
-            anchors.leftMargin: (settingsManager && settingsManager.overlayCardShape !== "rounded") ? card.safePad.h : 0
-            anchors.rightMargin: (settingsManager && settingsManager.overlayCardShape !== "rounded") ? card.safePad.h : 0
-            anchors.topMargin: (settingsManager && settingsManager.overlayCardShape !== "rounded") ? card.safePad.v : 0
-            anchors.bottomMargin: (settingsManager && settingsManager.overlayCardShape !== "rounded") ? card.safePad.v : 0
-            active: window.isUiActive
-            sourceComponent: Frontend.ClipboardView {
-                theme: window.theme
-                settingsManager: window.settingsManager
-                onCompleted: window.close()
-            }
-            onItemChanged: {
-                if (item && window.isOpenState && window.isCardActive) item.clearAndFocus();
-            }
-        }
-    }
-
-    Shortcut {
-        sequence: "Escape"
-        enabled: window.visible && !window.isPreviewMode
-        onActivated: window.close()
     }
 }

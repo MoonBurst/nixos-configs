@@ -10,7 +10,10 @@ Process {
 
     running: active
     command: [
-        "luajit",
+        "sh", "-c",
+        'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
+        'exec luajit "$1"',
+        "sh",
         Quickshell.shellDir + "/modules/common/escwatcher.lua"
     ]
     stdout: SplitParser {

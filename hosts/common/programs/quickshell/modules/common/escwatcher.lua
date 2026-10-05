@@ -42,13 +42,19 @@ local function list_glob(pattern)
     return out
 end
 
--- Prefer the by-id symlinks (keyboards only); fall back to every event node.
-local paths = list_glob("/dev/input/by-id/*-event-kbd")
-if #paths == 0 then paths = list_glob("/dev/input/event*") end
+-- Open every event device. Input nodes are not ordered, and by-id
+-- symlinks can point at the wrong node on laptops or when a USB
+-- keyboard is hot-plugged. Opening all event* nodes and filtering by
+-- type/code in the read loop is more reliable than picking a subset up
+-- front. Opening extra devices is cheap.
+local paths = list_glob("/dev/input/event*")
 if #paths == 0 then
     io.stderr:write("escwatcher: no input devices found\n")
     os.exit(0)
 end
+
+-- Emit a debug line to stderr so failures are visible in the shell log.
+io.stderr:write(string.format("escwatcher: opening %d event device(s)\n", #paths))
 
 local pollfds = ffi.new("struct pollfd[?]", #paths)
 local nfds = 0
@@ -59,6 +65,9 @@ for _, path in ipairs(paths) do
         pollfds[nfds].events = POLLIN
         pollfds[nfds].revents = 0
         nfds = nfds + 1
+        io.stderr:write(string.format("escwatcher: opened %s\n", path))
+    else
+        io.stderr:write(string.format("escwatcher: FAILED to open %s\n", path))
     end
 end
 
