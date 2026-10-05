@@ -23,55 +23,60 @@ Item {
         return status;
     }
 
+    function applyPollLine(line) {
+        var parts = (line || "").trim().split(":");
+        if (parts.length !== 3) return;
+        if (parts[0] === "--") return;
+        engine.percent = parts[0] + "%";
+        engine.status = parts[1];
+        engine.power = parts[2];
+    }
+
     Process {
         id: detectProc
         running: true
-        command: ["sh", "-c", "ls /sys/class/power_supply/ 2>/dev/null | grep -E '^BAT|^sb' | head -n 1"]
+        command: LuaRunner.cmd("modules/common/backend/BatteryEngine.lua", "detect")
         stdout: SplitParser {
             onRead: data => {
-                var name = data.trim();
+                var name = (data || "").trim();
                 if (name !== "") {
                     engine.batteryName = name;
                     engine.hasBattery = true;
-                    pollProc.running = true;
                     powerEventListener.running = true;
+                    engine.refresh();
                 }
             }
         }
     }
 
-    // Zero-polling kernel event listener (Triggers instantly when power changes)
+    // Kernel events (instant power-draw/plug updates)
     Process {
         id: powerEventListener
         running: false
         command: ["udevadm", "monitor", "--udev", "--subsystem-match=power_supply"]
         stdout: SplitParser {
             splitMarker: "\n"
-            onRead: data => {
-                pollProc.running = false;
-                pollProc.running = true;
-            }
+            onRead: engine.refresh()
         }
+    }
+
+    // Fallback so we never go stale if udev misses an event
+    Timer {
+        interval: 30000
+        running: engine.hasBattery
+        repeat: true
+        onTriggered: engine.refresh()
     }
 
     Process {
         id: pollProc
-        running: false
-        command: [
-            "sh", "-c",
-            "dir=/sys/class/power_supply/" + engine.batteryName + "; if [ -d \"$dir\" ]; then cap=$(cat \"$dir/capacity\" 2>/dev/null || echo '0'); stat=$(cat \"$dir/status\" 2>/dev/null || echo 'Unknown'); watt='0.0'; if [ -f \"$dir/power_now\" ]; then p_now=$(cat \"$dir/power_now\" 2>/dev/null || echo '0'); watt=$(awk -v p=\"$p_now\" 'BEGIN {printf \"%.1f\", p/1000000}'); elif [ -f \"$dir/voltage_now\" ] && [ -f \"$dir/current_now\" ]; then v_now=$(cat \"$dir/voltage_now\" 2>/dev/null || echo '0'); c_now=$(cat \"$dir/current_now\" 2>/dev/null || echo '0'); watt=$(awk -v v=\"$v_now\" -v c=\"$c_now\" 'BEGIN {printf \"%.1f\", (v*c)/1000000000000}'); fi; echo \"$cap:$stat:${watt}W\"; fi"
-        ]
-        stdout: SplitParser {
-            onRead: data => {
-                var trimmed = data.trim();
-                if (!trimmed) return;
-                var parts = trimmed.split(":");
-                if (parts.length === 3) {
-                    engine.percent = parts[0] + "%";
-                    engine.status = parts[1];
-                    engine.power = parts[2];
-                }
-            }
-        }
+        command: LuaRunner.cmd("modules/common/backend/BatteryEngine.lua", "poll", engine.batteryName)
+        stdout: SplitParser { onRead: engine.applyPollLine(data) }
+    }
+
+    function refresh() {
+        if (!engine.hasBattery) return;
+        pollProc.running = false;
+        pollProc.running = true;
     }
 }

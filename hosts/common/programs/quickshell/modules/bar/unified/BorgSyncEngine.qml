@@ -2,6 +2,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "../../common" as Common
 import "../../common/Utils.js" as Utils
 
 Item {
@@ -33,14 +34,7 @@ Item {
 
     Process {
         id: borgProcess
-        command: [
-            "bash", "-c",
-            "STATUS_JSON=$(cat /dev/shm/borg-offsite-status.json 2>/dev/null || echo '{\"status\": \"idle\"}'); " +
-            "IS_ACTIVE=$(systemctl is-active sync-backup-to-nextcloud.service 2>/dev/null | tr -d '[:space:]'); " +
-            "IS_MOUNTED=$(mount | grep -q '/tmp/borg-mount' && echo 1 || echo 0); " +
-            "[ -z \"$IS_ACTIVE\" ] && IS_ACTIVE='inactive'; " +
-            "echo \"$STATUS_JSON\" | jq -c --arg is_act \"$IS_ACTIVE\" --arg is_mnt \"$IS_MOUNTED\" '. + {service_active: ($is_act == \"active\" or $is_act == \"activating\"), mounted: ($is_mnt == \"1\")}'"
-        ]
+        command: Common.LuaRunner.cmd("modules/bar/unified/backend/BorgSyncEngine.lua")
         stdout: SplitParser {
             onRead: data => {
                 try {

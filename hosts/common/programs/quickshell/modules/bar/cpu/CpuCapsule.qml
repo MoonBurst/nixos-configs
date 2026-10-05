@@ -2,7 +2,6 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "../../style"
-import "../common"
 import "../../common" as Common
 
 Item {
@@ -197,7 +196,7 @@ Item {
             x: cpuTooltip.slantX(y) + 20
         }
 
-        ProcessMonitorList {
+        Common.ProcessMonitorList {
             tooltip: cpuTooltip
             startY: 100
             listWidth: 345

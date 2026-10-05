@@ -5,7 +5,7 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 import "../../style"
-import "../common"
+import "../../common" as Common
 
 Item {
     id: gpuBox
@@ -283,7 +283,7 @@ Item {
             }
         }
 
-        ProcessMonitorList {
+        Common.ProcessMonitorList {
             tooltip: gpuTooltip
             startY: 100
             listWidth: Math.min(360, gpuTooltip.effectiveCoreWidth - 64)

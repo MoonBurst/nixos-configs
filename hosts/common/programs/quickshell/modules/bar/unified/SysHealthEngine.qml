@@ -30,14 +30,7 @@ Item {
 
     Process {
         id: fastHealthProc
-        command: [
-            "bash", "-c",
-            "SYS_FAILED=$(systemctl --failed --plain --no-legend 2>/dev/null | awk '{print $1}' | grep -v 'sync-backup-to-nextcloud' | tr '\\n' ' '); " +
-            "USER_FAILED=$(systemctl --user --failed --plain --no-legend 2>/dev/null | awk '{print \"user:\" $1}' | tr '\\n' ' '); " +
-            "ROOT_USAGE=$(df --output=pcent / 2>/dev/null | tail -n 1 | tr -dc '0-9'); " +
-            "BACKUP_USAGE=$(df --output=pcent /mnt/main_backup 2>/dev/null | tail -n 1 | tr -dc '0-9'); " +
-            "echo \"FAILED:${SYS_FAILED}${USER_FAILED}::ROOT:${ROOT_USAGE:-0}::BACKUP:${BACKUP_USAGE:-0}\""
-        ]
+        command: Common.LuaRunner.cmd("modules/bar/unified/backend/SysHealthFast.lua")
         stdout: SplitParser {
             onRead: data => {
                 var parts = data.trim().split("::");

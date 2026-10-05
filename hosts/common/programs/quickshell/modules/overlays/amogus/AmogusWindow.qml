@@ -12,6 +12,7 @@ Common.OverlayWindow {
     id: root
 
     windowId: "amogus"
+    ipcTarget: ""  // OverlayHost owns the "amogus" IPC target
     defaultW: 620
     defaultH: 480
     defaultPolicy: "lazy"

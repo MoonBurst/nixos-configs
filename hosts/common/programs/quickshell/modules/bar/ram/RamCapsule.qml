@@ -3,7 +3,6 @@ import QtQuick.Layouts 1.15
 import Quickshell
 import Quickshell.Io
 import "../../style"
-import "../common"
 import "../../common" as Common
 
 Item {
@@ -222,7 +221,7 @@ Item {
             Text { text: "■ Compressed/Swappable"; font.family: "monospace"; font.pixelSize: 11; color: (shell && shell.theme) ? shell.theme.base05 : "yellow"; opacity: 0.8 }
         }
 
-        ProcessMonitorList {
+        Common.ProcessMonitorList {
             tooltip: ramTooltip
             startY: 128
             listWidth: 400

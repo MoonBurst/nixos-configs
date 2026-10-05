@@ -2,145 +2,39 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Wayland
 import Quickshell.Io
-import "../../style" as Style
 import "../../common" as Common
 import "../../common/Utils.js" as Utils
+import "../../style" as Style
 
-PanelWindow {
-    id: root
+Common.OverlayWindow {
+    id: diceRoot
 
-    property string windowId: "rng"
-    property var shell: null
-    readonly property var safeShell: (typeof shell !== "undefined" && shell) ? shell : null
-    readonly property var settingsManager: safeShell ? safeShell.settingsManager : null
-    readonly property var theme: (safeShell && safeShell.theme) ? safeShell.theme : null
+    windowId: "rng"
+    ipcTarget: ""  // OverlayHost owns the "rng" IPC target
+    defaultW: 620
+    defaultH: 840
+    defaultPolicy: "lazy"
 
-    property string detectedFocusedScreenName: ""
+    // ---------- RNG state ----------
+    property int diceCount: 1
+    property int strengthVal: 0
+    property int flatModVal: 0
+    property int customSidesVal: 3
+    property int selectedSides: 6
+    property string keepMode: "all"
+    property int keepCount: 1
 
-    screen: {
-        var target = settingsManager ? settingsManager.rngScreenTarget : "focused";
-        if (target === "focused" || target === "") {
-            if (detectedFocusedScreenName !== "") {
-                var foundFocused = Quickshell.screens.find(s => s.name === detectedFocusedScreenName);
-                if (foundFocused) return foundFocused;
-            }
-            return null;
-        }
-        var found = Quickshell.screens.find(s => s.name === target);
-        if (found) return found;
-        return null;
-    }
+    property string lastRollType: "None"
+    property var lastRolls: []
+    property var previewRolls: []
+    readonly property int previewCount: Math.min(30, diceCount)
+    property int lastTotal: 0
+    property real lastAverage: 0.0
+    property string coinResult: ""
+    property bool showHistoryPanel: false
 
-    readonly property bool isPreviewMode: (settingsManager && settingsManager.previewWindow === windowId)
-    property bool isOpenState: false
-    visible: isOpenState || isPreviewMode
-
-    property bool isCardActive: true
-
-    readonly property color activeBorderColor: (theme && theme.base03) ? theme.base03 : "#003399"
-    readonly property color inactiveBorderColor: (theme && theme.base0D) ? theme.base0D : "#003399"
-
-    WlrLayershell.layer: isPreviewMode ? WlrLayer.Top : WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: {
-        if (!visible || isPreviewMode) return WlrKeyboardFocus.None;
-        return root.isCardActive ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None;
-    }
-
-    anchors { top: true; bottom: true; left: true; right: true }
-    color: "transparent"
-
-    mask: root.isCardActive ? null : cardMaskRegion
-    Region { id: cardMaskRegion; item: diceCard }
-
-    function openWithTarget() {
-        var target = settingsManager ? settingsManager.rngScreenTarget : "focused";
-        if (target === "focused" || target === "") {
-            focusDetector.running = false;
-            focusDetector.running = true;
-        }
-        root.isCardActive = true;
-        root.isOpenState = true;
-    }
-
-    function activateCard() {
-        root.isCardActive = true;
-    }
-
-    function toggleWithTarget() {
-        if (root.isOpenState) root.close();
-        else openWithTarget();
-    }
-
-    function close() {
-        root.isOpenState = false;
-        root.isCardActive = false;
-        if (settingsManager && settingsManager.previewWindow === windowId) {
-            settingsManager.previewWindow = "";
-        }
-    }
-
-    Common.GlobalEscWatcher {
-        active: root.isOpenState && !root.isPreviewMode
-        onEscapePressed: root.close()
-    }
-
-    Variants {
-        model: Quickshell.screens
-        delegate: PanelWindow {
-            id: otherScreenCatcher
-            required property var modelData
-            screen: modelData
-
-            visible: root.isOpenState && root.isCardActive && !root.isPreviewMode && (modelData !== root.screen)
-
-            WlrLayershell.namespace: "quickshell-rng-dismiss"
-            WlrLayershell.layer: WlrLayer.Overlay
-            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-
-            anchors { top: true; bottom: true; left: true; right: true }
-            color: "transparent"
-
-            MouseArea {
-                anchors.fill: parent
-                onPressed: {
-                    root.isCardActive = false;
-                }
-            }
-        }
-    }
-
-    MouseArea {
-        anchors.fill: parent
-        enabled: root.isCardActive && !root.isPreviewMode
-        onPressed: {
-            root.isCardActive = false;
-        }
-    }
-
-    Process {
-        id: focusDetector
-        command: [
-            "sh", "-c",
-            "hyprctl monitors 2>/dev/null | awk '/^Monitor/ {m=$2} /focused: (yes|true)/ {print m; exit}' || swaymsg -t get_outputs 2>/dev/null | awk '/name:/ {name=$2} /focused.*true/ {print name; exit}' | tr -d '\", \\t' || echo ''"
-        ]
-        stdout: SplitParser {
-            onRead: data => {
-                var name = data.trim();
-                if (name.length > 0) root.detectedFocusedScreenName = name;
-            }
-        }
-    }
-
-    Timer {
-        interval: 1500; running: true; repeat: true; triggeredOnStart: true
-        onTriggered: {
-            var target = settingsManager ? settingsManager.rngScreenTarget : "focused";
-            if (target === "focused" || target === "") focusDetector.running = true;
-        }
-    }
-
+    // ---------- Color shortcuts ----------
     readonly property color bgBase: theme ? theme.base01 : "#1e1e2e"
     readonly property color bgCard: theme ? theme.base00 : "#181825"
     readonly property color bgHover: theme ? theme.base02 : "#313244"
@@ -153,51 +47,84 @@ PanelWindow {
     readonly property int controlBorderWidth: (settingsManager && settingsManager.controlBorderWidth)
         ? settingsManager.controlBorderWidth
         : ((theme && theme.controlBorderWidth) ? theme.controlBorderWidth : 2)
-
     readonly property var inputPad: Utils.getSafeInputPadding(settingsManager)
 
-    property int diceCount: 1
-    property int strengthVal: 0
-    property int flatModVal: 0
-    property int customSidesVal: 3
-    property int selectedSides: 6
-    property string keepMode: "all"
-    property int keepCount: 1
-
-    property string lastRollType: "None"
-    property var lastRolls: []
-    property var previewRolls: []
-    // Stable number of preview slots. The Repeater below is bound to this
-    // fixed count (not to the array), so its delegates are only created once
-    // per diceCount change — never on every preview tick. Each delegate
-    // reads its current value dynamically, so only the Text re-renders.
-    readonly property int previewCount: Math.min(30, diceCount)
-    property int lastTotal: 0
-    property real lastAverage: 0.0
-    property string coinResult: ""
-    property bool showHistoryPanel: false
-
-    onDiceCountChanged: root.lastRolls = []
-    onSelectedSidesChanged: root.lastRolls = []
+    onDiceCountChanged: diceRoot.lastRolls = []
+    onSelectedSidesChanged: diceRoot.lastRolls = []
 
     ListModel { id: historyModel }
 
     Timer {
         id: marioPartyTimer
         interval: 60; repeat: true
-        running: root.visible && root.lastRolls.length === 0 && !root.showHistoryPanel
+        running: diceRoot.visible && diceRoot.lastRolls.length === 0 && !diceRoot.showHistoryPanel
         onTriggered: {
             var tempPreview = [];
-            var count = Math.min(30, root.diceCount);
-            var sides = root.selectedSides < 2 ? 2 : root.selectedSides;
+            var count = Math.min(30, diceRoot.diceCount);
+            var sides = diceRoot.selectedSides < 2 ? 2 : diceRoot.selectedSides;
             for (var i = 0; i < count; i++) {
                 if (sides === 2) tempPreview.push(Math.random() < 0.5 ? "H" : "T");
                 else tempPreview.push(Math.floor(Math.random() * sides) + 1);
             }
-            root.previewRolls = tempPreview;
+            diceRoot.previewRolls = tempPreview;
         }
     }
 
+    // ---------- Focused-screen detection ----------
+    property string detectedFocusedScreenName: ""
+
+    screen: {
+        var target = settingsManager ? settingsManager.rngScreenTarget : "focused";
+        if (target === "focused" || target === "") {
+            if (diceRoot.detectedFocusedScreenName !== "") {
+                var foundFocused = Quickshell.screens.find(s => s.name === diceRoot.detectedFocusedScreenName);
+                if (foundFocused) return foundFocused;
+            }
+            return (safeShell && safeShell.primaryScreen) ? safeShell.primaryScreen : Quickshell.screens[0];
+        }
+        var found = Quickshell.screens.find(s => s.name === target);
+        if (found) return found;
+        return (safeShell && safeShell.primaryScreen) ? safeShell.primaryScreen : Quickshell.screens[0];
+    }
+
+    Process {
+        id: focusDetector
+        command: [
+            "sh", "-c",
+            "swaymsg -t get_outputs 2>/dev/null | awk '/name:/ {name=$2} /focused.*true/ {print name; exit}' | tr -d '\", \\t' || hyprctl monitors 2>/dev/null | awk '/^Monitor/ {m=$2} /focused: (yes|true)/ {print m; exit}' || echo ''"
+        ]
+        stdout: SplitParser {
+            onRead: data => {
+                var name = data.trim();
+                if (name.length > 0) diceRoot.detectedFocusedScreenName = name;
+            }
+        }
+    }
+
+    Timer {
+        interval: 1500; running: true; repeat: true; triggeredOnStart: true
+        onTriggered: {
+            var target = settingsManager ? settingsManager.rngScreenTarget : "focused";
+            if (target === "focused" || target === "") focusDetector.running = true;
+        }
+    }
+
+    // ---------- Custom open/toggle API ----------
+    function openWithTarget() {
+        var target = settingsManager ? settingsManager.rngScreenTarget : "focused";
+        if (target === "focused" || target === "") {
+            focusDetector.running = false;
+            focusDetector.running = true;
+        }
+        open();
+    }
+
+    function toggleWithTarget() {
+        if (isOpenState) close();
+        else openWithTarget();
+    }
+
+    // ---------- Local component ----------
     component NumInput : Item {
         id: numBox
         property int value: 0
@@ -210,33 +137,33 @@ PanelWindow {
         Style.ShapeBox {
             anchors.fill: parent
             role: "input"
-            color: root.bgCard
-            borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
-            borderWidth: root.controlBorderWidth
+            color: diceRoot.bgCard
+            borderColor: diceRoot.isCardActive ? diceRoot.activeBorderColor : diceRoot.inactiveBorderColor
+            borderWidth: diceRoot.controlBorderWidth
             slantWidth: 10
         }
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: Math.max(14, root.inputPad.left)
-            anchors.rightMargin: Math.max(14, root.inputPad.right)
+            anchors.leftMargin: Math.max(14, diceRoot.inputPad.left)
+            anchors.rightMargin: Math.max(14, diceRoot.inputPad.right)
             anchors.topMargin: 4
             anchors.bottomMargin: 4
             spacing: 6
 
             Rectangle {
                 width: 28; Layout.fillHeight: true; radius: 4
-                color: upM.containsMouse ? root.bgHover : "transparent"
-                border.width: root.controlBorderWidth
-                border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
-                Text { text: "▲"; anchors.centerIn: parent; color: root.highlightColor; font.pixelSize: 13; font.bold: true }
+                color: upM.containsMouse ? diceRoot.bgHover : "transparent"
+                border.width: diceRoot.controlBorderWidth
+                border.color: diceRoot.isCardActive ? diceRoot.activeBorderColor : diceRoot.inactiveBorderColor
+                Text { text: "▲"; anchors.centerIn: parent; color: diceRoot.highlightColor; font.pixelSize: 13; font.bold: true }
                 MouseArea { id: upM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onPressed: { if (numBox.value < numBox.maxVal) numBox.value += numBox.step; } }
             }
             TextInput {
                 id: txtInput
                 Layout.fillWidth: true; Layout.fillHeight: true
                 text: String(numBox.value)
-                font.pixelSize: 18; font.bold: true; color: root.highlightColor
+                font.pixelSize: 18; font.bold: true; color: diceRoot.highlightColor
                 horizontalAlignment: Qt.AlignHCenter; verticalAlignment: Qt.AlignVCenter
                 validator: IntValidator { bottom: numBox.minVal; top: numBox.maxVal }
                 inputMethodHints: Qt.ImhDigitsOnly
@@ -245,10 +172,10 @@ PanelWindow {
             }
             Rectangle {
                 width: 28; Layout.fillHeight: true; radius: 4
-                color: downM.containsMouse ? root.bgHover : "transparent"
-                border.width: root.controlBorderWidth
-                border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
-                Text { text: "▼"; anchors.centerIn: parent; color: root.highlightColor; font.pixelSize: 13; font.bold: true }
+                color: downM.containsMouse ? diceRoot.bgHover : "transparent"
+                border.width: diceRoot.controlBorderWidth
+                border.color: diceRoot.isCardActive ? diceRoot.activeBorderColor : diceRoot.inactiveBorderColor
+                Text { text: "▼"; anchors.centerIn: parent; color: diceRoot.highlightColor; font.pixelSize: 13; font.bold: true }
                 MouseArea { id: downM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onPressed: { if (numBox.value > numBox.minVal) numBox.value -= numBox.step; } }
             }
         }
@@ -304,40 +231,13 @@ PanelWindow {
         if (historyModel.count > 50) historyModel.remove(50, historyModel.count - 50);
     }
 
-    Item {
-        id: diceCard
-        anchors.centerIn: parent
-        width: settingsManager ? settingsManager.getWindowWidth(root.windowId, 620) : 620
-        height: settingsManager ? settingsManager.getWindowHeight(root.windowId, 840) : 840
-
-        readonly property var safePad: Utils.getSafeCardPadding(settingsManager)
-
-        Style.ShapeBox {
-            anchors.fill: parent
-            role: "card"
-            color: root.bgBase
-            borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
-            borderWidth: root.globalBorderWidth
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            enabled: !root.isCardActive && !root.isPreviewMode
-            z: 9999
-            cursorShape: Qt.PointingHandCursor
-            onPressed: {
-                root.activateCard();
-            }
-        }
-
+    // ---------- View ----------
+    viewComponent: Component {
         ColumnLayout {
             anchors.fill: parent
-            anchors.leftMargin: diceCard.safePad.h
-            anchors.rightMargin: diceCard.safePad.h
-            anchors.topMargin: diceCard.safePad.v
-            anchors.bottomMargin: diceCard.safePad.v
             spacing: 12
 
+            // Title bar
             Item {
                 Layout.fillWidth: true
                 height: 48
@@ -345,29 +245,29 @@ PanelWindow {
                 Style.ShapeBox {
                     anchors.fill: parent
                     role: "input"
-                    color: root.bgCard
-                    borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
-                    borderWidth: root.controlBorderWidth
+                    color: diceRoot.bgCard
+                    borderColor: diceRoot.isCardActive ? diceRoot.activeBorderColor : diceRoot.inactiveBorderColor
+                    borderWidth: diceRoot.controlBorderWidth
                     slantWidth: 10
                 }
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: Math.max(16, root.inputPad.left)
-                    anchors.rightMargin: Math.max(16, root.inputPad.right)
-                    Text { text: "🎲 Dice, Coin & RNG"; color: root.highlightColor; font.bold: true; font.pixelSize: 18; Layout.fillWidth: true }
+                    anchors.leftMargin: Math.max(16, diceRoot.inputPad.left)
+                    anchors.rightMargin: Math.max(16, diceRoot.inputPad.right)
+                    Text { text: "🎲 Dice, Coin & RNG"; color: diceRoot.highlightColor; font.bold: true; font.pixelSize: 18; Layout.fillWidth: true }
                     Item {
                         width: 110; height: 32
                         Style.ShapeBox {
                             anchors.fill: parent
                             role: "input"
                             slantWidth: 6
-                            color: root.showHistoryPanel ? root.accentColor : (histMouse.containsMouse ? root.bgHover : root.bgBase)
-                            borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
-                            borderWidth: root.controlBorderWidth
+                            color: diceRoot.showHistoryPanel ? diceRoot.accentColor : (histMouse.containsMouse ? diceRoot.bgHover : diceRoot.bgBase)
+                            borderColor: diceRoot.isCardActive ? diceRoot.activeBorderColor : diceRoot.inactiveBorderColor
+                            borderWidth: diceRoot.controlBorderWidth
                         }
-                        Text { anchors.centerIn: parent; text: root.showHistoryPanel ? "🎲 Roller" : "📜 History"; color: root.showHistoryPanel ? "#11111b" : root.highlightColor; font.bold: true; font.pixelSize: 14 }
-                        MouseArea { id: histMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.showHistoryPanel = !root.showHistoryPanel }
+                        Text { anchors.centerIn: parent; text: diceRoot.showHistoryPanel ? "🎲 Roller" : "📜 History"; color: diceRoot.showHistoryPanel ? "#11111b" : diceRoot.highlightColor; font.bold: true; font.pixelSize: 14 }
+                        MouseArea { id: histMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: diceRoot.showHistoryPanel = !diceRoot.showHistoryPanel }
                     }
                     Item {
                         width: 32; height: 32
@@ -375,38 +275,39 @@ PanelWindow {
                             anchors.fill: parent
                             role: "input"
                             slantWidth: 6
-                            color: closeMouse.containsMouse ? root.altAccent : "transparent"
+                            color: closeMouse.containsMouse ? diceRoot.altAccent : "transparent"
                             borderColor: "transparent"
                             borderWidth: 0
                         }
-                        Text { anchors.centerIn: parent; text: "✕"; color: closeMouse.containsMouse ? "#11111b" : root.highlightColor; font.bold: true; font.pixelSize: 16 }
-                        MouseArea { id: closeMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.close() }
+                        Text { anchors.centerIn: parent; text: "✕"; color: closeMouse.containsMouse ? "#11111b" : diceRoot.highlightColor; font.bold: true; font.pixelSize: 16 }
+                        MouseArea { id: closeMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: diceRoot.close() }
                     }
                 }
             }
 
+            // Roller panel
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 spacing: 12
-                visible: !root.showHistoryPanel
+                visible: !diceRoot.showHistoryPanel
 
                 RowLayout {
                     Layout.fillWidth: true; spacing: 10
                     ColumnLayout {
                         Layout.fillWidth: true; spacing: 4
-                        Text { text: "Quantity"; color: root.highlightColor; font.pixelSize: 14; font.bold: true }
-                        NumInput { id: qtyBox; minVal: 1; maxVal: 100; value: root.diceCount; Layout.fillWidth: true; onValueChanged: { root.diceCount = value; if (keepSpin.value > value) keepSpin.value = value; } }
+                        Text { text: "Quantity"; color: diceRoot.highlightColor; font.pixelSize: 14; font.bold: true }
+                        NumInput { id: qtyBox; minVal: 1; maxVal: 100; value: diceRoot.diceCount; Layout.fillWidth: true; onValueChanged: { diceRoot.diceCount = value; if (keepSpin.value > value) keepSpin.value = value; } }
                     }
                     ColumnLayout {
                         Layout.fillWidth: true; spacing: 4
-                        Text { text: "Strength (Capped)"; color: root.highlightColor; font.pixelSize: 14; font.bold: true }
-                        NumInput { id: strBox; minVal: -100; maxVal: 100; value: root.strengthVal; Layout.fillWidth: true; onValueChanged: root.strengthVal = value }
+                        Text { text: "Strength (Capped)"; color: diceRoot.highlightColor; font.pixelSize: 14; font.bold: true }
+                        NumInput { id: strBox; minVal: -100; maxVal: 100; value: diceRoot.strengthVal; Layout.fillWidth: true; onValueChanged: diceRoot.strengthVal = value }
                     }
                     ColumnLayout {
                         Layout.fillWidth: true; spacing: 4
-                        Text { text: "Flat Mod (+X)"; color: root.highlightColor; font.pixelSize: 14; font.bold: true }
-                        NumInput { id: flatBox; minVal: -100; maxVal: 100; value: root.flatModVal; Layout.fillWidth: true; onValueChanged: root.flatModVal = value }
+                        Text { text: "Flat Mod (+X)"; color: diceRoot.highlightColor; font.pixelSize: 14; font.bold: true }
+                        NumInput { id: flatBox; minVal: -100; maxVal: 100; value: diceRoot.flatModVal; Layout.fillWidth: true; onValueChanged: diceRoot.flatModVal = value }
                     }
                 }
 
@@ -415,35 +316,35 @@ PanelWindow {
                     Style.ShapeBox {
                         anchors.fill: parent
                         role: "input"
-                        color: root.bgCard
-                        borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
-                        borderWidth: root.controlBorderWidth
+                        color: diceRoot.bgCard
+                        borderColor: diceRoot.isCardActive ? diceRoot.activeBorderColor : diceRoot.inactiveBorderColor
+                        borderWidth: diceRoot.controlBorderWidth
                         slantWidth: 10
                     }
                     RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: Math.max(16, root.inputPad.left)
-                        anchors.rightMargin: Math.max(16, root.inputPad.right)
+                        anchors.leftMargin: Math.max(16, diceRoot.inputPad.left)
+                        anchors.rightMargin: Math.max(16, diceRoot.inputPad.right)
                         spacing: 8
-                        Text { text: "Mode:"; color: root.highlightColor; font.bold: true; font.pixelSize: 14 }
+                        Text { text: "Mode:"; color: diceRoot.highlightColor; font.bold: true; font.pixelSize: 14 }
                         Repeater {
                             model: [ { "idStr": "all", "label": "Keep All" }, { "idStr": "kh", "label": "Advantage" }, { "idStr": "kl", "label": "Disadvantage" } ]
                             delegate: Item {
-                                readonly property bool isSelected: root.keepMode === modelData.idStr
+                                readonly property bool isSelected: diceRoot.keepMode === modelData.idStr
                                 Layout.fillWidth: true; height: 36
                                 Style.ShapeBox {
                                     anchors.fill: parent
                                     role: "input"
                                     slantWidth: 8
-                                    color: isSelected ? root.bgHover : root.bgBase
-                                    borderColor: isSelected ? root.highlightColor : (root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor)
-                                    borderWidth: root.controlBorderWidth
+                                    color: isSelected ? diceRoot.bgHover : diceRoot.bgBase
+                                    borderColor: isSelected ? diceRoot.highlightColor : (diceRoot.isCardActive ? diceRoot.activeBorderColor : diceRoot.inactiveBorderColor)
+                                    borderWidth: diceRoot.controlBorderWidth
                                 }
-                                Text { anchors.centerIn: parent; text: modelData.label; color: root.highlightColor; font.bold: isSelected; font.pixelSize: 13 }
-                                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.keepMode = modelData.idStr }
+                                Text { anchors.centerIn: parent; text: modelData.label; color: diceRoot.highlightColor; font.bold: isSelected; font.pixelSize: 13 }
+                                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: diceRoot.keepMode = modelData.idStr }
                             }
                         }
-                        NumInput { id: keepSpin; visible: root.keepMode !== "all"; minVal: 1; maxVal: Math.max(1, root.diceCount); value: root.keepCount; Layout.preferredWidth: 120; onValueChanged: root.keepCount = value }
+                        NumInput { id: keepSpin; visible: diceRoot.keepMode !== "all"; minVal: 1; maxVal: Math.max(1, diceRoot.diceCount); value: diceRoot.keepCount; Layout.preferredWidth: 120; onValueChanged: diceRoot.keepCount = value }
                     }
                 }
 
@@ -452,44 +353,44 @@ PanelWindow {
                     Repeater {
                         model: [ { name: "🪙 Coin", sides: 2 }, { name: "d4", sides: 4 }, { name: "d6", sides: 6 }, { name: "d8", sides: 8 }, { name: "d10", sides: 10 }, { name: "d12", sides: 12 }, { name: "d20", sides: 20 }, { name: "d100", sides: 100 } ]
                         delegate: Item {
-                            readonly property bool isSelected: root.selectedSides === modelData.sides
+                            readonly property bool isSelected: diceRoot.selectedSides === modelData.sides
                             Layout.fillWidth: true; height: 44
                             Style.ShapeBox {
                                 anchors.fill: parent
                                 role: "input"
                                 slantWidth: 8
-                                color: root.bgCard
-                                borderColor: isSelected ? root.highlightColor : (root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor)
-                                borderWidth: root.controlBorderWidth
+                                color: diceRoot.bgCard
+                                borderColor: isSelected ? diceRoot.highlightColor : (diceRoot.isCardActive ? diceRoot.activeBorderColor : diceRoot.inactiveBorderColor)
+                                borderWidth: diceRoot.controlBorderWidth
                             }
-                            Text { anchors.centerIn: parent; text: modelData.name; color: isSelected ? root.highlightColor : (modelData.sides === 2 ? root.accentColor : root.highlightColor); font.bold: isSelected; font.pixelSize: 16 }
-                            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.selectedSides = modelData.sides }
+                            Text { anchors.centerIn: parent; text: modelData.name; color: isSelected ? diceRoot.highlightColor : (modelData.sides === 2 ? diceRoot.accentColor : diceRoot.highlightColor); font.bold: isSelected; font.pixelSize: 16 }
+                            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: diceRoot.selectedSides = modelData.sides }
                         }
                     }
                 }
 
                 Item {
                     id: customDieRow
-                    readonly property bool isCustomActive: root.selectedSides === root.customSidesVal && root.selectedSides !== 2 && root.selectedSides !== 4 && root.selectedSides !== 6 && root.selectedSides !== 8 && root.selectedSides !== 10 && root.selectedSides !== 12 && root.selectedSides !== 20 && root.selectedSides !== 100
+                    readonly property bool isCustomActive: diceRoot.selectedSides === diceRoot.customSidesVal && diceRoot.selectedSides !== 2 && diceRoot.selectedSides !== 4 && diceRoot.selectedSides !== 6 && diceRoot.selectedSides !== 8 && diceRoot.selectedSides !== 10 && diceRoot.selectedSides !== 12 && diceRoot.selectedSides !== 20 && diceRoot.selectedSides !== 100
                     Layout.fillWidth: true; height: 52
                     Style.ShapeBox {
                         anchors.fill: parent
                         role: "input"
                         slantWidth: 10
-                        color: customDieRow.isCustomActive ? root.bgHover : root.bgCard
-                        borderColor: customDieRow.isCustomActive ? root.highlightColor : (root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor)
-                        borderWidth: root.controlBorderWidth
+                        color: customDieRow.isCustomActive ? diceRoot.bgHover : diceRoot.bgCard
+                        borderColor: customDieRow.isCustomActive ? diceRoot.highlightColor : (diceRoot.isCardActive ? diceRoot.activeBorderColor : diceRoot.inactiveBorderColor)
+                        borderWidth: diceRoot.controlBorderWidth
                     }
                     RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: Math.max(16, root.inputPad.left)
-                        anchors.rightMargin: Math.max(16, root.inputPad.right)
+                        anchors.leftMargin: Math.max(16, diceRoot.inputPad.left)
+                        anchors.rightMargin: Math.max(16, diceRoot.inputPad.right)
                         spacing: 12
-                        Text { text: "🎲 Custom Die (d" + root.customSidesVal + "):"; color: root.highlightColor; font.bold: true; font.pixelSize: 16 }
+                        Text { text: "🎲 Custom Die (d" + diceRoot.customSidesVal + "):"; color: diceRoot.highlightColor; font.bold: true; font.pixelSize: 16 }
                         Item { Layout.fillWidth: true }
-                        NumInput { id: customSpin; minVal: 2; maxVal: 1000; value: root.customSidesVal; Layout.preferredWidth: 130; onValueChanged: { root.customSidesVal = value; root.selectedSides = value; } }
+                        NumInput { id: customSpin; minVal: 2; maxVal: 1000; value: diceRoot.customSidesVal; Layout.preferredWidth: 130; onValueChanged: { diceRoot.customSidesVal = value; diceRoot.selectedSides = value; } }
                     }
-                    MouseArea { anchors.fill: parent; z: -1; cursorShape: Qt.PointingHandCursor; onClicked: root.selectedSides = root.customSidesVal }
+                    MouseArea { anchors.fill: parent; z: -1; cursorShape: Qt.PointingHandCursor; onClicked: diceRoot.selectedSides = diceRoot.customSidesVal }
                 }
 
                 Item {
@@ -498,20 +399,20 @@ PanelWindow {
                         anchors.fill: parent
                         role: "input"
                         slantWidth: 10
-                        color: rollMouse.containsMouse ? root.bgHover : root.bgCard
-                        borderColor: rollMouse.containsMouse ? root.highlightColor : root.accentColor
-                        borderWidth: root.controlBorderWidth
+                        color: rollMouse.containsMouse ? diceRoot.bgHover : diceRoot.bgCard
+                        borderColor: rollMouse.containsMouse ? diceRoot.highlightColor : diceRoot.accentColor
+                        borderWidth: diceRoot.controlBorderWidth
                     }
                     Text {
                         anchors.centerIn: parent
                         text: {
-                            var suffixStr = root.keepMode === "kh" ? " (kh" + root.keepCount + ")" : (root.keepMode === "kl" ? " (kl" + root.keepCount + ")" : "");
-                            return root.selectedSides === 2 ? ("🎲 ROLL " + root.diceCount + (root.diceCount === 1 ? " Coin" : " Coins")) : ("🎲 ROLL " + root.diceCount + "d" + root.selectedSides + suffixStr);
+                            var suffixStr = diceRoot.keepMode === "kh" ? " (kh" + diceRoot.keepCount + ")" : (diceRoot.keepMode === "kl" ? " (kl" + diceRoot.keepCount + ")" : "");
+                            return diceRoot.selectedSides === 2 ? ("🎲 ROLL " + diceRoot.diceCount + (diceRoot.diceCount === 1 ? " Coin" : " Coins")) : ("🎲 ROLL " + diceRoot.diceCount + "d" + diceRoot.selectedSides + suffixStr);
                         }
-                        color: rollMouse.containsMouse ? root.highlightColor : root.accentColor
+                        color: rollMouse.containsMouse ? diceRoot.highlightColor : diceRoot.accentColor
                         font.bold: true; font.pixelSize: 18
                     }
-                    MouseArea { id: rollMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.executeRoll() }
+                    MouseArea { id: rollMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: diceRoot.executeRoll() }
                 }
 
                 Item {
@@ -520,36 +421,36 @@ PanelWindow {
                         anchors.fill: parent
                         role: "input"
                         slantWidth: 10
-                        color: root.bgCard
-                        borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
-                        borderWidth: root.controlBorderWidth
+                        color: diceRoot.bgCard
+                        borderColor: diceRoot.isCardActive ? diceRoot.activeBorderColor : diceRoot.inactiveBorderColor
+                        borderWidth: diceRoot.controlBorderWidth
                     }
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: Math.max(18, root.inputPad.left)
-                        anchors.rightMargin: Math.max(18, root.inputPad.right)
+                        anchors.leftMargin: Math.max(18, diceRoot.inputPad.left)
+                        anchors.rightMargin: Math.max(18, diceRoot.inputPad.right)
                         anchors.topMargin: 12
                         anchors.bottomMargin: 12
                         spacing: 8
-                        visible: root.lastRolls.length > 0 || root.coinResult !== ""
+                        visible: diceRoot.lastRolls.length > 0 || diceRoot.coinResult !== ""
                         RowLayout {
                             Layout.fillWidth: true
-                            Text { text: root.lastRollType === "None" ? "" : root.lastRollType; color: root.highlightColor; font.pixelSize: 16; opacity: 0.8 }
+                            Text { text: diceRoot.lastRollType === "None" ? "" : diceRoot.lastRollType; color: diceRoot.highlightColor; font.pixelSize: 16; opacity: 0.8 }
                             Item { Layout.fillWidth: true }
-                            Text { visible: root.coinResult !== ""; text: root.coinResult; color: root.accentColor; font.bold: true; font.pixelSize: 16 }
-                            Text { visible: root.coinResult === "" && root.lastRolls.length > 0; text: "TOTAL: " + root.lastTotal; color: root.accentColor; font.bold: true; font.pixelSize: 20 }
+                            Text { visible: diceRoot.coinResult !== ""; text: diceRoot.coinResult; color: diceRoot.accentColor; font.bold: true; font.pixelSize: 16 }
+                            Text { visible: diceRoot.coinResult === "" && diceRoot.lastRolls.length > 0; text: "TOTAL: " + diceRoot.lastTotal; color: diceRoot.accentColor; font.bold: true; font.pixelSize: 20 }
                         }
                         RowLayout {
-                            Layout.fillWidth: true; visible: root.coinResult === "" && root.lastRolls.length > 0
-                            Text { text: (root.keepMode === "all" ? "Average: " : "Average (Kept): ") + root.lastAverage.toFixed(2); color: root.highlightColor; font.pixelSize: 14; opacity: 0.8 }
+                            Layout.fillWidth: true; visible: diceRoot.coinResult === "" && diceRoot.lastRolls.length > 0
+                            Text { text: (diceRoot.keepMode === "all" ? "Average: " : "Average (Kept): ") + diceRoot.lastAverage.toFixed(2); color: diceRoot.highlightColor; font.pixelSize: 14; opacity: 0.8 }
                         }
                         ScrollView {
                             id: outcomesScroll; Layout.fillWidth: true; Layout.fillHeight: true; clip: true
                             Flow {
                                 width: outcomesScroll.availableWidth > 0 ? outcomesScroll.availableWidth : 480; spacing: 8
                                 Repeater {
-                                    model: root.lastRolls
+                                    model: diceRoot.lastRolls
                                     delegate: Item {
                                         readonly property bool isKept: typeof modelData.kept !== "undefined" ? modelData.kept : true
                                         readonly property string displayVal: typeof modelData.value !== "undefined" ? String(modelData.value) : String(modelData.valStr)
@@ -559,11 +460,11 @@ PanelWindow {
                                             anchors.fill: parent
                                             role: "input"
                                             slantWidth: 6
-                                            color: isKept ? (displayVal === "Heads" ? root.accentColor : (displayVal === "Tails" ? root.bgHover : root.bgBase)) : root.bgCard
-                                            borderColor: isKept ? root.accentColor : (root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor)
-                                            borderWidth: root.controlBorderWidth
+                                            color: isKept ? (displayVal === "Heads" ? diceRoot.accentColor : (displayVal === "Tails" ? diceRoot.bgHover : diceRoot.bgBase)) : diceRoot.bgCard
+                                            borderColor: isKept ? diceRoot.accentColor : (diceRoot.isCardActive ? diceRoot.activeBorderColor : diceRoot.inactiveBorderColor)
+                                            borderWidth: diceRoot.controlBorderWidth
                                         }
-                                        Text { id: valText; anchors.centerIn: parent; text: displayVal; color: isKept ? (displayVal === "Heads" ? "#11111b" : root.highlightColor) : root.highlightColor; font.bold: isKept; font.strikeout: !isKept; font.pixelSize: 16 }
+                                        Text { id: valText; anchors.centerIn: parent; text: displayVal; color: isKept ? (displayVal === "Heads" ? "#11111b" : diceRoot.highlightColor) : diceRoot.highlightColor; font.bold: isKept; font.strikeout: !isKept; font.pixelSize: 16 }
                                     }
                                 }
                             }
@@ -572,45 +473,36 @@ PanelWindow {
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: Math.max(18, root.inputPad.left)
-                        anchors.rightMargin: Math.max(18, root.inputPad.right)
+                        anchors.leftMargin: Math.max(18, diceRoot.inputPad.left)
+                        anchors.rightMargin: Math.max(18, diceRoot.inputPad.right)
                         anchors.topMargin: 12
                         anchors.bottomMargin: 12
                         spacing: 8
-                        visible: root.lastRolls.length === 0 && root.coinResult === ""
+                        visible: diceRoot.lastRolls.length === 0 && diceRoot.coinResult === ""
                         RowLayout {
                             Layout.fillWidth: true
-                            Text { text: "🎲 " + root.diceCount + (root.selectedSides === 2 ? (root.diceCount === 1 ? " Coin" : " Coins") : ("d" + root.selectedSides)) + " (Waiting to roll...)"; color: root.highlightColor; font.pixelSize: 16; opacity: 0.8 }
+                            Text { text: "🎲 " + diceRoot.diceCount + (diceRoot.selectedSides === 2 ? (diceRoot.diceCount === 1 ? " Coin" : " Coins") : ("d" + diceRoot.selectedSides)) + " (Waiting to roll...)"; color: diceRoot.highlightColor; font.pixelSize: 16; opacity: 0.8 }
                             Item { Layout.fillWidth: true }
-                            Text { text: "TOTAL: ?"; color: (root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor); font.bold: true; font.pixelSize: 20 }
+                            Text { text: "TOTAL: ?"; color: (diceRoot.isCardActive ? diceRoot.activeBorderColor : diceRoot.inactiveBorderColor); font.bold: true; font.pixelSize: 20 }
                         }
                         ScrollView {
                             id: previewScroll; Layout.fillWidth: true; Layout.fillHeight: true; clip: true
                             Flow {
                                 width: previewScroll.availableWidth > 0 ? previewScroll.availableWidth : 480; spacing: 8
                                 Repeater {
-                                    // Fixed model count: the delegates below are
-                                    // created exactly once and then only their
-                                    // currentVal binding re-evaluates on each tick.
-                                    model: root.previewCount
+                                    model: diceRoot.previewCount
                                     delegate: Item {
-                                        readonly property var currentVal: (index < root.previewRolls.length) ? root.previewRolls[index] : ""
+                                        readonly property var currentVal: (index < diceRoot.previewRolls.length) ? diceRoot.previewRolls[index] : ""
                                         width: 44; height: 38
                                         Style.ShapeBox {
                                             anchors.fill: parent
                                             role: "input"
                                             slantWidth: 6
-                                            color: root.bgBase
-                                            borderColor: root.highlightColor
-                                            borderWidth: root.controlBorderWidth
+                                            color: diceRoot.bgBase
+                                            borderColor: diceRoot.highlightColor
+                                            borderWidth: diceRoot.controlBorderWidth
                                         }
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: String(currentVal)
-                                            color: root.highlightColor
-                                            font.bold: true
-                                            font.pixelSize: 16
-                                        }
+                                        Text { anchors.centerIn: parent; text: String(currentVal); color: diceRoot.highlightColor; font.bold: true; font.pixelSize: 16 }
                                     }
                                 }
                             }
@@ -619,17 +511,18 @@ PanelWindow {
                 }
             }
 
+            // History panel
             Item {
                 Layout.fillWidth: true; Layout.fillHeight: true
-                visible: root.showHistoryPanel
+                visible: diceRoot.showHistoryPanel
 
                 Style.ShapeBox {
                     anchors.fill: parent
                     role: "input"
                     slantWidth: 10
-                    color: root.bgCard
-                    borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
-                    borderWidth: root.controlBorderWidth
+                    color: diceRoot.bgCard
+                    borderColor: diceRoot.isCardActive ? diceRoot.activeBorderColor : diceRoot.inactiveBorderColor
+                    borderWidth: diceRoot.controlBorderWidth
                 }
 
                 ColumnLayout {
@@ -638,7 +531,7 @@ PanelWindow {
                     spacing: 8
                     RowLayout {
                         Layout.fillWidth: true
-                        Text { text: "📜 Roll History (" + historyModel.count + ")"; color: root.highlightColor; font.bold: true; font.pixelSize: 16 }
+                        Text { text: "📜 Roll History (" + historyModel.count + ")"; color: diceRoot.highlightColor; font.bold: true; font.pixelSize: 16 }
                         Item { Layout.fillWidth: true }
                         Item {
                             width: 130; height: 30
@@ -646,11 +539,11 @@ PanelWindow {
                                 anchors.fill: parent
                                 role: "input"
                                 slantWidth: 6
-                                color: clearMouse.containsMouse ? root.altAccent : root.bgBase
-                                borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
-                                borderWidth: root.controlBorderWidth
+                                color: clearMouse.containsMouse ? diceRoot.altAccent : diceRoot.bgBase
+                                borderColor: diceRoot.isCardActive ? diceRoot.activeBorderColor : diceRoot.inactiveBorderColor
+                                borderWidth: diceRoot.controlBorderWidth
                             }
-                            Text { anchors.centerIn: parent; text: "Clear History"; color: clearMouse.containsMouse ? "#11111b" : root.highlightColor; font.bold: true; font.pixelSize: 14 }
+                            Text { anchors.centerIn: parent; text: "Clear History"; color: clearMouse.containsMouse ? "#11111b" : diceRoot.highlightColor; font.bold: true; font.pixelSize: 14 }
                             MouseArea { id: clearMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: historyModel.clear() }
                         }
                     }
@@ -663,19 +556,19 @@ PanelWindow {
                                 anchors.fill: parent
                                 role: "input"
                                 slantWidth: 6
-                                color: root.bgBase
-                                borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
-                                borderWidth: root.controlBorderWidth
+                                color: diceRoot.bgBase
+                                borderColor: diceRoot.isCardActive ? diceRoot.activeBorderColor : diceRoot.inactiveBorderColor
+                                borderWidth: diceRoot.controlBorderWidth
                             }
                             ColumnLayout {
                                 anchors.fill: parent; anchors.margins: 8; spacing: 2
                                 RowLayout {
                                     Layout.fillWidth: true
-                                    Text { text: model.timeStr + " • " + model.typeStr; color: root.highlightColor; font.bold: true; font.pixelSize: 14 }
+                                    Text { text: model.timeStr + " • " + model.typeStr; color: diceRoot.highlightColor; font.bold: true; font.pixelSize: 14 }
                                     Item { Layout.fillWidth: true }
-                                    Text { text: model.typeStr.indexOf("Coin") !== -1 ? model.rollsStr : ("Total: " + model.totalVal + " (Avg: " + model.avgVal + ")"); color: root.accentColor; font.bold: true; font.pixelSize: 14 }
+                                    Text { text: model.typeStr.indexOf("Coin") !== -1 ? model.rollsStr : ("Total: " + model.totalVal + " (Avg: " + model.avgVal + ")"); color: diceRoot.accentColor; font.bold: true; font.pixelSize: 14 }
                                 }
-                                Text { text: "Outcomes: [ " + model.rollsStr + " ]"; color: root.highlightColor; font.pixelSize: 13; opacity: 0.7; elide: Text.ElideRight; Layout.fillWidth: true }
+                                Text { text: "Outcomes: [ " + model.rollsStr + " ]"; color: diceRoot.highlightColor; font.pixelSize: 13; opacity: 0.7; elide: Text.ElideRight; Layout.fillWidth: true }
                             }
                         }
                         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
@@ -683,11 +576,5 @@ PanelWindow {
                 }
             }
         }
-    }
-
-    Shortcut {
-        sequence: "Escape"
-        enabled: root.visible && !root.isPreviewMode
-        onActivated: root.close()
     }
 }

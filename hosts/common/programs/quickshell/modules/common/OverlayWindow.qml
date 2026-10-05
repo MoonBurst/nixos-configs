@@ -170,8 +170,11 @@ PanelWindow {
     }
 
     // ---- IPC ---------------------------------------------------------------
+    // Subclasses can set ipcTarget: "" to opt out (e.g. windows whose IPC is
+    // handled elsewhere, like Amogus and RNG in OverlayHost.qml).
     IpcHandler {
         target: base.ipcTarget
+        enabled: base.ipcTarget !== ""
         function toggle(): void { base.toggle(); }
         function open(arg: string): void { base.open(arg); }
         function close(): void { base.close(); }

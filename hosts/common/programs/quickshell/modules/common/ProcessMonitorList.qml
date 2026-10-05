@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls 2
 import Quickshell
 import Quickshell.Io
-import "../../style"
+import "../style"
 
 Item {
     id: root
