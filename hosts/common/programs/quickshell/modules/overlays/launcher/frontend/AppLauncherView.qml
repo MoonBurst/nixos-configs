@@ -18,7 +18,7 @@ Item {
         ? settingsManager.getWindowIconSize("launcher", 38) : 38
     readonly property int overlayFontSize: (settingsManager && settingsManager.overlayFontSize > 0)
         ? settingsManager.overlayFontSize : 16
-    readonly property int globalBorderWidth: (theme && theme.globalBorderWidth) ? theme.globalBorderWidth : 3
+    readonly property int controlBorderWidth: (theme && theme.controlBorderWidth !== undefined) ? theme.controlBorderWidth : 2
 
     readonly property var inputPad: Utils.getSafeInputPadding(settingsManager)
 
@@ -129,7 +129,7 @@ Item {
                 borderColor: searchField.activeFocus
                     ? ((theme && theme.base05) ? theme.base05 : "yellow")
                     : ((theme && theme.base03) ? theme.base03 : "#45475a")
-                borderWidth: viewRoot.globalBorderWidth
+                borderWidth: viewRoot.controlBorderWidth
                 slantWidth: 14
             }
 
@@ -220,7 +220,7 @@ Item {
                     role: "input"
                     color: delegateItem.isSelected ? ((theme && theme.base02) ? theme.base02 : "#333") : "transparent"
                     borderColor: delegateItem.isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : ((theme && theme.base03) ? theme.base03 : "#555")
-                    borderWidth: viewRoot.globalBorderWidth
+                    borderWidth: viewRoot.controlBorderWidth
                     slantWidth: 10
                 }
 

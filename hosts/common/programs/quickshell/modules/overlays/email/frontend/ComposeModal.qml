@@ -17,7 +17,7 @@ Rectangle {
     property int modalPadding: (typeof theme !== 'undefined' && theme) ? theme.globalPadding : 20
     property int inputFontSize: (typeof theme !== 'undefined' && theme) ? theme.globalFontSize : 16
     property string composeFontFamily: (typeof theme !== 'undefined' && theme) ? theme.fontFamily : "monospace"
-
+    property int controlBorderWidth: (typeof theme !== 'undefined' && theme && theme.controlBorderWidth !== undefined) ? theme.controlBorderWidth : 2
     property color outerBorderColor: (typeof theme !== 'undefined' && theme) ? theme.outerBorderColor : "#003399"
     property int outerBorderThickness: 5
 
@@ -283,15 +283,15 @@ Rectangle {
                 // 1. RECIPIENT FIELD
                 Item {
                     width: parent.width; height: composeComp.fieldInputHeight
-
                     Style.ShapeBox {
                         anchors.fill: parent
                         role: "input"
                         slantWidth: 10
                         color: composeComp.fieldBg
                         borderColor: toInput.activeFocus ? composeComp.innerCardActiveBorder : composeComp.innerCardInactiveBorder
-                        borderWidth: toInput.activeFocus ? 2 : 1
+                        borderWidth: controlBorderWidth
                     }
+
 
                     Item {
                         anchors.fill: parent; anchors.margins: 10
@@ -309,6 +309,8 @@ Rectangle {
                         TextInput {
                             id: toInput
                             anchors.fill: parent
+                            anchors.leftMargin: 20
+                            anchors.rightMargin: 20
                             font.family: composeComp.composeFontFamily
                             font.pixelSize: composeComp.inputFontSize
                             color: composeComp.textWriteColor
@@ -337,11 +339,14 @@ Rectangle {
                                 color: composeComp.placeholderTextColor
                                 visible: parent.text === "" && !parent.activeFocus
                                 anchors.fill: parent
+                                anchors.leftMargin: 0
+                                anchors.rightMargin: 0
                                 font.pixelSize: composeComp.inputFontSize
                                 font.family: composeComp.composeFontFamily
                                 verticalAlignment: Text.AlignVCenter
                             }
                         }
+
                     }
                 }
 
@@ -355,16 +360,25 @@ Rectangle {
                         slantWidth: 10
                         color: composeComp.fieldBg
                         borderColor: subjectInput.activeFocus ? composeComp.innerCardActiveBorder : composeComp.innerCardInactiveBorder
-                        borderWidth: subjectInput.activeFocus ? 2 : 1
+                        borderWidth: controlBorderWidth
                     }
+
 
                     Item {
                         anchors.fill: parent; anchors.margins: 10
 
                         TextInput {
-                            id: subjectInput; anchors.fill: parent; font.family: composeComp.composeFontFamily; font.pixelSize: composeComp.inputFontSize; color: composeComp.textWriteColor
+                            id: subjectInput
+                            anchors.fill: parent
+                            anchors.leftMargin: 20
+                            anchors.rightMargin: 20
+                            font.family: composeComp.composeFontFamily
+                            font.pixelSize: composeComp.inputFontSize
+                            color: composeComp.textWriteColor
                             verticalAlignment: TextInput.AlignVCenter
                             selectByMouse: true
+                            clip: true
+                            onTextChanged: composeComp.subjectText = text
 
                             Keys.onPressed: (event) => {
                                 if (event.key === Qt.Key_Escape) {
@@ -381,11 +395,14 @@ Rectangle {
                                 color: composeComp.placeholderTextColor
                                 visible: parent.text === "" && !parent.activeFocus
                                 anchors.fill: parent
+                                anchors.leftMargin: 0
+                                anchors.rightMargin: 0
                                 font.pixelSize: composeComp.inputFontSize
                                 font.family: composeComp.composeFontFamily
                                 verticalAlignment: Text.AlignVCenter
                             }
                         }
+
                     }
                 }
             }
@@ -398,10 +415,10 @@ Rectangle {
                 Style.ShapeBox {
                     anchors.fill: parent
                     role: "input"
-                    slantWidth: 12
+                    slantWidth: 14
                     color: composeComp.fieldBg
                     borderColor: bodyInput.activeFocus ? composeComp.innerCardActiveBorder : composeComp.innerCardInactiveBorder
-                    borderWidth: bodyInput.activeFocus ? 2 : 1
+                    borderWidth: controlBorderWidth
                 }
 
                 Flickable {
@@ -409,7 +426,11 @@ Rectangle {
 
                     TextEdit {
                         id: bodyInput
-                        width: parent.width
+                        anchors.fill: parent
+                        anchors.leftMargin: 20
+                        anchors.rightMargin: 20
+                        anchors.topMargin: 14
+                        anchors.bottomMargin: 14
                         font.family: composeComp.composeFontFamily
                         font.pixelSize: composeComp.inputFontSize
                         color: composeComp.textWriteColor
@@ -431,10 +452,13 @@ Rectangle {
                             color: composeComp.placeholderTextColor
                             visible: parent.text === "" && !parent.activeFocus
                             anchors.fill: parent
+                            anchors.leftMargin: 0
+                            anchors.topMargin: 0
                             font.pixelSize: composeComp.inputFontSize
                             font.family: composeComp.composeFontFamily
                         }
                     }
+
                 }
             }
 

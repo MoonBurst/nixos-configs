@@ -141,8 +141,6 @@ Item {
                     Style.ShapeBox {
                         anchors.fill: parent
                         role: "input"
-                        // Proportional hexCut so small tiles don't squash their interior text
-                        hexCut: Math.min(10, Math.round(width * 0.12))
                         color: cellRoot.isSelected ? ((theme && theme.base02) ? theme.base02 : "#333") : (gHover.hovered ? "#222" : "transparent")
                         borderColor: cellRoot.isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : ((theme && theme.base03) ? theme.base03 : "#45475a")
                         borderWidth: viewRoot.controlBorderWidth

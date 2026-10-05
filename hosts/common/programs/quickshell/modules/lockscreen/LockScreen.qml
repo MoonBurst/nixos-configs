@@ -3,7 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Wayland
-
+import "../style" as Style
 import "../../"
 import "../overlays/launcher" as Launcher
 import Quickshell.Io
@@ -191,16 +191,12 @@ WlSessionLockSurface {
                     focus: true
 
                     text: windowSurface.rootRef ? windowSurface.rootRef.globalPasswordBuffer : ""
-                    background: Rectangle {
+                    background: Style.ShapeBox {
                         implicitWidth: stylixTheme.defaultCardWidth
                         implicitHeight: 50
+                        role: "input"
                         color: passwordField.activeFocus ? stylixTheme.base02 : stylixTheme.base01
-                        border.color: windowSurface.rootRef && windowSurface.rootRef.passwordLength === -1 ? stylixTheme.base08 : (passwordField.activeFocus ? stylixTheme.base0D : stylixTheme.base04)
-                        border.width: stylixTheme.globalBorderWidth
-                        radius: stylixTheme.defaultCardRadius
-
-                        Behavior on color { ColorAnimation { duration: 150 } }
-                        Behavior on border.color { ColorAnimation { duration: 150 } }
+                        borderColor: windowSurface.rootRef && windowSurface.rootRef.passwordLength === -1 ? stylixTheme.base08 : (passwordField.activeFocus ? stylixTheme.base0D : stylixTheme.base04)
 
                         Row {
                             anchors.centerIn: parent
@@ -217,6 +213,7 @@ WlSessionLockSurface {
                             }
                         }
                     }
+
 
                     onTextEdited: {
                         if (windowSurface.rootRef) {

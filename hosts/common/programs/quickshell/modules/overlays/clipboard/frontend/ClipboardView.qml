@@ -433,7 +433,7 @@ Item {
                         id: delegateCard
                         readonly property bool isSelected: index === viewRoot.selectedIndex
                         width: clipList.width - 12
-                        height: model.isImage ? 80 : 50
+                        height: viewRoot.fieldHeight
 
                         Style.ShapeBox {
                             anchors.fill: parent

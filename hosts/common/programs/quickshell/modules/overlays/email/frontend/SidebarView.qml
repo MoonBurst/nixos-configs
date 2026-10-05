@@ -18,7 +18,7 @@ Item {
     property color innerCardActiveBorder: (typeof theme !== 'undefined') ? theme.innerBorderColor : "#fabd2f"
     property int globalBorderWidth: (typeof theme !== 'undefined' && theme && theme.globalBorderWidth) ? theme.globalBorderWidth : 3
     property color badgeAccentColor: (typeof theme !== 'undefined') ? theme.base03 : "#fabd2f"
-
+    property int controlBorderWidth: (typeof theme !== 'undefined' && theme && theme.controlBorderWidth !== undefined) ? theme.controlBorderWidth : 2
     property var folderListModel: []
     property int activeFolderIndex: 0
     property var countsDictionary: ({})
@@ -60,8 +60,10 @@ Item {
                     slantWidth: 8
                     color: (index === sidebarComp.activeFolderIndex) ? sidebarComp.itemSelectedBg : "transparent"
                     borderColor: (index === sidebarComp.activeFolderIndex) ? sidebarComp.innerCardActiveBorder : sidebarComp.itemBorderColor
-                    borderWidth: (index === sidebarComp.activeFolderIndex) ? sidebarComp.globalBorderWidth : 1
+                    borderWidth: controlBorderWidth
                 }
+
+
 
                 Text {
                     text: modelData.toUpperCase()

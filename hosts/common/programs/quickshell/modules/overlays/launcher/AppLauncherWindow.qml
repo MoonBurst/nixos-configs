@@ -150,12 +150,26 @@ PanelWindow {
                 case "amogus": if (safeShell.amogusWindowInstance) safeShell.amogusWindowInstance.showWindow(); return;
             }
         }
+
+        // FIX: Intercept real application binaries (like kitty, browser, discord)
+        // and run them in a separate process session completely unlinked from Quickshell
+        if (target && target !== "sh" && !target.includes(":") && !target.includes("apps")) {
+            Quickshell.execDetached([
+                "setsid",
+                "sh", "-c",
+                "nohup " + target + " " + (param || "") + " >/dev/null 2>&1 &"
+            ]);
+            return;
+        }
+
+        // Fallback fallback loop for raw internal script hooks
         Quickshell.execDetached([
             "sh", "-c",
             'QS=$(command -v qs || command -v quickshell); [ -n "$QS" ] && "$QS" ipc call "$1" open "$2"',
-            "sh", target, param || ""
+                                "sh", target, param || ""
         ]);
     }
+
 
     Variants {
         model: Quickshell.screens

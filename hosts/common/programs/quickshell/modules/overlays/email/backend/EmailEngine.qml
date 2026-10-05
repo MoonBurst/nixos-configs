@@ -59,6 +59,8 @@ Item {
         mailSyncProc.running = false;
         mailSyncProc.running = true;
     }
+    // FIX: Declare the boot loader gate right above your process definition
+    property bool isInitialLoad: true
 
     readonly property Process mailWatcherProcess: Process {
         running: engine.himalayaInstalled
@@ -74,18 +76,34 @@ Item {
             onRead: data => {
                 var clean = data.trim();
                 if (clean === "SYNC" || clean === "NEW_MAIL") {
-                    if (typeof shell !== "undefined" && shell && shell.settingsManager && shell.settingsManager.emailSoundEnabled) {
+                    // FIX: Prevent audio playback during initial boot load parsing
+                    if (!isInitialLoad && typeof shell !== "undefined" && shell && shell.settingsManager && shell.settingsManager.emailSoundEnabled) {
                         var sound = shell.settingsManager.emailReceiveSound;
                         if (sound && sound.length > 0) {
                             Quickshell.execDetached(["pw-play", sound]);
                         }
                     }
-                    Quickshell.execDetached(["notify-send", "-a", "Email", "-i", "mail-unread", "📧 New Email Received", "Syncing new message..."]);
+
+                    // FIX: Suppress notification popups on desktop startup sync routines
+                    if (!isInitialLoad) {
+                        Quickshell.execDetached(["notify-send", "-a", "Email", "-i", "mail-unread", "📧 New Email Received", "Syncing new message..."]);
+                    }
+
                     engine.syncMail();
                 }
             }
         }
     }
+
+    // FIX: Automatically unlock live notifications 4 seconds after shell initialization
+    Timer {
+        id: bootAlertGuardTimer
+        interval: 4000
+        running: true
+        repeat: false
+        onTriggered: isInitialLoad = false
+    }
+
 
     readonly property Process mailSyncProc: Process {
         running: false

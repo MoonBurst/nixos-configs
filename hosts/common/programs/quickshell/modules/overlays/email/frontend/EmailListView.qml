@@ -17,7 +17,8 @@ Item {
 
     property color outerBorderColor: (typeof theme !== 'undefined' && theme) ? theme.outerBorderColor : "#003399"
     property color innerCardActiveBorder: (typeof theme !== 'undefined' && theme) ? theme.innerBorderColor : "#fabd2f"
-    property int globalBorderWidth: (typeof theme !== 'undefined' && theme && theme.globalBorderWidth) ? theme.globalBorderWidth : 3
+    property int globalBorderWidth: (typeof theme !== 'undefined' && theme && theme.globalBorderWidth !== undefined) ? theme.globalBorderWidth : 3
+    property int controlBorderWidth: (typeof theme !== 'undefined' && theme && theme.controlBorderWidth !== undefined) ? theme.controlBorderWidth : 2
 
     property var mailItems: []
     property int activeMailIndex: 0
@@ -70,7 +71,8 @@ Item {
                     role: "input"
                     color: listComp.listBgColor
                     borderColor: searchInput.activeFocus ? listComp.innerCardActiveBorder : listComp.itemBorderColor
-                    borderWidth: searchInput.activeFocus ? listComp.globalBorderWidth : 1
+                    borderWidth: listComp.controlBorderWidth
+
                     slantWidth: 10
                 }
 
@@ -138,7 +140,8 @@ Item {
                     slantWidth: 8
                     color: listComp.searchCaseSensitive ? listComp.innerCardActiveBorder : listComp.listBgColor
                     borderColor: listComp.itemBorderColor
-                    borderWidth: listComp.searchCaseSensitive ? listComp.globalBorderWidth : 1
+                    borderWidth: listComp.controlBorderWidth
+
                 }
 
                 Text {
@@ -197,7 +200,7 @@ Item {
                     slantWidth: 10
                     color: (index === listComp.activeMailIndex) ? listComp.itemSelectedBg : "transparent"
                     borderColor: (index === listComp.activeMailIndex) ? listComp.innerCardActiveBorder : listComp.itemBorderColor
-                    borderWidth: (index === listComp.activeMailIndex) ? listComp.globalBorderWidth : 1
+                    borderWidth: listComp.controlBorderWidth
                 }
 
                 Row {

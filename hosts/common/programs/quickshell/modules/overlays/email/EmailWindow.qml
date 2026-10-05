@@ -66,10 +66,12 @@ PanelWindow {
         property int globalBorderWidth: (src && src.globalBorderWidth) ? src.globalBorderWidth : 3
         property int globalPadding: (src && src.globalPadding) ? src.globalPadding : 16
         property int globalFontSize: (src && src.globalFontSize) ? src.globalFontSize : 14
+        property int controlBorderWidth: (src && src.controlBorderWidth) ? src.controlBorderWidth : 2
         property color scrollHandleColor: (src && src.scrollHandleColor) ? src.scrollHandleColor : "#003399"
 
         property color innerBorderColor: (src && src.base05) ? src.base05 : "yellow"
         property color outerBorderColor: window.isCardActive ? window.activeBorderColor : window.inactiveBorderColor
+
     }
 
     property bool inGracePeriod: false

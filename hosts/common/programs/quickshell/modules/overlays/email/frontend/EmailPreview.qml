@@ -18,7 +18,7 @@ Item {
 
     property color outerBorderColor: (typeof theme !== 'undefined' && theme.outerBorderColor) ? theme.outerBorderColor : "#003399"
     property color innerCardActiveBorder: (typeof theme !== 'undefined' && theme.innerBorderColor) ? theme.innerBorderColor : "#fabd2f"
-    property int globalBorderWidth: (typeof theme !== 'undefined' && theme && theme.globalBorderWidth) ? theme.globalBorderWidth : 3
+    property int controlBorderWidth: (typeof theme !== 'undefined' && theme && theme.controlBorderWidth !== undefined) ? theme.controlBorderWidth : 2
 
     property var activeMailObject: null
     property string activeMailBodyText: ""
@@ -85,7 +85,7 @@ Item {
             slantWidth: 12
             color: previewComp.headerSectionBg
             borderColor: previewComp.innerCardActiveBorder
-            borderWidth: previewComp.globalBorderWidth
+                borderWidth: previewComp.controlBorderWidth
         }
 
         Column {
