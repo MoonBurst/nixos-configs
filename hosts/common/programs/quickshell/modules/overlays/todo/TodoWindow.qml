@@ -93,8 +93,8 @@ PanelWindow {
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
 
-    mask: todoWindow.isCardActive ? null : cardMaskRegion
-    Region { id: cardMaskRegion; item: card }
+    // DIAGNOSTIC: mask disabled
+    // Region { id: cardMaskRegion; item: card }
 
     function open() {
         if (safeShell && safeShell.sessionLock && safeShell.sessionLock.locked) return;

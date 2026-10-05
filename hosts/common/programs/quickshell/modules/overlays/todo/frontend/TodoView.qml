@@ -21,7 +21,6 @@ Item {
     readonly property color titleColor: innerCardActiveBorder
     readonly property string todoFontFamily: (theme && theme.fontFamily) ? theme.fontFamily : "monospace"
     readonly property int globalFontSize: (theme && theme.globalFontSize) ? theme.globalFontSize : 14
-    readonly property int defaultCardRadius: (theme && theme.defaultCardRadius) ? theme.defaultCardRadius : 10
 
     readonly property int controlBorderWidth: (settingsManager && settingsManager.controlBorderWidth)
         ? settingsManager.controlBorderWidth
@@ -34,8 +33,9 @@ Item {
 
     readonly property var inputPad: Utils.getSafeInputPadding(settingsManager)
 
-    property int pillBtnHeight: Math.max(44, globalFontSize + 24)
-    property int todoRowHeight: Math.max(48, overlayFontSize + 22)
+    readonly property int pillPaddingH: 80
+    property int rowHeight: Math.max(46, overlayFontSize + 26)
+    readonly property int rowSpacing: 8
 
     focus: true
 
@@ -50,9 +50,7 @@ Item {
         engine.editingTaskId = -1;
         todoListView.currentIndex = -1;
         todoListView.forceActiveFocus();
-        Qt.callLater(() => {
-            todoListView.currentIndex = savedIndex;
-        });
+        Qt.callLater(() => { todoListView.currentIndex = savedIndex; });
     }
 
     Component.onCompleted: Qt.callLater(() => clearAndFocus())
@@ -63,10 +61,10 @@ Item {
         anchors.margins: 10
         spacing: 14
 
-        // Boards Row
+        // Category pill row
         Item {
             Layout.fillWidth: true
-            height: viewRoot.pillBtnHeight
+            height: viewRoot.rowHeight
 
             RowLayout {
                 anchors.fill: parent
@@ -75,34 +73,35 @@ Item {
                 ListView {
                     id: categoryListView
                     Layout.fillWidth: true
-                    height: viewRoot.pillBtnHeight
+                    height: viewRoot.rowHeight
                     orientation: ListView.Horizontal
                     spacing: 8
                     model: engine.categoryModel
                     clip: true
-                    cacheBuffer: 200
 
                     delegate: Item {
-                        width: catText.implicitWidth + 28
-                        height: viewRoot.pillBtnHeight
+                        width: catText.implicitWidth + viewRoot.pillPaddingH
+                        height: viewRoot.rowHeight
 
                         Style.ShapeBox {
                             anchors.fill: parent
                             role: "input"
                             color: "transparent"
-                            borderColor: engine.activeCategory === model.name ? viewRoot.innerCardActiveBorder : viewRoot.innerCardInactiveBorder
+                            borderColor: engine.activeCategory === model.name
+                                ? viewRoot.innerCardActiveBorder
+                                : viewRoot.innerCardInactiveBorder
                             borderWidth: viewRoot.controlBorderWidth
                             slantWidth: 10
                         }
 
                         Text {
                             id: catText
+                            anchors.centerIn: parent
                             text: model.name
                             font.family: viewRoot.todoFontFamily
                             font.pixelSize: viewRoot.overlayFontSize - 2
                             font.bold: true
                             color: engine.activeCategory === model.name ? viewRoot.titleColor : viewRoot.textWriteColor
-                            anchors.centerIn: parent
                         }
 
                         MouseArea {
@@ -118,8 +117,8 @@ Item {
                 }
 
                 Item {
-                    width: addListText.implicitWidth + 28
-                    height: viewRoot.pillBtnHeight
+                    width: addListText.implicitWidth + viewRoot.pillPaddingH
+                    height: viewRoot.rowHeight
 
                     Style.ShapeBox {
                         anchors.fill: parent
@@ -132,12 +131,12 @@ Item {
 
                     Text {
                         id: addListText
+                        anchors.centerIn: parent
                         text: "New List"
                         font.family: viewRoot.todoFontFamily
                         font.pixelSize: viewRoot.overlayFontSize - 2
                         font.bold: true
                         color: viewRoot.innerCardActiveBorder
-                        anchors.centerIn: parent
                     }
 
                     MouseArea {
@@ -153,8 +152,8 @@ Item {
 
                 Item {
                     visible: engine.activeCategory !== ""
-                    width: removeListText.implicitWidth + 28
-                    height: viewRoot.pillBtnHeight
+                    width: removeListText.implicitWidth + viewRoot.pillPaddingH
+                    height: viewRoot.rowHeight
 
                     Style.ShapeBox {
                         anchors.fill: parent
@@ -167,12 +166,12 @@ Item {
 
                     Text {
                         id: removeListText
+                        anchors.centerIn: parent
                         text: "Remove List"
                         font.family: viewRoot.todoFontFamily
                         font.pixelSize: viewRoot.overlayFontSize - 2
                         font.bold: true
                         color: (theme && theme.base08) ? theme.base08 : "#ff5555"
-                        anchors.centerIn: parent
                     }
 
                     MouseArea {
@@ -184,7 +183,7 @@ Item {
             }
         }
 
-        // Input Field Box
+        // Task input
         Item {
             Layout.fillWidth: true
             Layout.preferredHeight: viewRoot.fieldHeight
@@ -194,6 +193,7 @@ Item {
             visible: engine.activeCategory !== ""
 
             Style.ShapeBox {
+                id: taskInputBg
                 anchors.fill: parent
                 role: "input"
                 color: viewRoot.fieldBg
@@ -204,10 +204,10 @@ Item {
 
             Item {
                 anchors.fill: parent
-                anchors.leftMargin: viewRoot.inputPad.left
-                anchors.rightMargin: viewRoot.inputPad.right
-                anchors.topMargin: 10
-                anchors.bottomMargin: 10
+                anchors.leftMargin:   taskInputBg.leftPadding
+                anchors.rightMargin:  taskInputBg.rightPadding
+                anchors.topMargin:    taskInputBg.topPadding
+                anchors.bottomMargin: taskInputBg.bottomPadding
 
                 TextEdit {
                     id: taskInput
@@ -245,21 +245,25 @@ Item {
             }
         }
 
-        // Task List — ListView handles its own scrolling and clipping.
-        // The per-delegate TextEdit for inline editing is now lazily
-        // instantiated via a Loader so scrolling cost stays flat regardless
-        // of how many tasks exist.
+        // Task list — snapMode makes scroll move one row at a time, no animation.
         ListView {
             id: todoListView
             Layout.fillWidth: true
             Layout.fillHeight: true
-            clip: true
             visible: engine.activeCategory !== ""
+            clip: true
             model: engine.todoModel
-            spacing: 8
+            spacing: viewRoot.rowSpacing
             focus: engine.editingTaskId === -1
-            cacheBuffer: 600
+
             boundsBehavior: Flickable.StopAtBounds
+            flickableDirection: Flickable.VerticalFlick
+
+            // The key: snap to whole items instead of animating pixel scroll.
+            snapMode: ListView.SnapOneItem
+            highlightMoveDuration: 0
+            highlightResizeDuration: 0
+
             ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
             Keys.onPressed: (event) => {
@@ -291,24 +295,12 @@ Item {
                 }
             }
 
-            // Delegate is now a plain positioned Item with no Row / no
-            // anchors.fill Row that would force a second layout pass per
-            // scroll frame. The row height is derived directly from the
-            // wrapped Text contentHeight, so boxes grow to fit every line.
-            readonly property int scrollbarGutter: 16
-
             delegate: Item {
                 id: delegateCard
                 readonly property bool isSelected: (index === todoListView.currentIndex) && todoListView.activeFocus
                 readonly property bool isThisItemEditing: engine.editingTaskId === model.id
-
-                // Width is a plain function of list width and a constant
-                // gutter — no dependency on ScrollBar.visible, which used to
-                // cause a full relayout every time the bar faded in or out.
-                width: todoListView.width - todoListView.scrollbarGutter
-                height: isThisItemEditing
-                    ? Math.max(viewRoot.todoRowHeight, editLoader.item ? editLoader.item.implicitHeight + 24 : 60)
-                    : Math.max(viewRoot.todoRowHeight, taskText.contentHeight + 20)
+                width: todoListView.width - 12
+                height: viewRoot.rowHeight
 
                 Style.ShapeBox {
                     id: delegateBg
@@ -322,113 +314,76 @@ Item {
                     slantWidth: 10
                 }
 
-                // Checkbox — positioned by the ShapeBox's own padding so it
-                // always clears the hexagon chamfer and any thick border.
-                Rectangle {
-                    id: checkbox
-                    x: delegateBg.leftPadding + 4
-                    y: delegateCard.isThisItemEditing ? (delegateCard.height - height) / 2 : delegateBg.topPadding + 2
-                    width: 24
-                    height: 24
-                    radius: 4
+                Item {
+                    id: normalRow
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    anchors.leftMargin:   delegateBg.leftPadding + 4
+                    anchors.rightMargin:  delegateBg.rightPadding + 4
                     visible: !delegateCard.isThisItemEditing
-                    color: model.completed ? viewRoot.innerCardActiveBorder : "transparent"
-                    border.color: model.completed ? viewRoot.innerCardActiveBorder : viewRoot.placeholderTextColor
-                    border.width: 1.5
 
-                    Text {
-                        anchors.centerIn: parent
-                        visible: model.completed
-                        text: "✔"
-                        font.bold: true
-                        font.pixelSize: 13
-                        color: (theme && theme.base00) ? theme.base00 : "#000"
-                    }
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            todoListView.currentIndex = index;
-                            todoListView.forceActiveFocus();
-                            engine.toggleTodo(model.id, model.completed);
+                    Rectangle {
+                        id: checkbox
+                        width: 22
+                        height: 22
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        radius: 4
+                        color: model.completed ? viewRoot.innerCardActiveBorder : "transparent"
+                        border.color: model.completed ? viewRoot.innerCardActiveBorder : viewRoot.placeholderTextColor
+                        border.width: 1.5
+
+                        Text {
+                            anchors.centerIn: parent
+                            visible: model.completed
+                            text: "\u2714"
+                            font.bold: true
+                            font.pixelSize: 12
+                            color: (theme && theme.base00) ? theme.base00 : "#000"
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                todoListView.currentIndex = index;
+                                todoListView.forceActiveFocus();
+                                engine.toggleTodo(model.id, model.completed);
+                            }
                         }
                     }
-                }
 
-                // Task text — width is set before contentHeight is queried,
-                // and the delegate height above reads contentHeight so the
-                // box always fits the wrapped text exactly.
-                Text {
-                    id: taskText
-                    x: checkbox.x + checkbox.width + 12
-                    y: delegateBg.topPadding + 2
-                    width: delegateCard.width - x - delegateBg.rightPadding - 4
-                    visible: !delegateCard.isThisItemEditing
-                    text: model.task
-                    font.family: viewRoot.todoFontFamily
-                    font.pixelSize: viewRoot.overlayFontSize
-                    font.strikeout: model.completed
-                    color: model.completed ? viewRoot.placeholderTextColor : viewRoot.titleColor
-                    wrapMode: Text.Wrap
-                    textFormat: Text.PlainText
+                    Text {
+                        id: taskText
+                        anchors.left: checkbox.right
+                        anchors.leftMargin: 12
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: model.task
+                        font.family: viewRoot.todoFontFamily
+                        font.pixelSize: viewRoot.overlayFontSize
+                        font.strikeout: model.completed
+                        color: model.completed ? viewRoot.placeholderTextColor : viewRoot.titleColor
+                        elide: Text.ElideRight
+                        maximumLineCount: 1
+                    }
                 }
 
                 Loader {
                     id: editLoader
-                    anchors.fill: parent
-                    anchors.margins: 8
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    anchors.leftMargin:   delegateBg.leftPadding + 4
+                    anchors.rightMargin:  delegateBg.rightPadding + 4
+                    anchors.topMargin:    6
+                    anchors.bottomMargin: 6
                     active: delegateCard.isThisItemEditing
                     visible: active
-                    sourceComponent: editFieldComponent
-                }
-
-                Component {
-                    id: editFieldComponent
-                    TextEdit {
-                        id: inlineEditInput
-                        anchors.fill: parent
-                        font.pixelSize: viewRoot.overlayFontSize
-                        font.family: viewRoot.todoFontFamily
-                        color: viewRoot.titleColor
-                        text: model.task
-                        wrapMode: Text.Wrap
-                        selectByMouse: true
-                        verticalAlignment: TextEdit.AlignVCenter
-
-                        Component.onCompleted: Qt.callLater(() => {
-                            inlineEditInput.forceActiveFocus();
-                            inlineEditInput.cursorPosition = inlineEditInput.text.length;
-                        });
-
-                        onActiveFocusChanged: {
-                            if (!activeFocus && engine.editingTaskId === model.id) {
-                                viewRoot.forceExitEdit(index);
-                            }
-                        }
-
-                        Keys.onPressed: (event) => {
-                            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                                engine.saveInlineEdit(model.id, text);
-                                viewRoot.forceExitEdit(index);
-                                event.accepted = true;
-                            } else if (event.key === Qt.Key_Escape) {
-                                viewRoot.forceExitEdit(index);
-                                event.accepted = true;
-                            } else if (event.key === Qt.Key_Up) {
-                                engine.saveInlineEdit(model.id, text);
-                                engine.editingTaskId = -1;
-                                todoListView.forceActiveFocus();
-                                if (index > 0) todoListView.currentIndex = index - 1;
-                                event.accepted = true;
-                            } else if (event.key === Qt.Key_Down) {
-                                engine.saveInlineEdit(model.id, text);
-                                engine.editingTaskId = -1;
-                                todoListView.forceActiveFocus();
-                                if (index < todoListView.count - 1) todoListView.currentIndex = index + 1;
-                                event.accepted = true;
-                            }
-                        }
-                    }
+                    sourceComponent: inlineEditFieldComponent
                 }
 
                 MouseArea {
@@ -447,21 +402,74 @@ Item {
                     }
                 }
             }
+
+            Component {
+                id: inlineEditFieldComponent
+                TextEdit {
+                    anchors.fill: parent
+                    font.pixelSize: viewRoot.overlayFontSize
+                    font.family: viewRoot.todoFontFamily
+                    color: viewRoot.titleColor
+                    text: model.task
+                    wrapMode: TextEdit.NoWrap
+                    selectByMouse: true
+                    verticalAlignment: TextEdit.AlignVCenter
+                    clip: true
+
+                    Component.onCompleted: Qt.callLater(() => {
+                        forceActiveFocus();
+                        cursorPosition = text.length;
+                    });
+
+                    onActiveFocusChanged: {
+                        if (!activeFocus && engine.editingTaskId === model.id) {
+                            viewRoot.forceExitEdit(index);
+                        }
+                    }
+
+                    Keys.onPressed: (event) => {
+                        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                            engine.saveInlineEdit(model.id, text);
+                            viewRoot.forceExitEdit(index);
+                            event.accepted = true;
+                        } else if (event.key === Qt.Key_Escape) {
+                            viewRoot.forceExitEdit(index);
+                            event.accepted = true;
+                        } else if (event.key === Qt.Key_Up) {
+                            engine.saveInlineEdit(model.id, text);
+                            engine.editingTaskId = -1;
+                            todoListView.forceActiveFocus();
+                            if (index > 0) todoListView.currentIndex = index - 1;
+                            event.accepted = true;
+                        } else if (event.key === Qt.Key_Down) {
+                            engine.saveInlineEdit(model.id, text);
+                            engine.editingTaskId = -1;
+                            todoListView.forceActiveFocus();
+                            if (index < todoListView.count - 1) todoListView.currentIndex = index + 1;
+                            event.accepted = true;
+                        }
+                    }
+                }
+            }
         }
 
-        // Bottom Filter Bar
+        // Filter bar
         RowLayout {
             Layout.fillWidth: true
             spacing: 15
             visible: engine.activeCategory !== ""
 
-            Text { text: "Filter:"; font.bold: true; color: (theme && theme.base05) ? theme.base05 : "yellow" }
+            Text {
+                text: "Filter:"
+                font.bold: true
+                color: (theme && theme.base05) ? theme.base05 : "yellow"
+            }
 
             Repeater {
                 model: ["All", "Active", "Completed"]
                 delegate: Item {
-                    width: filterText.implicitWidth + 28
-                    height: viewRoot.pillBtnHeight
+                    width: filterText.implicitWidth + viewRoot.pillPaddingH
+                    height: viewRoot.rowHeight
 
                     Style.ShapeBox {
                         anchors.fill: parent
@@ -473,9 +481,11 @@ Item {
                     }
 
                     Text {
-                        id: filterText; text: modelData; font.bold: true
-                        color: engine.filterMode === modelData ? viewRoot.titleColor : viewRoot.textWriteColor
+                        id: filterText
                         anchors.centerIn: parent
+                        text: modelData
+                        font.bold: true
+                        color: engine.filterMode === modelData ? viewRoot.titleColor : viewRoot.textWriteColor
                     }
 
                     MouseArea {
@@ -491,7 +501,6 @@ Item {
         }
     }
 
-    // Modal: Add New List
     Rectangle {
         id: addListOverlay
         anchors.fill: parent
@@ -518,7 +527,12 @@ Item {
                 anchors.margins: 22
                 spacing: 15
 
-                Text { text: "CREATE NEW LIST"; font.bold: true; font.pixelSize: 16; color: viewRoot.titleColor }
+                Text {
+                    text: "CREATE NEW LIST"
+                    font.bold: true
+                    font.pixelSize: 16
+                    color: viewRoot.titleColor
+                }
 
                 Item {
                     width: parent.width; height: 42
@@ -545,8 +559,11 @@ Item {
                                 var name = text.trim();
                                 if (name !== "") {
                                     var db = engine.getDatabase();
-                                    db.transaction(function(tx) { tx.executeSql('INSERT OR IGNORE INTO categories (name) VALUES (?)', [name]); });
-                                    engine.loadCategories(); engine.activeCategory = name;
+                                    db.transaction(function(tx) {
+                                        tx.executeSql('INSERT OR IGNORE INTO categories (name) VALUES (?)', [name]);
+                                    });
+                                    engine.loadCategories();
+                                    engine.activeCategory = name;
                                 }
                                 addListOverlay.visible = false;
                                 event.accepted = true;

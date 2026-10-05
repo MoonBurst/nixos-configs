@@ -106,14 +106,18 @@ Item {
     // the shape itself and downstream content can reference the same value.
 readonly property real hexCutEffective: {
         if (effectiveShape !== "hexagon") return 0;
-        // Width-only cap. Height-dependent factors would create a binding
-        // loop with content height in scrollable delegates: shape height
-        // feeds chamfer → chamfer feeds padding → padding feeds text width
-        // → text width feeds text height → back to shape height.
-        var minFlatH = role === "input" ? 40 : 60;
-        var byWidth   = Math.round(width * 0.20);
-        var byContent = Math.max(0, (width - minFlatH) / 2);
-        return Math.max(2, Math.min(hexCut, byWidth, byContent));
+        // Chamfer constraints, in order of priority:
+        //   byHeight — never eat more than 30% of the height. At 45% the
+        //              flat vertical band collapses on short rows (46–80px)
+        //              and the shape degenerates into a chevron/arrow.
+        //   byWidth  — never eat more than 15% of the width.
+        //   byContentH — leave room for a minimum flat top/bottom band.
+        //                Sized generously for inputs so text isn't squeezed.
+        var minFlatH = role === "input" ? 100 : 140;
+        var byHeight   = Math.round(height * 0.30);
+        var byWidth    = Math.round(width * 0.15);
+        var byContentH = Math.max(0, (width - minFlatH) / 2);
+        return Math.max(2, Math.min(hexCut, byHeight, byWidth, byContentH));
     }
 
     // Safe-area insets. Content placed at these margins is guaranteed to be
@@ -148,9 +152,6 @@ readonly property real hexCutEffective: {
     Shape {
         anchors.fill: parent
         visible: root.effectiveShape === "slant"
-        layer.enabled: true
-        layer.smooth: true
-        layer.mipmap: false
 
         ShapePath {
             strokeColor: root.borderColor
@@ -173,9 +174,6 @@ readonly property real hexCutEffective: {
         id: hexShape
         anchors.fill: parent
         visible: root.effectiveShape === "hexagon"
-        layer.enabled: true
-        layer.smooth: true
-        layer.mipmap: false
 
         // Chamfer size. Capped by height*0.45 to preserve the hexagon
         // silhouette, and additionally by 20% of the smaller dimension so
