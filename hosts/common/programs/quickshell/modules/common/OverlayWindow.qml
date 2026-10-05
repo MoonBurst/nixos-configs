@@ -40,6 +40,9 @@ PanelWindow {
     property var pendingArg: null
 
     // ---- Hooks --------------------------------------------------------------
+    // Set false for windows that should ignore the global Escape handler.
+    property bool escapeCloses: true
+
     signal windowOpened()
     signal windowClosed()
     signal preShow()
@@ -182,6 +185,7 @@ PanelWindow {
     Connections {
         target: EscapeWatcher
         function onEscapePressed() {
+            if (!base.escapeCloses) return;
             if (!base.visible || base.isPreviewMode) return;
             // Only respond if this window is the topmost visible overlay.
             if (base.isCardActive || base.isOpenState) base.close();
@@ -268,7 +272,7 @@ PanelWindow {
 
     Shortcut {
         sequence: "Escape"
-        enabled: base.visible && !base.isPreviewMode
+        enabled: base.visible && !base.isPreviewMode && base.escapeCloses
         onActivated: base.close()
     }
 }
