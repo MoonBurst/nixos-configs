@@ -4,6 +4,7 @@ import QtQuick.Layouts 1.15
 import "../../../common"
 import "../backend"
 import "../../../style" as Style
+import "../../../common/Utils.js" as Utils
 
 Item {
     id: viewRoot
@@ -16,6 +17,12 @@ Item {
         ? settingsManager.getWindowFieldHeight("pass", 52) : 52
     readonly property int overlayFontSize: (settingsManager && settingsManager.overlayFontSize > 0)
         ? settingsManager.overlayFontSize : 16
+
+    readonly property int controlBorderWidth: (settingsManager && settingsManager.controlBorderWidth)
+        ? settingsManager.controlBorderWidth
+        : ((theme && theme.controlBorderWidth) ? theme.controlBorderWidth : 2)
+
+    readonly property var inputPad: Utils.getSafeInputPadding(settingsManager)
 
     signal completed()
 
@@ -30,7 +37,7 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: (viewRoot.theme && viewRoot.theme.globalPadding) ? viewRoot.theme.globalPadding : 16
+        anchors.margins: 10
         spacing: 16
 
         // Universal Shape Search Box
@@ -49,14 +56,14 @@ Item {
                 borderColor: searchField.activeFocus
                     ? ((theme && theme.base05) ? theme.base05 : "yellow")
                     : ((theme && theme.base03) ? theme.base03 : "#45475a")
-                borderWidth: searchField.activeFocus ? 2 : 1
+                borderWidth: viewRoot.controlBorderWidth
                 slantWidth: 14
             }
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 16
-                anchors.rightMargin: 16
+                anchors.leftMargin: viewRoot.inputPad.left
+                anchors.rightMargin: viewRoot.inputPad.right
                 spacing: 10
 
                 Text {
@@ -138,15 +145,15 @@ Item {
                     anchors.fill: parent
                     role: "input"
                     color: passDelegateItem.isSelected ? ((theme && theme.base02) ? theme.base02 : "#333") : "transparent"
-                    borderColor: passDelegateItem.isSelected ? "#00e5ff" : "#444"
-                    borderWidth: passDelegateItem.isSelected ? 2 : 1
+                    borderColor: passDelegateItem.isSelected ? "#00e5ff" : ((theme && theme.base03) ? theme.base03 : "#444")
+                    borderWidth: viewRoot.controlBorderWidth
                     slantWidth: 10
                 }
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 14
-                    anchors.rightMargin: 14
+                    anchors.leftMargin: Math.max(14, viewRoot.inputPad.left)
+                    anchors.rightMargin: Math.max(14, viewRoot.inputPad.right)
                     spacing: 10
 
                     Text { text: "🔒"; font.pixelSize: 16 }

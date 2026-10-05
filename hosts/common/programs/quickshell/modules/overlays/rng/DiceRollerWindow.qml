@@ -6,6 +6,7 @@ import Quickshell.Wayland
 import Quickshell.Io
 import "../../style" as Style
 import "../../common" as Common
+import "../../common/Utils.js" as Utils
 import "../../settings" as SettingsTools
 
 PanelWindow {
@@ -148,7 +149,13 @@ PanelWindow {
     readonly property color accentColor: theme ? theme.base05 : "#a6e3a1"
     readonly property color altAccent: theme ? theme.base05 : "#f38ba8"
     readonly property color highlightColor: theme ? theme.base05 : "#f9e2af"
-    readonly property int globalBorderWidth: (theme && theme.globalBorderWidth !== undefined) ? theme.globalBorderWidth : 2
+
+    readonly property int globalBorderWidth: (theme && theme.globalBorderWidth !== undefined) ? theme.globalBorderWidth : 3
+    readonly property int controlBorderWidth: (settingsManager && settingsManager.controlBorderWidth)
+        ? settingsManager.controlBorderWidth
+        : ((theme && theme.controlBorderWidth) ? theme.controlBorderWidth : 2)
+
+    readonly property var inputPad: Utils.getSafeInputPadding(settingsManager)
 
     property int diceCount: 1
     property int strengthVal: 0
@@ -201,47 +208,43 @@ PanelWindow {
             role: "input"
             color: root.bgCard
             borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
-            borderWidth: root.globalBorderWidth
+            borderWidth: root.controlBorderWidth
             slantWidth: 10
         }
 
         RowLayout {
-            anchors.fill: parent; anchors.margins: 4; spacing: 4
-            Item {
-                width: 32; Layout.fillHeight: true
-                Style.ShapeBox {
-                    anchors.fill: parent
-                    role: "input"
-                    slantWidth: 6
-                    color: upM.containsMouse ? root.bgHover : root.bgBase
-                    borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
-                    borderWidth: 1
-                }
-                Text { text: "▲"; anchors.centerIn: parent; color: root.highlightColor; font.pixelSize: 14; font.bold: true }
+            anchors.fill: parent
+            anchors.leftMargin: Math.max(14, root.inputPad.left)
+            anchors.rightMargin: Math.max(14, root.inputPad.right)
+            anchors.topMargin: 4
+            anchors.bottomMargin: 4
+            spacing: 6
+
+            Rectangle {
+                width: 28; Layout.fillHeight: true; radius: 4
+                color: upM.containsMouse ? root.bgHover : "transparent"
+                border.width: root.controlBorderWidth
+                border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+                Text { text: "▲"; anchors.centerIn: parent; color: root.highlightColor; font.pixelSize: 13; font.bold: true }
                 MouseArea { id: upM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onPressed: { if (numBox.value < numBox.maxVal) numBox.value += numBox.step; } }
             }
             TextInput {
                 id: txtInput
                 Layout.fillWidth: true; Layout.fillHeight: true
                 text: String(numBox.value)
-                font.pixelSize: 20; font.bold: true; color: root.highlightColor
+                font.pixelSize: 18; font.bold: true; color: root.highlightColor
                 horizontalAlignment: Qt.AlignHCenter; verticalAlignment: Qt.AlignVCenter
                 validator: IntValidator { bottom: numBox.minVal; top: numBox.maxVal }
                 inputMethodHints: Qt.ImhDigitsOnly
                 onTextEdited: { var p = parseInt(text); if (!isNaN(p)) numBox.value = Math.min(numBox.maxVal, Math.max(numBox.minVal, p)); }
                 Binding on text { value: String(numBox.value); when: !txtInput.activeFocus }
             }
-            Item {
-                width: 32; Layout.fillHeight: true
-                Style.ShapeBox {
-                    anchors.fill: parent
-                    role: "input"
-                    slantWidth: 6
-                    color: downM.containsMouse ? root.bgHover : root.bgBase
-                    borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
-                    borderWidth: 1
-                }
-                Text { text: "▼"; anchors.centerIn: parent; color: root.highlightColor; font.pixelSize: 14; font.bold: true }
+            Rectangle {
+                width: 28; Layout.fillHeight: true; radius: 4
+                color: downM.containsMouse ? root.bgHover : "transparent"
+                border.width: root.controlBorderWidth
+                border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+                Text { text: "▼"; anchors.centerIn: parent; color: root.highlightColor; font.pixelSize: 13; font.bold: true }
                 MouseArea { id: downM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onPressed: { if (numBox.value > numBox.minVal) numBox.value -= numBox.step; } }
             }
         }
@@ -300,21 +303,10 @@ PanelWindow {
     Item {
         id: diceCard
         anchors.centerIn: parent
-        width: settingsManager ? settingsManager.getWindowWidth(root.windowId, 580) : 580
+        width: settingsManager ? settingsManager.getWindowWidth(root.windowId, 620) : 620
         height: settingsManager ? settingsManager.getWindowHeight(root.windowId, 840) : 840
 
-        readonly property int cardCornerCut: {
-            if (!settingsManager) return 0;
-            if (settingsManager.overlayCardShape === "hexagon") return Math.round(settingsManager.overlayHexagonCut || 36);
-            if (settingsManager.overlayCardShape === "slant") return Math.round(settingsManager.overlaySlantAngle || 32);
-            return 0;
-        }
-        readonly property int cardPadH: (settingsManager && settingsManager.overlayCardShape !== "rounded")
-            ? Math.max(28, Math.round(cardCornerCut * 1.0) + 20)
-            : ((theme && theme.globalPadding) ? theme.globalPadding : 16)
-        readonly property int cardPadV: (settingsManager && settingsManager.overlayCardShape !== "rounded")
-            ? Math.max(20, Math.round(cardCornerCut * 0.45) + 14)
-            : ((theme && theme.globalPadding) ? theme.globalPadding : 16)
+        readonly property var safePad: Utils.getSafeCardPadding(settingsManager)
 
         Style.ShapeBox {
             anchors.fill: parent
@@ -336,42 +328,45 @@ PanelWindow {
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.leftMargin: diceCard.cardPadH
-            anchors.rightMargin: diceCard.cardPadH
-            anchors.topMargin: diceCard.cardPadV
-            anchors.bottomMargin: diceCard.cardPadV
+            anchors.leftMargin: diceCard.safePad.h
+            anchors.rightMargin: diceCard.safePad.h
+            anchors.topMargin: diceCard.safePad.v
+            anchors.bottomMargin: diceCard.safePad.v
             spacing: 12
 
             Item {
-                Layout.fillWidth: true; height: 48
+                Layout.fillWidth: true
+                height: 48
 
                 Style.ShapeBox {
                     anchors.fill: parent
                     role: "input"
                     color: root.bgCard
                     borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
-                    borderWidth: root.globalBorderWidth
+                    borderWidth: root.controlBorderWidth
                     slantWidth: 10
                 }
 
                 RowLayout {
-                    anchors.fill: parent; anchors.leftMargin: 16; anchors.rightMargin: 12
-                    Text { text: "🎲 Dice, Coin & RNG"; color: root.highlightColor; font.bold: true; font.pixelSize: 20; Layout.fillWidth: true }
+                    anchors.fill: parent
+                    anchors.leftMargin: Math.max(16, root.inputPad.left)
+                    anchors.rightMargin: Math.max(16, root.inputPad.right)
+                    Text { text: "🎲 Dice, Coin & RNG"; color: root.highlightColor; font.bold: true; font.pixelSize: 18; Layout.fillWidth: true }
                     Item {
-                        width: 110; height: 34
+                        width: 110; height: 32
                         Style.ShapeBox {
                             anchors.fill: parent
                             role: "input"
                             slantWidth: 6
                             color: root.showHistoryPanel ? root.accentColor : (histMouse.containsMouse ? root.bgHover : root.bgBase)
                             borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
-                            borderWidth: 1
+                            borderWidth: root.controlBorderWidth
                         }
-                        Text { anchors.centerIn: parent; text: root.showHistoryPanel ? "🎲 Roller" : "📜 History"; color: root.showHistoryPanel ? "#11111b" : root.highlightColor; font.bold: true; font.pixelSize: 18 }
+                        Text { anchors.centerIn: parent; text: root.showHistoryPanel ? "🎲 Roller" : "📜 History"; color: root.showHistoryPanel ? "#11111b" : root.highlightColor; font.bold: true; font.pixelSize: 14 }
                         MouseArea { id: histMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.showHistoryPanel = !root.showHistoryPanel }
                     }
                     Item {
-                        width: 34; height: 34
+                        width: 32; height: 32
                         Style.ShapeBox {
                             anchors.fill: parent
                             role: "input"
@@ -380,85 +375,90 @@ PanelWindow {
                             borderColor: "transparent"
                             borderWidth: 0
                         }
-                        Text { anchors.centerIn: parent; text: "✕"; color: closeMouse.containsMouse ? "#11111b" : root.highlightColor; font.bold: true; font.pixelSize: 18 }
+                        Text { anchors.centerIn: parent; text: "✕"; color: closeMouse.containsMouse ? "#11111b" : root.highlightColor; font.bold: true; font.pixelSize: 16 }
                         MouseArea { id: closeMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.close() }
                     }
                 }
             }
 
             ColumnLayout {
-                Layout.fillWidth: true; Layout.fillHeight: true; spacing: 12
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                spacing: 12
                 visible: !root.showHistoryPanel
 
                 RowLayout {
                     Layout.fillWidth: true; spacing: 10
                     ColumnLayout {
                         Layout.fillWidth: true; spacing: 4
-                        Text { text: "Quantity"; color: root.highlightColor; font.pixelSize: 16; font.bold: true }
+                        Text { text: "Quantity"; color: root.highlightColor; font.pixelSize: 14; font.bold: true }
                         NumInput { id: qtyBox; minVal: 1; maxVal: 100; value: root.diceCount; Layout.fillWidth: true; onValueChanged: { root.diceCount = value; if (keepSpin.value > value) keepSpin.value = value; } }
                     }
                     ColumnLayout {
                         Layout.fillWidth: true; spacing: 4
-                        Text { text: "Strength (Capped)"; color: root.highlightColor; font.pixelSize: 16; font.bold: true }
+                        Text { text: "Strength (Capped)"; color: root.highlightColor; font.pixelSize: 14; font.bold: true }
                         NumInput { id: strBox; minVal: -100; maxVal: 100; value: root.strengthVal; Layout.fillWidth: true; onValueChanged: root.strengthVal = value }
                     }
                     ColumnLayout {
                         Layout.fillWidth: true; spacing: 4
-                        Text { text: "Flat Mod (+X)"; color: root.highlightColor; font.pixelSize: 16; font.bold: true }
+                        Text { text: "Flat Mod (+X)"; color: root.highlightColor; font.pixelSize: 14; font.bold: true }
                         NumInput { id: flatBox; minVal: -100; maxVal: 100; value: root.flatModVal; Layout.fillWidth: true; onValueChanged: root.flatModVal = value }
                     }
                 }
 
                 Item {
-                    Layout.fillWidth: true; height: 52
+                    Layout.fillWidth: true; height: 50
                     Style.ShapeBox {
                         anchors.fill: parent
                         role: "input"
                         color: root.bgCard
                         borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
-                        borderWidth: root.globalBorderWidth
+                        borderWidth: root.controlBorderWidth
                         slantWidth: 10
                     }
                     RowLayout {
-                        anchors.fill: parent; anchors.margins: 6; spacing: 6
-                        Text { text: "Mode:"; color: root.highlightColor; font.bold: true; font.pixelSize: 16 }
+                        anchors.fill: parent
+                        anchors.leftMargin: Math.max(16, root.inputPad.left)
+                        anchors.rightMargin: Math.max(16, root.inputPad.right)
+                        spacing: 8
+                        Text { text: "Mode:"; color: root.highlightColor; font.bold: true; font.pixelSize: 14 }
                         Repeater {
                             model: [ { "idStr": "all", "label": "Keep All" }, { "idStr": "kh", "label": "Advantage" }, { "idStr": "kl", "label": "Disadvantage" } ]
                             delegate: Item {
                                 readonly property bool isSelected: root.keepMode === modelData.idStr
-                                Layout.fillWidth: true; height: 40
+                                Layout.fillWidth: true; height: 36
                                 Style.ShapeBox {
                                     anchors.fill: parent
                                     role: "input"
                                     slantWidth: 8
                                     color: isSelected ? root.bgHover : root.bgBase
                                     borderColor: isSelected ? root.highlightColor : (root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor)
-                                    borderWidth: isSelected ? root.globalBorderWidth : 1
+                                    borderWidth: root.controlBorderWidth
                                 }
-                                Text { anchors.centerIn: parent; text: modelData.label; color: root.highlightColor; font.bold: isSelected; font.pixelSize: 15 }
+                                Text { anchors.centerIn: parent; text: modelData.label; color: root.highlightColor; font.bold: isSelected; font.pixelSize: 13 }
                                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.keepMode = modelData.idStr }
                             }
                         }
-                        NumInput { id: keepSpin; visible: root.keepMode !== "all"; minVal: 1; maxVal: Math.max(1, root.diceCount); value: root.keepCount; Layout.preferredWidth: 130; onValueChanged: root.keepCount = value }
+                        NumInput { id: keepSpin; visible: root.keepMode !== "all"; minVal: 1; maxVal: Math.max(1, root.diceCount); value: root.keepCount; Layout.preferredWidth: 120; onValueChanged: root.keepCount = value }
                     }
                 }
 
                 GridLayout {
-                    Layout.fillWidth: true; columns: 4; rowSpacing: 10; columnSpacing: 10
+                    Layout.fillWidth: true; columns: 4; rowSpacing: 8; columnSpacing: 8
                     Repeater {
                         model: [ { name: "🪙 Coin", sides: 2 }, { name: "d4", sides: 4 }, { name: "d6", sides: 6 }, { name: "d8", sides: 8 }, { name: "d10", sides: 10 }, { name: "d12", sides: 12 }, { name: "d20", sides: 20 }, { name: "d100", sides: 100 } ]
                         delegate: Item {
                             readonly property bool isSelected: root.selectedSides === modelData.sides
-                            Layout.fillWidth: true; height: 48
+                            Layout.fillWidth: true; height: 44
                             Style.ShapeBox {
                                 anchors.fill: parent
                                 role: "input"
                                 slantWidth: 8
                                 color: root.bgCard
                                 borderColor: isSelected ? root.highlightColor : (root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor)
-                                borderWidth: isSelected ? root.globalBorderWidth : 1
+                                borderWidth: root.controlBorderWidth
                             }
-                            Text { anchors.centerIn: parent; text: modelData.name; color: isSelected ? root.highlightColor : (modelData.sides === 2 ? root.accentColor : root.highlightColor); font.bold: isSelected; font.pixelSize: 18 }
+                            Text { anchors.centerIn: parent; text: modelData.name; color: isSelected ? root.highlightColor : (modelData.sides === 2 ? root.accentColor : root.highlightColor); font.bold: isSelected; font.pixelSize: 16 }
                             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.selectedSides = modelData.sides }
                         }
                     }
@@ -466,33 +466,36 @@ PanelWindow {
 
                 Item {
                     readonly property bool isCustomActive: root.selectedSides === root.customSidesVal && root.selectedSides !== 2 && root.selectedSides !== 4 && root.selectedSides !== 6 && root.selectedSides !== 8 && root.selectedSides !== 10 && root.selectedSides !== 12 && root.selectedSides !== 20 && root.selectedSides !== 100
-                    Layout.fillWidth: true; height: 56
+                    Layout.fillWidth: true; height: 52
                     Style.ShapeBox {
                         anchors.fill: parent
                         role: "input"
                         slantWidth: 10
                         color: isCustomActive ? root.bgHover : root.bgCard
                         borderColor: isCustomActive ? root.highlightColor : (root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor)
-                        borderWidth: isCustomActive ? root.globalBorderWidth : 1
+                        borderWidth: root.controlBorderWidth
                     }
                     RowLayout {
-                        anchors.fill: parent; anchors.leftMargin: 16; anchors.rightMargin: 16; spacing: 12
-                        Text { text: "🎲 Custom Die (d" + root.customSidesVal + "):"; color: root.highlightColor; font.bold: true; font.pixelSize: 18 }
+                        anchors.fill: parent
+                        anchors.leftMargin: Math.max(16, root.inputPad.left)
+                        anchors.rightMargin: Math.max(16, root.inputPad.right)
+                        spacing: 12
+                        Text { text: "🎲 Custom Die (d" + root.customSidesVal + "):"; color: root.highlightColor; font.bold: true; font.pixelSize: 16 }
                         Item { Layout.fillWidth: true }
-                        NumInput { id: customSpin; minVal: 2; maxVal: 1000; value: root.customSidesVal; Layout.preferredWidth: 140; onValueChanged: { root.customSidesVal = value; root.selectedSides = value; } }
+                        NumInput { id: customSpin; minVal: 2; maxVal: 1000; value: root.customSidesVal; Layout.preferredWidth: 130; onValueChanged: { root.customSidesVal = value; root.selectedSides = value; } }
                     }
                     MouseArea { anchors.fill: parent; z: -1; cursorShape: Qt.PointingHandCursor; onClicked: root.selectedSides = root.customSidesVal }
                 }
 
                 Item {
-                    Layout.fillWidth: true; height: 54
+                    Layout.fillWidth: true; height: 50
                     Style.ShapeBox {
                         anchors.fill: parent
                         role: "input"
                         slantWidth: 10
                         color: rollMouse.containsMouse ? root.bgHover : root.bgCard
                         borderColor: rollMouse.containsMouse ? root.highlightColor : root.accentColor
-                        borderWidth: root.globalBorderWidth
+                        borderWidth: root.controlBorderWidth
                     }
                     Text {
                         anchors.centerIn: parent
@@ -501,7 +504,7 @@ PanelWindow {
                             return root.selectedSides === 2 ? ("🎲 ROLL " + root.diceCount + (root.diceCount === 1 ? " Coin" : " Coins")) : ("🎲 ROLL " + root.diceCount + "d" + root.selectedSides + suffixStr);
                         }
                         color: rollMouse.containsMouse ? root.highlightColor : root.accentColor
-                        font.bold: true; font.pixelSize: 20
+                        font.bold: true; font.pixelSize: 18
                     }
                     MouseArea { id: rollMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.executeRoll() }
                 }
@@ -514,33 +517,38 @@ PanelWindow {
                         slantWidth: 10
                         color: root.bgCard
                         borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
-                        borderWidth: root.globalBorderWidth
+                        borderWidth: root.controlBorderWidth
                     }
 
                     ColumnLayout {
-                        anchors.fill: parent; anchors.margins: 14; spacing: 8
+                        anchors.fill: parent
+                        anchors.leftMargin: Math.max(18, root.inputPad.left)
+                        anchors.rightMargin: Math.max(18, root.inputPad.right)
+                        anchors.topMargin: 12
+                        anchors.bottomMargin: 12
+                        spacing: 8
                         visible: root.lastRolls.length > 0 || root.coinResult !== ""
                         RowLayout {
                             Layout.fillWidth: true
-                            Text { text: root.lastRollType === "None" ? "" : root.lastRollType; color: root.highlightColor; font.pixelSize: 18; opacity: 0.8 }
+                            Text { text: root.lastRollType === "None" ? "" : root.lastRollType; color: root.highlightColor; font.pixelSize: 16; opacity: 0.8 }
                             Item { Layout.fillWidth: true }
-                            Text { visible: root.coinResult !== ""; text: root.coinResult; color: root.accentColor; font.bold: true; font.pixelSize: 18 }
-                            Text { visible: root.coinResult === "" && root.lastRolls.length > 0; text: "TOTAL: " + root.lastTotal; color: root.accentColor; font.bold: true; font.pixelSize: 22 }
+                            Text { visible: root.coinResult !== ""; text: root.coinResult; color: root.accentColor; font.bold: true; font.pixelSize: 16 }
+                            Text { visible: root.coinResult === "" && root.lastRolls.length > 0; text: "TOTAL: " + root.lastTotal; color: root.accentColor; font.bold: true; font.pixelSize: 20 }
                         }
                         RowLayout {
                             Layout.fillWidth: true; visible: root.coinResult === "" && root.lastRolls.length > 0
-                            Text { text: (root.keepMode === "all" ? "Average: " : "Average (Kept): ") + root.lastAverage.toFixed(2); color: root.highlightColor; font.pixelSize: 16; opacity: 0.8 }
+                            Text { text: (root.keepMode === "all" ? "Average: " : "Average (Kept): ") + root.lastAverage.toFixed(2); color: root.highlightColor; font.pixelSize: 14; opacity: 0.8 }
                         }
                         ScrollView {
                             id: outcomesScroll; Layout.fillWidth: true; Layout.fillHeight: true; clip: true
                             Flow {
-                                width: outcomesScroll.availableWidth > 0 ? outcomesScroll.availableWidth : 500; spacing: 8
+                                width: outcomesScroll.availableWidth > 0 ? outcomesScroll.availableWidth : 480; spacing: 8
                                 Repeater {
                                     model: root.lastRolls
                                     delegate: Item {
                                         readonly property bool isKept: typeof modelData.kept !== "undefined" ? modelData.kept : true
                                         readonly property string displayVal: typeof modelData.value !== "undefined" ? String(modelData.value) : String(modelData.valStr)
-                                        width: Math.max(46, valText.implicitWidth + 16); height: 40
+                                        width: Math.max(44, valText.implicitWidth + 16); height: 38
                                         opacity: isKept ? 1.0 : 0.35
                                         Style.ShapeBox {
                                             anchors.fill: parent
@@ -548,9 +556,9 @@ PanelWindow {
                                             slantWidth: 6
                                             color: isKept ? (displayVal === "Heads" ? root.accentColor : (displayVal === "Tails" ? root.bgHover : root.bgBase)) : root.bgCard
                                             borderColor: isKept ? root.accentColor : (root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor)
-                                            borderWidth: 1
+                                            borderWidth: root.controlBorderWidth
                                         }
-                                        Text { id: valText; anchors.centerIn: parent; text: displayVal; color: isKept ? (displayVal === "Heads" ? "#11111b" : root.highlightColor) : root.highlightColor; font.bold: isKept; font.strikeout: !isKept; font.pixelSize: 18 }
+                                        Text { id: valText; anchors.centerIn: parent; text: displayVal; color: isKept ? (displayVal === "Heads" ? "#11111b" : root.highlightColor) : root.highlightColor; font.bold: isKept; font.strikeout: !isKept; font.pixelSize: 16 }
                                     }
                                 }
                             }
@@ -558,31 +566,36 @@ PanelWindow {
                     }
 
                     ColumnLayout {
-                        anchors.fill: parent; anchors.margins: 14; spacing: 8
+                        anchors.fill: parent
+                        anchors.leftMargin: Math.max(18, root.inputPad.left)
+                        anchors.rightMargin: Math.max(18, root.inputPad.right)
+                        anchors.topMargin: 12
+                        anchors.bottomMargin: 12
+                        spacing: 8
                         visible: root.lastRolls.length === 0 && root.coinResult === ""
                         RowLayout {
                             Layout.fillWidth: true
-                            Text { text: "🎲 " + root.diceCount + (root.selectedSides === 2 ? (root.diceCount === 1 ? " Coin" : " Coins") : ("d" + root.selectedSides)) + " (Waiting to roll...)"; color: root.highlightColor; font.pixelSize: 18; opacity: 0.8 }
+                            Text { text: "🎲 " + root.diceCount + (root.selectedSides === 2 ? (root.diceCount === 1 ? " Coin" : " Coins") : ("d" + root.selectedSides)) + " (Waiting to roll...)"; color: root.highlightColor; font.pixelSize: 16; opacity: 0.8 }
                             Item { Layout.fillWidth: true }
-                            Text { text: "TOTAL: ?"; color: (root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor); font.bold: true; font.pixelSize: 22 }
+                            Text { text: "TOTAL: ?"; color: (root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor); font.bold: true; font.pixelSize: 20 }
                         }
                         ScrollView {
                             id: previewScroll; Layout.fillWidth: true; Layout.fillHeight: true; clip: true
                             Flow {
-                                width: previewScroll.availableWidth > 0 ? previewScroll.availableWidth : 500; spacing: 8
+                                width: previewScroll.availableWidth > 0 ? previewScroll.availableWidth : 480; spacing: 8
                                 Repeater {
                                     model: root.previewRolls
                                     delegate: Item {
-                                        width: 48; height: 40
+                                        width: 44; height: 38
                                         Style.ShapeBox {
                                             anchors.fill: parent
                                             role: "input"
                                             slantWidth: 6
                                             color: root.bgBase
                                             borderColor: root.highlightColor
-                                            borderWidth: root.globalBorderWidth
+                                            borderWidth: root.controlBorderWidth
                                         }
-                                        Text { anchors.centerIn: parent; text: String(modelData); color: root.highlightColor; font.bold: true; font.pixelSize: 18 }
+                                        Text { anchors.centerIn: parent; text: String(modelData); color: root.highlightColor; font.bold: true; font.pixelSize: 16 }
                                     }
                                 }
                             }
@@ -601,51 +614,53 @@ PanelWindow {
                     slantWidth: 10
                     color: root.bgCard
                     borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
-                    borderWidth: root.globalBorderWidth
+                    borderWidth: root.controlBorderWidth
                 }
 
                 ColumnLayout {
-                    anchors.fill: parent; anchors.margins: 14; spacing: 10
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    spacing: 8
                     RowLayout {
                         Layout.fillWidth: true
-                        Text { text: "📜 Roll History (" + historyModel.count + ")"; color: root.highlightColor; font.bold: true; font.pixelSize: 18 }
+                        Text { text: "📜 Roll History (" + historyModel.count + ")"; color: root.highlightColor; font.bold: true; font.pixelSize: 16 }
                         Item { Layout.fillWidth: true }
                         Item {
-                            width: 140; height: 34
+                            width: 130; height: 30
                             Style.ShapeBox {
                                 anchors.fill: parent
                                 role: "input"
                                 slantWidth: 6
                                 color: clearMouse.containsMouse ? root.altAccent : root.bgBase
                                 borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
-                                borderWidth: 1
+                                borderWidth: root.controlBorderWidth
                             }
-                            Text { anchors.centerIn: parent; text: "Clear History"; color: clearMouse.containsMouse ? "#11111b" : root.highlightColor; font.bold: true; font.pixelSize: 16 }
+                            Text { anchors.centerIn: parent; text: "Clear History"; color: clearMouse.containsMouse ? "#11111b" : root.highlightColor; font.bold: true; font.pixelSize: 14 }
                             MouseArea { id: clearMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: historyModel.clear() }
                         }
                     }
                     ListView {
-                        Layout.fillWidth: true; Layout.fillHeight: true; clip: true; spacing: 8
+                        Layout.fillWidth: true; Layout.fillHeight: true; clip: true; spacing: 6
                         model: historyModel
                         delegate: Item {
-                            width: ListView.view ? ListView.view.width : 0; height: 64
+                            width: ListView.view ? ListView.view.width : 0; height: 58
                             Style.ShapeBox {
                                 anchors.fill: parent
                                 role: "input"
                                 slantWidth: 6
                                 color: root.bgBase
                                 borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
-                                borderWidth: 1
+                                borderWidth: root.controlBorderWidth
                             }
                             ColumnLayout {
-                                anchors.fill: parent; anchors.margins: 8; spacing: 4
+                                anchors.fill: parent; anchors.margins: 8; spacing: 2
                                 RowLayout {
                                     Layout.fillWidth: true
-                                    Text { text: model.timeStr + " • " + model.typeStr; color: root.highlightColor; font.bold: true; font.pixelSize: 16 }
+                                    Text { text: model.timeStr + " • " + model.typeStr; color: root.highlightColor; font.bold: true; font.pixelSize: 14 }
                                     Item { Layout.fillWidth: true }
-                                    Text { text: model.typeStr.indexOf("Coin") !== -1 ? model.rollsStr : ("Total: " + model.totalVal + " (Avg: " + model.avgVal + ")"); color: root.accentColor; font.bold: true; font.pixelSize: 16 }
+                                    Text { text: model.typeStr.indexOf("Coin") !== -1 ? model.rollsStr : ("Total: " + model.totalVal + " (Avg: " + model.avgVal + ")"); color: root.accentColor; font.bold: true; font.pixelSize: 14 }
                                 }
-                                Text { text: "Outcomes: [ " + model.rollsStr + " ]"; color: root.highlightColor; font.pixelSize: 15; opacity: 0.7; elide: Text.ElideRight; Layout.fillWidth: true }
+                                Text { text: "Outcomes: [ " + model.rollsStr + " ]"; color: root.highlightColor; font.pixelSize: 13; opacity: 0.7; elide: Text.ElideRight; Layout.fillWidth: true }
                             }
                         }
                         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
@@ -661,7 +676,7 @@ PanelWindow {
         windowId: root.windowId
         settingsManager: root.settingsManager
         theme: root.theme
-        defaultW: 580; defaultH: 840
+        defaultW: 620; defaultH: 840
         hasField: false; hasIcon: false
         defaultPolicy: "lazy"
         onDoneRequested: {

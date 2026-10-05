@@ -17,7 +17,10 @@ Item {
     readonly property int overlayFontSize: (settingsManager && settingsManager.overlayFontSize > 0)
         ? settingsManager.overlayFontSize : 18
 
-    readonly property var safePad: Utils.getSafeCardPadding(settingsManager)
+    readonly property int controlBorderWidth: (settingsManager && settingsManager.controlBorderWidth)
+        ? settingsManager.controlBorderWidth
+        : ((theme && theme.controlBorderWidth) ? theme.controlBorderWidth : 2)
+
     readonly property var inputPad: Utils.getSafeInputPadding(settingsManager)
 
     signal completed()
@@ -31,10 +34,7 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.leftMargin: viewRoot.safePad.h
-        anchors.rightMargin: viewRoot.safePad.h
-        anchors.topMargin: viewRoot.safePad.v
-        anchors.bottomMargin: viewRoot.safePad.v
+        anchors.margins: 10
         spacing: 16
 
         // Universal Shape Input Bar
@@ -52,7 +52,7 @@ Item {
                 borderColor: calcField.activeFocus
                     ? ((theme && theme.base05) ? theme.base05 : "yellow")
                     : ((theme && theme.base03) ? theme.base03 : "#45475a")
-                borderWidth: calcField.activeFocus ? 2 : 1
+                borderWidth: viewRoot.controlBorderWidth
                 slantWidth: 14
             }
 
@@ -107,7 +107,7 @@ Item {
                 role: "input"
                 color: (theme && theme.base00) ? theme.base00 : "#11111b"
                 borderColor: (theme && theme.base03) ? theme.base03 : "#45475a"
-                borderWidth: 1
+                borderWidth: viewRoot.controlBorderWidth
                 slantWidth: 14
             }
 
@@ -140,8 +140,8 @@ Item {
                                 anchors.fill: parent
                                 role: "input"
                                 color: parent.isSelected ? ((theme && theme.base02) ? theme.base02 : "#333") : "transparent"
-                                borderColor: parent.isSelected ? "#04f100" : "#444"
-                                borderWidth: parent.isSelected ? 2 : 1
+                                borderColor: parent.isSelected ? "#04f100" : ((theme && theme.base03) ? theme.base03 : "#45475a")
+                                borderWidth: viewRoot.controlBorderWidth
                                 slantWidth: 8
                             }
 

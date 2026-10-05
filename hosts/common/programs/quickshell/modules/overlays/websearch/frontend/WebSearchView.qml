@@ -3,6 +3,7 @@ import QtQuick.Controls 2
 import QtQuick.Layouts 1.15
 import "../backend"
 import "../../../style" as Style
+import "../../../common/Utils.js" as Utils
 
 Item {
     id: viewRoot
@@ -16,6 +17,12 @@ Item {
     readonly property int overlayFontSize: (settingsManager && settingsManager.overlayFontSize > 0)
         ? settingsManager.overlayFontSize : 16
 
+    readonly property int controlBorderWidth: (settingsManager && settingsManager.controlBorderWidth)
+        ? settingsManager.controlBorderWidth
+        : ((theme && theme.controlBorderWidth) ? theme.controlBorderWidth : 2)
+
+    readonly property var inputPad: Utils.getSafeInputPadding(settingsManager)
+
     signal completed()
 
     function clearAndFocus(q) {
@@ -28,7 +35,7 @@ Item {
 
     ColumnLayout {
         anchors.centerIn: parent
-        width: Math.min(parent.width - 48, 700)
+        width: Math.min(parent.width - 24, 700)
         spacing: 16
 
         Text {
@@ -55,12 +62,15 @@ Item {
                 borderColor: searchField.activeFocus
                     ? ((theme && theme.base05) ? theme.base05 : "yellow")
                     : ((theme && theme.base03) ? theme.base03 : "#45475a")
-                borderWidth: searchField.activeFocus ? 2 : 1
+                borderWidth: viewRoot.controlBorderWidth
                 slantWidth: 14
             }
 
             RowLayout {
-                anchors.fill: parent; anchors.margins: 12; spacing: 10
+                anchors.fill: parent
+                anchors.leftMargin: viewRoot.inputPad.left
+                anchors.rightMargin: viewRoot.inputPad.right
+                spacing: 10
                 Text { text: "🔍"; font.pixelSize: Math.max(16, viewRoot.fieldHeight * 0.38) }
                 TextInput {
                     id: searchField
@@ -99,7 +109,7 @@ Item {
                 role: "input"
                 color: btnHov.hovered ? ((theme && theme.base05) ? theme.base05 : "yellow") : ((theme && theme.base03) ? theme.base03 : "#003399")
                 borderColor: (theme && theme.base05) ? theme.base05 : "yellow"
-                borderWidth: 1
+                borderWidth: viewRoot.controlBorderWidth
                 slantWidth: 10
             }
 

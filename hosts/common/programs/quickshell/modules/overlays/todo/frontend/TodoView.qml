@@ -21,8 +21,11 @@ Item {
     readonly property color titleColor: innerCardActiveBorder
     readonly property string todoFontFamily: (theme && theme.fontFamily) ? theme.fontFamily : "monospace"
     readonly property int globalFontSize: (theme && theme.globalFontSize) ? theme.globalFontSize : 14
-    readonly property int globalBorderWidth: (theme && theme.globalBorderWidth) ? theme.globalBorderWidth : 3
     readonly property int defaultCardRadius: (theme && theme.defaultCardRadius) ? theme.defaultCardRadius : 10
+
+    readonly property int controlBorderWidth: (settingsManager && settingsManager.controlBorderWidth)
+        ? settingsManager.controlBorderWidth
+        : ((theme && theme.controlBorderWidth) ? theme.controlBorderWidth : 2)
 
     readonly property int fieldHeight: settingsManager
         ? settingsManager.getWindowFieldHeight("todo", 58) : 58
@@ -86,7 +89,7 @@ Item {
                             role: "input"
                             color: "transparent"
                             borderColor: engine.activeCategory === model.name ? viewRoot.innerCardActiveBorder : viewRoot.innerCardInactiveBorder
-                            borderWidth: engine.activeCategory === model.name ? viewRoot.globalBorderWidth : 1
+                            borderWidth: viewRoot.controlBorderWidth
                             slantWidth: 10
                         }
 
@@ -121,7 +124,7 @@ Item {
                         role: "input"
                         color: "transparent"
                         borderColor: viewRoot.innerCardActiveBorder
-                        borderWidth: viewRoot.globalBorderWidth
+                        borderWidth: viewRoot.controlBorderWidth
                         slantWidth: 10
                     }
 
@@ -156,7 +159,7 @@ Item {
                         role: "input"
                         color: "transparent"
                         borderColor: (theme && theme.base08) ? theme.base08 : "#ff5555"
-                        borderWidth: viewRoot.globalBorderWidth
+                        borderWidth: viewRoot.controlBorderWidth
                         slantWidth: 10
                     }
 
@@ -193,7 +196,7 @@ Item {
                 role: "input"
                 color: viewRoot.fieldBg
                 borderColor: taskInput.activeFocus ? viewRoot.innerCardActiveBorder : viewRoot.innerCardInactiveBorder
-                borderWidth: taskInput.activeFocus ? viewRoot.globalBorderWidth : 1
+                borderWidth: viewRoot.controlBorderWidth
                 slantWidth: 14
             }
 
@@ -294,8 +297,10 @@ Item {
                         anchors.fill: parent
                         role: "input"
                         color: viewRoot.fieldBg
-                        borderColor: delegateCard.isThisItemEditing ? ((theme && theme.base08) ? theme.base08 : "#ff5555") : (delegateCard.isSelected ? viewRoot.innerCardActiveBorder : viewRoot.innerCardInactiveBorder)
-                        borderWidth: delegateCard.isSelected || delegateCard.isThisItemEditing ? viewRoot.globalBorderWidth : 1
+                        borderColor: delegateCard.isThisItemEditing
+                            ? ((theme && theme.base08) ? theme.base08 : "#ff5555")
+                            : (delegateCard.isSelected ? viewRoot.innerCardActiveBorder : viewRoot.innerCardInactiveBorder)
+                        borderWidth: viewRoot.controlBorderWidth
                         slantWidth: 10
                     }
 
@@ -443,7 +448,7 @@ Item {
                         role: "input"
                         color: "transparent"
                         borderColor: engine.filterMode === modelData ? viewRoot.innerCardActiveBorder : viewRoot.innerCardInactiveBorder
-                        borderWidth: engine.filterMode === modelData ? viewRoot.globalBorderWidth : 1
+                        borderWidth: viewRoot.controlBorderWidth
                         slantWidth: 10
                     }
 
@@ -485,7 +490,7 @@ Item {
                 role: "card"
                 color: viewRoot.modalBoxBg
                 borderColor: viewRoot.innerCardActiveBorder
-                borderWidth: viewRoot.globalBorderWidth
+                borderWidth: (theme && theme.globalBorderWidth) ? theme.globalBorderWidth : 3
             }
 
             Column {
@@ -503,7 +508,7 @@ Item {
                         role: "input"
                         color: viewRoot.fieldBg
                         borderColor: viewRoot.innerCardActiveBorder
-                        borderWidth: 1
+                        borderWidth: viewRoot.controlBorderWidth
                         slantWidth: 10
                     }
 

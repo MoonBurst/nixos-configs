@@ -116,7 +116,8 @@ Item {
             Rectangle {
                 width: 36; height: 36; radius: 6
                 color: (settingsManager && settingsManager.notifBorderColor) ? settingsManager.notifBorderColor : panelRoot.liveBase05
-                border.width: 2; border.color: "#ffffff"
+                border.width: panelRoot.liveControlBorderWidth
+                border.color: "#ffffff"
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
@@ -136,7 +137,7 @@ Item {
                 radius: 8
                 color: panelRoot.liveBase00
                 border.color: panelRoot.liveBase03
-                border.width: 1
+                border.width: panelRoot.liveControlBorderWidth
 
                 TextInput {
                     id: customIconInput
@@ -175,7 +176,7 @@ Item {
                 radius: 8
                 color: panelRoot.liveBase00
                 border.color: panelRoot.liveBase03
-                border.width: 1
+                border.width: panelRoot.liveControlBorderWidth
 
                 TextInput {
                     id: ttsKeywordsInput
@@ -207,7 +208,7 @@ Item {
                 radius: 8
                 color: panelRoot.liveBase00
                 border.color: panelRoot.liveBase03
-                border.width: 1
+                border.width: panelRoot.liveControlBorderWidth
 
                 TextInput {
                     id: excludedStrInput
@@ -259,7 +260,7 @@ Item {
                         radius: 6
                         color: isSelected ? panelRoot.liveBase05 : panelRoot.liveBase02
                         border.color: panelRoot.liveBase05
-                        border.width: 1.5
+                        border.width: panelRoot.liveControlBorderWidth
 
                         Text {
                             id: scrText
@@ -295,7 +296,7 @@ Item {
                 radius: 8
                 color: testNotifHov.hovered ? panelRoot.liveBase0C : "transparent"
                 border.color: panelRoot.liveBase0C
-                border.width: 2
+                border.width: panelRoot.liveControlBorderWidth
 
                 Row {
                     id: toastBtnRow
@@ -371,9 +372,7 @@ Item {
             color: panelRoot.liveBase03
         }
 
-        // =========================================================================
         // EMAIL SETTINGS: SOUNDS, LIMITS & CHIMES
-        // =========================================================================
         Text {
             text: "✉️ EMAIL OPTIONS: SOUNDS, ALERTS & SYNC LIMITS"
             font.pixelSize: panelRoot.liveFontSize + 2
@@ -409,7 +408,7 @@ Item {
                         radius: 8
                         color: isSelected ? panelRoot.liveBase05 : panelRoot.liveBase00
                         border.color: panelRoot.liveBase05
-                        border.width: isSelected ? 2 : 1.5
+                        border.width: isSelected ? panelRoot.liveControlBorderWidth : 1
 
                         Text {
                             id: lText
@@ -451,7 +450,7 @@ Item {
                     radius: 8
                     color: panelRoot.liveBase00
                     border.color: panelRoot.liveBase03
-                    border.width: 1.5
+                    border.width: panelRoot.liveControlBorderWidth
 
                     TextInput {
                         anchors.fill: parent
@@ -471,7 +470,7 @@ Item {
                     radius: 8
                     color: bRMouse.containsMouse ? panelRoot.liveBase05 : panelRoot.liveBase02
                     border.color: panelRoot.liveBase05
-                    border.width: 1.5
+                    border.width: panelRoot.liveControlBorderWidth
 
                     Text {
                         id: browseRText
@@ -496,7 +495,7 @@ Item {
                     radius: 8
                     color: tRMouse.containsMouse ? panelRoot.liveBase0C : panelRoot.liveBase02
                     border.color: panelRoot.liveBase0C
-                    border.width: 1.5
+                    border.width: panelRoot.liveControlBorderWidth
 
                     Text {
                         id: testRText
@@ -541,77 +540,76 @@ Item {
                     radius: 8
                     color: panelRoot.liveBase00
                     border.color: panelRoot.liveBase03
-                    border.width: 1.5
+                    border.width: panelRoot.liveControlBorderWidth
 
-                TextInput {
-                    anchors.fill: parent
-                    anchors.margins: 10
-                    color: panelRoot.liveBase05
-                    font.pixelSize: Math.max(13, panelRoot.liveFontSize - 1)
-                    verticalAlignment: TextInput.AlignVCenter
-                    selectByMouse: true
-                    text: settingsManager ? settingsManager.emailSendSound : ""
-                    onTextEdited: if (settingsManager) settingsManager.emailSendSound = text
+                    TextInput {
+                        anchors.fill: parent
+                        anchors.margins: 10
+                        color: panelRoot.liveBase05
+                        font.pixelSize: Math.max(13, panelRoot.liveFontSize - 1)
+                        verticalAlignment: TextInput.AlignVCenter
+                        selectByMouse: true
+                        text: settingsManager ? settingsManager.emailSendSound : ""
+                        onTextEdited: if (settingsManager) settingsManager.emailSendSound = text
+                    }
                 }
-            }
 
-            Rectangle {
-                width: browseSText.implicitWidth + 28
-                height: Math.max(42, panelRoot.liveFontSize * 2.4)
-                radius: 8
-                color: bSMouse.containsMouse ? panelRoot.liveBase05 : panelRoot.liveBase02
-                border.color: panelRoot.liveBase05
-                border.width: 1.5
+                Rectangle {
+                    width: browseSText.implicitWidth + 28
+                    height: Math.max(42, panelRoot.liveFontSize * 2.4)
+                    radius: 8
+                    color: bSMouse.containsMouse ? panelRoot.liveBase05 : panelRoot.liveBase02
+                    border.color: panelRoot.liveBase05
+                    border.width: panelRoot.liveControlBorderWidth
 
-                Text {
-                    id: browseSText
-                    anchors.centerIn: parent
-                    text: "📁 Browse..."
-                    font.bold: true
-                    font.pixelSize: Math.max(12, panelRoot.liveFontSize - 2)
-                    color: bSMouse.containsMouse ? panelRoot.liveBase00 : panelRoot.liveBase05
+                    Text {
+                        id: browseSText
+                        anchors.centerIn: parent
+                        text: "📁 Browse..."
+                        font.bold: true
+                        font.pixelSize: Math.max(12, panelRoot.liveFontSize - 2)
+                        color: bSMouse.containsMouse ? panelRoot.liveBase00 : panelRoot.liveBase05
+                    }
+                    MouseArea {
+                        id: bSMouse
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        hoverEnabled: true
+                        onClicked: root.openInAppBrowser("send")
+                    }
                 }
-                MouseArea {
-                    id: bSMouse
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    hoverEnabled: true
-                    onClicked: root.openInAppBrowser("send")
-                }
-            }
 
-            Rectangle {
-                width: testSText.implicitWidth + 28
-                height: Math.max(42, panelRoot.liveFontSize * 2.4)
-                radius: 8
-                color: tSMouse.containsMouse ? panelRoot.liveBase0C : panelRoot.liveBase02
-                border.color: panelRoot.liveBase0C
-                border.width: 1.5
+                Rectangle {
+                    width: testSText.implicitWidth + 28
+                    height: Math.max(42, panelRoot.liveFontSize * 2.4)
+                    radius: 8
+                    color: tSMouse.containsMouse ? panelRoot.liveBase0C : panelRoot.liveBase02
+                    border.color: panelRoot.liveBase0C
+                    border.width: panelRoot.liveControlBorderWidth
 
-                Text {
-                    id: testSText
-                    anchors.centerIn: parent
-                    text: "▶ Test Sound"
-                    font.bold: true
-                    font.pixelSize: Math.max(12, panelRoot.liveFontSize - 2)
-                    color: tSMouse.containsMouse ? "#000000" : panelRoot.liveBase0C
-                }
-                MouseArea {
-                    id: tSMouse
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    hoverEnabled: true
-                    onClicked: {
-                        var p = settingsManager ? settingsManager.emailSendSound : "";
-                        if (p !== "") Quickshell.execDetached(["pw-play", p]);
+                    Text {
+                        id: testSText
+                        anchors.centerIn: parent
+                        text: "▶ Test Sound"
+                        font.bold: true
+                        font.pixelSize: Math.max(12, panelRoot.liveFontSize - 2)
+                        color: tSMouse.containsMouse ? "#000000" : panelRoot.liveBase0C
+                    }
+                    MouseArea {
+                        id: tSMouse
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        hoverEnabled: true
+                        onClicked: {
+                            var p = settingsManager ? settingsManager.emailSendSound : "";
+                            if (p !== "") Quickshell.execDetached(["pw-play", p]);
+                        }
                     }
                 }
             }
         }
     }
-}
 
-    // Modal sits completely outside the ColumnLayout, filling root cleanly with no layout warnings
     Rectangle {
         id: fileBrowserModal
         visible: root.inAppBrowserOpen
@@ -628,7 +626,7 @@ Item {
             radius: 14
             color: panelRoot.liveBase00
             border.color: panelRoot.liveBase05
-            border.width: 2.5
+            border.width: panelRoot.liveControlBorderWidth
 
             ColumnLayout {
                 anchors.fill: parent
@@ -660,7 +658,7 @@ Item {
                         ]
                         delegate: Rectangle {
                             width: pTxt.implicitWidth + 20; height: 32; radius: 6
-                            color: panelRoot.liveBase02; border.color: panelRoot.liveBase0C; border.width: 1.5
+                            color: panelRoot.liveBase02; border.color: panelRoot.liveBase0C; border.width: panelRoot.liveControlBorderWidth
                             Text { id: pTxt; anchors.centerIn: parent; text: modelData.name; font.pixelSize: 12; font.bold: true; color: panelRoot.liveBase0C }
                             MouseArea {
                                 anchors.fill: parent
@@ -686,7 +684,7 @@ Item {
 
                 Rectangle {
                     Layout.fillWidth: true; Layout.fillHeight: true
-                    color: panelRoot.liveBase02; radius: 8; border.color: panelRoot.liveBase03; border.width: 1.5
+                    color: panelRoot.liveBase02; radius: 8; border.color: panelRoot.liveBase03; border.width: panelRoot.liveControlBorderWidth
                     clip: true
 
                     ListView {

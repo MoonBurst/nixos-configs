@@ -6,6 +6,7 @@ import Quickshell.Wayland
 import Quickshell.Io
 import "../../style" as Style
 import "../../common" as Common
+import "../../common/Utils.js" as Utils
 
 PanelWindow {
     id: root
@@ -131,7 +132,9 @@ PanelWindow {
     readonly property color themeBase09: (shell && shell.theme && shell.theme.base09) ? shell.theme.base09 : "#fe8019"
     readonly property color themeBase0C: (shell && shell.theme && shell.theme.base0C) ? shell.theme.base0C : "#04f100"
     readonly property string themeFont: (shell && shell.theme && shell.theme.fontFamily) ? shell.theme.fontFamily : "monospace"
-    readonly property int globalBorderWidth: (shell && shell.theme && shell.theme.globalBorderWidth !== undefined) ? shell.theme.globalBorderWidth : 2
+    readonly property int globalBorderWidth: (shell && shell.theme && shell.theme.globalBorderWidth !== undefined) ? shell.theme.globalBorderWidth : 3
+    readonly property int controlBorderWidth: (shell && shell.settingsManager && shell.settingsManager.controlBorderWidth) ? shell.settingsManager.controlBorderWidth : 2
+    readonly property var inputPad: Utils.getSafeInputPadding(shell ? shell.settingsManager : null)
 
     property var crewmates: [
         { name: "Red",     hex: "#C51111", darkHex: "#7A0808", dead: false },
@@ -203,18 +206,7 @@ PanelWindow {
         width: (shell && shell.settingsManager) ? shell.settingsManager.getWindowWidth(root.windowId, 620) : 620
         height: (shell && shell.settingsManager) ? shell.settingsManager.getWindowHeight(root.windowId, 480) : 480
 
-        readonly property int cardCornerCut: {
-            if (!shell || !shell.settingsManager) return 0;
-            if (shell.settingsManager.overlayCardShape === "hexagon") return Math.round(shell.settingsManager.overlayHexagonCut || 36);
-            if (shell.settingsManager.overlayCardShape === "slant") return Math.round(shell.settingsManager.overlaySlantAngle || 32);
-            return 0;
-        }
-        readonly property int cardPadH: (shell && shell.settingsManager && shell.settingsManager.overlayCardShape !== "rounded")
-            ? Math.max(28, Math.round(cardCornerCut * 1.0) + 20)
-            : 16
-        readonly property int cardPadV: (shell && shell.settingsManager && shell.settingsManager.overlayCardShape !== "rounded")
-            ? Math.max(20, Math.round(cardCornerCut * 0.45) + 14)
-            : 16
+        readonly property var safePad: Utils.getSafeCardPadding(shell ? shell.settingsManager : null)
 
         Style.ShapeBox {
             anchors.fill: parent
@@ -236,10 +228,10 @@ PanelWindow {
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.leftMargin: amogusCard.cardPadH
-            anchors.rightMargin: amogusCard.cardPadH
-            anchors.topMargin: amogusCard.cardPadV
-            anchors.bottomMargin: amogusCard.cardPadV
+            anchors.leftMargin: amogusCard.safePad.h
+            anchors.rightMargin: amogusCard.safePad.h
+            anchors.topMargin: amogusCard.safePad.v
+            anchors.bottomMargin: amogusCard.safePad.v
             spacing: 12
 
             Rectangle {
@@ -259,7 +251,9 @@ PanelWindow {
                 }
             }
 
+            // Draggable Header Bar
             Item {
+                id: titleBarBox
                 Layout.fillWidth: true
                 height: 42
 
@@ -268,7 +262,7 @@ PanelWindow {
                     role: "input"
                     color: root.themeBase01
                     borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
-                    borderWidth: root.globalBorderWidth
+                    borderWidth: root.controlBorderWidth
                     slantWidth: 10
                 }
 
@@ -285,8 +279,8 @@ PanelWindow {
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 14
-                    anchors.rightMargin: 12
+                    anchors.leftMargin: Math.max(14, root.inputPad.left)
+                    anchors.rightMargin: Math.max(14, root.inputPad.right)
                     spacing: 8
 
                     Text {
@@ -306,6 +300,7 @@ PanelWindow {
                             delegate: Item {
                                 width: scrText.implicitWidth + 16
                                 height: 24
+                                z: 10
 
                                 Style.ShapeBox {
                                     anchors.fill: parent
@@ -313,7 +308,7 @@ PanelWindow {
                                     slantWidth: 6
                                     color: root.currentScreenIndex === index ? root.themeBase05 : root.themeBase02
                                     borderColor: root.themeBase05
-                                    borderWidth: 1
+                                    borderWidth: root.controlBorderWidth
                                 }
 
                                 Text {
@@ -349,6 +344,7 @@ PanelWindow {
                     Item {
                         width: 72
                         height: 26
+                        z: 10
 
                         Style.ShapeBox {
                             anchors.fill: parent
@@ -356,7 +352,7 @@ PanelWindow {
                             slantWidth: 6
                             color: resetHov.hovered ? root.themeBase05 : "transparent"
                             borderColor: root.themeBase05
-                            borderWidth: 1
+                            borderWidth: root.controlBorderWidth
                         }
 
                         Text {
@@ -379,6 +375,7 @@ PanelWindow {
                         width: 24
                         height: 24
                         radius: 4
+                        z: 10
                         color: closeHov.hovered ? root.themeBase08 : "transparent"
 
                         Text {
@@ -427,7 +424,7 @@ PanelWindow {
                             slantWidth: 8
                             color: crewCard.isDead ? "#121218" : "#1a1a24"
                             borderColor: crewCard.isDead ? "#2a2a38" : crewItem.hex
-                            borderWidth: crewCard.isDead ? 1 : 2
+                            borderWidth: root.controlBorderWidth
                         }
 
                         opacity: isDead ? 0.28 : 1.0

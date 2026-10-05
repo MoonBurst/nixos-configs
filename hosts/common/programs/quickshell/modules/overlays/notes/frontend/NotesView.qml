@@ -3,6 +3,7 @@ import QtQuick.Controls 2
 import QtQuick.Layouts 1.15
 import "../backend" as Backend
 import "../../../style" as Style
+import "../../../common/Utils.js" as Utils
 
 Item {
     id: viewRoot
@@ -15,6 +16,12 @@ Item {
         ? settingsManager.getWindowFieldHeight("notes", 52) : 52
     readonly property int overlayFontSize: (settingsManager && settingsManager.overlayFontSize > 0)
         ? settingsManager.overlayFontSize : 16
+
+    readonly property int controlBorderWidth: (settingsManager && settingsManager.controlBorderWidth)
+        ? settingsManager.controlBorderWidth
+        : ((theme && theme.controlBorderWidth) ? theme.controlBorderWidth : 2)
+
+    readonly property var inputPad: Utils.getSafeInputPadding(settingsManager)
 
     signal completed()
 
@@ -29,8 +36,8 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: (viewRoot.theme && viewRoot.theme.globalPadding) ? viewRoot.theme.globalPadding : 16
-        spacing: 16
+        anchors.margins: 10
+        spacing: 14
 
         // Universal Shape Input Bar
         Item {
@@ -47,12 +54,15 @@ Item {
                 borderColor: noteInput.activeFocus
                     ? ((theme && theme.base05) ? theme.base05 : "yellow")
                     : ((theme && theme.base03) ? theme.base03 : "#45475a")
-                borderWidth: noteInput.activeFocus ? 2 : 1
+                borderWidth: viewRoot.controlBorderWidth
                 slantWidth: 14
             }
 
             RowLayout {
-                anchors.fill: parent; anchors.margins: 12; spacing: 10
+                anchors.fill: parent
+                anchors.leftMargin: viewRoot.inputPad.left
+                anchors.rightMargin: viewRoot.inputPad.right
+                spacing: 10
                 Text { text: "📝"; font.pixelSize: Math.max(16, viewRoot.fieldHeight * 0.38) }
 
                 TextInput {
@@ -114,19 +124,6 @@ Item {
             flickDeceleration: 10000
             maximumFlickVelocity: 15000
 
-            WheelHandler {
-                target: null
-                onWheel: (event) => {
-                    var step = 180;
-                    if (event.angleDelta.y > 0) {
-                        notesList.contentY = Math.max(notesList.originY, notesList.contentY - step);
-                    } else if (event.angleDelta.y < 0) {
-                        var maxY = Math.max(notesList.originY, notesList.contentHeight - notesList.height);
-                        notesList.contentY = Math.min(maxY, notesList.contentY + step);
-                    }
-                }
-            }
-
             delegate: Item {
                 id: noteCard
                 readonly property bool isSelected: index === engine.selectedIndex
@@ -137,13 +134,16 @@ Item {
                     anchors.fill: parent
                     role: "input"
                     color: noteCard.isSelected ? ((theme && theme.base02) ? theme.base02 : "#333") : "transparent"
-                    borderColor: noteCard.isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : "#444"
-                    borderWidth: noteCard.isSelected ? 2 : 1
+                    borderColor: noteCard.isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : ((theme && theme.base03) ? theme.base03 : "#45475a")
+                    borderWidth: viewRoot.controlBorderWidth
                     slantWidth: 10
                 }
 
                 RowLayout {
-                    anchors.fill: parent; anchors.margins: 14; spacing: 14
+                    anchors.fill: parent
+                    anchors.leftMargin: Math.max(14, viewRoot.inputPad.left)
+                    anchors.rightMargin: Math.max(14, viewRoot.inputPad.right)
+                    spacing: 14
                     Text { text: "📌"; font.pixelSize: Math.max(16, viewRoot.overlayFontSize) }
 
                     ColumnLayout {

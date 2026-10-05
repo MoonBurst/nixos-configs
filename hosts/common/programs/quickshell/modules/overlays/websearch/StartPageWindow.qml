@@ -177,6 +177,19 @@ PanelWindow {
         readonly property color currentBorderColor: window.isCardActive ? window.activeBorderColor : window.inactiveBorderColor
         readonly property int currentBorderWidth: (theme && theme.globalBorderWidth !== undefined) ? theme.globalBorderWidth : 3
 
+        readonly property int cardCornerCut: {
+            if (!settingsManager) return 0;
+            if (settingsManager.overlayCardShape === "hexagon") return Math.round(settingsManager.overlayHexagonCut || 36);
+            if (settingsManager.overlayCardShape === "slant") return Math.round(settingsManager.overlaySlantAngle || 32);
+            return 0;
+        }
+        readonly property int cardPadH: (settingsManager && settingsManager.overlayCardShape !== "rounded")
+            ? Math.max(28, Math.round(cardCornerCut * 1.0) + 20)
+            : 0
+        readonly property int cardPadV: (settingsManager && settingsManager.overlayCardShape !== "rounded")
+            ? Math.max(20, Math.round(cardCornerCut * 0.45) + 14)
+            : 0
+
         Style.ShapeBox {
             anchors.fill: parent
             role: "card"
@@ -198,6 +211,10 @@ PanelWindow {
         Loader {
             id: viewLoader
             anchors.fill: parent
+            anchors.leftMargin: card.cardPadH
+            anchors.rightMargin: card.cardPadH
+            anchors.topMargin: card.cardPadV
+            anchors.bottomMargin: card.cardPadV
             active: window.isUiActive
             sourceComponent: Frontend.WebSearchView {
                 engine: webEngine
@@ -209,18 +226,11 @@ PanelWindow {
                 if (item && window.isOpenState && window.isCardActive) item.clearAndFocus(window.pendingQuery);
             }
         }
-
-        // Red "X" square removed from corner
     }
 
     SettingsTools.PreviewInspector {
         id: previewInspector
         visible: window.isPreviewMode
-        anchors.left: (card.x + card.width + width + 20 <= window.width) ? card.right : undefined
-        anchors.right: (card.x + card.width + width + 20 > window.width) ? card.left : undefined
-        anchors.leftMargin: 20; anchors.rightMargin: 20
-        anchors.verticalCenter: card.verticalCenter
-
         windowId: window.windowId
         settingsManager: window.settingsManager
         theme: window.theme

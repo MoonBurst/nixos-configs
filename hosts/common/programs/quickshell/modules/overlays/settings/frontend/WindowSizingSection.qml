@@ -20,7 +20,6 @@ ColumnLayout {
         color: panelRoot.liveBase0C
     }
 
-    // Lazy loader grace period slider directly under header
     CyberSlider {
         label: "Lazy Loader Unload Grace Period (Keeps RAM/VRAM warm for fast re-opens)"
         from: 0; to: 120; stepSize: 5; unit: "s"
@@ -57,7 +56,7 @@ ColumnLayout {
             radius: 8
             color: panelRoot.liveBase00
             border.color: (settingsManager && settingsManager.previewWindow === modelData.id) ? panelRoot.liveBase0C : panelRoot.liveBase03
-            border.width: 1
+            border.width: panelRoot.liveBorderWidth
 
             RowLayout {
                 anchors.fill: parent
@@ -85,7 +84,7 @@ ColumnLayout {
                         radius: 4
                         color: openBtnHover.hovered ? panelRoot.liveBase05 : "transparent"
                         border.color: panelRoot.liveBase05
-                        border.width: 1
+                        border.width: (settingsManager && settingsManager.controlBorderWidth) ? settingsManager.controlBorderWidth : 2
 
                         Text {
                             id: openBtnText
@@ -117,6 +116,7 @@ ColumnLayout {
                                     case "web": shell.startPageWindow.open(); break;
                                     case "email": shell.emailWindow.open(); break;
                                     case "amogus": if (shell.amogusWindowInstance) shell.amogusWindowInstance.toggleWindow(); break;
+                                    case "rng": if (shell.diceRollerWindowInstance) shell.diceRollerWindowInstance.openWithTarget(); break;
                                 }
                             }
                         }
@@ -128,7 +128,7 @@ ColumnLayout {
                         radius: 4
                         color: (settingsManager && settingsManager.previewWindow === modelData.id) ? panelRoot.liveBase05 : panelRoot.liveBase02
                         border.color: panelRoot.liveBase05
-                        border.width: 1
+                        border.width: (settingsManager && settingsManager.controlBorderWidth) ? settingsManager.controlBorderWidth : 2
 
                         Row {
                             id: editBtnRow

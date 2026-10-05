@@ -20,6 +20,7 @@ Item {
     readonly property color base0C: (theme && theme.base0C) ? theme.base0C : "#04f100"
     readonly property color base08: (theme && theme.base08) ? theme.base08 : "#ff5555"
     readonly property string fontFamily: (theme && theme.fontFamily) ? theme.fontFamily : "monospace"
+    readonly property int borderWidth: (theme && theme.controlBorderWidth) ? theme.controlBorderWidth : 2
 
     RowLayout {
         anchors.fill: parent
@@ -45,7 +46,7 @@ Item {
 
             color: root.checked ? root.base0C : root.base00
             border.color: root.checked ? root.base0C : root.base08
-            border.width: 1.5
+            border.width: root.borderWidth
 
             Text {
                 anchors.centerIn: parent

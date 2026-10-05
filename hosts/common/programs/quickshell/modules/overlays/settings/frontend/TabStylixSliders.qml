@@ -164,13 +164,24 @@ Flickable {
             onValueModified: (v) => { if (settingsManager) { settingsManager.useStylix = false; settingsManager.slantWidth = v; } }
         }
 
+        // Slider goes up to 12px
         CyberSlider {
-            label: "Global Border Width"
-            from: 1; to: 6; stepSize: 1; unit: "px"
+            label: "Window & Card Border Width"
+            from: 1; to: 12; stepSize: 1; unit: "px"
             value: settingsManager ? settingsManager.globalBorderWidth : 3
             fontSize: panelRoot.liveFontSize
             theme: panelRoot.theme
-            onValueModified: (v) => { if (settingsManager) { settingsManager.useStylix = false; settingsManager.globalBorderWidth = v; } }
+            onValueModified: (v) => { if (settingsManager) { settingsManager.useStylix = false; settingsManager.globalBorderWidth = Math.round(v); } }
+        }
+
+        // Slider goes up to 12px
+        CyberSlider {
+            label: "Inner Element & Button Border Width"
+            from: 1; to: 12; stepSize: 1; unit: "px"
+            value: settingsManager ? settingsManager.controlBorderWidth : 2
+            fontSize: panelRoot.liveFontSize
+            theme: panelRoot.theme
+            onValueModified: (v) => { if (settingsManager) settingsManager.controlBorderWidth = Math.round(v); }
         }
     }
 }

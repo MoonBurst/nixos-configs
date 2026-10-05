@@ -7,25 +7,63 @@ Item {
     property string shapeType: "auto"
     property string role: "card" // "card", "input", or "custom"
 
+    // Search up the parent hierarchy to locate settingsManager and theme regardless of scope
+    readonly property var resolvedSettingsManager: {
+        if (typeof shell !== "undefined" && shell && shell.settingsManager) return shell.settingsManager;
+        var p = root.parent;
+        while (p) {
+            if (p.settingsManager) return p.settingsManager;
+            if (p.shell && p.shell.settingsManager) return p.shell.settingsManager;
+            p = p.parent;
+        }
+        return null;
+    }
+
+    readonly property var resolvedTheme: {
+        if (typeof shell !== "undefined" && shell && shell.theme) return shell.theme;
+        var p = root.parent;
+        while (p) {
+            if (p.theme) return p.theme;
+            if (p.shell && p.shell.theme) return p.shell.theme;
+            p = p.parent;
+        }
+        return null;
+    }
+
     property int slantWidth: effectiveSlantWidth
     property int hexCut: effectiveHexCut
 
     readonly property string effectiveShape: {
         if (shapeType !== "auto" && shapeType !== "") return shapeType;
-        if (typeof shell !== "undefined" && shell && shell.settingsManager) {
-            return role === "input" ? shell.settingsManager.inputFieldShape : shell.settingsManager.overlayCardShape;
+        if (resolvedSettingsManager) {
+            return role === "input" ? resolvedSettingsManager.inputFieldShape : resolvedSettingsManager.overlayCardShape;
         }
         return "rounded";
     }
 
-    property color color: (typeof shell !== "undefined" && shell && shell.theme) ? (shell.theme.base00 || "#11111b") : "#11111b"
-    property color borderColor: (typeof shell !== "undefined" && shell && shell.theme) ? (shell.theme.base05 || "yellow") : "yellow"
-    property real borderWidth: (typeof shell !== "undefined" && shell && shell.theme && shell.theme.globalBorderWidth !== undefined) ? shell.theme.globalBorderWidth : 2
-    property real radius: (typeof shell !== "undefined" && shell && shell.theme && shell.theme.defaultCardRadius !== undefined) ? shell.theme.defaultCardRadius : 10
+    property color color: resolvedTheme ? (resolvedTheme.base00 || "#11111b") : "#11111b"
+    property color borderColor: resolvedTheme ? (resolvedTheme.base05 || "yellow") : "yellow"
+
+    readonly property real effectiveBorderWidth: {
+        if (resolvedSettingsManager) {
+            return role === "input"
+                ? (resolvedSettingsManager.controlBorderWidth || 2)
+                : (resolvedSettingsManager.globalBorderWidth || 3);
+        }
+        if (resolvedTheme) {
+            return (role === "input" && resolvedTheme.controlBorderWidth !== undefined)
+                ? resolvedTheme.controlBorderWidth
+                : (resolvedTheme.globalBorderWidth || 2);
+        }
+        return role === "input" ? 2 : 3;
+    }
+
+    property real borderWidth: effectiveBorderWidth
+    property real radius: resolvedTheme ? (resolvedTheme.defaultCardRadius || 10) : 10
 
     readonly property string effectiveSlantDirection: {
-        if (role === "card" && typeof shell !== "undefined" && shell && shell.settingsManager) {
-            return shell.settingsManager.overlaySlantDirection || "left";
+        if (role === "card" && resolvedSettingsManager) {
+            return resolvedSettingsManager.overlaySlantDirection || "left";
         }
         return "left";
     }
@@ -34,7 +72,7 @@ Item {
         if (role === "card") {
             if (effectiveSlantDirection === "right") return "Right";
             if (effectiveSlantDirection === "center") return "Left";
-            return "Left"; // left
+            return "Left";
         }
         return "Left";
     }
@@ -43,21 +81,21 @@ Item {
         if (role === "card") {
             if (effectiveSlantDirection === "right") return "Right";
             if (effectiveSlantDirection === "center") return "Right";
-            return "Left"; // left
+            return "Left";
         }
         return "Right";
     }
 
     readonly property int effectiveSlantWidth: {
-        if (typeof shell !== "undefined" && shell && shell.settingsManager) {
-            return role === "input" ? shell.settingsManager.inputSlantAngle : shell.settingsManager.overlaySlantAngle;
+        if (resolvedSettingsManager) {
+            return role === "input" ? resolvedSettingsManager.inputSlantAngle : resolvedSettingsManager.overlaySlantAngle;
         }
         return role === "input" ? 14 : 32;
     }
 
     readonly property int effectiveHexCut: {
-        if (typeof shell !== "undefined" && shell && shell.settingsManager) {
-            return role === "input" ? shell.settingsManager.inputHexagonCut : shell.settingsManager.overlayHexagonCut;
+        if (resolvedSettingsManager) {
+            return role === "input" ? resolvedSettingsManager.inputHexagonCut : resolvedSettingsManager.overlayHexagonCut;
         }
         return role === "input" ? 14 : 36;
     }
@@ -140,6 +178,7 @@ Item {
             function onHexCutChanged() { hexCanvas.requestPaint(); }
             function onSlantWidthChanged() { hexCanvas.requestPaint(); }
             function onEffectiveSlantDirectionChanged() { hexCanvas.requestPaint(); }
+            function onEffectiveShapeChanged() { hexCanvas.requestPaint(); }
         }
     }
 }

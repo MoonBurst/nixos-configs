@@ -69,6 +69,7 @@ ShellRoot {
         property int globalFontSize: settingsManager.globalFontSize
         property int slantWidth: settingsManager.slantWidth
         property int globalBorderWidth: settingsManager.globalBorderWidth
+        property int controlBorderWidth: settingsManager.controlBorderWidth
         property int globalPadding: settingsManager.globalPadding
     }
 
@@ -102,7 +103,7 @@ ShellRoot {
         shell: shell
     }
 
-    // Window & Manager aliases (guarantees zero breakage for callers)
+    // Window & Manager aliases
     property alias appLauncherWindow: overlayHost.appLauncherWindow
     property alias calcWindow: overlayHost.calcWindow
     property alias clipboardWindow: overlayHost.clipboardWindow

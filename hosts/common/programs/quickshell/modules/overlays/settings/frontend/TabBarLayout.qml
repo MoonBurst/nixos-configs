@@ -58,7 +58,7 @@ Flickable {
                     radius: 6
                     color: isSelected ? panelRoot.liveBase05 : panelRoot.liveBase00
                     border.color: panelRoot.liveBase05
-                    border.width: 1.5
+                    border.width: isSelected ? panelRoot.liveBorderWidth : 1
 
                     Text {
                         id: modeTxt
@@ -105,7 +105,7 @@ Flickable {
                     slantWidth: panelRoot.liveSlantWidth
                     color: panelRoot.liveBase02
                     borderColor: panelRoot.liveBase0C
-                    borderWidth: 1
+                    borderWidth: panelRoot.liveBorderWidth
 
                     RowLayout {
                         anchors.fill: parent
@@ -148,7 +148,7 @@ Flickable {
                         slantWidth: panelRoot.liveSlantWidth
                         color: panelRoot.liveBase00
                         borderColor: drawerExpanded ? panelRoot.liveBase05 : panelRoot.liveBase03
-                        borderWidth: drawerExpanded ? panelRoot.liveBorderWidth : 1
+                        borderWidth: panelRoot.liveBorderWidth
                         clip: true
 
                         Behavior on height { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
@@ -170,7 +170,8 @@ Flickable {
                                 Rectangle {
                                     width: 32; height: 32; radius: 6
                                     color: upBtnHover.hovered ? panelRoot.liveBase05 : panelRoot.liveBase00
-                                    border.color: panelRoot.liveBase05; border.width: 1.5
+                                    border.color: panelRoot.liveBase05
+                                    border.width: (settingsManager && settingsManager.controlBorderWidth) ? settingsManager.controlBorderWidth : 2
                                     Text { anchors.centerIn: parent; text: "▲"; font.bold: true; font.pixelSize: 12; color: upBtnHover.hovered ? panelRoot.liveBase00 : panelRoot.liveBase05 }
                                     HoverHandler { id: upBtnHover }
                                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: settingsManager.moveWithinSection(sectionBlock.currentSection, index, index - 1) }
@@ -179,7 +180,8 @@ Flickable {
                                 Rectangle {
                                     width: 32; height: 32; radius: 6
                                     color: downBtnHover.hovered ? panelRoot.liveBase05 : panelRoot.liveBase00
-                                    border.color: panelRoot.liveBase05; border.width: 1.5
+                                    border.color: panelRoot.liveBase05
+                                    border.width: (settingsManager && settingsManager.controlBorderWidth) ? settingsManager.controlBorderWidth : 2
                                     Text { anchors.centerIn: parent; text: "▼"; font.bold: true; font.pixelSize: 12; color: downBtnHover.hovered ? panelRoot.liveBase00 : panelRoot.liveBase05 }
                                     HoverHandler { id: downBtnHover }
                                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: settingsManager.moveWithinSection(sectionBlock.currentSection, index, index + 1) }
@@ -200,7 +202,8 @@ Flickable {
                                     Rectangle {
                                         width: editRow.implicitWidth + 22; height: 30; radius: 6
                                         color: cardDelegate.drawerExpanded ? panelRoot.liveBase05 : panelRoot.liveBase00
-                                        border.color: panelRoot.liveBase05; border.width: 1.5
+                                        border.color: panelRoot.liveBase05
+                                        border.width: (settingsManager && settingsManager.controlBorderWidth) ? settingsManager.controlBorderWidth : 2
                                         Row {
                                             id: editRow
                                             anchors.centerIn: parent; spacing: 5
@@ -223,7 +226,7 @@ Flickable {
                                         width: 66; height: 30; radius: 6
                                         color: settingsManager.isCapsuleVisible(cardDelegate.capsuleId) ? panelRoot.liveBase0C : panelRoot.liveBase08
                                         border.color: settingsManager.isCapsuleVisible(cardDelegate.capsuleId) ? panelRoot.liveBase0C : panelRoot.liveBase08
-                                        border.width: 1.5
+                                        border.width: (settingsManager && settingsManager.controlBorderWidth) ? settingsManager.controlBorderWidth : 2
                                         Text { anchors.centerIn: parent; text: settingsManager.isCapsuleVisible(cardDelegate.capsuleId) ? "SHOW" : "HIDE"; font.pixelSize: 11; font.bold: true; color: "#000" }
                                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: settingsManager.toggleCapsuleVisibility(cardDelegate.capsuleId) }
                                     }
@@ -237,7 +240,6 @@ Flickable {
                                 visible: cardDelegate.drawerExpanded
                                 spacing: 10
 
-                                // Relocate Section Buttons
                                 RowLayout {
                                     Layout.fillWidth: true
                                     spacing: 8
@@ -259,7 +261,8 @@ Flickable {
                                             readonly property bool isCurrentSec: sectionBlock.currentSection === modelData.id
                                             width: secTxt.implicitWidth + 20; height: 26; radius: 6
                                             color: isCurrentSec ? panelRoot.liveBase05 : panelRoot.liveBase00
-                                            border.color: panelRoot.liveBase05; border.width: 1.5
+                                            border.color: panelRoot.liveBase05
+                                            border.width: (settingsManager && settingsManager.controlBorderWidth) ? settingsManager.controlBorderWidth : 2
 
                                             Text {
                                                 id: secTxt; anchors.centerIn: parent; text: modelData.label
@@ -279,7 +282,6 @@ Flickable {
                                     }
                                 }
 
-                                // Slant Direction Selector
                                 Row {
                                     spacing: 8
                                     Layout.fillWidth: true
@@ -307,7 +309,8 @@ Flickable {
                                             }
                                             width: pillText.implicitWidth + 18; height: 26; radius: 6
                                             color: isCurrent ? panelRoot.liveBase05 : panelRoot.liveBase00
-                                            border.color: panelRoot.liveBase05; border.width: 1.5
+                                            border.color: panelRoot.liveBase05
+                                            border.width: (settingsManager && settingsManager.controlBorderWidth) ? settingsManager.controlBorderWidth : 2
 
                                             Text {
                                                 id: pillText; anchors.centerIn: parent
@@ -324,7 +327,6 @@ Flickable {
                                     }
                                 }
 
-                                // MUSIC-SPECIFIC OPTIONS
                                 RowLayout {
                                     visible: cardDelegate.capsuleId === "music"
                                     Layout.fillWidth: true
@@ -340,7 +342,8 @@ Flickable {
                                         readonly property bool active: settingsManager ? settingsManager.mprisWatchLocal : true
                                         width: localT.implicitWidth + 18; height: 26; radius: 6
                                         color: active ? panelRoot.liveBase05 : panelRoot.liveBase00
-                                        border.color: panelRoot.liveBase05; border.width: 1.5
+                                        border.color: panelRoot.liveBase05
+                                        border.width: (settingsManager && settingsManager.controlBorderWidth) ? settingsManager.controlBorderWidth : 2
                                         Text { id: localT; anchors.centerIn: parent; text: "🖥️ Local"; font.pixelSize: 11; font.bold: true; color: parent.active ? panelRoot.liveBase00 : panelRoot.liveBase05 }
                                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: settingsManager.mprisWatchLocal = !settingsManager.mprisWatchLocal }
                                     }
@@ -349,7 +352,8 @@ Flickable {
                                         readonly property bool active: settingsManager ? settingsManager.mprisWatchSpotify : true
                                         width: spotT.implicitWidth + 18; height: 26; radius: 6
                                         color: active ? "#1db954" : panelRoot.liveBase00
-                                        border.color: "#1db954"; border.width: 1.5
+                                        border.color: "#1db954"
+                                        border.width: (settingsManager && settingsManager.controlBorderWidth) ? settingsManager.controlBorderWidth : 2
                                         Text { id: spotT; anchors.centerIn: parent; text: "🟢 Spotify"; font.pixelSize: 11; font.bold: true; color: parent.active ? "#000" : "#1db954" }
                                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: settingsManager.mprisWatchSpotify = !settingsManager.mprisWatchSpotify }
                                     }
@@ -358,108 +362,13 @@ Flickable {
                                         readonly property bool active: settingsManager ? settingsManager.mprisWatchBrowser : true
                                         width: browT.implicitWidth + 18; height: 26; radius: 6
                                         color: active ? panelRoot.liveBase0C : panelRoot.liveBase00
-                                        border.color: panelRoot.liveBase0C; border.width: 1.5
+                                        border.color: panelRoot.liveBase0C
+                                        border.width: (settingsManager && settingsManager.controlBorderWidth) ? settingsManager.controlBorderWidth : 2
                                         Text { id: browT; anchors.centerIn: parent; text: "🌐 Browser"; font.pixelSize: 11; font.bold: true; color: parent.active ? "#000" : panelRoot.liveBase0C }
                                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: settingsManager.mprisWatchBrowser = !settingsManager.mprisWatchBrowser }
                                     }
                                 }
 
-                                // CUSTOM-SPECIFIC CONTROLS
-                                ColumnLayout {
-                                    visible: cardDelegate.capsuleId === "custom"
-                                    Layout.fillWidth: true
-                                    spacing: 8
-
-                                    RowLayout {
-                                        spacing: 8
-                                        Text { text: "Mode:"; font.bold: true; color: panelRoot.liveBase05; font.pixelSize: 11 }
-                                        Repeater {
-                                            model: [{ id: "static", label: "Static" }, { id: "swap", label: "Swap" }, { id: "scroll", label: "Scroll" }]
-                                            delegate: Rectangle {
-                                                readonly property bool isCur: (settingsManager ? settingsManager.customCapsuleMode : "static") === modelData.id
-                                                width: mText.implicitWidth + 18; height: 26; radius: 6
-                                                color: isCur ? panelRoot.liveBase05 : panelRoot.liveBase00
-                                                border.color: panelRoot.liveBase05; border.width: 1.5
-                                                Text { id: mText; anchors.centerIn: parent; text: modelData.label; font.pixelSize: 10; font.bold: true; color: isCur ? "#000" : panelRoot.liveBase05 }
-                                                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: settingsManager.customCapsuleMode = modelData.id }
-                                            }
-                                        }
-
-                                        Item { width: 8 }
-                                        Text { text: "Type:"; font.bold: true; color: panelRoot.liveBase05; font.pixelSize: 11 }
-                                        Repeater {
-                                            model: [{ id: "text", label: "Text" }, { id: "image", label: "Image" }, { id: "both", label: "Both" }]
-                                            delegate: Rectangle {
-                                                readonly property bool isCur: (settingsManager ? settingsManager.customCapsuleType : "both") === modelData.id
-                                                width: tText.implicitWidth + 18; height: 26; radius: 6
-                                                color: isCur ? panelRoot.liveBase05 : panelRoot.liveBase00
-                                                border.color: panelRoot.liveBase05; border.width: 1.5
-                                                Text { id: tText; anchors.centerIn: parent; text: modelData.label; font.pixelSize: 10; font.bold: true; color: isCur ? "#000" : panelRoot.liveBase05 }
-                                                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: settingsManager.customCapsuleType = modelData.id }
-                                            }
-                                        }
-                                    }
-
-                                    RowLayout {
-                                        Layout.fillWidth: true; spacing: 8
-                                        Text { text: "Text:"; color: panelRoot.liveBase05; font.bold: true; font.pixelSize: 11 }
-                                        Rectangle {
-                                            Layout.fillWidth: true; height: 28; radius: 6; color: panelRoot.liveBase00; border.color: panelRoot.liveBase05; border.width: 1.5
-                                            TextInput {
-                                                anchors.fill: parent; anchors.margins: 6; color: "#fff"; font.pixelSize: 11; font.family: "monospace"; verticalAlignment: TextInput.AlignVCenter
-                                                text: settingsManager ? settingsManager.customCapsuleText : ""
-                                                onTextEdited: if (settingsManager) settingsManager.customCapsuleText = text
-                                            }
-                                        }
-                                    }
-
-                                    RowLayout {
-                                        Layout.fillWidth: true; spacing: 8
-                                        Text { text: "Image Path:"; color: panelRoot.liveBase05; font.bold: true; font.pixelSize: 11 }
-                                        Rectangle {
-                                            Layout.fillWidth: true; height: 28; radius: 6; color: panelRoot.liveBase00; border.color: panelRoot.liveBase05; border.width: 1.5
-                                            TextInput {
-                                                anchors.fill: parent; anchors.margins: 6; color: "#fff"; font.pixelSize: 11; font.family: "monospace"; verticalAlignment: TextInput.AlignVCenter
-                                                text: settingsManager ? settingsManager.customCapsuleImages : ""
-                                                onTextEdited: if (settingsManager) settingsManager.customCapsuleImages = text
-                                            }
-                                        }
-                                    }
-
-                                    CyberSlider {
-                                        label: "Image Size"; from: 14; to: 50; stepSize: 2; unit: "px"
-                                        value: settingsManager ? settingsManager.customCapsuleImageSize : 28
-                                        fontSize: panelRoot.liveFontSize - 3; theme: panelRoot.theme; Layout.fillWidth: true
-                                        onValueModified: (v) => { if (settingsManager) settingsManager.customCapsuleImageSize = Math.round(v); }
-                                    }
-
-                                    CyberSlider {
-                                        visible: settingsManager && settingsManager.customCapsuleMode === "swap"
-                                        label: "Swap Interval"; from: 1; to: 30; stepSize: 1; unit: "s"
-                                        value: settingsManager ? settingsManager.customCapsuleSwapInterval : 5
-                                        fontSize: panelRoot.liveFontSize - 3; theme: panelRoot.theme; Layout.fillWidth: true
-                                        onValueModified: (v) => { if (settingsManager) settingsManager.customCapsuleSwapInterval = Math.round(v); }
-                                    }
-
-                                    CyberToggle {
-                                        visible: settingsManager && settingsManager.customCapsuleMode === "swap"
-                                        label: "🔀 Random Swap (Shuffle)"
-                                        checked: settingsManager ? settingsManager.customCapsuleRandomSwap : false
-                                        theme: panelRoot.theme
-                                        fontSize: panelRoot.liveFontSize - 3
-                                        onToggled: (st) => { if (settingsManager) settingsManager.customCapsuleRandomSwap = st; }
-                                    }
-
-                                    CyberSlider {
-                                        visible: settingsManager && settingsManager.customCapsuleMode === "scroll"
-                                        label: "Scroll Speed"; from: 10; to: 150; stepSize: 5; unit: "px/s"
-                                        value: settingsManager ? settingsManager.customCapsuleScrollSpeed : 40
-                                        fontSize: panelRoot.liveFontSize - 3; theme: panelRoot.theme; Layout.fillWidth: true
-                                        onValueModified: (v) => { if (settingsManager) settingsManager.customCapsuleScrollSpeed = Math.round(v); }
-                                    }
-                                }
-
-                                // TRAY-SPECIFIC OPTIONS
                                 CyberSlider {
                                     visible: cardDelegate.capsuleId === "tray"
                                     label: "Tray Auto-Collapse Timeout"
@@ -471,7 +380,6 @@ Flickable {
                                     onValueModified: (v) => { if (settingsManager) settingsManager.trayCollapseTimeoutSec = Math.round(v); }
                                 }
 
-                                // Bar Capsule Physical Width
                                 CyberSlider {
                                     label: "Bar Capsule Width (0 = Auto)"
                                     from: 0; to: 350; stepSize: 10; unit: "px"
@@ -482,7 +390,6 @@ Flickable {
                                     onValueModified: (v) => { if (settingsManager) settingsManager.setCapsuleBarWidth(cardDelegate.capsuleId, v); }
                                 }
 
-                                // Tooltip Dimensions
                                 CyberSlider {
                                     visible: cardDelegate.hasTooltip && cardDelegate.capsuleId !== "tray"
                                     label: "Tooltip Width"; from: 300; to: 1400; stepSize: 20; unit: "px"

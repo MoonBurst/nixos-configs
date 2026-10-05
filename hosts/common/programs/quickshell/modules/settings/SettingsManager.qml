@@ -48,7 +48,14 @@ Item {
 
     property int slantWidth: 12
     property int globalBorderWidth: 3
+    onGlobalBorderWidthChanged: queueSave()
+
+    // Inner element and button border thickness slider
+    property int controlBorderWidth: 2
+    onControlBorderWidthChanged: queueSave()
+
     property int globalPadding: 12
+    onGlobalPaddingChanged: queueSave()
 
     property int barHeight: 42
     property int hardwarePollInterval: 2000
@@ -488,8 +495,6 @@ Item {
     onCapsuleSpacingChanged: queueSave()
     onGlobalFontSizeChanged: queueSave()
     onSlantWidthChanged: queueSave()
-    onGlobalBorderWidthChanged: queueSave()
-    onGlobalPaddingChanged: queueSave()
     onBarHeightChanged: queueSave()
     onHardwarePollIntervalChanged: queueSave()
 
@@ -517,6 +522,7 @@ Item {
             "inputHexagonCut": manager.inputHexagonCut,
             "slantWidth": manager.slantWidth,
             "globalBorderWidth": manager.globalBorderWidth,
+            "controlBorderWidth": manager.controlBorderWidth,
             "globalPadding": manager.globalPadding,
             "barHeight": manager.barHeight,
             "hardwarePollInterval": manager.hardwarePollInterval,
@@ -633,6 +639,7 @@ Item {
                     if (obj.inputHexagonCut !== undefined) manager.inputHexagonCut = obj.inputHexagonCut;
                     if (obj.slantWidth !== undefined) manager.slantWidth = obj.slantWidth;
                     if (obj.globalBorderWidth !== undefined) manager.globalBorderWidth = obj.globalBorderWidth;
+                    if (obj.controlBorderWidth !== undefined) manager.controlBorderWidth = obj.controlBorderWidth;
                     if (obj.globalPadding !== undefined) manager.globalPadding = obj.globalPadding;
                     if (obj.barHeight !== undefined) manager.barHeight = obj.barHeight;
                     if (obj.hardwarePollInterval !== undefined) manager.hardwarePollInterval = obj.hardwarePollInterval;

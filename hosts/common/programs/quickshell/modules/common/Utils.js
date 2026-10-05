@@ -76,20 +76,21 @@ function fuzzyMatch(needle, haystack) {
     return nIdx === nlen;
 }
 
+// Proportional safe padding: prevents clipping without creating giant empty voids
 function getSafeCardPadding(settingsManager) {
     if (!settingsManager) return { h: 18, v: 16 };
     var shape = settingsManager.overlayCardShape || "rounded";
     if (shape === "hexagon") {
-        var cut = Math.max(16, Math.round(settingsManager.overlayHexagonCut || 36));
+        var cut = Math.min(60, Math.max(16, Math.round(settingsManager.overlayHexagonCut || 36)));
         return {
-            h: Math.max(28, cut + 20),
-            v: Math.max(18, Math.round(cut * 0.45) + 14)
+            h: Math.max(20, Math.round(cut * 0.75) + 12),
+            v: Math.max(16, Math.round(cut * 0.35) + 8)
         };
     } else if (shape === "slant") {
-        var angle = Math.max(14, Math.round(settingsManager.overlaySlantAngle || 32));
+        var angle = Math.min(50, Math.max(14, Math.round(settingsManager.overlaySlantAngle || 32)));
         return {
-            h: Math.max(28, angle + 20),
-            v: 18
+            h: Math.max(20, Math.round(angle * 0.70) + 12),
+            v: 16
         };
     }
     return { h: 18, v: 16 };
@@ -99,11 +100,11 @@ function getSafeInputPadding(settingsManager) {
     if (!settingsManager) return { left: 14, right: 14 };
     var shape = settingsManager.inputFieldShape || "rounded";
     if (shape === "hexagon") {
-        var cut = Math.max(8, Math.round(settingsManager.inputHexagonCut || 14));
-        return { left: cut + 10, right: cut + 10 };
+        var cut = Math.min(24, Math.max(8, Math.round(settingsManager.inputHexagonCut || 14)));
+        return { left: cut + 8, right: cut + 8 };
     } else if (shape === "slant") {
-        var angle = Math.max(8, Math.round(settingsManager.inputSlantAngle || 14));
-        return { left: angle + 10, right: angle + 10 };
+        var angle = Math.min(24, Math.max(8, Math.round(settingsManager.inputSlantAngle || 14)));
+        return { left: angle + 8, right: angle + 8 };
     }
     return { left: 14, right: 14 };
 }

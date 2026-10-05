@@ -16,9 +16,15 @@ Item {
         ? settingsManager.getWindowFieldHeight("clipboard", 52) : 52
     readonly property int overlayFontSize: (settingsManager && settingsManager.overlayFontSize > 0)
         ? settingsManager.overlayFontSize : 15
-    readonly property int globalBorderWidth: (theme && theme.globalBorderWidth) ? theme.globalBorderWidth : 3
 
-    readonly property var safePad: Utils.getSafeCardPadding(settingsManager)
+    readonly property int controlBorderWidth: (settingsManager && settingsManager.controlBorderWidth)
+        ? settingsManager.controlBorderWidth
+        : ((theme && theme.controlBorderWidth) ? theme.controlBorderWidth : 2)
+
+    readonly property int globalBorderWidth: (settingsManager && settingsManager.globalBorderWidth)
+        ? settingsManager.globalBorderWidth
+        : ((theme && theme.globalBorderWidth) ? theme.globalBorderWidth : 3)
+
     readonly property var inputPad: Utils.getSafeInputPadding(settingsManager)
 
     signal completed()
@@ -290,7 +296,7 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 12
+        anchors.margins: 10
         spacing: 12
 
         // Top Search Bar Row
@@ -312,7 +318,7 @@ Item {
                     borderColor: searchField.activeFocus
                         ? ((theme && theme.base05) ? theme.base05 : "yellow")
                         : ((theme && theme.base03) ? theme.base03 : "#45475a")
-                    borderWidth: viewRoot.globalBorderWidth
+                    borderWidth: viewRoot.controlBorderWidth
                     slantWidth: 14
                 }
 
@@ -376,7 +382,7 @@ Item {
             }
 
             Item {
-                Layout.preferredWidth: 84
+                Layout.preferredWidth: 80
                 Layout.fillHeight: true
 
                 Style.ShapeBox {
@@ -384,7 +390,7 @@ Item {
                     role: "input"
                     color: wipeHov.hovered ? "#ff5555" : ((theme && theme.base00) ? theme.base00 : "#11111b")
                     borderColor: "#ff5555"
-                    borderWidth: viewRoot.globalBorderWidth
+                    borderWidth: viewRoot.controlBorderWidth
                     slantWidth: 10
                 }
 
@@ -427,7 +433,6 @@ Item {
                         id: delegateCard
                         readonly property bool isSelected: index === viewRoot.selectedIndex
                         width: clipList.width - 12
-                        // Proper height bounds: 80 for screenshots, 50 for text
                         height: model.isImage ? 80 : 50
 
                         Style.ShapeBox {
@@ -435,20 +440,19 @@ Item {
                             role: "input"
                             color: delegateCard.isSelected ? ((theme && theme.base02) ? theme.base02 : "#333") : "transparent"
                             borderColor: delegateCard.isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : ((theme && theme.base03) ? theme.base03 : "#555")
-                            borderWidth: viewRoot.globalBorderWidth
+                            borderWidth: viewRoot.controlBorderWidth
                             slantWidth: 10
                         }
 
                         RowLayout {
                             anchors.fill: parent
-                            // Safe inset: elements never clip into left/right chamfers
-                            anchors.leftMargin: Math.max(20, viewRoot.inputPad.left + 4)
+                            anchors.leftMargin: Math.max(18, viewRoot.inputPad.left + 4)
                             anchors.rightMargin: Math.max(16, viewRoot.inputPad.right)
                             anchors.topMargin: model.isImage ? 8 : 4
                             anchors.bottomMargin: model.isImage ? 8 : 4
                             spacing: 10
 
-                            // 1. Image Thumbnail (Only for actual screenshots)
+                            // 1. Image Thumbnail
                             Rectangle {
                                 visible: model.isImage
                                 Layout.preferredWidth: 54
@@ -470,22 +474,12 @@ Item {
                                 }
                             }
 
-                            // 2. Compact Text Badge (Never overflows vertically or horizontally)
-                            Rectangle {
+                            // 2. Compact Text Icon
+                            Text {
                                 visible: !model.isImage
-                                Layout.preferredWidth: 28
-                                Layout.preferredHeight: 28
+                                text: "📄"
+                                font.pixelSize: 16
                                 Layout.alignment: Qt.AlignVCenter
-                                radius: 4
-                                color: (theme && theme.base02) ? theme.base02 : "#222"
-                                border.color: (theme && theme.base03) ? theme.base03 : "#45475a"
-                                border.width: 1
-
-                                Text {
-                                    text: "📄"
-                                    font.pixelSize: 15
-                                    anchors.centerIn: parent
-                                }
                             }
 
                             ColumnLayout {
@@ -547,7 +541,7 @@ Item {
                     role: "input"
                     color: (theme && theme.base00) ? theme.base00 : "#11111b"
                     borderColor: (theme && theme.base03) ? theme.base03 : "#45475a"
-                    borderWidth: viewRoot.globalBorderWidth
+                    borderWidth: viewRoot.controlBorderWidth
                     slantWidth: 10
                 }
 

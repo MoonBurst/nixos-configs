@@ -3,6 +3,7 @@ import QtQuick.Controls 2
 import QtQuick.Layouts 1.15
 import "../backend"
 import "../../../style" as Style
+import "../../../common/Utils.js" as Utils
 
 Item {
     id: viewRoot
@@ -15,6 +16,12 @@ Item {
         ? settingsManager.getWindowFieldHeight("dictionary", 52) : 52
     readonly property int overlayFontSize: (settingsManager && settingsManager.overlayFontSize > 0)
         ? settingsManager.overlayFontSize : 16
+
+    readonly property int controlBorderWidth: (settingsManager && settingsManager.controlBorderWidth)
+        ? settingsManager.controlBorderWidth
+        : ((theme && theme.controlBorderWidth) ? theme.controlBorderWidth : 2)
+
+    readonly property var inputPad: Utils.getSafeInputPadding(settingsManager)
 
     signal completed()
 
@@ -29,7 +36,7 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: (viewRoot.theme && viewRoot.theme.globalPadding) ? viewRoot.theme.globalPadding : 16
+        anchors.margins: 10
         spacing: 16
 
         // Universal Shape Input Bar
@@ -47,12 +54,15 @@ Item {
                 borderColor: dictField.activeFocus
                     ? ((theme && theme.base05) ? theme.base05 : "yellow")
                     : ((theme && theme.base03) ? theme.base03 : "#45475a")
-                borderWidth: dictField.activeFocus ? 2 : 1
+                borderWidth: viewRoot.controlBorderWidth
                 slantWidth: 14
             }
 
             RowLayout {
-                anchors.fill: parent; anchors.margins: 12; spacing: 10
+                anchors.fill: parent
+                anchors.leftMargin: viewRoot.inputPad.left
+                anchors.rightMargin: viewRoot.inputPad.right
+                spacing: 10
                 Text { text: "📖"; font.pixelSize: Math.max(16, viewRoot.fieldHeight * 0.38) }
                 TextInput {
                     id: dictField
@@ -107,14 +117,18 @@ Item {
                     anchors.fill: parent
                     role: "input"
                     color: defCard.isSelected ? ((theme && theme.base02) ? theme.base02 : "#333") : "transparent"
-                    borderColor: defCard.isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : "#444"
-                    borderWidth: defCard.isSelected ? 2 : 1
+                    borderColor: defCard.isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : ((theme && theme.base03) ? theme.base03 : "#45475a")
+                    borderWidth: viewRoot.controlBorderWidth
                     slantWidth: 10
                 }
 
                 Text {
                     id: defText
-                    anchors.fill: parent; anchors.margins: 12
+                    anchors.fill: parent
+                    anchors.leftMargin: Math.max(14, viewRoot.inputPad.left)
+                    anchors.rightMargin: Math.max(14, viewRoot.inputPad.right)
+                    anchors.topMargin: 10
+                    anchors.bottomMargin: 10
                     text: modelData.text
                     font.family: (theme && theme.fontFamily) ? theme.fontFamily : "monospace"
                     font.pixelSize: viewRoot.overlayFontSize

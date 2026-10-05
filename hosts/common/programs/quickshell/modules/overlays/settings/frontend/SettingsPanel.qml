@@ -13,10 +13,17 @@ Item {
     readonly property var theme: (shell && shell.theme) ? shell.theme : null
 
     readonly property int liveFontSize: (settingsManager && settingsManager.overlayFontSize > 0)
-    ? settingsManager.overlayFontSize
-    : ((theme && theme.globalFontSize) ? theme.globalFontSize : 16)
+        ? settingsManager.overlayFontSize
+        : ((theme && theme.globalFontSize) ? theme.globalFontSize : 16)
 
-    readonly property int liveBorderWidth: (theme && theme.globalBorderWidth) ? theme.globalBorderWidth : 2
+    readonly property int liveBorderWidth: (settingsManager && settingsManager.globalBorderWidth)
+        ? settingsManager.globalBorderWidth
+        : ((theme && theme.globalBorderWidth) ? theme.globalBorderWidth : 3)
+
+    readonly property int liveControlBorderWidth: (settingsManager && settingsManager.controlBorderWidth)
+        ? settingsManager.controlBorderWidth
+        : ((theme && theme.controlBorderWidth) ? theme.controlBorderWidth : 2)
+
     readonly property int livePadding: (theme && theme.globalPadding) ? theme.globalPadding : 12
     readonly property int liveSlantWidth: (theme && theme.slantWidth) ? theme.slantWidth : 8
     readonly property color liveBase00: (theme && theme.base00) ? theme.base00 : "#0f0f0f"
@@ -76,7 +83,7 @@ Item {
         anchors.fill: parent
         spacing: Math.max(8, panelRoot.livePadding)
 
-        // 1. Tab Headers Row (Tab 2 renamed to "Colors & Styles")
+        // Tab Headers Row
         RowLayout {
             id: tabHeadersRow
             Layout.fillWidth: true
@@ -130,7 +137,7 @@ Item {
             }
         }
 
-        // 2. Horizontal Divider Line
+        // Horizontal Divider Line
         Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: false
@@ -140,7 +147,7 @@ Item {
             color: panelRoot.liveBase03
         }
 
-        // 3. Tab Content Views
+        // Tab Content Views
         TabStylixSliders {
             panelRoot: panelRoot
             visible: panelRoot.activeTab === 0

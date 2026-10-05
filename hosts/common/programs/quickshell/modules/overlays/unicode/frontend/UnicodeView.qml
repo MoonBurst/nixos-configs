@@ -3,6 +3,7 @@ import QtQuick.Controls 2
 import QtQuick.Layouts 1.15
 import "../backend"
 import "../../../style" as Style
+import "../../../common/Utils.js" as Utils
 
 Item {
     id: viewRoot
@@ -15,6 +16,12 @@ Item {
         ? settingsManager.getWindowFieldHeight("unicode", 52) : 52
     readonly property int overlayFontSize: (settingsManager && settingsManager.overlayFontSize > 0)
         ? settingsManager.overlayFontSize : 16
+
+    readonly property int controlBorderWidth: (settingsManager && settingsManager.controlBorderWidth)
+        ? settingsManager.controlBorderWidth
+        : ((theme && theme.controlBorderWidth) ? theme.controlBorderWidth : 2)
+
+    readonly property var inputPad: Utils.getSafeInputPadding(settingsManager)
 
     signal completed()
 
@@ -29,7 +36,7 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: (viewRoot.theme && viewRoot.theme.globalPadding) ? viewRoot.theme.globalPadding : 16
+        anchors.margins: 10
         spacing: 16
 
         // Universal Shape Search Bar
@@ -47,12 +54,15 @@ Item {
                 borderColor: searchField.activeFocus
                     ? ((theme && theme.base05) ? theme.base05 : "yellow")
                     : ((theme && theme.base03) ? theme.base03 : "#45475a")
-                borderWidth: searchField.activeFocus ? 2 : 1
+                borderWidth: viewRoot.controlBorderWidth
                 slantWidth: 14
             }
 
             RowLayout {
-                anchors.fill: parent; anchors.margins: 12; spacing: 10
+                anchors.fill: parent
+                anchors.leftMargin: viewRoot.inputPad.left
+                anchors.rightMargin: viewRoot.inputPad.right
+                spacing: 10
                 Text { text: "🔣"; font.pixelSize: Math.max(16, viewRoot.fieldHeight * 0.38) }
                 TextInput {
                     id: searchField
@@ -112,8 +122,9 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            cellWidth: Math.floor(width / Math.max(4, Math.floor(width / 115)))
-            cellHeight: 90
+            // Generous cell width so glyph names never get crushed
+            cellWidth: Math.max(124, Math.floor((width - 12) / Math.max(3, Math.floor(width / 130))))
+            cellHeight: 88
             model: engine.filteredItems
             currentIndex: engine.selectedIndex
 
@@ -130,26 +141,31 @@ Item {
                     Style.ShapeBox {
                         anchors.fill: parent
                         role: "input"
+                        // Proportional hexCut so small tiles don't squash their interior text
+                        hexCut: Math.min(10, Math.round(width * 0.12))
                         color: cellRoot.isSelected ? ((theme && theme.base02) ? theme.base02 : "#333") : (gHover.hovered ? "#222" : "transparent")
-                        borderColor: cellRoot.isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : (gHover.hovered ? "#555" : "#333")
-                        borderWidth: cellRoot.isSelected ? 2 : 1
+                        borderColor: cellRoot.isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : ((theme && theme.base03) ? theme.base03 : "#45475a")
+                        borderWidth: viewRoot.controlBorderWidth
                         slantWidth: 8
                     }
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: 6
+                        anchors.leftMargin: 8
+                        anchors.rightMargin: 8
+                        anchors.topMargin: 4
+                        anchors.bottomMargin: 4
                         spacing: 2
 
                         Text {
                             text: modelData.symbol
-                            font.pixelSize: 32
+                            font.pixelSize: 30
                             color: (theme && theme.base05) ? theme.base05 : "yellow"
                             Layout.alignment: Qt.AlignHCenter
                         }
                         Text {
                             text: modelData.name.split(" ")[0]
-                            font.pixelSize: Math.max(9, viewRoot.overlayFontSize - 6)
+                            font.pixelSize: Math.max(10, viewRoot.overlayFontSize - 5)
                             color: cellRoot.isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : "#aaa"
                             elide: Text.ElideRight
                             Layout.fillWidth: true
