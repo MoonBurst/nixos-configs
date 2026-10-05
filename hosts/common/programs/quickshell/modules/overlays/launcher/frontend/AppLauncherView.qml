@@ -217,6 +217,7 @@ Item {
                 height: Math.max(54, viewRoot.iconSize + 16)
 
                 Style.ShapeBox {
+                    id: delegateBg
                     anchors.fill: parent
                     role: "input"
                     color: delegateItem.isSelected ? ((theme && theme.base02) ? theme.base02 : "#333") : "transparent"
@@ -227,8 +228,8 @@ Item {
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: Math.max(14, viewRoot.inputPad.left)
-                    anchors.rightMargin: Math.max(14, viewRoot.inputPad.right)
+                    anchors.leftMargin: delegateBg.leftPadding + 12
+                    anchors.rightMargin: delegateBg.rightPadding + 12
                     spacing: 14
 
                     Image {

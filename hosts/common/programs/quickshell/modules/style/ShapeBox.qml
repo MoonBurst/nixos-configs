@@ -131,7 +131,13 @@ readonly property real hexCutEffective: {
     // so both shape primitives are interchangeable in layout code.
     readonly property real leftPadding:   contentInsetH + (role === "input" ? 8 : 12)
     readonly property real rightPadding:  leftPadding
-    readonly property real topPadding:    contentInsetV + (role === "input" ? 4 : 8)
+
+    // Vertical insets only clear the border. The chamfer is a corner
+    // feature, so the top and bottom edges of the hexagon are flat
+    // between the corners and do not need to be inset by hexCutEffective.
+    // Using contentInsetV here shrinks the usable height by ~2*hexCut
+    // and clips short-field text at the top.
+    readonly property real topPadding:    halfBorder + (role === "input" ? 6 : 10)
     readonly property real bottomPadding: topPadding
     readonly property real x1: (slantLeft === "Right") ? (slantWidth + halfBorder) : halfBorder
     readonly property real x2: (slantLeft === "Left") ? (slantWidth + halfBorder) : halfBorder

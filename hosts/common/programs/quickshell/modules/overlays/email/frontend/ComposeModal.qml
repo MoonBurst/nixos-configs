@@ -197,6 +197,7 @@ Rectangle {
         anchors.fill: parent
 
         Style.ShapeBox {
+            id: composeBg
             anchors.fill: parent
             role: "card"
             color: composeComp.modalBoxBg
@@ -206,20 +207,30 @@ Rectangle {
 
         Column {
             anchors.fill: parent
-            anchors.margins: composeComp.modalPadding
+            anchors.leftMargin:   composeBg.leftPadding
+            anchors.rightMargin:  composeBg.rightPadding
+            anchors.topMargin:    composeBg.topPadding
+            anchors.bottomMargin: composeBg.bottomPadding
             spacing: 12
 
             RowLayout {
                 width: parent.width
                 height: 35
 
-                Text {
-                    text: "NEW MAIL COMPOSITION"
-                    font.family: composeComp.composeFontFamily
-                    font.pixelSize: composeComp.inputFontSize
-                    font.bold: true
-                    color: (typeof theme !== 'undefined' && theme) ? theme.base05 : "#f7f700"
+                Item {
                     Layout.fillWidth: true
+                    Layout.preferredHeight: parent.height
+
+                    Text {
+                        anchors.left: parent.left
+                        anchors.leftMargin: toFieldBg.leftPadding
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "NEW MAIL COMPOSITION"
+                        font.family: composeComp.composeFontFamily
+                        font.pixelSize: composeComp.inputFontSize
+                        font.bold: true
+                        color: (typeof theme !== 'undefined' && theme) ? theme.base05 : "#f7f700"
+                    }
                 }
 
                 Item {
@@ -256,6 +267,7 @@ Rectangle {
 
                 // 1. RECIPIENT FIELD
                 Item {
+                    Layout.fillWidth: true
                     width: parent.width; height: composeComp.fieldInputHeight
                     Style.ShapeBox {
                         id: toFieldBg
@@ -288,8 +300,6 @@ Rectangle {
                         TextInput {
                             id: toInput
                             anchors.fill: parent
-                            anchors.leftMargin: 20
-                            anchors.rightMargin: 20
                             font.family: composeComp.composeFontFamily
                             font.pixelSize: composeComp.inputFontSize
                             color: composeComp.textWriteColor
@@ -354,8 +364,6 @@ Rectangle {
                         TextInput {
                             id: subjectInput
                             anchors.fill: parent
-                            anchors.leftMargin: 20
-                            anchors.rightMargin: 20
                             font.family: composeComp.composeFontFamily
                             font.pixelSize: composeComp.inputFontSize
                             color: composeComp.textWriteColor
@@ -392,10 +400,12 @@ Rectangle {
 
             // 3. BODY MESSAGE CONTENT CANVAS
             Item {
+                Layout.fillWidth: true
                 width: parent.width
                 height: Math.max(140, parent.height - (composeComp.fieldInputHeight * 2) - 150)
 
                 Style.ShapeBox {
+                    id: bodyFieldBg
                     anchors.fill: parent
                     role: "input"
                     slantWidth: 14
@@ -405,13 +415,23 @@ Rectangle {
                 }
 
                 Flickable {
-                    id: bodyFlickableCanvas; anchors.fill: parent; anchors.margins: 12; contentWidth: width; contentHeight: bodyInput.height; clip: true
+                    id: bodyFlickableCanvas
+                    anchors.fill: parent
+                    // Use toFieldBg's padding so body text aligns exactly with
+                    // the To:/Subject: fields above. The body box is much
+                    // taller, which makes its own hexCutEffective larger and
+                    // would shift the text ~12px right.
+                    anchors.leftMargin:   toFieldBg.leftPadding
+                    anchors.rightMargin:  toFieldBg.rightPadding
+                    anchors.topMargin:    12
+                    anchors.bottomMargin: 12
+                    contentWidth: width
+                    contentHeight: bodyInput.height
+                    clip: true
 
                     TextEdit {
                         id: bodyInput
                         anchors.fill: parent
-                        anchors.leftMargin: 20
-                        anchors.rightMargin: 20
                         anchors.topMargin: 14
                         anchors.bottomMargin: 14
                         font.family: composeComp.composeFontFamily
