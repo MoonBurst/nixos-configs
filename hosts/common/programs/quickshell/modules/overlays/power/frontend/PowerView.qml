@@ -2,12 +2,17 @@ import QtQuick
 import QtQuick.Controls 2
 import QtQuick.Layouts 1.15
 import "../backend"
+import "../../../style" as Style
 
 Item {
     id: viewRoot
 
     required property PowerEngine engine
     property var theme: null
+    property var settingsManager: null
+
+    readonly property int overlayFontSize: (settingsManager && settingsManager.overlayFontSize > 0)
+        ? settingsManager.overlayFontSize : 16
 
     signal completed()
 
@@ -22,31 +27,48 @@ Item {
 
         Repeater {
             model: engine.allActions
-            delegate: Rectangle {
+            delegate: Item {
+                id: actionDelegateItem
                 readonly property bool isSelected: index === engine.selectedIndex
                 readonly property bool isConfirming: engine.confirmingId === modelData.id
-                Layout.fillWidth: true; Layout.fillHeight: true
-                radius: 8
-                color: isSelected ? ((theme && theme.base02) ? theme.base02 : "#333") : "transparent"
-                border.width: isSelected ? 2.5 : 1
-                border.color: isConfirming ? "#ff5555" : (isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : "#444")
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+
+                Style.ShapeBox {
+                    anchors.fill: parent
+                    role: "input"
+                    color: actionDelegateItem.isSelected ? ((theme && theme.base02) ? theme.base02 : "#333") : "transparent"
+                    borderColor: actionDelegateItem.isConfirming ? "#ff5555" : (actionDelegateItem.isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : "#444")
+                    borderWidth: actionDelegateItem.isSelected ? 2.5 : 1
+                    slantWidth: 12
+                }
 
                 RowLayout {
-                    anchors.fill: parent; anchors.margins: 14; spacing: 16
+                    anchors.fill: parent
+                    anchors.margins: 14
+                    spacing: 16
+
                     Text { text: modelData.icon; font.pixelSize: 28 }
+
                     ColumnLayout {
                         Layout.fillWidth: true
                         Text {
-                            text: isConfirming ? "⚠️ Press [Enter] again to Confirm " + modelData.title : modelData.title
-                            font.bold: true; font.pixelSize: 16
-                            color: isConfirming ? "#ff5555" : ((theme && theme.base05) ? theme.base05 : "yellow")
+                            text: actionDelegateItem.isConfirming ? "⚠️ Press [Enter] again to Confirm " + modelData.title : modelData.title
+                            font.bold: true
+                            font.pixelSize: viewRoot.overlayFontSize
+                            color: actionDelegateItem.isConfirming ? "#ff5555" : ((theme && theme.base05) ? theme.base05 : "yellow")
                         }
-                        Text { text: modelData.description; font.pixelSize: 12; color: "#aaa" }
+                        Text {
+                            text: modelData.description
+                            font.pixelSize: Math.max(10, viewRoot.overlayFontSize - 4)
+                            color: "#aaa"
+                        }
                     }
                 }
 
                 MouseArea {
-                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         engine.selectedIndex = index;
                         if (engine.execute(modelData)) viewRoot.completed();

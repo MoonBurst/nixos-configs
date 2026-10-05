@@ -13,7 +13,7 @@ Item {
         command: [
             "sh", "-c",
             'if [ -n "$THEME_NIX" ] && [ -f "$THEME_NIX" ]; then echo "$THEME_NIX"; exit 0; fi; ' +
-            'for d in "$HOME/.config/quickshell" "$HOME/nix" "$HOME/dotfiles" "$HOME/.config/nix" "/etc/nixos"; do ' +
+            'for d in "$HOME/.config/quickshell" "$HOME/nix" "$HOME/dotfiles" "$HOME/.config" "/etc/nixos"; do ' +
             '  if [ -d "$d" ]; then ' +
             '    f=$(find "$d" -maxdepth 4 -name "theme.nix" 2>/dev/null | head -n 1); ' +
             '    if [ -n "$f" ] && [ -f "$f" ]; then echo "$f"; exit 0; fi; ' +
@@ -61,6 +61,23 @@ Item {
     property int globalFieldHeight: 52
     onGlobalFieldHeightChanged: { standaloneRevision++; queueSave(); }
 
+    // Shape Modes: "rounded", "slant", "hexagon"
+    property string overlayCardShape: "rounded"
+    onOverlayCardShapeChanged: queueSave()
+    property string inputFieldShape: "rounded"
+    onInputFieldShapeChanged: queueSave()
+
+    // Shape Angle & Chamfer Sliders
+    property int overlaySlantAngle: 32
+    onOverlaySlantAngleChanged: queueSave()
+    property int overlayHexagonCut: 36
+    onOverlayHexagonCutChanged: queueSave()
+
+    property int inputSlantAngle: 14
+    onInputSlantAngleChanged: queueSave()
+    property int inputHexagonCut: 14
+    onInputHexagonCutChanged: queueSave()
+
     property string notesFilePath: (Quickshell.env("HOME") || "") + "/Documents/notes.txt"
     property int notifVolume: 80
 
@@ -83,6 +100,15 @@ Item {
     property string defaultLauncherMode: "apps"
     onDefaultLauncherModeChanged: queueSave()
     property string emailSignature: "\n\n--\nSeekers of light..\nBelieve not in justice...\nBelieve not in truth...\nFor they are empty and inconsistent, as are all things..."
+
+    property string emailReceiveSound: "/usr/share/sounds/freedesktop/stereo/message.oga"
+    onEmailReceiveSoundChanged: queueSave()
+    property string emailSendSound: "/usr/share/sounds/freedesktop/stereo/complete.oga"
+    onEmailSendSoundChanged: queueSave()
+    property string emailFetchLimit: "50"
+    onEmailFetchLimitChanged: queueSave()
+    property bool emailSoundEnabled: true
+    onEmailSoundEnabledChanged: queueSave()
 
     property bool mprisWatchLocal: true
     onMprisWatchLocalChanged: queueSave()
@@ -328,7 +354,6 @@ Item {
     property int dimensionsRevision: 0
     property int barWidthsRevision: 0
 
-    // Fully reactive to dimensionsRevision to guarantee immediate persistence and live resize
     function getCapsuleWidth(idStr) {
         var _rev = manager.dimensionsRevision;
         if (capsuleDimensions && capsuleDimensions[idStr] && capsuleDimensions[idStr].width > 0) return capsuleDimensions[idStr].width;
@@ -359,7 +384,6 @@ Item {
         queueSave();
     }
 
-    // Fully reactive to barWidthsRevision
     function getCapsuleBarWidth(idStr) {
         var _rev = manager.barWidthsRevision;
         if (capsuleBarWidths && capsuleBarWidths[idStr] > 0) return capsuleBarWidths[idStr];
@@ -467,7 +491,6 @@ Item {
 
     Process { id: writerProc; running: false }
 
-    // Atomic, foolproof disk persistence
     function saveToDisk() {
         if (!manager.isLoaded) return;
 
@@ -481,6 +504,12 @@ Item {
             "globalOverlayWidth": manager.globalOverlayWidth,
             "globalOverlayHeight": manager.globalOverlayHeight,
             "globalFieldHeight": manager.globalFieldHeight,
+            "overlayCardShape": manager.overlayCardShape,
+            "inputFieldShape": manager.inputFieldShape,
+            "overlaySlantAngle": manager.overlaySlantAngle,
+            "overlayHexagonCut": manager.overlayHexagonCut,
+            "inputSlantAngle": manager.inputSlantAngle,
+            "inputHexagonCut": manager.inputHexagonCut,
             "slantWidth": manager.slantWidth,
             "globalBorderWidth": manager.globalBorderWidth,
             "globalPadding": manager.globalPadding,
@@ -509,6 +538,10 @@ Item {
             "clipboardMaxItems": manager.clipboardMaxItems,
             "defaultLauncherMode": manager.defaultLauncherMode,
             "emailSignature": manager.emailSignature,
+            "emailReceiveSound": manager.emailReceiveSound,
+            "emailSendSound": manager.emailSendSound,
+            "emailFetchLimit": manager.emailFetchLimit,
+            "emailSoundEnabled": manager.emailSoundEnabled,
             "mprisWatchLocal": manager.mprisWatchLocal,
             "mprisWatchSpotify": manager.mprisWatchSpotify,
             "mprisWatchBrowser": manager.mprisWatchBrowser,
@@ -564,7 +597,6 @@ Item {
         writerProc.running = true;
     }
 
-    // Reliable whole-stream configuration loader
     Process {
         id: loaderProc
         running: true
@@ -587,6 +619,12 @@ Item {
                     if (obj.globalOverlayWidth !== undefined) manager.globalOverlayWidth = obj.globalOverlayWidth;
                     if (obj.globalOverlayHeight !== undefined) manager.globalOverlayHeight = obj.globalOverlayHeight;
                     if (obj.globalFieldHeight !== undefined) manager.globalFieldHeight = obj.globalFieldHeight;
+                    if (obj.overlayCardShape !== undefined) manager.overlayCardShape = obj.overlayCardShape;
+                    if (obj.inputFieldShape !== undefined) manager.inputFieldShape = obj.inputFieldShape;
+                    if (obj.overlaySlantAngle !== undefined) manager.overlaySlantAngle = obj.overlaySlantAngle;
+                    if (obj.overlayHexagonCut !== undefined) manager.overlayHexagonCut = obj.overlayHexagonCut;
+                    if (obj.inputSlantAngle !== undefined) manager.inputSlantAngle = obj.inputSlantAngle;
+                    if (obj.inputHexagonCut !== undefined) manager.inputHexagonCut = obj.inputHexagonCut;
                     if (obj.slantWidth !== undefined) manager.slantWidth = obj.slantWidth;
                     if (obj.globalBorderWidth !== undefined) manager.globalBorderWidth = obj.globalBorderWidth;
                     if (obj.globalPadding !== undefined) manager.globalPadding = obj.globalPadding;
@@ -615,6 +653,10 @@ Item {
                     if (obj.clipboardMaxItems !== undefined) manager.clipboardMaxItems = obj.clipboardMaxItems;
                     if (obj.defaultLauncherMode !== undefined) manager.defaultLauncherMode = obj.defaultLauncherMode;
                     if (obj.emailSignature !== undefined) manager.emailSignature = obj.emailSignature;
+                    if (obj.emailReceiveSound !== undefined) manager.emailReceiveSound = obj.emailReceiveSound;
+                    if (obj.emailSendSound !== undefined) manager.emailSendSound = obj.emailSendSound;
+                    if (obj.emailFetchLimit !== undefined) manager.emailFetchLimit = obj.emailFetchLimit;
+                    if (obj.emailSoundEnabled !== undefined) manager.emailSoundEnabled = obj.emailSoundEnabled;
                     if (obj.mprisWatchLocal !== undefined) manager.mprisWatchLocal = obj.mprisWatchLocal;
                     if (obj.mprisWatchSpotify !== undefined) manager.mprisWatchSpotify = obj.mprisWatchSpotify;
                     if (obj.mprisWatchBrowser !== undefined) manager.mprisWatchBrowser = obj.mprisWatchBrowser;

@@ -22,6 +22,8 @@ QtObject {
     readonly property Process appLoader: Process {
         command: [
             "sh", "-c",
+            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
+            'export XDG_DATA_DIRS="$HOME/.local/share:$HOME/.nix-profile/share:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/share:/run/current-system/sw/share:/usr/local/share:/usr/share:${XDG_DATA_DIRS:-}"; ' +
             'SCR="' + Quickshell.shellDir + '/modules/overlays/launcher/backend/AppLauncherEngine.lua"; ' +
             'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
             '"$CMD" "$SCR"'
@@ -63,7 +65,7 @@ QtObject {
             "sh", "-c",
             'F="$HOME/.cache/quickshell/recent_apps.txt"; mkdir -p "$(dirname "$F")"; touch "$F"; ' +
             'grep -Fxv "$1" "$F" > "$F.tmp" 2>/dev/null; ' +
-            'printf "%s\\n" "$1" | cat - "$F.tmp" | head -n 50 > "$F"; rm -f "$F.tmp"',
+            'printf "%s\n" "$1" | cat - "$F.tmp" | head -n 50 > "$F"; rm -f "$F.tmp"',
             "sh", cmd
         ]);
     }
@@ -94,7 +96,6 @@ QtObject {
             else if (Utils.fuzzyMatch(q, name)) score = 20;
 
             if (score > 0) {
-                // Boost recently used apps in search results
                 if (app.recentRank > 0) score += Math.min(30, Math.round(app.recentRank / 30));
                 matches.push({ app: app, score: score });
             }

@@ -1,3 +1,4 @@
+import "../../common" as Common
 import QtQuick
 import Quickshell
 import Quickshell.Io

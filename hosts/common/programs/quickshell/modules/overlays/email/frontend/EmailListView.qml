@@ -1,6 +1,7 @@
 import QtQuick
+import "../../../style" as Style
 
-Rectangle {
+Item {
     id: listComp
 
     property color listBgColor: (typeof theme !== 'undefined' && theme) ? theme.base00 : "#121212"
@@ -15,9 +16,8 @@ Rectangle {
     property string listFontFamily: (typeof theme !== 'undefined' && theme) ? theme.fontFamily : "monospace"
 
     property color outerBorderColor: (typeof theme !== 'undefined' && theme) ? theme.outerBorderColor : "#003399"
-    property int outerBorderThickness: 3
     property color innerCardActiveBorder: (typeof theme !== 'undefined' && theme) ? theme.innerBorderColor : "#fabd2f"
-    property int innerCardActiveThickness: 5
+    property int globalBorderWidth: (typeof theme !== 'undefined' && theme && theme.globalBorderWidth) ? theme.globalBorderWidth : 3
 
     property var mailItems: []
     property int activeMailIndex: 0
@@ -34,11 +34,6 @@ Rectangle {
 
     signal starToggled(int index)
     signal readToggled(int index)
-
-    color: listBgColor
-    border.color: outerBorderColor
-    border.width: outerBorderThickness
-    radius: (typeof theme !== 'undefined' && theme) ? theme.defaultCardRadius : 10
 
     function toggleSearch() {
         searchVisible = !searchVisible;
@@ -62,17 +57,22 @@ Rectangle {
             visible: listComp.searchVisible
             clip: true
 
-            Rectangle {
+            Item {
                 id: searchInputBox
                 anchors.left: parent.left
                 anchors.right: caseSensitiveBtn.left
                 anchors.rightMargin: 10
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
-                color: listComp.listBgColor
-                border.color: searchInput.activeFocus ? listComp.innerCardActiveBorder : listComp.itemBorderColor
-                border.width: searchInput.activeFocus ? 2 : 1
-                radius: 6
+
+                Style.ShapeBox {
+                    anchors.fill: parent
+                    role: "input"
+                    color: listComp.listBgColor
+                    borderColor: searchInput.activeFocus ? listComp.innerCardActiveBorder : listComp.itemBorderColor
+                    borderWidth: searchInput.activeFocus ? listComp.globalBorderWidth : 1
+                    slantWidth: 10
+                }
 
                 Item {
                     anchors.fill: parent
@@ -125,16 +125,21 @@ Rectangle {
                 }
             }
 
-            Rectangle {
+            Item {
                 id: caseSensitiveBtn
                 anchors.right: parent.right
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
                 width: Math.max(64, aaText.implicitWidth + 24)
-                color: listComp.searchCaseSensitive ? listComp.innerCardActiveBorder : listComp.listBgColor
-                border.color: listComp.itemBorderColor
-                border.width: 1
-                radius: 6
+
+                Style.ShapeBox {
+                    anchors.fill: parent
+                    role: "input"
+                    slantWidth: 8
+                    color: listComp.searchCaseSensitive ? listComp.innerCardActiveBorder : listComp.listBgColor
+                    borderColor: listComp.itemBorderColor
+                    borderWidth: listComp.searchCaseSensitive ? listComp.globalBorderWidth : 1
+                }
 
                 Text {
                     id: aaText
@@ -165,19 +170,17 @@ Rectangle {
             focus: true
             Keys.onPressed: (event) => {
                 if (event.key === Qt.Key_Delete) {
-                    viewRoot.engine.handleDeletion();
+                    if (typeof viewRoot !== "undefined" && viewRoot.engine) {
+                        viewRoot.engine.handleDeletion();
+                    }
                     event.accepted = true;
                 }
             }
 
-            delegate: Rectangle {
+            delegate: Item {
                 id: emailItemRect
                 width: internalListView.width
                 height: listComp.itemHeight
-                radius: (typeof theme !== 'undefined' && theme) ? theme.defaultCardRadius : 10
-                color: (index === listComp.activeMailIndex) ? listComp.itemSelectedBg : "transparent"
-                border.color: (index === listComp.activeMailIndex) ? listComp.innerCardActiveBorder : listComp.itemBorderColor
-                border.width: (index === listComp.activeMailIndex) ? listComp.innerCardActiveThickness : 1
 
                 property bool isStarred: modelData.flags ? modelData.flags.map(f => f.toLowerCase()).includes("flagged") : false
                 property bool isUnread: modelData.flags ? !modelData.flags.map(f => f.toLowerCase()).includes("seen") : true
@@ -186,6 +189,15 @@ Rectangle {
                 function getAvatarColor(name) {
                     var hash = name.split("").reduce(function(acc, char) { return char.charCodeAt(0) + ((acc << 5) - acc); }, 0);
                     return ["#458588", "#b16286", "#689d6a", "#d3869b", "#8ec07c", "#fe8019", "#d65d0e"][Math.abs(hash) % 7];
+                }
+
+                Style.ShapeBox {
+                    anchors.fill: parent
+                    role: "input"
+                    slantWidth: 10
+                    color: (index === listComp.activeMailIndex) ? listComp.itemSelectedBg : "transparent"
+                    borderColor: (index === listComp.activeMailIndex) ? listComp.innerCardActiveBorder : listComp.itemBorderColor
+                    borderWidth: (index === listComp.activeMailIndex) ? listComp.globalBorderWidth : 1
                 }
 
                 Row {

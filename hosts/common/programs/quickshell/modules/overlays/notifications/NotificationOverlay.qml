@@ -1,3 +1,4 @@
+import "../../common" as Common
 import "../../common/Utils.js" as Utils
 import QtQuick
 import QtQuick.Controls 2
@@ -43,6 +44,19 @@ Item {
         id: activeNotificationsModel
     }
 
+    function pruneAvatarMap() {
+        var keys = Object.keys(root.cachedAvatarsMap);
+        if (keys.length > 30) {
+            for (var i = 0; i < keys.length - 30; i++) {
+                var oldPath = root.cachedAvatarsMap[keys[i]];
+                if (oldPath && oldPath.startsWith("file:///tmp/qs_avatar_")) {
+                    Quickshell.execDetached(["rm", "-f", oldPath.replace(/^file:\/\//, "")]);
+                }
+                delete root.cachedAvatarsMap[keys[i]];
+            }
+        }
+    }
+
     function cacheAvatarImmediately(notification) {
         if (!notification) return;
 
@@ -55,6 +69,7 @@ Item {
             offscreenAvatarCacher.source = avatarVal;
         } else {
             root.cachedAvatarsMap[notifId] = avatarVal;
+            pruneAvatarMap();
         }
     }
 
@@ -190,7 +205,6 @@ Item {
                 || null;
         }
 
-        // Width matches the card exactly so right margins are 1:1 with screen bounds
         implicitWidth: root.cardWidth
         color: "transparent"
 
@@ -238,6 +252,7 @@ Item {
                             if (result.saveToFile(localPath)) {
                                 let fileUrl = "file://" + localPath;
                                 root.cachedAvatarsMap[notifId] = fileUrl;
+                                root.pruneAvatarMap();
 
                                 for (let i = 0; i < activeNotificationsModel.count; i++) {
                                     let item = activeNotificationsModel.get(i);

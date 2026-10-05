@@ -4,6 +4,8 @@ import QtQuick.Layouts 1.15
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
+import "../../style" as Style
+import "../../common" as Common
 
 PanelWindow {
     id: root
@@ -18,7 +20,6 @@ PanelWindow {
 
     property bool isCardActive: true
 
-    // Focused: base03 | Off-focus: base0D
     readonly property color activeBorderColor: (shell && shell.theme && shell.theme.base03) ? shell.theme.base03 : "#003399"
     readonly property color inactiveBorderColor: (shell && shell.theme && shell.theme.base0D) ? shell.theme.base0D : "#003399"
 
@@ -64,41 +65,9 @@ PanelWindow {
         hideWindow();
     }
 
-    // Background listener for Escape: catches Escape globally while Among Us is open, even when unfocused
-    Process {
-        id: escWatcher
-        running: root.isOpenState && !root.isPreviewMode
-        command: [
-            "python3", "-u", "-c",
-            "import glob, struct, select, sys\n" +
-            "fds = []\n" +
-            "for dev in glob.glob('/dev/input/by-id/*-event-kbd') + glob.glob('/dev/input/event*'):\n" +
-            "    try:\n" +
-            "        fds.append(open(dev, 'rb', buffering=0))\n" +
-            "    except Exception:\n" +
-            "        pass\n" +
-            "if not fds:\n" +
-            "    sys.exit(0)\n" +
-            "fmt = 'llHHi' if struct.calcsize('l') == 8 else 'iiHHi'\n" +
-            "sz = struct.calcsize(fmt)\n" +
-            "while True:\n" +
-            "    r, _, _ = select.select(fds, [], [])\n" +
-            "    for fd in r:\n" +
-            "        try:\n" +
-            "            d = fd.read(sz)\n" +
-            "            if len(d) == sz:\n" +
-            "                _, _, t, code, val = struct.unpack(fmt, d)\n" +
-            "                if t == 1 and code == 1 and val == 1:\n" +
-            "                    print('ESC', flush=True)\n" +
-            "        except Exception:\n" +
-            "            pass\n"
-        ]
-        stdout: SplitParser {
-            splitMarker: "\n"
-            onRead: data => {
-                if (data.trim() === "ESC") root.close();
-            }
-        }
+    Common.GlobalEscWatcher {
+        active: root.isOpenState && !root.isPreviewMode
+        onEscapePressed: root.close()
     }
 
     WlrLayershell.namespace: "quickshell-amogus"
@@ -120,7 +89,6 @@ PanelWindow {
 
     color: "transparent"
 
-    // Multi-screen click-off detector
     Variants {
         model: Quickshell.screens
         delegate: PanelWindow {
@@ -146,7 +114,6 @@ PanelWindow {
         }
     }
 
-    // Same-screen click-off detector
     MouseArea {
         anchors.fill: parent
         enabled: root.isCardActive && !root.isPreviewMode
@@ -164,6 +131,7 @@ PanelWindow {
     readonly property color themeBase09: (shell && shell.theme && shell.theme.base09) ? shell.theme.base09 : "#fe8019"
     readonly property color themeBase0C: (shell && shell.theme && shell.theme.base0C) ? shell.theme.base0C : "#04f100"
     readonly property string themeFont: (shell && shell.theme && shell.theme.fontFamily) ? shell.theme.fontFamily : "monospace"
+    readonly property int globalBorderWidth: (shell && shell.theme && shell.theme.globalBorderWidth !== undefined) ? shell.theme.globalBorderWidth : 2
 
     property var crewmates: [
         { name: "Red",     hex: "#C51111", darkHex: "#7A0808", dead: false },
@@ -228,16 +196,33 @@ PanelWindow {
 
     readonly property int deadCount: crewModel.length - aliveCount
 
-    Rectangle {
+    Item {
         id: amogusCard
         x: 80
         y: 80
-        width: (shell && shell.settingsManager) ? shell.settingsManager.getWindowWidth(root.windowId, 580) : 580
-        height: (shell && shell.settingsManager) ? shell.settingsManager.getWindowHeight(root.windowId, 440) : 440
-        radius: (shell && shell.theme && shell.theme.defaultCardRadius !== undefined) ? shell.theme.defaultCardRadius : 14
-        color: root.themeBase00
-        border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
-        border.width: (shell && shell.theme && shell.theme.globalBorderWidth !== undefined) ? shell.theme.globalBorderWidth : 2.5
+        width: (shell && shell.settingsManager) ? shell.settingsManager.getWindowWidth(root.windowId, 620) : 620
+        height: (shell && shell.settingsManager) ? shell.settingsManager.getWindowHeight(root.windowId, 480) : 480
+
+        readonly property int cardCornerCut: {
+            if (!shell || !shell.settingsManager) return 0;
+            if (shell.settingsManager.overlayCardShape === "hexagon") return Math.round(shell.settingsManager.overlayHexagonCut || 36);
+            if (shell.settingsManager.overlayCardShape === "slant") return Math.round(shell.settingsManager.overlaySlantAngle || 32);
+            return 0;
+        }
+        readonly property int cardPadH: (shell && shell.settingsManager && shell.settingsManager.overlayCardShape !== "rounded")
+            ? Math.max(28, Math.round(cardCornerCut * 1.0) + 20)
+            : 16
+        readonly property int cardPadV: (shell && shell.settingsManager && shell.settingsManager.overlayCardShape !== "rounded")
+            ? Math.max(20, Math.round(cardCornerCut * 0.45) + 14)
+            : 16
+
+        Style.ShapeBox {
+            anchors.fill: parent
+            role: "card"
+            color: root.themeBase00
+            borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+            borderWidth: root.globalBorderWidth
+        }
 
         MouseArea {
             anchors.fill: parent
@@ -251,8 +236,11 @@ PanelWindow {
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 14
-            spacing: 10
+            anchors.leftMargin: amogusCard.cardPadH
+            anchors.rightMargin: amogusCard.cardPadH
+            anchors.topMargin: amogusCard.cardPadV
+            anchors.bottomMargin: amogusCard.cardPadV
+            spacing: 12
 
             Rectangle {
                 visible: root.isPreviewMode
@@ -271,13 +259,18 @@ PanelWindow {
                 }
             }
 
-            Rectangle {
+            Item {
                 Layout.fillWidth: true
-                height: 38
-                radius: 8
-                color: root.themeBase01
-                border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
-                border.width: 1
+                height: 42
+
+                Style.ShapeBox {
+                    anchors.fill: parent
+                    role: "input"
+                    color: root.themeBase01
+                    borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+                    borderWidth: root.globalBorderWidth
+                    slantWidth: 10
+                }
 
                 MouseArea {
                     id: dragArea
@@ -292,8 +285,8 @@ PanelWindow {
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 10
-                    anchors.rightMargin: 8
+                    anchors.leftMargin: 14
+                    anchors.rightMargin: 12
                     spacing: 8
 
                     Text {
@@ -310,13 +303,18 @@ PanelWindow {
 
                         Repeater {
                             model: Quickshell.screens
-                            delegate: Rectangle {
-                                width: scrText.implicitWidth + 12
-                                height: 22
-                                radius: 4
-                                color: root.currentScreenIndex === index ? root.themeBase05 : root.themeBase02
-                                border.color: root.themeBase05
-                                border.width: 1
+                            delegate: Item {
+                                width: scrText.implicitWidth + 16
+                                height: 24
+
+                                Style.ShapeBox {
+                                    anchors.fill: parent
+                                    role: "input"
+                                    slantWidth: 6
+                                    color: root.currentScreenIndex === index ? root.themeBase05 : root.themeBase02
+                                    borderColor: root.themeBase05
+                                    borderWidth: 1
+                                }
 
                                 Text {
                                     id: scrText
@@ -348,13 +346,18 @@ PanelWindow {
                         color: root.deadCount > 0 ? root.themeBase09 : root.themeBase0C
                     }
 
-                    Rectangle {
+                    Item {
                         width: 72
-                        height: 24
-                        radius: 4
-                        color: resetHov.hovered ? root.themeBase05 : "transparent"
-                        border.color: root.themeBase05
-                        border.width: 1
+                        height: 26
+
+                        Style.ShapeBox {
+                            anchors.fill: parent
+                            role: "input"
+                            slantWidth: 6
+                            color: resetHov.hovered ? root.themeBase05 : "transparent"
+                            borderColor: root.themeBase05
+                            borderWidth: 1
+                        }
 
                         Text {
                             anchors.centerIn: parent
@@ -410,20 +413,24 @@ PanelWindow {
                 Repeater {
                     model: root.crewModel
 
-                    delegate: Rectangle {
+                    delegate: Item {
                         id: crewCard
                         readonly property var crewItem: modelData
                         readonly property bool isDead: crewItem.dead
 
                         width: crewGrid.cardW
                         height: crewGrid.cardH
-                        radius: 8
 
-                        color: isDead ? "#121218" : "#1a1a24"
-                        border.width: isDead ? 1 : 2
-                        border.color: isDead ? "#2a2a38" : crewItem.hex
+                        Style.ShapeBox {
+                            anchors.fill: parent
+                            role: "input"
+                            slantWidth: 8
+                            color: crewCard.isDead ? "#121218" : "#1a1a24"
+                            borderColor: crewCard.isDead ? "#2a2a38" : crewItem.hex
+                            borderWidth: crewCard.isDead ? 1 : 2
+                        }
+
                         opacity: isDead ? 0.28 : 1.0
-
                         Behavior on opacity { NumberAnimation { duration: 120 } }
 
                         Column {

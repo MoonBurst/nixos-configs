@@ -2,17 +2,19 @@ import QtQuick
 import QtQuick.Controls 2
 import QtQuick.Layouts 1.15
 import "../backend"
+import "../../../style" as Style
 
 Item {
     id: viewRoot
 
     required property DictionaryEngine engine
     property var theme: null
+    property var settingsManager: null
 
-    readonly property int fieldHeight: (shell && shell.settingsManager)
-        ? shell.settingsManager.getWindowFieldHeight("dictionary", 52) : 52
-    readonly property int overlayFontSize: (shell && shell.settingsManager && shell.settingsManager.overlayFontSize > 0)
-        ? shell.settingsManager.overlayFontSize : 16
+    readonly property int fieldHeight: settingsManager
+        ? settingsManager.getWindowFieldHeight("dictionary", 52) : 52
+    readonly property int overlayFontSize: (settingsManager && settingsManager.overlayFontSize > 0)
+        ? settingsManager.overlayFontSize : 16
 
     signal completed()
 
@@ -30,16 +32,24 @@ Item {
         anchors.margins: (viewRoot.theme && viewRoot.theme.globalPadding) ? viewRoot.theme.globalPadding : 16
         spacing: 16
 
-        Rectangle {
+        // Universal Shape Input Bar
+        Item {
             Layout.fillWidth: true
             Layout.preferredHeight: viewRoot.fieldHeight
             Layout.minimumHeight: viewRoot.fieldHeight
             Layout.maximumHeight: viewRoot.fieldHeight
             height: viewRoot.fieldHeight
-            radius: 8
-            color: (theme && theme.base00) ? theme.base00 : "#11111b"
-            border.width: dictField.activeFocus ? 2 : 1
-            border.color: dictField.activeFocus ? ((theme && theme.base05) ? theme.base05 : "yellow") : ((theme && theme.base03) ? theme.base03 : "#45475a")
+
+            Style.ShapeBox {
+                anchors.fill: parent
+                role: "input"
+                color: (theme && theme.base00) ? theme.base00 : "#11111b"
+                borderColor: dictField.activeFocus
+                    ? ((theme && theme.base05) ? theme.base05 : "yellow")
+                    : ((theme && theme.base03) ? theme.base03 : "#45475a")
+                borderWidth: dictField.activeFocus ? 2 : 1
+                slantWidth: 14
+            }
 
             RowLayout {
                 anchors.fill: parent; anchors.margins: 12; spacing: 10
@@ -87,15 +97,20 @@ Item {
             model: engine.definitionEntries
             currentIndex: engine.selectedIndex
 
-            delegate: Rectangle {
+            delegate: Item {
                 id: defCard
                 readonly property bool isSelected: index === engine.selectedIndex
                 width: defListView.width - 12
                 height: Math.max(54, defText.implicitHeight + 24)
-                radius: 6
-                color: isSelected ? ((theme && theme.base02) ? theme.base02 : "#333") : "transparent"
-                border.width: isSelected ? 2 : 1
-                border.color: isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : "#444"
+
+                Style.ShapeBox {
+                    anchors.fill: parent
+                    role: "input"
+                    color: defCard.isSelected ? ((theme && theme.base02) ? theme.base02 : "#333") : "transparent"
+                    borderColor: defCard.isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : "#444"
+                    borderWidth: defCard.isSelected ? 2 : 1
+                    slantWidth: 10
+                }
 
                 Text {
                     id: defText
@@ -103,7 +118,7 @@ Item {
                     text: modelData.text
                     font.family: (theme && theme.fontFamily) ? theme.fontFamily : "monospace"
                     font.pixelSize: viewRoot.overlayFontSize
-                    color: isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : "#ccc"
+                    color: defCard.isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : "#ccc"
                     wrapMode: Text.Wrap
                     verticalAlignment: Text.AlignVCenter
                 }

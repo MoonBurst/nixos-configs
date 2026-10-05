@@ -32,9 +32,20 @@ function escapeShell(str) {
     return "'" + String(str).replace(/'/g, "'\\''") + "'";
 }
 
+function sanitizeIdentifier(str) {
+    if (!str) return "";
+    return String(str).replace(/[^a-zA-Z0-9_\-\.]/g, "").trim();
+}
+
 function extractUrl(text) {
     if (!text) return "";
     var match = text.match(/(https?:\/\/[^\s<]+)/);
+    return match ? match[0] : "";
+}
+
+function extractImageUrl(text) {
+    if (!text) return "";
+    var match = text.match(/(https?:\/\/[^\s<]+\.(?:png|jpg|jpeg|gif|svg|webp)(?:\?[^\s<]+)?)/i);
     return match ? match[0] : "";
 }
 
@@ -63,6 +74,38 @@ function fuzzyMatch(needle, haystack) {
         hIdx++;
     }
     return nIdx === nlen;
+}
+
+function getSafeCardPadding(settingsManager) {
+    if (!settingsManager) return { h: 18, v: 16 };
+    var shape = settingsManager.overlayCardShape || "rounded";
+    if (shape === "hexagon") {
+        var cut = Math.max(16, Math.round(settingsManager.overlayHexagonCut || 36));
+        return {
+            h: Math.max(24, Math.round(cut * 1.0) + 20),
+            v: Math.max(18, Math.round(cut * 0.45) + 14)
+        };
+    } else if (shape === "slant") {
+        var angle = Math.max(14, Math.round(settingsManager.overlaySlantAngle || 32));
+        return {
+            h: Math.max(24, Math.round(angle * 0.90) + 16),
+            v: 18
+        };
+    }
+    return { h: 18, v: 16 };
+}
+
+function getSafeInputPadding(settingsManager) {
+    if (!settingsManager) return { left: 14, right: 14 };
+    var shape = settingsManager.inputFieldShape || "rounded";
+    if (shape === "hexagon") {
+        var cut = Math.max(8, Math.round(settingsManager.inputHexagonCut || 14));
+        return { left: cut + 10, right: cut + 10 };
+    } else if (shape === "slant") {
+        var angle = Math.max(8, Math.round(settingsManager.inputSlantAngle || 14));
+        return { left: angle + 10, right: angle + 10 };
+    }
+    return { left: 14, right: 14 };
 }
 
 const unitTables = {
@@ -135,7 +178,6 @@ function evaluate(query, isMathMode) {
     if (!clean) return null;
     let expr = clean.startsWith("=") ? clean.substring(1).trim() : clean;
 
-    // Do not evaluate bare single words (e.g. "e", "pi", "sin") without '=' prefix
     if (!clean.startsWith("=") && /^[a-zA-Z]+$/.test(expr)) {
         return null;
     }

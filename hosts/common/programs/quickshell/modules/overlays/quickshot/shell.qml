@@ -1,3 +1,4 @@
+import "../../common" as Common
 // @pragma UseQApplication
 
 import Quickshell

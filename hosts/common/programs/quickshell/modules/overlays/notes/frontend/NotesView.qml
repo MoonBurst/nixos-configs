@@ -2,17 +2,19 @@ import QtQuick
 import QtQuick.Controls 2
 import QtQuick.Layouts 1.15
 import "../backend" as Backend
+import "../../../style" as Style
 
 Item {
     id: viewRoot
 
     required property Backend.NotesEngine engine
     property var theme: null
+    property var settingsManager: null
 
-    readonly property int fieldHeight: (shell && shell.settingsManager)
-        ? shell.settingsManager.getWindowFieldHeight("notes", 52) : 52
-    readonly property int overlayFontSize: (shell && shell.settingsManager && shell.settingsManager.overlayFontSize > 0)
-        ? shell.settingsManager.overlayFontSize : 16
+    readonly property int fieldHeight: settingsManager
+        ? settingsManager.getWindowFieldHeight("notes", 52) : 52
+    readonly property int overlayFontSize: (settingsManager && settingsManager.overlayFontSize > 0)
+        ? settingsManager.overlayFontSize : 16
 
     signal completed()
 
@@ -30,16 +32,24 @@ Item {
         anchors.margins: (viewRoot.theme && viewRoot.theme.globalPadding) ? viewRoot.theme.globalPadding : 16
         spacing: 16
 
-        Rectangle {
+        // Universal Shape Input Bar
+        Item {
             Layout.fillWidth: true
             Layout.preferredHeight: viewRoot.fieldHeight
             Layout.minimumHeight: viewRoot.fieldHeight
             Layout.maximumHeight: viewRoot.fieldHeight
             height: viewRoot.fieldHeight
-            radius: 8
-            color: (theme && theme.base00) ? theme.base00 : "#11111b"
-            border.width: noteInput.activeFocus ? 2 : 1
-            border.color: noteInput.activeFocus ? ((theme && theme.base05) ? theme.base05 : "yellow") : ((theme && theme.base03) ? theme.base03 : "#45475a")
+
+            Style.ShapeBox {
+                anchors.fill: parent
+                role: "input"
+                color: (theme && theme.base00) ? theme.base00 : "#11111b"
+                borderColor: noteInput.activeFocus
+                    ? ((theme && theme.base05) ? theme.base05 : "yellow")
+                    : ((theme && theme.base03) ? theme.base03 : "#45475a")
+                borderWidth: noteInput.activeFocus ? 2 : 1
+                slantWidth: 14
+            }
 
             RowLayout {
                 anchors.fill: parent; anchors.margins: 12; spacing: 10
@@ -104,7 +114,6 @@ Item {
             flickDeceleration: 10000
             maximumFlickVelocity: 15000
 
-            // Direct high-speed scroll handler
             WheelHandler {
                 target: null
                 onWheel: (event) => {
@@ -118,15 +127,20 @@ Item {
                 }
             }
 
-            delegate: Rectangle {
+            delegate: Item {
                 id: noteCard
                 readonly property bool isSelected: index === engine.selectedIndex
                 width: notesList.width - 12
                 height: Math.max(54, noteContentColumn.implicitHeight + 28)
-                radius: 6
-                color: isSelected ? ((theme && theme.base02) ? theme.base02 : "#333") : "transparent"
-                border.width: isSelected ? 2 : 1
-                border.color: isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : "#444"
+
+                Style.ShapeBox {
+                    anchors.fill: parent
+                    role: "input"
+                    color: noteCard.isSelected ? ((theme && theme.base02) ? theme.base02 : "#333") : "transparent"
+                    borderColor: noteCard.isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : "#444"
+                    borderWidth: noteCard.isSelected ? 2 : 1
+                    slantWidth: 10
+                }
 
                 RowLayout {
                     anchors.fill: parent; anchors.margins: 14; spacing: 14
@@ -149,7 +163,7 @@ Item {
                             text: model.content
                             font.family: (theme && theme.fontFamily) ? theme.fontFamily : "monospace"
                             font.pixelSize: viewRoot.overlayFontSize
-                            color: isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : "#ccc"
+                            color: noteCard.isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : "#ccc"
                             wrapMode: Text.Wrap
                             Layout.fillWidth: true
                         }

@@ -1,3 +1,4 @@
+import "../../common" as Common
 import "../../common/Utils.js" as Utils
 // NotificationCard.qml
 import QtQuick

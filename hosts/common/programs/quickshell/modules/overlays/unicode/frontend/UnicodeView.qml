@@ -2,17 +2,19 @@ import QtQuick
 import QtQuick.Controls 2
 import QtQuick.Layouts 1.15
 import "../backend"
+import "../../../style" as Style
 
 Item {
     id: viewRoot
 
     required property UnicodeEngine engine
     property var theme: null
+    property var settingsManager: null
 
-    readonly property int fieldHeight: (shell && shell.settingsManager)
-        ? shell.settingsManager.getWindowFieldHeight("unicode", 52) : 52
-    readonly property int overlayFontSize: (shell && shell.settingsManager && shell.settingsManager.overlayFontSize > 0)
-        ? shell.settingsManager.overlayFontSize : 16
+    readonly property int fieldHeight: settingsManager
+        ? settingsManager.getWindowFieldHeight("unicode", 52) : 52
+    readonly property int overlayFontSize: (settingsManager && settingsManager.overlayFontSize > 0)
+        ? settingsManager.overlayFontSize : 16
 
     signal completed()
 
@@ -30,16 +32,24 @@ Item {
         anchors.margins: (viewRoot.theme && viewRoot.theme.globalPadding) ? viewRoot.theme.globalPadding : 16
         spacing: 16
 
-        Rectangle {
+        // Universal Shape Search Bar
+        Item {
             Layout.fillWidth: true
             Layout.preferredHeight: viewRoot.fieldHeight
             Layout.minimumHeight: viewRoot.fieldHeight
             Layout.maximumHeight: viewRoot.fieldHeight
             height: viewRoot.fieldHeight
-            radius: 8
-            color: (theme && theme.base00) ? theme.base00 : "#11111b"
-            border.width: searchField.activeFocus ? 2 : 1
-            border.color: searchField.activeFocus ? ((theme && theme.base05) ? theme.base05 : "yellow") : ((theme && theme.base03) ? theme.base03 : "#45475a")
+
+            Style.ShapeBox {
+                anchors.fill: parent
+                role: "input"
+                color: (theme && theme.base00) ? theme.base00 : "#11111b"
+                borderColor: searchField.activeFocus
+                    ? ((theme && theme.base05) ? theme.base05 : "yellow")
+                    : ((theme && theme.base03) ? theme.base03 : "#45475a")
+                borderWidth: searchField.activeFocus ? 2 : 1
+                slantWidth: 14
+            }
 
             RowLayout {
                 anchors.fill: parent; anchors.margins: 12; spacing: 10
@@ -113,13 +123,18 @@ Item {
                 width: symGrid.cellWidth
                 height: symGrid.cellHeight
 
-                Rectangle {
+                Item {
                     anchors.fill: parent
                     anchors.margins: 4
-                    radius: 8
-                    color: cellRoot.isSelected ? ((theme && theme.base02) ? theme.base02 : "#333") : (gHover.hovered ? "#222" : "transparent")
-                    border.width: cellRoot.isSelected ? 2 : 1
-                    border.color: cellRoot.isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : (gHover.hovered ? "#555" : "#333")
+
+                    Style.ShapeBox {
+                        anchors.fill: parent
+                        role: "input"
+                        color: cellRoot.isSelected ? ((theme && theme.base02) ? theme.base02 : "#333") : (gHover.hovered ? "#222" : "transparent")
+                        borderColor: cellRoot.isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : (gHover.hovered ? "#555" : "#333")
+                        borderWidth: cellRoot.isSelected ? 2 : 1
+                        slantWidth: 8
+                    }
 
                     ColumnLayout {
                         anchors.fill: parent

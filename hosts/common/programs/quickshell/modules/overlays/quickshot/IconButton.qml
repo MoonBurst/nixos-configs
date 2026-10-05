@@ -1,3 +1,4 @@
+import "../../common" as Common
 import QtQuick
 
 // A flat, square icon button used throughout the toolbar. Renders a glyph, a

@@ -4,6 +4,8 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 import "../../../" as RootTheme
+import "../../style" as Style
+import "../../common" as Common
 import "../../settings" as SettingsTools
 import "./backend" as Backend
 import "./frontend" as Frontend
@@ -31,7 +33,6 @@ PanelWindow {
 
     property bool isCardActive: true
 
-    // Focused: base03 | Off-focus: base0D
     readonly property color activeBorderColor: (theme && theme.base03) ? theme.base03 : "#003399"
     readonly property color inactiveBorderColor: (theme && theme.base0D) ? theme.base0D : "#003399"
 
@@ -128,44 +129,11 @@ PanelWindow {
         function close(): void { window.close(); }
     }
 
-    // Background listener for Escape: catches Escape globally while Notes is open, even when unfocused
-    Process {
-        id: escWatcher
-        running: window.isOpenState && !window.isPreviewMode
-        command: [
-            "python3", "-u", "-c",
-            "import glob, struct, select, sys\n" +
-            "fds = []\n" +
-            "for dev in glob.glob('/dev/input/by-id/*-event-kbd') + glob.glob('/dev/input/event*'):\n" +
-            "    try:\n" +
-            "        fds.append(open(dev, 'rb', buffering=0))\n" +
-            "    except Exception:\n" +
-            "        pass\n" +
-            "if not fds:\n" +
-            "    sys.exit(0)\n" +
-            "fmt = 'llHHi' if struct.calcsize('l') == 8 else 'iiHHi'\n" +
-            "sz = struct.calcsize(fmt)\n" +
-            "while True:\n" +
-            "    r, _, _ = select.select(fds, [], [])\n" +
-            "    for fd in r:\n" +
-            "        try:\n" +
-            "            d = fd.read(sz)\n" +
-            "            if len(d) == sz:\n" +
-            "                _, _, t, code, val = struct.unpack(fmt, d)\n" +
-            "                if t == 1 and code == 1 and val == 1:\n" +
-            "                    print('ESC', flush=True)\n" +
-            "        except Exception:\n" +
-            "            pass\n"
-        ]
-        stdout: SplitParser {
-            splitMarker: "\n"
-            onRead: data => {
-                if (data.trim() === "ESC") window.close();
-            }
-        }
+    Common.GlobalEscWatcher {
+        active: window.isOpenState && !window.isPreviewMode
+        onEscapePressed: window.close()
     }
 
-    // Multi-screen click-off detector
     Variants {
         model: Quickshell.screens
         delegate: PanelWindow {
@@ -191,7 +159,6 @@ PanelWindow {
         }
     }
 
-    // Same-screen click-off detector
     MouseArea {
         anchors.fill: parent
         enabled: window.isCardActive && !window.isPreviewMode
@@ -202,18 +169,35 @@ PanelWindow {
 
     Backend.NotesEngine { id: notesEngine }
 
-    Rectangle {
+    Item {
         id: card
         anchors.centerIn: parent
         width: settingsManager ? settingsManager.getWindowWidth(window.windowId, 840) : 840
         height: settingsManager ? settingsManager.getWindowHeight(window.windowId, 650) : 650
-        radius: theme.defaultCardRadius
-        color: theme.base01
-        border.width: (theme && theme.globalBorderWidth !== undefined) ? theme.globalBorderWidth : 3
 
-        // Focused: base03 | Off-focus: base0D
-        border.color: window.isCardActive ? window.activeBorderColor : window.inactiveBorderColor
-        clip: true
+        readonly property color currentBorderColor: window.isCardActive ? window.activeBorderColor : window.inactiveBorderColor
+        readonly property int currentBorderWidth: (theme && theme.globalBorderWidth !== undefined) ? theme.globalBorderWidth : 3
+
+        readonly property int cardCornerCut: {
+            if (!settingsManager) return 0;
+            if (settingsManager.overlayCardShape === "hexagon") return Math.round(settingsManager.overlayHexagonCut || 36);
+            if (settingsManager.overlayCardShape === "slant") return Math.round(settingsManager.overlaySlantAngle || 32);
+            return 0;
+        }
+        readonly property int cardPadH: (settingsManager && settingsManager.overlayCardShape !== "rounded")
+            ? Math.max(28, Math.round(cardCornerCut * 1.0) + 20)
+            : 0
+        readonly property int cardPadV: (settingsManager && settingsManager.overlayCardShape !== "rounded")
+            ? Math.max(20, Math.round(cardCornerCut * 0.45) + 14)
+            : 0
+
+        Style.ShapeBox {
+            anchors.fill: parent
+            role: "card"
+            color: theme.base01
+            borderColor: card.currentBorderColor
+            borderWidth: card.currentBorderWidth
+        }
 
         MouseArea {
             anchors.fill: parent
@@ -228,37 +212,19 @@ PanelWindow {
         Loader {
             id: viewLoader
             anchors.fill: parent
+            anchors.leftMargin: card.cardPadH
+            anchors.rightMargin: card.cardPadH
+            anchors.topMargin: card.cardPadV
+            anchors.bottomMargin: card.cardPadV
             active: window.isUiActive
             sourceComponent: Frontend.NotesView {
                 engine: notesEngine
                 theme: window.theme
+                settingsManager: window.settingsManager
                 onCompleted: window.close()
             }
             onItemChanged: {
                 if (item && window.isOpenState && window.isCardActive) item.clearAndFocus(window.pendingNote);
-            }
-        }
-
-        Rectangle {
-            anchors.top: parent.top
-            anchors.right: parent.right
-            anchors.margins: 14
-            width: 28; height: 28; radius: 6
-            color: closeHov.hovered ? ((theme && theme.base08 !== undefined) ? theme.base08 : "#ff5555") : "transparent"
-            border.color: (theme && theme.base08 !== undefined) ? theme.base08 : "#ff5555"
-            border.width: 1.5
-            z: 10000
-
-            Text {
-                anchors.centerIn: parent
-                text: "✕"
-                font.bold: true; font.pixelSize: 13
-                color: closeHov.hovered ? ((theme && theme.base00 !== undefined) ? theme.base00 : "#000") : ((theme && theme.base08 !== undefined) ? theme.base08 : "#ff5555")
-            }
-            HoverHandler { id: closeHov }
-            MouseArea {
-                anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                onClicked: window.close()
             }
         }
     }
@@ -266,11 +232,6 @@ PanelWindow {
     SettingsTools.PreviewInspector {
         id: previewInspector
         visible: window.isPreviewMode
-        anchors.left: (card.x + card.width + width + 20 <= window.width) ? card.right : undefined
-        anchors.right: (card.x + card.width + width + 20 > window.width) ? card.left : undefined
-        anchors.leftMargin: 20; anchors.rightMargin: 20
-        anchors.verticalCenter: card.verticalCenter
-
         windowId: window.windowId
         settingsManager: window.settingsManager
         theme: window.theme

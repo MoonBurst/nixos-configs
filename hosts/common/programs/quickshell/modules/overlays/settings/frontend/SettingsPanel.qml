@@ -13,8 +13,8 @@ Item {
     readonly property var theme: (shell && shell.theme) ? shell.theme : null
 
     readonly property int liveFontSize: (settingsManager && settingsManager.overlayFontSize > 0)
-        ? settingsManager.overlayFontSize
-        : ((theme && theme.globalFontSize) ? theme.globalFontSize : 16)
+    ? settingsManager.overlayFontSize
+    : ((theme && theme.globalFontSize) ? theme.globalFontSize : 16)
 
     readonly property int liveBorderWidth: (theme && theme.globalBorderWidth) ? theme.globalBorderWidth : 2
     readonly property int livePadding: (theme && theme.globalPadding) ? theme.globalPadding : 12
@@ -76,7 +76,7 @@ Item {
         anchors.fill: parent
         spacing: Math.max(8, panelRoot.livePadding)
 
-        // 1. Tab Headers Row (Strict height, never expands vertically)
+        // 1. Tab Headers Row (Tab 2 renamed to "Colors & Styles")
         RowLayout {
             id: tabHeadersRow
             Layout.fillWidth: true
@@ -87,7 +87,7 @@ Item {
             spacing: 8
 
             Repeater {
-                model: ["Stylix & Sliders", "Color Palette", "GPU & Hardware", "Bar Layout & Slants", "Overlays & Windows"]
+                model: ["Stylix & Sliders", "Colors & Styles", "GPU & Hardware", "Bar Layout & Slants", "Overlays & Windows"]
                 delegate: Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: false
@@ -130,7 +130,7 @@ Item {
             }
         }
 
-        // 2. Horizontal Divider Line (Always sits cleanly underneath the tab row)
+        // 2. Horizontal Divider Line
         Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: false
@@ -140,7 +140,7 @@ Item {
             color: panelRoot.liveBase03
         }
 
-        // 3. Tab Content Views (These fill all remaining height)
+        // 3. Tab Content Views
         TabStylixSliders {
             panelRoot: panelRoot
             visible: panelRoot.activeTab === 0

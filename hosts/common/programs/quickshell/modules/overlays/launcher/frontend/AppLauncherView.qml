@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls 2
 import QtQuick.Layouts 1.15
 import "../backend"
+import "../../../style" as Style
 import "../../../common/Utils.js" as Utils
 
 Item {
@@ -9,13 +10,17 @@ Item {
 
     required property AppLauncherEngine engine
     property var theme: null
+    property var settingsManager: null
 
-    readonly property int fieldHeight: (shell && shell.settingsManager)
-        ? shell.settingsManager.getWindowFieldHeight("launcher", 52) : 52
-    readonly property int iconSize: (shell && shell.settingsManager)
-        ? shell.settingsManager.getWindowIconSize("launcher", 38) : 38
-    readonly property int overlayFontSize: (shell && shell.settingsManager && shell.settingsManager.overlayFontSize > 0)
-        ? shell.settingsManager.overlayFontSize : 16
+    readonly property int fieldHeight: settingsManager
+        ? settingsManager.getWindowFieldHeight("launcher", 52) : 52
+    readonly property int iconSize: settingsManager
+        ? settingsManager.getWindowIconSize("launcher", 38) : 38
+    readonly property int overlayFontSize: (settingsManager && settingsManager.overlayFontSize > 0)
+        ? settingsManager.overlayFontSize : 16
+    readonly property int globalBorderWidth: (theme && theme.globalBorderWidth) ? theme.globalBorderWidth : 3
+
+    readonly property var inputPad: Utils.getSafeInputPadding(settingsManager)
 
     signal completed()
     signal routeRequested(string target, string param)
@@ -35,7 +40,6 @@ Item {
         if (trimmed.startsWith("=")) return true;
         var lower = trimmed.toLowerCase();
         if (lower === "calc" || lower.startsWith("calc ")) return true;
-        // Require at least one digit or explicit arithmetic operator to prevent hijacking plain letters
         if (!/[\d]/.test(trimmed) && !/[+\-*\/^%]/.test(trimmed)) return false;
         return Utils.evaluate(trimmed, true) !== null;
     }
@@ -106,81 +110,89 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: (viewRoot.theme && viewRoot.theme.globalPadding) ? viewRoot.theme.globalPadding : 16
-        spacing: 14
+        anchors.margins: 10
+        spacing: 12
 
-        Rectangle {
+        // Universal Shape Input Box
+        Item {
             id: searchBox
             Layout.fillWidth: true
             Layout.preferredHeight: viewRoot.fieldHeight
             Layout.minimumHeight: viewRoot.fieldHeight
             Layout.maximumHeight: viewRoot.fieldHeight
             height: viewRoot.fieldHeight
-            radius: 8
-            color: (theme && theme.base00) ? theme.base00 : "#11111b"
-            border.width: searchField.activeFocus ? 2 : 1
-            border.color: searchField.activeFocus ? ((theme && theme.base05) ? theme.base05 : "yellow") : ((theme && theme.base03) ? theme.base03 : "#45475a")
 
-            Text {
-                id: searchIcon
-                anchors.left: parent.left
-                anchors.leftMargin: 14
-                anchors.verticalCenter: parent.verticalCenter
-                text: "🚀"
-                font.pixelSize: Math.min(26, Math.max(16, parent.height * 0.42))
+            Style.ShapeBox {
+                anchors.fill: parent
+                role: "input"
+                color: (theme && theme.base00) ? theme.base00 : "#11111b"
+                borderColor: searchField.activeFocus
+                    ? ((theme && theme.base05) ? theme.base05 : "yellow")
+                    : ((theme && theme.base03) ? theme.base03 : "#45475a")
+                borderWidth: viewRoot.globalBorderWidth
+                slantWidth: 14
             }
 
-            TextInput {
-                id: searchField
-                anchors.left: searchIcon.right
-                anchors.leftMargin: 12
-                anchors.right: parent.right
-                anchors.rightMargin: 14
-                anchors.verticalCenter: parent.verticalCenter
-                font.family: (theme && theme.fontFamily) ? theme.fontFamily : "monospace"
-                font.pixelSize: Math.min(viewRoot.overlayFontSize + 2, Math.max(13, parent.height * 0.42))
-                color: (theme && theme.base05) ? theme.base05 : "yellow"
-                selectByMouse: true
-                focus: true
-                clip: true
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: viewRoot.inputPad.left
+                anchors.rightMargin: viewRoot.inputPad.right
+                spacing: 10
 
                 Text {
-                    anchors.fill: parent
-                    verticalAlignment: Text.AlignVCenter
-                    text: "Search apps or type tool (settings, clip, todo, em, def, rng, calc, pass)..."
-                    color: (theme && theme.base0B) ? theme.base0B : "#666"
-                    font.pixelSize: parent.font.pixelSize
-                    font.family: parent.font.family
-                    visible: parent.text === "" && !parent.activeFocus
-                    elide: Text.ElideRight
+                    id: searchIcon
+                    text: "🚀"
+                    font.pixelSize: Math.min(26, Math.max(16, parent.height * 0.42))
                 }
 
-                onTextChanged: {
-                    routerDebounceTimer.pendingText = text;
-                    routerDebounceTimer.restart();
-                }
+                TextInput {
+                    id: searchField
+                    Layout.fillWidth: true
+                    font.family: (theme && theme.fontFamily) ? theme.fontFamily : "monospace"
+                    font.pixelSize: Math.min(viewRoot.overlayFontSize + 2, Math.max(13, parent.height * 0.42))
+                    color: (theme && theme.base05) ? theme.base05 : "yellow"
+                    selectByMouse: true
+                    focus: true
+                    clip: true
 
-                Keys.onPressed: (event) => {
-                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                        if (!viewRoot.checkRouting(text)) {
-                            if (appsList.currentIndex >= 0 && appsList.currentIndex < engine.filteredAppsModel.count) {
-                                engine.launch(engine.filteredAppsModel.get(appsList.currentIndex).exec);
-                                viewRoot.completed();
+                    Text {
+                        anchors.fill: parent
+                        verticalAlignment: Text.AlignVCenter
+                        text: "Search apps or type tool (settings, clip, todo, em, def, rng, calc, pass)..."
+                        color: (theme && theme.base0B) ? theme.base0B : "#666"
+                        font.pixelSize: parent.font.pixelSize
+                        font.family: parent.font.family
+                        visible: parent.text === "" && !parent.activeFocus
+                        elide: Text.ElideRight
+                    }
+
+                    onTextChanged: {
+                        routerDebounceTimer.pendingText = text;
+                        routerDebounceTimer.restart();
+                    }
+
+                    Keys.onPressed: (event) => {
+                        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                            if (!viewRoot.checkRouting(text)) {
+                                if (appsList.currentIndex >= 0 && appsList.currentIndex < engine.filteredAppsModel.count) {
+                                    engine.launch(engine.filteredAppsModel.get(appsList.currentIndex).exec);
+                                    viewRoot.completed();
+                                }
                             }
+                            event.accepted = true;
+                        } else if (event.key === Qt.Key_Down) {
+                            if (appsList.currentIndex < engine.filteredAppsModel.count - 1) {
+                                appsList.currentIndex++;
+                                appsList.positionViewAtIndex(appsList.currentIndex, ListView.Contain);
+                            }
+                            event.accepted = true;
+                        } else if (event.key === Qt.Key_Up) {
+                            if (appsList.currentIndex > 0) {
+                                appsList.currentIndex--;
+                                appsList.positionViewAtIndex(appsList.currentIndex, ListView.Contain);
+                            }
+                            event.accepted = true;
                         }
-                        event.accepted = true;
-                    } else if (event.key === Qt.Key_Down) {
-                        if (appsList.currentIndex < engine.filteredAppsModel.count - 1) {
-                            appsList.currentIndex++;
-                            appsList.positionViewAtIndex(appsList.currentIndex, ListView.Contain);
-                        }
-                        event.accepted = true;
-                    } else if (event.key === Qt.Key_Up) {
-                        if (appsList.currentIndex > 0) {
-                            appsList.currentIndex--;
-                            appsList.positionViewAtIndex(appsList.currentIndex, ListView.Contain);
-                        }
-                        event.accepted = true;
                     }
                 }
             }
@@ -197,18 +209,25 @@ Item {
             highlightResizeDuration: 0
             boundsBehavior: Flickable.StopAtBounds
 
-            delegate: Rectangle {
+            delegate: Item {
+                id: delegateItem
                 readonly property bool isSelected: index === appsList.currentIndex
                 width: appsList.width - 12
                 height: Math.max(54, viewRoot.iconSize + 16)
-                radius: 6
-                color: isSelected ? ((theme && theme.base02) ? theme.base02 : "#333") : "transparent"
-                border.width: isSelected ? 2 : 1
-                border.color: isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : "#444"
+
+                Style.ShapeBox {
+                    anchors.fill: parent
+                    role: "input"
+                    color: delegateItem.isSelected ? ((theme && theme.base02) ? theme.base02 : "#333") : "transparent"
+                    borderColor: delegateItem.isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : "#444"
+                    borderWidth: delegateItem.isSelected ? viewRoot.globalBorderWidth : 1
+                    slantWidth: 10
+                }
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.margins: 10
+                    anchors.leftMargin: Math.max(14, viewRoot.inputPad.left)
+                    anchors.rightMargin: Math.max(14, viewRoot.inputPad.right)
                     spacing: 14
 
                     Image {
@@ -228,7 +247,7 @@ Item {
                             text: model.name
                             font.bold: true
                             font.pixelSize: viewRoot.overlayFontSize
-                            color: isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : "#ccc"
+                            color: delegateItem.isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : "#ccc"
                         }
                         Text {
                             text: model.exec

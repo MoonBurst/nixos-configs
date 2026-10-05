@@ -3,16 +3,23 @@ import QtQuick.Controls 2
 import QtQuick.Layouts 1.15
 import Quickshell
 import Quickshell.Io
+import "../../../style" as Style
+import "../../../common/Utils.js" as Utils
 
 Item {
     id: viewRoot
 
     property var theme: null
+    property var settingsManager: null
 
-    readonly property int fieldHeight: (shell && shell.settingsManager)
-        ? shell.settingsManager.getWindowFieldHeight("clipboard", 52) : 52
-    readonly property int overlayFontSize: (shell && shell.settingsManager && shell.settingsManager.overlayFontSize > 0)
-        ? shell.settingsManager.overlayFontSize : 15
+    readonly property int fieldHeight: settingsManager
+        ? settingsManager.getWindowFieldHeight("clipboard", 52) : 52
+    readonly property int overlayFontSize: (settingsManager && settingsManager.overlayFontSize > 0)
+        ? settingsManager.overlayFontSize : 15
+    readonly property int globalBorderWidth: (theme && theme.globalBorderWidth) ? theme.globalBorderWidth : 3
+
+    readonly property var safePad: Utils.getSafeCardPadding(settingsManager)
+    readonly property var inputPad: Utils.getSafeInputPadding(settingsManager)
 
     signal completed()
 
@@ -24,8 +31,8 @@ Item {
     property string previewDate: ""
     property string previewDims: ""
     property string previewSize: ""
+    property bool isOcrRunning: false
 
-    // Diagnostic state
     property string debugError: ""
     property string debugStatus: "Initializing..."
     property bool isFetching: false
@@ -43,7 +50,7 @@ Item {
     function reload() {
         viewRoot.isFetching = true;
         viewRoot.debugError = "";
-        viewRoot.debugStatus = "Querying cliphist via Lua...";
+        viewRoot.debugStatus = "Querying cliphist...";
         listProc.running = false;
         rawItems = [];
         clipModel.clear();
@@ -61,9 +68,11 @@ Item {
         clipModel.clear();
         for (var i = 0; i < rawItems.length; i++) {
             var item = rawItems[i];
+            if (!item) continue;
             if (isImgFilter && !item.isImage) continue;
 
-            if (q === "" || item.searchText.indexOf(q) !== -1 || (item.isImage && (q === "image" || q === "shot"))) {
+            var st = (item.searchText || item.text || item.displayText || item.title || "").toLowerCase();
+            if (q === "" || st.indexOf(q) !== -1 || (item.isImage && (q === "image" || q === "shot"))) {
                 clipModel.append(item);
             }
         }
@@ -84,12 +93,14 @@ Item {
 
         var item = clipModel.get(selectedIndex);
         if (item.isImage) {
-            previewImage = item.thumbPath;
+            previewImage = item.thumbPath || "";
             previewText = "";
             previewTitle = item.title || "Screenshot";
             previewDate = item.date || "";
             previewDims = item.dims || "";
             previewSize = item.size || "";
+            // Automatically fetch OCR text in the background for screenshots
+            runOcr(true);
         } else {
             previewImage = "";
             previewTitle = "Text";
@@ -99,14 +110,39 @@ Item {
             previewProc.running = false;
             previewProc.command = [
                 "sh", "-c",
-                'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin:$PATH"; ' +
+                'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
                 'SCR="' + Quickshell.shellDir + '/modules/overlays/clipboard/backend/ClipboardEngine.lua"; ' +
-                'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
-                '"$CMD" "$SCR" preview "$1"',
+                'if [ -f "$SCR" ] && command -v lua >/dev/null 2>&1; then ' +
+                '  lua "$SCR" preview "$1"; ' +
+                'else ' +
+                '  printf "%s\t\n" "$1" | cliphist decode; ' +
+                'fi',
                 "sh", String(item.id)
             ];
             previewProc.running = true;
         }
+    }
+
+    function runOcr(background) {
+        if (selectedIndex < 0 || selectedIndex >= clipModel.count) return;
+        var item = clipModel.get(selectedIndex);
+        if (!item || !item.isImage) return;
+
+        if (!background) viewRoot.isOcrRunning = true;
+        ocrProc.command = [
+            "sh", "-c",
+            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
+            'SCR="' + Quickshell.shellDir + '/modules/overlays/clipboard/backend/ClipboardEngine.lua"; ' +
+            'if [ -f "$SCR" ] && command -v lua >/dev/null 2>&1; then ' +
+            '  lua "$SCR" ocr "$1"; ' +
+            'else ' +
+            '  tmp="/tmp/qs_ocr_$1.png"; printf "%s\t\n" "$1" | cliphist decode > "$tmp" 2>/dev/null; ' +
+            '  tesseract "$tmp" stdout 2>/dev/null || true; rm -f "$tmp" 2>/dev/null; ' +
+            'fi',
+            "sh", String(item.id)
+        ];
+        ocrProc.running = false;
+        ocrProc.running = true;
     }
 
     function copyCurrent() {
@@ -114,10 +150,13 @@ Item {
         var item = clipModel.get(selectedIndex);
         copyProc.command = [
             "sh", "-c",
-            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin:$PATH"; ' +
+            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
             'SCR="' + Quickshell.shellDir + '/modules/overlays/clipboard/backend/ClipboardEngine.lua"; ' +
-            'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
-                '"$CMD" "$SCR" copy "$1"',
+            'if [ -f "$SCR" ] && command -v lua >/dev/null 2>&1; then ' +
+            '  lua "$SCR" copy "$1"; ' +
+            'else ' +
+            '  printf "%s\t\n" "$1" | cliphist decode | wl-copy; ' +
+            'fi',
             "sh", String(item.id)
         ];
         copyProc.running = false;
@@ -130,10 +169,13 @@ Item {
         var item = clipModel.get(selectedIndex);
         deleteProc.command = [
             "sh", "-c",
-            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin:$PATH"; ' +
+            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
             'SCR="' + Quickshell.shellDir + '/modules/overlays/clipboard/backend/ClipboardEngine.lua"; ' +
-            'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
-            '"$CMD" "$SCR" delete "$1"',
+            'if [ -f "$SCR" ] && command -v lua >/dev/null 2>&1; then ' +
+            '  lua "$SCR" delete "$1"; ' +
+            'else ' +
+            '  printf "%s\t\n" "$1" | cliphist delete; ' +
+            'fi',
             "sh", String(item.id)
         ];
         deleteProc.running = false;
@@ -167,10 +209,17 @@ Item {
         id: listProc
         command: [
             "sh", "-c",
-            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin:$PATH"; ' +
+            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
             'SCR="' + Quickshell.shellDir + '/modules/overlays/clipboard/backend/ClipboardEngine.lua"; ' +
-            'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
-            '"$CMD" "$SCR" list'
+            'if [ -f "$SCR" ] && command -v lua >/dev/null 2>&1; then ' +
+            '  lua "$SCR" list; ' +
+            'else ' +
+            '  cliphist list 2>/dev/null | awk -F\'\t\' \'BEGIN {printf "["} { if (NR>1) printf ","; ' +
+            '  gsub(/\\\\/, "\\\\\\\\", $2); gsub(/"/, "\\\\\"", $2); gsub(/\\n/, "\\\\n", $2); ' +
+            '  is_img = ($2 ~ /binary data/ || $2 ~ /\\[\\[/) ? "true" : "false"; ' +
+            '  printf "{\\"id\\":\\"%s\\",\\"isImage\\":%s,\\"text\\":\\"%s\\",\\"displayText\\":\\"%s\\",\\"title\\":\\"Entry\\",\\"searchText\\":\\"%s\\"}", $1, is_img, $2, $2, tolower($2) ' +
+            '  } END {print "]"}\'; ' +
+            'fi'
         ]
         stdout: StdioCollector {
             onStreamFinished: {
@@ -208,16 +257,32 @@ Item {
         }
     }
 
+    Process {
+        id: ocrProc
+        stdout: StdioCollector {
+            onStreamFinished: {
+                viewRoot.isOcrRunning = false;
+                var ocrResult = (text || "").trim();
+                if (ocrResult.length > 0) {
+                    viewRoot.previewText = ocrResult;
+                }
+            }
+        }
+    }
+
     Process { id: copyProc }
     Process { id: deleteProc }
     Process {
         id: wipeProc
         command: [
             "sh", "-c",
-            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin:$PATH"; ' +
+            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
             'SCR="' + Quickshell.shellDir + '/modules/overlays/clipboard/backend/ClipboardEngine.lua"; ' +
-            'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
-            '"$CMD" "$SCR" wipe'
+            'if [ -f "$SCR" ] && command -v lua >/dev/null 2>&1; then ' +
+            '  lua "$SCR" wipe; ' +
+            'else ' +
+            '  cliphist wipe 2>/dev/null; rm -f /tmp/qs_clip_thumb_*.png 2>/dev/null || true; ' +
+            'fi'
         ]
     }
 
@@ -226,7 +291,7 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: (viewRoot.theme && viewRoot.theme.globalPadding) ? viewRoot.theme.globalPadding : 16
+        anchors.margins: 12
         spacing: 12
 
         // Top Search Bar Row
@@ -237,17 +302,25 @@ Item {
             Layout.maximumHeight: viewRoot.fieldHeight
             spacing: 12
 
-            Rectangle {
+            Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                radius: 8
-                color: (theme && theme.base00) ? theme.base00 : "#11111b"
-                border.width: searchField.activeFocus ? 2 : 1
-                border.color: searchField.activeFocus ? ((theme && theme.base05) ? theme.base05 : "yellow") : ((theme && theme.base03) ? theme.base03 : "#45475a")
+
+                Style.ShapeBox {
+                    anchors.fill: parent
+                    role: "input"
+                    color: (theme && theme.base00) ? theme.base00 : "#11111b"
+                    borderColor: searchField.activeFocus
+                        ? ((theme && theme.base05) ? theme.base05 : "yellow")
+                        : ((theme && theme.base03) ? theme.base03 : "#45475a")
+                    borderWidth: viewRoot.globalBorderWidth
+                    slantWidth: 14
+                }
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.margins: 12
+                    anchors.leftMargin: viewRoot.inputPad.left
+                    anchors.rightMargin: viewRoot.inputPad.right
                     spacing: 10
 
                     Text {
@@ -303,13 +376,18 @@ Item {
                 }
             }
 
-            Rectangle {
+            Item {
                 Layout.preferredWidth: 84
                 Layout.fillHeight: true
-                radius: 8
-                color: wipeHov.hovered ? "#ff5555" : ((theme && theme.base00) ? theme.base00 : "#11111b")
-                border.width: 1
-                border.color: "#ff5555"
+
+                Style.ShapeBox {
+                    anchors.fill: parent
+                    role: "input"
+                    color: wipeHov.hovered ? "#ff5555" : ((theme && theme.base00) ? theme.base00 : "#11111b")
+                    borderColor: "#ff5555"
+                    borderWidth: viewRoot.globalBorderWidth
+                    slantWidth: 10
+                }
 
                 Text {
                     anchors.centerIn: parent
@@ -335,73 +413,8 @@ Item {
             spacing: 14
 
             Item {
-                Layout.preferredWidth: Math.round(viewRoot.width * 0.48)
+                Layout.preferredWidth: Math.round(viewRoot.width * 0.46)
                 Layout.fillHeight: true
-
-                // Informative Empty State
-                ColumnLayout {
-                    anchors.centerIn: parent
-                    width: parent.width - 40
-                    spacing: 12
-                    visible: clipModel.count === 0
-
-                    Text {
-                        text: viewRoot.isFetching ? "⏳ Fetching clipboard..." : "ℹ️ No Clipboard Items"
-                        font.bold: true
-                        font.pixelSize: viewRoot.overlayFontSize
-                        color: (theme && theme.base05) ? theme.base05 : "yellow"
-                        Layout.alignment: Qt.AlignHCenter
-                    }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        implicitHeight: diagCol.implicitHeight + 20
-                        radius: 8
-                        color: (theme && theme.base00) ? theme.base00 : "#11111b"
-                        border.color: viewRoot.debugError !== "" ? "#ff5555" : ((theme && theme.base03) ? theme.base03 : "#45475a")
-                        border.width: 1
-
-                        ColumnLayout {
-                            id: diagCol
-                            anchors.fill: parent
-                            anchors.margins: 10
-                            spacing: 6
-
-                            Text {
-                                text: "Diagnostics:"
-                                font.bold: true
-                                font.pixelSize: 12
-                                color: (theme && theme.base0C) ? theme.base0C : "#04f100"
-                            }
-                            Text {
-                                text: "Status: " + viewRoot.debugStatus
-                                font.pixelSize: 11
-                                font.family: "monospace"
-                                color: "#ccc"
-                                wrapMode: Text.Wrap
-                                Layout.fillWidth: true
-                            }
-                            Text {
-                                visible: viewRoot.debugError !== ""
-                                text: "Error: " + viewRoot.debugError
-                                font.pixelSize: 11
-                                font.family: "monospace"
-                                color: "#ff5555"
-                                wrapMode: Text.Wrap
-                                Layout.fillWidth: true
-                            }
-                            Rectangle { Layout.fillWidth: true; height: 1; color: "#333" }
-                            Text {
-                                text: "💡 Ensure cliphist watcher is active in your config:\n• wl-paste --watch cliphist store\n• wl-paste --type image --watch cliphist store"
-                                font.pixelSize: 10
-                                font.family: "monospace"
-                                color: "#888"
-                                wrapMode: Text.Wrap
-                                Layout.fillWidth: true
-                            }
-                        }
-                    }
-                }
 
                 ListView {
                     id: clipList
@@ -410,25 +423,34 @@ Item {
                     spacing: 6
                     model: clipModel
                     currentIndex: viewRoot.selectedIndex
-                    visible: clipModel.count > 0
 
-                    delegate: Rectangle {
+                    delegate: Item {
+                        id: delegateCard
                         readonly property bool isSelected: index === viewRoot.selectedIndex
                         width: clipList.width - 12
                         height: model.isImage ? 80 : 54
-                        radius: 6
-                        color: isSelected ? ((theme && theme.base02) ? theme.base02 : "#333") : "transparent"
-                        border.width: isSelected ? 2 : 1
-                        border.color: isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : "#444"
+
+                        Style.ShapeBox {
+                            anchors.fill: parent
+                            role: "input"
+                            color: delegateCard.isSelected ? ((theme && theme.base02) ? theme.base02 : "#333") : "transparent"
+                            borderColor: delegateCard.isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : "#444"
+                            borderWidth: delegateCard.isSelected ? viewRoot.globalBorderWidth : 1
+                            slantWidth: 10
+                        }
 
                         RowLayout {
                             anchors.fill: parent
-                            anchors.margins: 8
+                            // Padded from left so thumbnail does not cut into the chamfer
+                            anchors.leftMargin: Math.max(16, viewRoot.inputPad.left)
+                            anchors.rightMargin: Math.max(16, viewRoot.inputPad.right)
+                            anchors.topMargin: 8
+                            anchors.bottomMargin: 8
                             spacing: 12
 
                             Rectangle {
-                                width: 60
-                                height: 60
+                                width: 56
+                                height: 56
                                 radius: 4
                                 color: (theme && theme.base02) ? theme.base02 : "#1a1a1a"
                                 border.color: (theme && theme.base03) ? theme.base03 : "#45475a"
@@ -438,7 +460,7 @@ Item {
                                 Text {
                                     visible: !model.isImage
                                     text: "📋"
-                                    font.pixelSize: 24
+                                    font.pixelSize: 22
                                     anchors.centerIn: parent
                                 }
 
@@ -449,7 +471,7 @@ Item {
                                     fillMode: Image.PreserveAspectFit
                                     cache: false
                                     asynchronous: true
-                                    source: model.isImage ? model.thumbPath : ""
+                                    source: model.isImage ? (model.thumbPath || "") : ""
                                 }
                             }
 
@@ -458,11 +480,11 @@ Item {
                                 spacing: 3
 
                                 Text {
-                                    text: model.isImage ? model.title : model.text
+                                    text: model.isImage ? (model.title || "Screenshot") : (model.displayText || model.text || "")
                                     font.family: (theme && theme.fontFamily) ? theme.fontFamily : "monospace"
                                     font.pixelSize: viewRoot.overlayFontSize
                                     font.bold: model.isImage
-                                    color: isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : "#ccc"
+                                    color: delegateCard.isSelected ? ((theme && theme.base05) ? theme.base05 : "yellow") : "#ccc"
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
                                 }
@@ -477,7 +499,7 @@ Item {
                                     }
                                     font.family: (theme && theme.fontFamily) ? theme.fontFamily : "monospace"
                                     font.pixelSize: Math.max(10, viewRoot.overlayFontSize - 4)
-                                    color: isSelected ? ((theme && theme.base0C) ? theme.base0C : "#04f100") : "#888"
+                                    color: delegateCard.isSelected ? ((theme && theme.base0C) ? theme.base0C : "#04f100") : "#888"
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
                                 }
@@ -501,14 +523,18 @@ Item {
             }
 
             // Right Pane: Preview Canvas
-            Rectangle {
+            Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                radius: 8
-                color: (theme && theme.base00) ? theme.base00 : "#11111b"
-                border.width: 1
-                border.color: (theme && theme.base03) ? theme.base03 : "#45475a"
-                clip: true
+
+                Style.ShapeBox {
+                    anchors.fill: parent
+                    role: "input"
+                    color: (theme && theme.base00) ? theme.base00 : "#11111b"
+                    borderColor: (theme && theme.base03) ? theme.base03 : "#45475a"
+                    borderWidth: viewRoot.globalBorderWidth
+                    slantWidth: 10
+                }
 
                 // Image Preview Mode
                 ColumnLayout {
@@ -519,6 +545,8 @@ Item {
 
                     RowLayout {
                         Layout.fillWidth: true
+                        spacing: 8
+
                         Text {
                             text: "🖼️ " + viewRoot.previewTitle
                             font.bold: true
@@ -527,6 +555,37 @@ Item {
                             Layout.fillWidth: true
                             elide: Text.ElideRight
                         }
+
+                        Rectangle {
+                            width: ocrTxt.implicitWidth + 18
+                            height: 26
+                            radius: 4
+                            color: ocrHov.hovered ? ((theme && theme.base0C) ? theme.base0C : "#04f100") : "transparent"
+                            border.color: (theme && theme.base0C) ? theme.base0C : "#04f100"
+                            border.width: 1.5
+
+                            Text {
+                                id: ocrTxt
+                                anchors.centerIn: parent
+                                text: viewRoot.isOcrRunning ? "⏳ Reading..." : "🔤 Copy OCR Text"
+                                font.pixelSize: 11
+                                font.bold: true
+                                color: ocrHov.hovered ? "#000000" : ((theme && theme.base0C) ? theme.base0C : "#04f100")
+                            }
+
+                            HoverHandler { id: ocrHov }
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    viewRoot.runOcr(false);
+                                    if (viewRoot.previewText !== "") {
+                                        Quickshell.clipboardText = viewRoot.previewText;
+                                    }
+                                }
+                            }
+                        }
+
                         Text {
                             text: viewRoot.previewDate
                             font.pixelSize: viewRoot.overlayFontSize - 3
@@ -550,10 +609,12 @@ Item {
                     }
 
                     Text {
-                        text: "Resolution: " + viewRoot.previewDims + "  •  Size: " + viewRoot.previewSize
+                        text: viewRoot.previewText !== "" ? ("Text: " + viewRoot.previewText.replace(/\n/g, " ").slice(0, 60)) : ("Resolution: " + viewRoot.previewDims + "  •  Size: " + viewRoot.previewSize)
                         font.pixelSize: viewRoot.overlayFontSize - 3
                         color: (theme && theme.base0C) ? theme.base0C : "#04f100"
                         Layout.alignment: Qt.AlignHCenter
+                        elide: Text.ElideRight
+                        Layout.maximumWidth: parent.width - 20
                     }
                 }
 

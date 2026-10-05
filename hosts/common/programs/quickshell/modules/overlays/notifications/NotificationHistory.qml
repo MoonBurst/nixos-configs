@@ -1,5 +1,5 @@
+import "../../common" as Common
 import "../../common/Utils.js" as Utils
-// modules/overlays/notifications/NotificationHistory.qml
 import QtQuick
 import QtQuick.Controls 2
 import Quickshell
@@ -13,16 +13,13 @@ Item {
     property bool showHistoryMode: false
     property var rulesLoader: null
     property var rootItem: null
-
     property var controller: null
 
-    // FIXED: Private JavaScript registry to store raw C++ QObjects securely without triggering ListModel role conflicts
-    property var liveNotificationsMap: ({})
+    // Store only lightweight string target names to prevent pinning C++ QObjects in memory
+    property var actionTargetsMap: ({})
 
-    // Expose the history model cleanly to parent bindings
     property alias historyModel: historyNotificationsModel
 
-    // Window-level global shortcut: Guarantees Escape key always closes the history drawer
     Shortcut {
         sequence: "Escape"
         enabled: historyEngine.showHistoryMode
@@ -37,19 +34,16 @@ Item {
         id: historyNotificationsModel
     }
 
-    // Decoupled URL Extraction Utilities
     function extractUrl(text) {
         return Utils.extractUrl(text);
     }
 
-    // Cleans up trailing long raw URLs from body text inside the history list
     function getCleanHistoryBody(rawBody) {
         if (!rawBody) return "";
         var cleanBody = rawBody.trim();
         var url = historyEngine.extractUrl(cleanBody);
         if (url !== "") {
             var stripped = cleanBody.replace(url, "").trim();
-            // Clean up trailing colons or remnants
             if (stripped.endsWith(":") || stripped.endsWith(": ")) {
                 stripped = stripped.substring(0, stripped.length - 1).trim();
             }
@@ -61,18 +55,14 @@ Item {
         return rawBody;
     }
 
-    // Resolves and populates history roles immediately while the D-Bus handle is active
     function recordHistory(expiredEntry) {
         if (!expiredEntry) return;
 
         let appNameLower = (expiredEntry.appName || "").toLowerCase();
         let summaryLower = (expiredEntry.summary || "").toLowerCase();
         let bodyLower = (expiredEntry.body || "").toLowerCase();
-
-        let notification = expiredEntry.cardRef ? expiredEntry.cardRef.notification : null;
         let avatarVal = expiredEntry.avatarSource || "";
 
-        // Check if this is a microphone toggle notification
         let avatarSourceLower = avatarVal ? avatarVal.toString().toLowerCase() : "";
         let isMicNotif = appNameLower.includes("microphone") || appNameLower.includes("mic") ||
         summaryLower.includes("microphone") || summaryLower.includes("mic") ||
@@ -80,7 +70,6 @@ Item {
         avatarSourceLower.includes("microphone") || avatarSourceLower.includes("mic");
 
         if (!isMicNotif) {
-            // Avatar Inheritance Engine
             if (avatarVal === "" && expiredEntry.summary !== "") {
                 for (let i = 0; i < historyNotificationsModel.count; i++) {
                     let past = historyNotificationsModel.get(i);
@@ -91,10 +80,8 @@ Item {
                 }
             }
 
-            // FIXED: Store the C++ QObject reference in our private JS map instead of the ListModel
-            if (notification) {
-                liveNotificationsMap[expiredEntry.notifId] = notification;
-            }
+            // Store purely string target mapping to prevent C++ QObject leaks
+            actionTargetsMap[expiredEntry.notifId] = expiredEntry.appName || "";
 
             historyNotificationsModel.insert(0, {
                 "notifId": expiredEntry.notifId,
@@ -102,21 +89,25 @@ Item {
                 "body": expiredEntry.body,
                 "appName": expiredEntry.appName,
                 "timestamp": new Date().toLocaleTimeString(Qt.locale(), "hh:mm AP"),
-                                             "avatarSource": avatarVal,
-                                             "previewSource": expiredEntry.previewSource || ""
+                "avatarSource": avatarVal,
+                "previewSource": expiredEntry.previewSource || ""
             });
 
+            // Strict FIFO limit to prevent unbounded RAM growth
             while (historyNotificationsModel.count > 50) {
                 let lastItem = historyNotificationsModel.get(historyNotificationsModel.count - 1);
-                if (lastItem && lastItem.notifId) delete liveNotificationsMap[lastItem.notifId];
+                if (lastItem && lastItem.notifId) {
+                    delete actionTargetsMap[lastItem.notifId];
+                    if (lastItem.avatarSource && lastItem.avatarSource.startsWith("file:///tmp/qs_avatar_")) {
+                        var filePath = lastItem.avatarSource.replace(/^file:\/\//, "");
+                        Quickshell.execDetached(["rm", "-f", filePath]);
+                    }
+                }
                 historyNotificationsModel.remove(historyNotificationsModel.count - 1);
             }
         }
     }
 
-    /*
-     * HISTORICAL NOTIFICATION LIST DRAWER WINDOW (Checks for DP-1, falls back to laptop eDP, or defaults to first available)
-     */
     PanelWindow {
         id: historyWindow
 
@@ -132,7 +123,6 @@ Item {
         visible: historyEngine.showHistoryMode
         color: "transparent"
 
-        // Exclusive focus forces the compositor to route keyboard events here instantly
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
         WlrLayershell.exclusiveZone: 0
         WlrLayershell.layer: WlrLayer.Overlay
@@ -140,17 +130,15 @@ Item {
         onVisibleChanged: {
             if (visible) {
                 if (typeof historyListView !== "undefined" && historyListView) {
-                    // Deferred execution pass snaps and centers the layout correctly on launch
                     Qt.callLater(function() {
                         historyListView.currentIndex = 0;
                         historyListView.positionViewAtIndex(0, ListView.Beginning);
-                        historyListView.forceActiveFocus(); // Focus list directly here safely
+                        historyListView.forceActiveFocus();
                     });
                 }
             }
         }
 
-        // Click outside the panel to close history mode via parent reference
         MouseArea {
             anchors.fill: parent
             onClicked: {
@@ -215,9 +203,11 @@ Item {
 
                         MouseArea {
                             anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
                             onClicked: {
                                 historyNotificationsModel.clear();
-                                historyEngine.liveNotificationsMap = {}; // Clear memory mapped QObjects
+                                historyEngine.actionTargetsMap = {};
+                                Quickshell.execDetached(["sh", "-c", "rm -f /tmp/qs_avatar_notif_*.png 2>/dev/null || true"]);
                                 if (typeof historyListView !== "undefined" && historyListView) {
                                     historyListView.forceActiveFocus();
                                 }
@@ -239,10 +229,9 @@ Item {
                     highlightFollowsCurrentItem: true
                     verticalLayoutDirection: ListView.BottomToTop
 
-                    // INSTANT KEYBOARD SCROLLING & SNAPPING
-                    highlightMoveDuration: 0      // Snaps focused highlight position instantly with zero animation delay
-                    highlightResizeDuration: 0    // Snaps focused highlight size instantly with zero animation delay
-                    boundsBehavior: Flickable.StopAtBounds // Disables elastic rubber-banding bounce animations at list edges
+                    highlightMoveDuration: 0
+                    highlightResizeDuration: 0
+                    boundsBehavior: Flickable.StopAtBounds
 
                     onActiveFocusChanged: {
                         if (!activeFocus && historyEngine.showHistoryMode) {
@@ -253,30 +242,27 @@ Item {
                     Keys.onPressed: (event) => {
                         if (event.key === Qt.Key_Escape) {
                             if (historyEngine.rootItem) {
-                                historyEngine.rootItem.showHistoryMode = false; // Close via parent context binding
+                                historyEngine.rootItem.showHistoryMode = false;
                             }
                             event.accepted = true;
                         } else if (event.key === Qt.Key_Up) {
-                            // Move selection up (older items) by exactly 1 index position (one-at-a-time)
                             let targetUp = currentIndex + 1;
-                            if (targetUp >= count) {
-                                targetUp = count - 1;
-                            }
+                            if (targetUp >= count) targetUp = count - 1;
                             currentIndex = targetUp;
                             event.accepted = true;
                         } else if (event.key === Qt.Key_Down) {
-                            // Move selection down (newer items) by exactly 1 index position (one-at-a-time)
                             let targetDown = currentIndex - 1;
-                            if (targetDown < 0) {
-                                targetDown = 0;
-                            }
+                            if (targetDown < 0) targetDown = 0;
                             currentIndex = targetDown;
                             event.accepted = true;
                         } else if (event.key === Qt.Key_Delete) {
                             if (currentIndex !== -1 && currentIndex < count) {
                                 let targetItem = historyNotificationsModel.get(currentIndex);
                                 if (targetItem) {
-                                    delete historyEngine.liveNotificationsMap[targetItem.notifId];
+                                    delete historyEngine.actionTargetsMap[targetItem.notifId];
+                                    if (targetItem.avatarSource && targetItem.avatarSource.startsWith("file:///tmp/qs_avatar_")) {
+                                        Quickshell.execDetached(["rm", "-f", targetItem.avatarSource.replace(/^file:\/\//, "")]);
+                                    }
                                 }
                                 historyNotificationsModel.remove(currentIndex);
                             }
@@ -290,16 +276,13 @@ Item {
                                         Qt.openUrlExternally(url);
                                     }
 
-                                    // FIXED: Safely retrieve the notification QObject from the JavaScript mapping dictionary
-                                    let activeNotifObject = historyEngine.liveNotificationsMap[item.notifId] || null;
-
                                     if (historyEngine.controller) {
                                         historyEngine.controller.activate(
                                             null,
                                             item.summary,
                                             item.body,
                                             item.appName,
-                                            activeNotifObject
+                                            null
                                         );
                                     }
                                 }
@@ -310,16 +293,10 @@ Item {
 
                     delegate: Rectangle {
                         id: delegateRoot
-                        // Guarded parent width to prevent TypeError during destruction when cleared
                         width: parent ? parent.width : 0
-
-                        // Local state for async preview URL loading
                         property string asyncPreviewSource: ""
-
-                        // Check if an uploaded/linked preview image is present in the right column
                         property bool hasRightPreview: (previewSource && previewSource !== "") || (asyncPreviewSource !== "")
 
-                        // Check if the body contains exclusively the link URL to hide the duplicate raw text
                         property bool isBodyOnlyUrl: {
                             if (!body) return false;
                             var cleanBody = body.trim();
@@ -327,9 +304,7 @@ Item {
                             return cleanBody === url;
                         }
 
-                        // Dynamically scale card height taller if it contains full-sized uploaded/posted images
                         height: hasRightPreview ? 450 : 180
-
                         color: shell.theme.base01 || "#1e1e2e"
                         radius: 10
 
@@ -344,15 +319,6 @@ Item {
                             }
                         }
 
-                        // Helper function to extract a URL from the body text
-                        function extractUrl(text) {
-                            if (!text) return "";
-                            var regex = /(https?:\/\/[^\s<]+)/g;
-                            var match = text.match(regex);
-                            return match ? match[0] : "";
-                        }
-
-                        // Non-blocking native shell command executor to bypass CORS sandboxing
                         function fetchAsyncPreviewNative(url) {
                             if (!url) return;
                             if (url.match(/\.(?:png|jpg|jpeg|gif|svg|webp)\b/i)) {
@@ -360,7 +326,6 @@ Item {
                             }
                         }
 
-                        // Trigger the background async parser when the delegate is created
                         Component.onCompleted: {
                             if (!previewSource || previewSource === "") {
                                 var linkUrl = historyEngine.extractUrl(body ? body : "");
@@ -370,11 +335,10 @@ Item {
                             }
                         }
 
-                        // Close/Delete Button for individual items (positioned at the top-right)
                         Text {
                             id: deleteItemBtn
                             text: "❌"
-                            font.pixelSize: 20 // Sized to 20
+                            font.pixelSize: 20
                             color: shell.theme.base05 || "#cdd6f4"
                             opacity: 0.6
                             anchors.top: parent.top
@@ -392,7 +356,10 @@ Item {
                                 onClicked: {
                                     let item = historyNotificationsModel.get(index);
                                     if (item) {
-                                        delete historyEngine.liveNotificationsMap[item.notifId];
+                                        delete historyEngine.actionTargetsMap[item.notifId];
+                                        if (item.avatarSource && item.avatarSource.startsWith("file:///tmp/qs_avatar_")) {
+                                            Quickshell.execDetached(["rm", "-f", item.avatarSource.replace(/^file:\/\//, "")]);
+                                        }
                                     }
                                     historyNotificationsModel.remove(index);
                                     historyListView.forceActiveFocus();
@@ -400,7 +367,6 @@ Item {
                             }
                         }
 
-                        // Row Layout: User Avatar ALWAYS on the Left, content details on the Right
                         Row {
                             anchors.fill: parent
                             anchors.margins: 14
@@ -408,7 +374,7 @@ Item {
 
                             Image {
                                 id: delegateAvatar
-                                width: 150 // Always locked at 150x150
+                                width: 150
                                 height: 150
                                 anchors.verticalCenter: parent.verticalCenter
                                 source: avatarSource ? avatarSource : ""
@@ -425,18 +391,16 @@ Item {
                                     text: summary ? summary : ""
                                     color: shell.theme.base05 || "#cdd6f4"
                                     font.bold: true
-                                    font.pixelSize: 20 // Set font size to 20
+                                    font.pixelSize: 20
                                     font.family: shell.theme.fontFamily || "monospace"
                                     elide: Text.ElideRight
                                     width: parent ? parent.width : 0
                                 }
                                 Text {
-                                    // Hide raw link text when there's an image preview or it's identical to the preview link
                                     visible: text !== "" && !delegateRoot.isBodyOnlyUrl
-                                    // Cleans up the long raw URL text inside the history list view
                                     text: body ? historyEngine.getCleanHistoryBody(body) : ""
                                     color: shell.theme.base05 || "#cdd6f4"
-                                    font.pixelSize: 20 // Set font size to 20
+                                    font.pixelSize: 20
                                     font.family: shell.theme.fontFamily || "monospace"
                                     wrapMode: Text.Wrap
                                     maximumLineCount: delegateRoot.hasRightPreview ? 2 : 3
@@ -444,7 +408,6 @@ Item {
                                     width: parent ? parent.width : 0
                                 }
 
-                                // Full-sized Image preview displayed underneath the text inside the right column
                                 Image {
                                     id: delegatePreviewImage
                                     width: parent ? parent.width - 40 : 0
@@ -453,7 +416,6 @@ Item {
                                     horizontalAlignment: Image.AlignLeft
                                     visible: delegateRoot.hasRightPreview
 
-                                    // Bypasses the strict typeof wrapper checks to prevent native QML list bindings from breaking
                                     source: {
                                         if (delegateRoot.asyncPreviewSource && delegateRoot.asyncPreviewSource !== "") {
                                             return delegateRoot.asyncPreviewSource;
@@ -465,7 +427,6 @@ Item {
                                     }
                                 }
 
-                                // Interactive Link Preview Box (only visible when a URL is found in body text and no image preview is loaded)
                                 Rectangle {
                                     id: linkPreviewBox
                                     width: parent.width - 40
@@ -476,7 +437,6 @@ Item {
                                     border.color: shell.theme.base03 || "#45475a"
                                     visible: extractedUrl !== "" && !delegateRoot.hasRightPreview
 
-                                    // FIXED: Pointed to the root historyEngine scope to resolve the TypeError
                                     property string extractedUrl: historyEngine.extractUrl(body ? body : "")
 
                                     Row {
@@ -486,13 +446,13 @@ Item {
                                         Text {
                                             text: "🔗"
                                             color: shell.theme.base05 || "#cdd6f4"
-                                            font.pixelSize: 20 // Changed to base05
+                                            font.pixelSize: 20
                                             anchors.verticalCenter: parent.verticalCenter
                                         }
                                         Text {
                                             text: linkPreviewBox.extractedUrl
                                             color: shell.theme.base05 || "#cdd6f4"
-                                            font.pixelSize: 20 // Set font size to 20
+                                            font.pixelSize: 20
                                             font.family: shell.theme.fontFamily || "monospace"
                                             elide: Text.ElideRight
                                             width: parent.width - 40
@@ -513,7 +473,7 @@ Item {
                                 Text {
                                     text: timestamp ? timestamp : ""
                                     color: shell.theme.base05 || "#cdd6f4"
-                                    font.pixelSize: 20 // Set font size to 20
+                                    font.pixelSize: 20
                                     font.family: shell.theme.fontFamily || "monospace"
                                 }
                             }

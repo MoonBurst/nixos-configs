@@ -1,3 +1,4 @@
+import "../../common" as Common
 import QtQuick
 import QtQuick.Controls 2
 import QtQuick.Layouts 1.15
@@ -5,6 +6,7 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 import "../../../" as RootTheme
+import "../../style" as Style
 import "./frontend" as Frontend
 
 PanelWindow {
@@ -16,6 +18,8 @@ PanelWindow {
     readonly property var settingsManager: safeShell ? safeShell.settingsManager : null
     readonly property var theme: (safeShell && safeShell.theme) ? safeShell.theme : fallbackTheme
     RootTheme.Theme { id: fallbackTheme }
+
+    property bool isFileDialogActive: false
 
     readonly property int overlayFontSize: (settingsManager && settingsManager.overlayFontSize > 0)
         ? settingsManager.overlayFontSize : 16
@@ -44,8 +48,9 @@ PanelWindow {
     onHeightChanged: if (visible) Qt.callLater(recenterCard)
 
     WlrLayershell.namespace: "quickshell-settings-window"
-    WlrLayershell.layer: WlrLayer.Top
-    WlrLayershell.keyboardFocus: (visible && !isPreviewMode) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    
+    WlrLayershell.layer: isFileDialogActive ? WlrLayer.Bottom : WlrLayer.Top
+    WlrLayershell.keyboardFocus: (visible && !isPreviewMode && !isFileDialogActive) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
@@ -77,7 +82,7 @@ PanelWindow {
 
     MouseArea {
         anchors.fill: parent
-        enabled: !window.isPreviewMode && (settingsManager ? settingsManager.previewWindow === "" : true)
+        enabled: !window.isPreviewMode && (settingsManager ? settingsManager.previewWindow === "" : true) && !window.isFileDialogActive
         visible: enabled
         onClicked: {
             if (settingsManager && settingsManager.previewWindow !== "") {
@@ -88,48 +93,62 @@ PanelWindow {
         }
     }
 
-    Rectangle {
+    // Dynamic Shape Card Powered by ShapeBox
+    Item {
         id: card
         width: settingsManager ? settingsManager.getWindowWidth(window.windowId, 1040) : 1040
         height: settingsManager ? settingsManager.getWindowHeight(window.windowId, 760) : 760
         x: Math.round(Math.max(20, (window.width - width) / 2))
         y: Math.round(Math.max(20, (window.height - height) / 2))
 
-        radius: theme.defaultCardRadius
-        color: theme.base01
-        border.width: theme.globalBorderWidth
-        border.color: theme.base03
+        readonly property int cardCornerCut: {
+            if (!settingsManager) return 0;
+            if (settingsManager.overlayCardShape === "hexagon") return Math.round(settingsManager.overlayHexagonCut || 36);
+            if (settingsManager.overlayCardShape === "slant") return Math.round(settingsManager.overlaySlantAngle || 32);
+            return 0;
+        }
+        readonly property int cardPadH: Math.max(16, Math.round(cardCornerCut * 0.65) + 6)
+        readonly property int cardPadV: Math.max(12, Math.round(cardCornerCut * 0.5) + 4)
+
+        Style.ShapeBox {
+            anchors.fill: parent
+            role: "card"
+            color: theme.base01
+            borderColor: theme.base03
+            borderWidth: theme.globalBorderWidth
+        }
 
         MouseArea { anchors.fill: parent; preventStealing: true }
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: theme.globalBorderWidth
-            spacing: 0
+            anchors.leftMargin: (settingsManager && settingsManager.overlayCardShape !== "rounded") ? card.cardPadH : theme.globalBorderWidth
+            anchors.rightMargin: (settingsManager && settingsManager.overlayCardShape !== "rounded") ? card.cardPadH : theme.globalBorderWidth
+            anchors.topMargin: (settingsManager && settingsManager.overlayCardShape !== "rounded") ? card.cardPadV : theme.globalBorderWidth
+            anchors.bottomMargin: (settingsManager && settingsManager.overlayCardShape !== "rounded") ? card.cardPadV : theme.globalBorderWidth
+            spacing: 8
 
-            // Title Bar (Follows card top radius, no square outer border)
-            Rectangle {
+            // Title Bar
+            Item {
                 id: titleBarBox
                 Layout.fillWidth: true
                 Layout.preferredHeight: Math.max(46, Math.round(window.overlayFontSize * 2.4))
                 Layout.minimumHeight: Layout.preferredHeight
-                color: theme.base00
 
-                // Match top curve of card seamlessly
-                radius: card.radius
-                Rectangle {
-                    anchors.bottom: parent.bottom
-                    width: parent.width
-                    height: parent.radius
-                    color: theme.base00
+                readonly property int inputCut: {
+                    if (!settingsManager) return 8;
+                    if (settingsManager.inputFieldShape === "hexagon") return Math.round(settingsManager.inputHexagonCut || 14);
+                    if (settingsManager.inputFieldShape === "slant") return Math.round(settingsManager.inputSlantAngle || 14);
+                    return 8;
                 }
 
-                // Single clean separator line underneath title bar
-                Rectangle {
-                    anchors.bottom: parent.bottom
-                    width: parent.width
-                    height: 1
-                    color: theme.base03
+                Style.ShapeBox {
+                    anchors.fill: parent
+                    role: "input"
+                    color: theme.base00
+                    borderColor: theme.base03
+                    borderWidth: 1
+                    slantWidth: 10
                 }
 
                 MouseArea {
@@ -144,8 +163,8 @@ PanelWindow {
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 16
-                    anchors.rightMargin: 12
+                    anchors.leftMargin: Math.max(16, titleBarBox.inputCut + 8)
+                    anchors.rightMargin: Math.max(16, titleBarBox.inputCut + 8)
                     spacing: 10
 
                     Text {
@@ -160,14 +179,7 @@ PanelWindow {
                         color: theme.base05
                         Layout.fillWidth: true
                     }
-                    Rectangle {
-                        width: 28; height: 28; radius: 6
-                        color: "transparent"
-                        border.color: theme.base08
-                        border.width: 1.5
-                        Text { anchors.centerIn: parent; text: "✕"; font.bold: true; font.pixelSize: 13; color: theme.base08 }
-                        MouseArea { anchors.fill: parent; onClicked: window.close() }
-                    }
+                    // Red "X" square removed from corner
                 }
             }
 
@@ -186,7 +198,7 @@ PanelWindow {
 
     Shortcut {
         sequence: "Escape"
-        enabled: window.visible
+        enabled: window.visible && !window.isFileDialogActive
         onActivated: {
             if (settingsManager && settingsManager.previewWindow !== "") {
                 settingsManager.previewWindow = "";

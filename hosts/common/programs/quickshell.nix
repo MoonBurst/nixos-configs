@@ -98,28 +98,30 @@ in
   # ---------------------------------------------------------------------------
   systemd.user.services = {
     # Text clipboard stream watcher
-    cliphist-text = {
+      cliphist-text = {
       description = "Cliphist text clipboard watcher";
       wantedBy = [ "graphical-session.target" ];
       after = [ "graphical-session.target" ];
       serviceConfig = {
-        ExecStart = "${pkgs.wl-clipboard}/bin/wl-paste --type text --watch ${pkgs.cliphist}/bin/cliphist store -max-items 500";
+        ExecStart = "${pkgs.wl-clipboard}/bin/wl-paste --type text --watch ${pkgs.cliphist}/bin/cliphist -max-items 500 store";
         Restart = "always";
         RestartSec = "2s";
       };
     };
 
     # Image clipboard stream watcher
-    cliphist-images = {
+      cliphist-images = {
       description = "Cliphist image clipboard watcher";
       wantedBy = [ "graphical-session.target" ];
       after = [ "graphical-session.target" ];
       serviceConfig = {
-        ExecStart = "${pkgs.wl-clipboard}/bin/wl-paste --type image --watch ${pkgs.cliphist}/bin/cliphist store -max-items 50";
+        ExecStart = "${pkgs.wl-clipboard}/bin/wl-paste --type image --watch ${pkgs.cliphist}/bin/cliphist -max-items 50 store";
         Restart = "always";
         RestartSec = "2s";
       };
     };
+
+
 
     # Music Player Daemon user service
     mpd = {

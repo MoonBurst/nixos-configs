@@ -1,6 +1,7 @@
 import QtQuick
+import "../../../style" as Style
 
-Rectangle {
+Item {
     id: sidebarComp
 
     property color sidebarBgColor: (typeof theme !== 'undefined') ? theme.base00 : "#121212"
@@ -8,15 +9,14 @@ Rectangle {
     property color itemBorderColor: (typeof theme !== 'undefined') ? theme.base01 : "#0f0f0f"
     property color folderTextColor: (typeof theme !== 'undefined') ? theme.base05 : "#f7f700"
     property color countTextColor: (typeof theme !== 'undefined') ? theme.base05 : "#ebdbb2"
-    property int sidebarPadding: (typeof theme !== 'undefined') ? theme.globalPadding : 20
+    property int sidebarPadding: (typeof theme !== 'undefined') ? theme.globalPadding : 16
     property int itemHeight: (typeof theme !== 'undefined' ? theme.defaultCardHeight : 140) - 70
     property int fontSize: (typeof theme !== 'undefined') ? theme.globalFontSize : 20
     property string sidebarFontFamily: (typeof theme !== 'undefined') ? theme.fontFamily : "Fira Sans"
 
     property color outerBorderColor: (typeof theme !== 'undefined') ? theme.outerBorderColor : "#003399"
-    property int outerBorderThickness: (typeof theme !== 'undefined') ? theme.globalBorderWidth : 3
     property color innerCardActiveBorder: (typeof theme !== 'undefined') ? theme.innerBorderColor : "#fabd2f"
-    property int innerCardActiveThickness: 5
+    property int globalBorderWidth: (typeof theme !== 'undefined' && theme && theme.globalBorderWidth) ? theme.globalBorderWidth : 3
     property color badgeAccentColor: (typeof theme !== 'undefined') ? theme.base03 : "#fabd2f"
 
     property var folderListModel: []
@@ -26,68 +26,148 @@ Rectangle {
     signal helpRequested()
     signal settingsRequested()
 
-    color: sidebarBgColor
-    border.color: outerBorderColor
-    border.width: outerBorderThickness
-    radius: (typeof theme !== 'undefined') ? theme.defaultCardRadius : 10
-
     Column {
-        anchors.fill: parent; anchors.margins: sidebarComp.sidebarPadding; spacing: 10
+        anchors.fill: parent
+        anchors.margins: sidebarComp.sidebarPadding
+        anchors.rightMargin: sidebarComp.sidebarPadding + 4
+        spacing: 10
 
         Text {
-            text: "MAILBOXES"; font.family: sidebarComp.sidebarFontFamily; font.pixelSize: sidebarComp.fontSize - 2
-            font.bold: true; color: (typeof theme !== 'undefined') ? theme.base05 : "#f7f700"
+            text: "MAILBOXES"
+            font.family: sidebarComp.sidebarFontFamily
+            font.pixelSize: sidebarComp.fontSize - 2
+            font.bold: true
+            color: (typeof theme !== 'undefined') ? theme.base05 : "#f7f700"
         }
 
         ListView {
-            id: folderListView; width: parent.width; height: parent.height - 120; model: sidebarComp.folderListModel
-            spacing: 6; currentIndex: sidebarComp.activeFolderIndex; clip: true
+            id: folderListView
+            width: parent.width
+            height: parent.height - 110
+            model: sidebarComp.folderListModel
+            spacing: 6
+            currentIndex: sidebarComp.activeFolderIndex
+            clip: true
 
-            delegate: Rectangle {
-                id: folderCard; width: folderListView.width; height: sidebarComp.itemHeight; radius: (typeof theme !== 'undefined') ? theme.defaultCardRadius : 10
-                color: (index === sidebarComp.activeFolderIndex) ? sidebarComp.itemSelectedBg : "transparent"
-                border.color: (index === sidebarComp.activeFolderIndex) ? sidebarComp.innerCardActiveBorder : sidebarComp.itemBorderColor
-                border.width: (index === sidebarComp.activeFolderIndex) ? sidebarComp.innerCardActiveThickness : 1
+            delegate: Item {
+                id: folderCard
+                width: folderListView.width
+                height: sidebarComp.itemHeight
+
+                Style.ShapeBox {
+                    anchors.fill: parent
+                    role: "input"
+                    slantWidth: 8
+                    color: (index === sidebarComp.activeFolderIndex) ? sidebarComp.itemSelectedBg : "transparent"
+                    borderColor: (index === sidebarComp.activeFolderIndex) ? sidebarComp.innerCardActiveBorder : sidebarComp.itemBorderColor
+                    borderWidth: (index === sidebarComp.activeFolderIndex) ? sidebarComp.globalBorderWidth : 1
+                }
 
                 Text {
-                    text: modelData.toUpperCase(); font.family: sidebarComp.sidebarFontFamily; font.pixelSize: sidebarComp.fontSize
-                    font.bold: index === sidebarComp.activeFolderIndex; color: sidebarComp.folderTextColor
-                    anchors.left: parent.left; anchors.leftMargin: 15; anchors.verticalCenter: parent.verticalCenter
+                    text: modelData.toUpperCase()
+                    font.family: sidebarComp.sidebarFontFamily
+                    font.pixelSize: sidebarComp.fontSize
+                    font.bold: index === sidebarComp.activeFolderIndex
+                    color: sidebarComp.folderTextColor
+                    anchors.left: parent.left
+                    anchors.leftMargin: 15
+                    anchors.verticalCenter: parent.verticalCenter
                 }
 
                 Rectangle {
-                    width: 32; height: 24; radius: 12; anchors.right: parent.right; anchors.rightMargin: 15; anchors.verticalCenter: parent.verticalCenter
+                    width: 32; height: 24; radius: 12
+                    anchors.right: parent.right; anchors.rightMargin: 15; anchors.verticalCenter: parent.verticalCenter
                     color: (index === sidebarComp.activeFolderIndex) ? sidebarComp.badgeAccentColor : ((typeof theme !== 'undefined') ? theme.base02 : "#1a1a1a")
                     visible: sidebarComp.countsDictionary && sidebarComp.countsDictionary[modelData] !== undefined && sidebarComp.countsDictionary[modelData] > 0
 
                     Text {
                         text: (sidebarComp.countsDictionary && sidebarComp.countsDictionary[modelData]) || "0"
-                        font.family: sidebarComp.sidebarFontFamily; font.pixelSize: sidebarComp.fontSize - 4; font.bold: true; color: sidebarComp.countTextColor; anchors.centerIn: parent
+                        font.family: sidebarComp.sidebarFontFamily
+                        font.pixelSize: sidebarComp.fontSize - 4
+                        font.bold: true
+                        color: sidebarComp.countTextColor
+                        anchors.centerIn: parent
+                    }
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        sidebarComp.activeFolderIndex = index;
+                        if (typeof viewRoot !== "undefined" && viewRoot.engine) {
+                            viewRoot.engine.currentFolderIndex = index;
+                            viewRoot.engine.filterEmailsByActiveFolder();
+                        }
                     }
                 }
             }
         }
     }
 
-    // Lower-Left Quick Actions (Help & Account Settings)
+    // Lower-Left Quick Actions
     Row {
-        anchors.left: parent.left; anchors.leftMargin: sidebarComp.sidebarPadding; anchors.bottom: parent.bottom; anchors.bottomMargin: sidebarComp.sidebarPadding
+        anchors.left: parent.left
+        anchors.leftMargin: sidebarComp.sidebarPadding
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: sidebarComp.sidebarPadding
         spacing: 10
 
-        Rectangle {
-            id: helpButton; width: 34; height: 34; radius: 17; color: sidebarComp.sidebarBgColor
-            border.color: helpMouse.containsMouse ? sidebarComp.innerCardActiveBorder : sidebarComp.itemBorderColor; border.width: helpMouse.containsMouse ? 2 : 1
+        Item {
+            id: helpButton
+            width: 34; height: 34
 
-            Text { text: "?"; font.family: sidebarComp.sidebarFontFamily; font.pixelSize: sidebarComp.fontSize; font.bold: true; color: helpMouse.containsMouse ? sidebarComp.folderTextColor : sidebarComp.countTextColor; anchors.centerIn: parent }
-            MouseArea { id: helpMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: sidebarComp.helpRequested() }
+            Style.ShapeBox {
+                anchors.fill: parent
+                role: "input"
+                slantWidth: 6
+                color: sidebarComp.sidebarBgColor
+                borderColor: helpMouse.containsMouse ? sidebarComp.innerCardActiveBorder : sidebarComp.itemBorderColor
+                borderWidth: helpMouse.containsMouse ? sidebarComp.globalBorderWidth : 1
+            }
+
+            Text {
+                text: "?"
+                font.family: sidebarComp.sidebarFontFamily
+                font.pixelSize: sidebarComp.fontSize
+                font.bold: true
+                color: helpMouse.containsMouse ? sidebarComp.folderTextColor : sidebarComp.countTextColor
+                anchors.centerIn: parent
+            }
+            MouseArea {
+                id: helpMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: sidebarComp.helpRequested()
+            }
         }
 
-        Rectangle {
-            id: settingsButton; width: 34; height: 34; radius: 17; color: sidebarComp.sidebarBgColor
-            border.color: setMouse.containsMouse ? sidebarComp.innerCardActiveBorder : sidebarComp.itemBorderColor; border.width: setMouse.containsMouse ? 2 : 1
+        Item {
+            id: settingsButton
+            width: 34; height: 34
 
-            Text { text: "⚙"; font.pixelSize: sidebarComp.fontSize - 4; anchors.centerIn: parent }
-            MouseArea { id: setMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: sidebarComp.settingsRequested() }
+            Style.ShapeBox {
+                anchors.fill: parent
+                role: "input"
+                slantWidth: 6
+                color: sidebarComp.sidebarBgColor
+                borderColor: setMouse.containsMouse ? sidebarComp.innerCardActiveBorder : sidebarComp.itemBorderColor
+                borderWidth: setMouse.containsMouse ? sidebarComp.globalBorderWidth : 1
+            }
+
+            Text {
+                text: "⚙"
+                font.pixelSize: sidebarComp.fontSize - 4
+                anchors.centerIn: parent
+            }
+            MouseArea {
+                id: setMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: sidebarComp.settingsRequested()
+            }
         }
     }
 }

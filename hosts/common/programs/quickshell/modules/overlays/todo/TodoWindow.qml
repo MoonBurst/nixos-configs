@@ -4,6 +4,8 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 import "../../../" as RootTheme
+import "../../style" as Style
+import "../../common" as Common
 import "../../settings" as SettingsTools
 import "./backend" as Backend
 import "./frontend" as Frontend
@@ -29,10 +31,8 @@ PanelWindow {
     property bool isOpenState: false
     visible: isOpenState || isPreviewMode
 
-    // True while actively focused on Todo; false when clicked off
     property bool isCardActive: true
 
-    // Focused: base03 | Off-focus: base0D
     readonly property color activeBorderColor: (theme && theme.base03) ? theme.base03 : "#003399"
     readonly property color inactiveBorderColor: (theme && theme.base0D) ? theme.base0D : "#003399"
 
@@ -128,46 +128,13 @@ PanelWindow {
         function close(): void { todoWindow.close(); }
     }
 
-    // Background listener for Escape: catches Escape globally while Todo is open, even when unfocused
-    Process {
-        id: escWatcher
-        running: todoWindow.isOpenState && !todoWindow.isPreviewMode
-        command: [
-            "python3", "-u", "-c",
-            "import glob, struct, select, sys\n" +
-            "fds = []\n" +
-            "for dev in glob.glob('/dev/input/by-id/*-event-kbd') + glob.glob('/dev/input/event*'):\n" +
-            "    try:\n" +
-            "        fds.append(open(dev, 'rb', buffering=0))\n" +
-            "    except Exception:\n" +
-            "        pass\n" +
-            "if not fds:\n" +
-            "    sys.exit(0)\n" +
-            "fmt = 'llHHi' if struct.calcsize('l') == 8 else 'iiHHi'\n" +
-            "sz = struct.calcsize(fmt)\n" +
-            "while True:\n" +
-            "    r, _, _ = select.select(fds, [], [])\n" +
-            "    for fd in r:\n" +
-            "        try:\n" +
-            "            d = fd.read(sz)\n" +
-            "            if len(d) == sz:\n" +
-            "                _, _, t, code, val = struct.unpack(fmt, d)\n" +
-            "                if t == 1 and code == 1 and val == 1:\n" +
-            "                    print('ESC', flush=True)\n" +
-            "        except Exception:\n" +
-            "            pass\n"
-        ]
-        stdout: SplitParser {
-            splitMarker: "\n"
-            onRead: data => {
-                if (data.trim() === "ESC") todoWindow.close();
-            }
-        }
+    Common.GlobalEscWatcher {
+        active: todoWindow.isOpenState && !todoWindow.isPreviewMode
+        onEscapePressed: todoWindow.close()
     }
 
     Backend.TodoEngine { id: todoEngine }
 
-    // Multi-screen click-off detector
     Variants {
         model: Quickshell.screens
         delegate: PanelWindow {
@@ -193,7 +160,6 @@ PanelWindow {
         }
     }
 
-    // Same-screen click-off detector
     MouseArea {
         anchors.fill: parent
         enabled: todoWindow.isCardActive && !todoWindow.isPreviewMode
@@ -202,18 +168,35 @@ PanelWindow {
         }
     }
 
-    Rectangle {
+    Item {
         id: card
         anchors.centerIn: parent
         width: settingsManager ? settingsManager.getWindowWidth(todoWindow.windowId, 860) : 860
         height: settingsManager ? settingsManager.getWindowHeight(todoWindow.windowId, 740) : 740
-        radius: (theme && theme.defaultCardRadius !== undefined) ? theme.defaultCardRadius : 10
-        color: (theme && theme.base01 !== undefined) ? theme.base01 : "#181825"
-        border.width: (theme && theme.globalBorderWidth !== undefined) ? theme.globalBorderWidth : 3
 
-        // Focused: base03 | Off-focus: base0D
-        border.color: todoWindow.isCardActive ? todoWindow.activeBorderColor : todoWindow.inactiveBorderColor
-        clip: true
+        readonly property color currentBorderColor: todoWindow.isCardActive ? todoWindow.activeBorderColor : todoWindow.inactiveBorderColor
+        readonly property int currentBorderWidth: (theme && theme.globalBorderWidth !== undefined) ? theme.globalBorderWidth : 3
+
+        readonly property int cardCornerCut: {
+            if (!settingsManager) return 0;
+            if (settingsManager.overlayCardShape === "hexagon") return Math.round(settingsManager.overlayHexagonCut || 36);
+            if (settingsManager.overlayCardShape === "slant") return Math.round(settingsManager.overlaySlantAngle || 32);
+            return 0;
+        }
+        readonly property int cardPadH: (settingsManager && settingsManager.overlayCardShape !== "rounded")
+            ? Math.max(28, Math.round(cardCornerCut * 1.0) + 20)
+            : 0
+        readonly property int cardPadV: (settingsManager && settingsManager.overlayCardShape !== "rounded")
+            ? Math.max(20, Math.round(cardCornerCut * 0.45) + 14)
+            : 0
+
+        Style.ShapeBox {
+            anchors.fill: parent
+            role: "card"
+            color: (theme && theme.base01 !== undefined) ? theme.base01 : "#181825"
+            borderColor: card.currentBorderColor
+            borderWidth: card.currentBorderWidth
+        }
 
         MouseArea {
             anchors.fill: parent
@@ -228,10 +211,15 @@ PanelWindow {
         Loader {
             id: viewLoader
             anchors.fill: parent
+            anchors.leftMargin: card.cardPadH
+            anchors.rightMargin: card.cardPadH
+            anchors.topMargin: card.cardPadV
+            anchors.bottomMargin: card.cardPadV
             active: todoWindow.isUiActive
             sourceComponent: Frontend.TodoView {
                 engine: todoEngine
                 theme: todoWindow.theme
+                settingsManager: todoWindow.settingsManager
             }
             onItemChanged: {
                 if (item && todoWindow.isOpenState && todoWindow.isCardActive) {
@@ -244,9 +232,8 @@ PanelWindow {
     SettingsTools.PreviewInspector {
         id: previewInspector
         visible: todoWindow.isPreviewMode
-        anchors.left: (card.x + card.width + width + 20 <= todoWindow.width) ? card.right : undefined
-        anchors.right: (card.x + card.width + width + 20 > todoWindow.width) ? card.left : undefined
-        anchors.leftMargin: 20; anchors.rightMargin: 20
+        anchors.left: card.right
+        anchors.leftMargin: 20
         anchors.verticalCenter: card.verticalCenter
 
         windowId: todoWindow.windowId

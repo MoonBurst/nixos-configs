@@ -1,3 +1,4 @@
+import "../../common" as Common
 import QtQuick
 
 // Thin vertical divider between toolbar groups.

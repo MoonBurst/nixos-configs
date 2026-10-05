@@ -4,6 +4,8 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
+import "../../style" as Style
+import "../../common" as Common
 import "../../settings" as SettingsTools
 
 PanelWindow {
@@ -37,7 +39,6 @@ PanelWindow {
 
     property bool isCardActive: true
 
-    // Focused: base03 | Off-focus: base0D
     readonly property color activeBorderColor: (theme && theme.base03) ? theme.base03 : "#003399"
     readonly property color inactiveBorderColor: (theme && theme.base0D) ? theme.base0D : "#003399"
 
@@ -80,44 +81,11 @@ PanelWindow {
         }
     }
 
-    // Background listener for Escape: catches Escape globally while Dice/RNG is open, even when unfocused
-    Process {
-        id: escWatcher
-        running: root.isOpenState && !root.isPreviewMode
-        command: [
-            "python3", "-u", "-c",
-            "import glob, struct, select, sys\n" +
-            "fds = []\n" +
-            "for dev in glob.glob('/dev/input/by-id/*-event-kbd') + glob.glob('/dev/input/event*'):\n" +
-            "    try:\n" +
-            "        fds.append(open(dev, 'rb', buffering=0))\n" +
-            "    except Exception:\n" +
-            "        pass\n" +
-            "if not fds:\n" +
-            "    sys.exit(0)\n" +
-            "fmt = 'llHHi' if struct.calcsize('l') == 8 else 'iiHHi'\n" +
-            "sz = struct.calcsize(fmt)\n" +
-            "while True:\n" +
-            "    r, _, _ = select.select(fds, [], [])\n" +
-            "    for fd in r:\n" +
-            "        try:\n" +
-            "            d = fd.read(sz)\n" +
-            "            if len(d) == sz:\n" +
-            "                _, _, t, code, val = struct.unpack(fmt, d)\n" +
-            "                if t == 1 and code == 1 and val == 1:\n" +
-            "                    print('ESC', flush=True)\n" +
-            "        except Exception:\n" +
-            "            pass\n"
-        ]
-        stdout: SplitParser {
-            splitMarker: "\n"
-            onRead: data => {
-                if (data.trim() === "ESC") root.close();
-            }
-        }
+    Common.GlobalEscWatcher {
+        active: root.isOpenState && !root.isPreviewMode
+        onEscapePressed: root.close()
     }
 
-    // Multi-screen click-off detector
     Variants {
         model: Quickshell.screens
         delegate: PanelWindow {
@@ -143,7 +111,6 @@ PanelWindow {
         }
     }
 
-    // Same-screen click-off detector
     MouseArea {
         anchors.fill: parent
         enabled: root.isCardActive && !root.isPreviewMode
@@ -181,6 +148,7 @@ PanelWindow {
     readonly property color accentColor: theme ? theme.base05 : "#a6e3a1"
     readonly property color altAccent: theme ? theme.base05 : "#f38ba8"
     readonly property color highlightColor: theme ? theme.base05 : "#f9e2af"
+    readonly property int globalBorderWidth: (theme && theme.globalBorderWidth !== undefined) ? theme.globalBorderWidth : 2
 
     property int diceCount: 1
     property int strengthVal: 0
@@ -219,7 +187,7 @@ PanelWindow {
         }
     }
 
-    component NumInput : Rectangle {
+    component NumInput : Item {
         id: numBox
         property int value: 0
         property int minVal: 0
@@ -227,17 +195,30 @@ PanelWindow {
         property int step: 1
 
         implicitWidth: 130; implicitHeight: 46
-        color: root.bgCard; radius: 8
-        border.width: 1; border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+
+        Style.ShapeBox {
+            anchors.fill: parent
+            role: "input"
+            color: root.bgCard
+            borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+            borderWidth: root.globalBorderWidth
+            slantWidth: 10
+        }
 
         RowLayout {
             anchors.fill: parent; anchors.margins: 4; spacing: 4
-            Rectangle {
-                width: 32; Layout.fillHeight: true; radius: 6
-                color: upM.containsMouse ? root.bgHover : root.bgBase
-                border.width: 1; border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+            Item {
+                width: 32; Layout.fillHeight: true
+                Style.ShapeBox {
+                    anchors.fill: parent
+                    role: "input"
+                    slantWidth: 6
+                    color: upM.containsMouse ? root.bgHover : root.bgBase
+                    borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+                    borderWidth: 1
+                }
                 Text { text: "▲"; anchors.centerIn: parent; color: root.highlightColor; font.pixelSize: 14; font.bold: true }
-                MouseArea { id: upM; anchors.fill: parent; hoverEnabled: true; onPressed: { if (numBox.value < numBox.maxVal) numBox.value += numBox.step; } }
+                MouseArea { id: upM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onPressed: { if (numBox.value < numBox.maxVal) numBox.value += numBox.step; } }
             }
             TextInput {
                 id: txtInput
@@ -250,12 +231,18 @@ PanelWindow {
                 onTextEdited: { var p = parseInt(text); if (!isNaN(p)) numBox.value = Math.min(numBox.maxVal, Math.max(numBox.minVal, p)); }
                 Binding on text { value: String(numBox.value); when: !txtInput.activeFocus }
             }
-            Rectangle {
-                width: 32; Layout.fillHeight: true; radius: 6
-                color: downM.containsMouse ? root.bgHover : root.bgBase
-                border.width: 1; border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+            Item {
+                width: 32; Layout.fillHeight: true
+                Style.ShapeBox {
+                    anchors.fill: parent
+                    role: "input"
+                    slantWidth: 6
+                    color: downM.containsMouse ? root.bgHover : root.bgBase
+                    borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+                    borderWidth: 1
+                }
                 Text { text: "▼"; anchors.centerIn: parent; color: root.highlightColor; font.pixelSize: 14; font.bold: true }
-                MouseArea { id: downM; anchors.fill: parent; hoverEnabled: true; onPressed: { if (numBox.value > numBox.minVal) numBox.value -= numBox.step; } }
+                MouseArea { id: downM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onPressed: { if (numBox.value > numBox.minVal) numBox.value -= numBox.step; } }
             }
         }
     }
@@ -310,14 +297,32 @@ PanelWindow {
         if (historyModel.count > 50) historyModel.remove(50, historyModel.count - 50);
     }
 
-    Rectangle {
+    Item {
         id: diceCard
         anchors.centerIn: parent
         width: settingsManager ? settingsManager.getWindowWidth(root.windowId, 580) : 580
         height: settingsManager ? settingsManager.getWindowHeight(root.windowId, 840) : 840
-        radius: 16; color: root.bgBase
-        border.width: (theme && theme.globalBorderWidth !== undefined) ? theme.globalBorderWidth : 3
-        border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+
+        readonly property int cardCornerCut: {
+            if (!settingsManager) return 0;
+            if (settingsManager.overlayCardShape === "hexagon") return Math.round(settingsManager.overlayHexagonCut || 36);
+            if (settingsManager.overlayCardShape === "slant") return Math.round(settingsManager.overlaySlantAngle || 32);
+            return 0;
+        }
+        readonly property int cardPadH: (settingsManager && settingsManager.overlayCardShape !== "rounded")
+            ? Math.max(28, Math.round(cardCornerCut * 1.0) + 20)
+            : ((theme && theme.globalPadding) ? theme.globalPadding : 16)
+        readonly property int cardPadV: (settingsManager && settingsManager.overlayCardShape !== "rounded")
+            ? Math.max(20, Math.round(cardCornerCut * 0.45) + 14)
+            : ((theme && theme.globalPadding) ? theme.globalPadding : 16)
+
+        Style.ShapeBox {
+            anchors.fill: parent
+            role: "card"
+            color: root.bgBase
+            borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+            borderWidth: root.globalBorderWidth
+        }
 
         MouseArea {
             anchors.fill: parent
@@ -330,25 +335,53 @@ PanelWindow {
         }
 
         ColumnLayout {
-            anchors.fill: parent; anchors.margins: 16; spacing: 12
+            anchors.fill: parent
+            anchors.leftMargin: diceCard.cardPadH
+            anchors.rightMargin: diceCard.cardPadH
+            anchors.topMargin: diceCard.cardPadV
+            anchors.bottomMargin: diceCard.cardPadV
+            spacing: 12
 
-            Rectangle {
-                Layout.fillWidth: true; height: 48; color: root.bgCard; radius: 10
-                border.width: 1; border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+            Item {
+                Layout.fillWidth: true; height: 48
+
+                Style.ShapeBox {
+                    anchors.fill: parent
+                    role: "input"
+                    color: root.bgCard
+                    borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+                    borderWidth: root.globalBorderWidth
+                    slantWidth: 10
+                }
+
                 RowLayout {
-                    anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 8
+                    anchors.fill: parent; anchors.leftMargin: 16; anchors.rightMargin: 12
                     Text { text: "🎲 Dice, Coin & RNG"; color: root.highlightColor; font.bold: true; font.pixelSize: 20; Layout.fillWidth: true }
-                    Rectangle {
-                        width: 110; height: 34; radius: 8
-                        color: root.showHistoryPanel ? root.accentColor : (histMouse.containsMouse ? root.bgHover : root.bgBase)
-                        border.width: 1; border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+                    Item {
+                        width: 110; height: 34
+                        Style.ShapeBox {
+                            anchors.fill: parent
+                            role: "input"
+                            slantWidth: 6
+                            color: root.showHistoryPanel ? root.accentColor : (histMouse.containsMouse ? root.bgHover : root.bgBase)
+                            borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+                            borderWidth: 1
+                        }
                         Text { anchors.centerIn: parent; text: root.showHistoryPanel ? "🎲 Roller" : "📜 History"; color: root.showHistoryPanel ? "#11111b" : root.highlightColor; font.bold: true; font.pixelSize: 18 }
-                        MouseArea { id: histMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.showHistoryPanel = !root.showHistoryPanel }
+                        MouseArea { id: histMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.showHistoryPanel = !root.showHistoryPanel }
                     }
-                    Rectangle {
-                        width: 34; height: 34; radius: 8; color: closeMouse.containsMouse ? root.altAccent : "transparent"
+                    Item {
+                        width: 34; height: 34
+                        Style.ShapeBox {
+                            anchors.fill: parent
+                            role: "input"
+                            slantWidth: 6
+                            color: closeMouse.containsMouse ? root.altAccent : "transparent"
+                            borderColor: "transparent"
+                            borderWidth: 0
+                        }
                         Text { anchors.centerIn: parent; text: "✕"; color: closeMouse.containsMouse ? "#11111b" : root.highlightColor; font.bold: true; font.pixelSize: 18 }
-                        MouseArea { id: closeMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.close() }
+                        MouseArea { id: closeMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.close() }
                     }
                 }
             }
@@ -376,21 +409,34 @@ PanelWindow {
                     }
                 }
 
-                Rectangle {
-                    Layout.fillWidth: true; height: 52; radius: 10; color: root.bgCard
-                    border.width: 1; border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+                Item {
+                    Layout.fillWidth: true; height: 52
+                    Style.ShapeBox {
+                        anchors.fill: parent
+                        role: "input"
+                        color: root.bgCard
+                        borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+                        borderWidth: root.globalBorderWidth
+                        slantWidth: 10
+                    }
                     RowLayout {
                         anchors.fill: parent; anchors.margins: 6; spacing: 6
                         Text { text: "Mode:"; color: root.highlightColor; font.bold: true; font.pixelSize: 16 }
                         Repeater {
                             model: [ { "idStr": "all", "label": "Keep All" }, { "idStr": "kh", "label": "Advantage" }, { "idStr": "kl", "label": "Disadvantage" } ]
-                            delegate: Rectangle {
+                            delegate: Item {
                                 readonly property bool isSelected: root.keepMode === modelData.idStr
-                                Layout.fillWidth: true; height: 40; radius: 8
-                                color: isSelected ? root.bgHover : root.bgBase
-                                border.width: isSelected ? 2 : 1; border.color: isSelected ? root.highlightColor : (root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor)
+                                Layout.fillWidth: true; height: 40
+                                Style.ShapeBox {
+                                    anchors.fill: parent
+                                    role: "input"
+                                    slantWidth: 8
+                                    color: isSelected ? root.bgHover : root.bgBase
+                                    borderColor: isSelected ? root.highlightColor : (root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor)
+                                    borderWidth: isSelected ? root.globalBorderWidth : 1
+                                }
                                 Text { anchors.centerIn: parent; text: modelData.label; color: root.highlightColor; font.bold: isSelected; font.pixelSize: 15 }
-                                MouseArea { anchors.fill: parent; onClicked: root.keepMode = modelData.idStr }
+                                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.keepMode = modelData.idStr }
                             }
                         }
                         NumInput { id: keepSpin; visible: root.keepMode !== "all"; minVal: 1; maxVal: Math.max(1, root.diceCount); value: root.keepCount; Layout.preferredWidth: 130; onValueChanged: root.keepCount = value }
@@ -401,33 +447,53 @@ PanelWindow {
                     Layout.fillWidth: true; columns: 4; rowSpacing: 10; columnSpacing: 10
                     Repeater {
                         model: [ { name: "🪙 Coin", sides: 2 }, { name: "d4", sides: 4 }, { name: "d6", sides: 6 }, { name: "d8", sides: 8 }, { name: "d10", sides: 10 }, { name: "d12", sides: 12 }, { name: "d20", sides: 20 }, { name: "d100", sides: 100 } ]
-                        delegate: Rectangle {
+                        delegate: Item {
                             readonly property bool isSelected: root.selectedSides === modelData.sides
-                            Layout.fillWidth: true; height: 48; radius: 10; color: root.bgCard
-                            border.width: isSelected ? 3 : 1; border.color: isSelected ? root.highlightColor : (root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor)
+                            Layout.fillWidth: true; height: 48
+                            Style.ShapeBox {
+                                anchors.fill: parent
+                                role: "input"
+                                slantWidth: 8
+                                color: root.bgCard
+                                borderColor: isSelected ? root.highlightColor : (root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor)
+                                borderWidth: isSelected ? root.globalBorderWidth : 1
+                            }
                             Text { anchors.centerIn: parent; text: modelData.name; color: isSelected ? root.highlightColor : (modelData.sides === 2 ? root.accentColor : root.highlightColor); font.bold: isSelected; font.pixelSize: 18 }
-                            MouseArea { anchors.fill: parent; onClicked: root.selectedSides = modelData.sides }
+                            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.selectedSides = modelData.sides }
                         }
                     }
                 }
 
-                Rectangle {
+                Item {
                     readonly property bool isCustomActive: root.selectedSides === root.customSidesVal && root.selectedSides !== 2 && root.selectedSides !== 4 && root.selectedSides !== 6 && root.selectedSides !== 8 && root.selectedSides !== 10 && root.selectedSides !== 12 && root.selectedSides !== 20 && root.selectedSides !== 100
-                    Layout.fillWidth: true; height: 56; radius: 10; color: isCustomActive ? root.bgHover : root.bgCard
-                    border.width: isCustomActive ? 3 : 1; border.color: isCustomActive ? root.highlightColor : (root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor)
+                    Layout.fillWidth: true; height: 56
+                    Style.ShapeBox {
+                        anchors.fill: parent
+                        role: "input"
+                        slantWidth: 10
+                        color: isCustomActive ? root.bgHover : root.bgCard
+                        borderColor: isCustomActive ? root.highlightColor : (root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor)
+                        borderWidth: isCustomActive ? root.globalBorderWidth : 1
+                    }
                     RowLayout {
-                        anchors.fill: parent; anchors.leftMargin: 14; anchors.rightMargin: 14; spacing: 12
+                        anchors.fill: parent; anchors.leftMargin: 16; anchors.rightMargin: 16; spacing: 12
                         Text { text: "🎲 Custom Die (d" + root.customSidesVal + "):"; color: root.highlightColor; font.bold: true; font.pixelSize: 18 }
                         Item { Layout.fillWidth: true }
                         NumInput { id: customSpin; minVal: 2; maxVal: 1000; value: root.customSidesVal; Layout.preferredWidth: 140; onValueChanged: { root.customSidesVal = value; root.selectedSides = value; } }
                     }
-                    MouseArea { anchors.fill: parent; z: -1; onClicked: root.selectedSides = root.customSidesVal }
+                    MouseArea { anchors.fill: parent; z: -1; cursorShape: Qt.PointingHandCursor; onClicked: root.selectedSides = root.customSidesVal }
                 }
 
-                Rectangle {
-                    Layout.fillWidth: true; height: 54; radius: 10
-                    color: rollMouse.containsMouse ? root.bgHover : root.bgCard
-                    border.width: rollMouse.containsMouse ? 3 : 2; border.color: rollMouse.containsMouse ? root.highlightColor : root.accentColor
+                Item {
+                    Layout.fillWidth: true; height: 54
+                    Style.ShapeBox {
+                        anchors.fill: parent
+                        role: "input"
+                        slantWidth: 10
+                        color: rollMouse.containsMouse ? root.bgHover : root.bgCard
+                        borderColor: rollMouse.containsMouse ? root.highlightColor : root.accentColor
+                        borderWidth: root.globalBorderWidth
+                    }
                     Text {
                         anchors.centerIn: parent
                         text: {
@@ -437,12 +503,19 @@ PanelWindow {
                         color: rollMouse.containsMouse ? root.highlightColor : root.accentColor
                         font.bold: true; font.pixelSize: 20
                     }
-                    MouseArea { id: rollMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.executeRoll() }
+                    MouseArea { id: rollMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.executeRoll() }
                 }
 
-                Rectangle {
-                    Layout.fillWidth: true; Layout.fillHeight: true; radius: 12; color: root.bgCard
-                    border.width: 1; border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+                Item {
+                    Layout.fillWidth: true; Layout.fillHeight: true
+                    Style.ShapeBox {
+                        anchors.fill: parent
+                        role: "input"
+                        slantWidth: 10
+                        color: root.bgCard
+                        borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+                        borderWidth: root.globalBorderWidth
+                    }
 
                     ColumnLayout {
                         anchors.fill: parent; anchors.margins: 14; spacing: 8
@@ -464,12 +537,19 @@ PanelWindow {
                                 width: outcomesScroll.availableWidth > 0 ? outcomesScroll.availableWidth : 500; spacing: 8
                                 Repeater {
                                     model: root.lastRolls
-                                    delegate: Rectangle {
+                                    delegate: Item {
                                         readonly property bool isKept: typeof modelData.kept !== "undefined" ? modelData.kept : true
                                         readonly property string displayVal: typeof modelData.value !== "undefined" ? String(modelData.value) : String(modelData.valStr)
-                                        width: Math.max(46, valText.implicitWidth + 16); height: 40; radius: 8
-                                        color: isKept ? (displayVal === "Heads" ? root.accentColor : (displayVal === "Tails" ? root.bgHover : root.bgBase)) : root.bgCard
-                                        border.width: 1; border.color: isKept ? root.accentColor : (root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor); opacity: isKept ? 1.0 : 0.35
+                                        width: Math.max(46, valText.implicitWidth + 16); height: 40
+                                        opacity: isKept ? 1.0 : 0.35
+                                        Style.ShapeBox {
+                                            anchors.fill: parent
+                                            role: "input"
+                                            slantWidth: 6
+                                            color: isKept ? (displayVal === "Heads" ? root.accentColor : (displayVal === "Tails" ? root.bgHover : root.bgBase)) : root.bgCard
+                                            borderColor: isKept ? root.accentColor : (root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor)
+                                            borderWidth: 1
+                                        }
                                         Text { id: valText; anchors.centerIn: parent; text: displayVal; color: isKept ? (displayVal === "Heads" ? "#11111b" : root.highlightColor) : root.highlightColor; font.bold: isKept; font.strikeout: !isKept; font.pixelSize: 18 }
                                     }
                                 }
@@ -492,9 +572,16 @@ PanelWindow {
                                 width: previewScroll.availableWidth > 0 ? previewScroll.availableWidth : 500; spacing: 8
                                 Repeater {
                                     model: root.previewRolls
-                                    delegate: Rectangle {
-                                        width: 48; height: 40; radius: 8; color: root.bgBase
-                                        border.width: 2; border.color: root.highlightColor
+                                    delegate: Item {
+                                        width: 48; height: 40
+                                        Style.ShapeBox {
+                                            anchors.fill: parent
+                                            role: "input"
+                                            slantWidth: 6
+                                            color: root.bgBase
+                                            borderColor: root.highlightColor
+                                            borderWidth: root.globalBorderWidth
+                                        }
                                         Text { anchors.centerIn: parent; text: String(modelData); color: root.highlightColor; font.bold: true; font.pixelSize: 18 }
                                     }
                                 }
@@ -504,29 +591,52 @@ PanelWindow {
                 }
             }
 
-            Rectangle {
-                Layout.fillWidth: true; Layout.fillHeight: true; radius: 12
-                color: root.bgCard; border.width: 1; border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+            Item {
+                Layout.fillWidth: true; Layout.fillHeight: true
                 visible: root.showHistoryPanel
+
+                Style.ShapeBox {
+                    anchors.fill: parent
+                    role: "input"
+                    slantWidth: 10
+                    color: root.bgCard
+                    borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+                    borderWidth: root.globalBorderWidth
+                }
+
                 ColumnLayout {
                     anchors.fill: parent; anchors.margins: 14; spacing: 10
                     RowLayout {
                         Layout.fillWidth: true
                         Text { text: "📜 Roll History (" + historyModel.count + ")"; color: root.highlightColor; font.bold: true; font.pixelSize: 18 }
                         Item { Layout.fillWidth: true }
-                        Rectangle {
-                            width: 140; height: 34; radius: 8; color: clearMouse.containsMouse ? root.altAccent : root.bgBase
-                            border.width: 1; border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+                        Item {
+                            width: 140; height: 34
+                            Style.ShapeBox {
+                                anchors.fill: parent
+                                role: "input"
+                                slantWidth: 6
+                                color: clearMouse.containsMouse ? root.altAccent : root.bgBase
+                                borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+                                borderWidth: 1
+                            }
                             Text { anchors.centerIn: parent; text: "Clear History"; color: clearMouse.containsMouse ? "#11111b" : root.highlightColor; font.bold: true; font.pixelSize: 16 }
-                            MouseArea { id: clearMouse; anchors.fill: parent; hoverEnabled: true; onClicked: historyModel.clear() }
+                            MouseArea { id: clearMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: historyModel.clear() }
                         }
                     }
                     ListView {
                         Layout.fillWidth: true; Layout.fillHeight: true; clip: true; spacing: 8
                         model: historyModel
-                        delegate: Rectangle {
-                            width: ListView.view ? ListView.view.width : 0; height: 64; radius: 8; color: root.bgBase
-                            border.width: 1; border.color: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+                        delegate: Item {
+                            width: ListView.view ? ListView.view.width : 0; height: 64
+                            Style.ShapeBox {
+                                anchors.fill: parent
+                                role: "input"
+                                slantWidth: 6
+                                color: root.bgBase
+                                borderColor: root.isCardActive ? root.activeBorderColor : root.inactiveBorderColor
+                                borderWidth: 1
+                            }
                             ColumnLayout {
                                 anchors.fill: parent; anchors.margins: 8; spacing: 4
                                 RowLayout {

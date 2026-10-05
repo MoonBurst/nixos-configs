@@ -3,7 +3,7 @@ import QtQuick.LocalStorage
 import Quickshell
 import Quickshell.Io
 
-QtObject {
+Item {
     id: engine
 
     property string cacheFilePath: "file://" + (Quickshell.env("HOME") || "") + "/.cache/himalaya/emails.json"
@@ -27,8 +27,8 @@ QtObject {
     property bool himalayaInstalled: false
 
     property string mailSignature: (typeof shell !== "undefined" && shell && shell.settingsManager && shell.settingsManager.emailSignature)
-    ? shell.settingsManager.emailSignature
-    : "\n\n--\nSeekers of light..\nBelieve not in justice...\nBelieve not in truth...\nFor they are empty and inconsistent, as are all things..."
+        ? shell.settingsManager.emailSignature
+        : "\n\n--\nSeekers of light..\nBelieve not in justice...\nBelieve not in truth...\nFor they are empty and inconsistent, as are all things..."
 
     onSearchStringChanged: filterEmailsByActiveFolder()
     onSearchCaseSensitiveChanged: filterEmailsByActiveFolder()
@@ -45,11 +45,21 @@ QtObject {
 
     function syncMail() {
         if (!engine.himalayaInstalled || mailSyncProc.running) return;
+        var rawLimit = (typeof shell !== "undefined" && shell && shell.settingsManager) ? shell.settingsManager.emailFetchLimit : "50";
+        var safeLimit = (rawLimit === "all" || rawLimit === "All") ? "10000" : rawLimit;
+
+        mailSyncProc.command = [
+            "sh", "-c",
+            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
+            'SCR="' + Quickshell.shellDir + '/modules/overlays/email/backend/HimalayaEngine.lua"; ' +
+            'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
+            '"$CMD" "$SCR" sync "$1"',
+            "sh", safeLimit
+        ];
         mailSyncProc.running = false;
         mailSyncProc.running = true;
     }
 
-    // Direct, push-based IMAP IDLE watcher
     readonly property Process mailWatcherProcess: Process {
         running: engine.himalayaInstalled
         command: [
@@ -64,6 +74,13 @@ QtObject {
             onRead: data => {
                 var clean = data.trim();
                 if (clean === "SYNC" || clean === "NEW_MAIL") {
+                    if (typeof shell !== "undefined" && shell && shell.settingsManager && shell.settingsManager.emailSoundEnabled) {
+                        var sound = shell.settingsManager.emailReceiveSound;
+                        if (sound && sound.length > 0) {
+                            Quickshell.execDetached(["pw-play", sound]);
+                        }
+                    }
+                    Quickshell.execDetached(["notify-send", "-a", "Email", "-i", "mail-unread", "📧 New Email Received", "Syncing new message..."]);
                     engine.syncMail();
                 }
             }
@@ -72,32 +89,103 @@ QtObject {
 
     readonly property Process mailSyncProc: Process {
         running: false
-        command: [
-            "sh", "-c",
-            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
-            'SCR="' + Quickshell.shellDir + '/modules/overlays/email/backend/HimalayaEngine.lua"; ' +
-            'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
-            '"$CMD" "$SCR" sync'
-        ]
         onExited: {
             engine.readMailCache();
         }
     }
 
-    // Stream-based body fetcher without timer polling
     readonly property Process bodyFetchProc: Process {
         running: false
         stdout: StdioCollector {
             onStreamFinished: {
-                engine.activeMailBody = text || "(Empty body)";
-                if (engine.selectedMail) {
-                    engine.selectedMail.body_content = engine.activeMailBody;
+                var body = text ? text.trim() : "";
+                if (body.length > 0 && body !== "(Empty body)" && body !== "(No content)") {
+                    engine.activeMailBody = body;
+                    if (engine.selectedMail) {
+                        engine.selectedMail.body_content = body;
+                        engine.saveMailCacheDisk();
+                    }
+                } else {
+                    engine.activeMailBody = "(No message body content)";
                 }
             }
         }
     }
 
-    // Checks configuration strictly. If config.toml is missing, triggers login modal.
+    // =========================================================================
+    // BACKGROUND BODY DOWNLOADER: CONTINUOUSLY DOWNLOADS AND SAVES ALL BODIES
+    // =========================================================================
+    property int prefetchIndex: 0
+    property var currentPrefetchItem: null
+
+    Process {
+        id: singlePrefetchProc
+        running: false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var body = text ? text.trim() : "";
+                if (engine.currentPrefetchItem) {
+                    if (body.length > 0 && body !== "(Empty body)" && body !== "(No content)") {
+                        engine.currentPrefetchItem.body_content = body;
+                        if (engine.selectedMail && engine.selectedMail.id === engine.currentPrefetchItem.id) {
+                            engine.activeMailBody = body;
+                        }
+                        if (engine.prefetchIndex % 5 === 0) {
+                            engine.saveMailCacheDisk();
+                        }
+                    }
+                }
+                engine.currentPrefetchItem = null;
+            }
+        }
+        onExited: {
+            engine.currentPrefetchItem = null;
+        }
+    }
+
+    Timer {
+        id: prefetchTimer
+        interval: 150
+        repeat: true
+        running: engine.himalayaInstalled && engine.prefetchIndex < engine.fullMailCacheList.length
+        onTriggered: {
+            if (singlePrefetchProc.running || engine.prefetchIndex >= engine.fullMailCacheList.length) return;
+
+            var item = engine.fullMailCacheList[engine.prefetchIndex];
+            engine.prefetchIndex++;
+
+            if (!item) return;
+            if (item.body_content && item.body_content.trim() !== "" && item.body_content !== "(Empty body)" && item.body_content !== "(No content)" && item.body_content !== "(No message body content)") {
+                return;
+            }
+
+            var folderArg = engine.getMaildirFolder(item.folder);
+            engine.currentPrefetchItem = item;
+
+            singlePrefetchProc.command = [
+                "sh", "-c",
+                'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
+                'ID="$1"; FOLDER="$2"; ' +
+                'BODY=$(himalaya message read -m "$FOLDER" "$ID" 2>/dev/null); ' +
+                'if [ -z "$BODY" ] || [ "$BODY" = "(Empty body)" ]; then ' +
+                '  BODY=$(himalaya message read --mailbox "$FOLDER" "$ID" 2>/dev/null); ' +
+                'fi; ' +
+                'if [ -z "$BODY" ] || [ "$BODY" = "(Empty body)" ]; then ' +
+                '  BODY=$(himalaya -m "$FOLDER" message read "$ID" 2>/dev/null); ' +
+                'fi; ' +
+                'if [ -z "$BODY" ] || [ "$BODY" = "(Empty body)" ]; then ' +
+                '  BODY=$(himalaya message read "$ID" 2>/dev/null); ' +
+                'fi; ' +
+                'if [ -z "$BODY" ] || [ "$BODY" = "(Empty body)" ]; then ' +
+                '  BODY=$(himalaya message read --folder "$FOLDER" "$ID" 2>/dev/null); ' +
+                'fi; ' +
+                'printf "%s" "$BODY"',
+                "sh", item.id.toString(), folderArg
+            ];
+            singlePrefetchProc.running = true;
+        }
+    }
+
     readonly property Process himalayaCheckProc: Process {
         running: true
         command: [
@@ -119,19 +207,31 @@ QtObject {
         var activeItem = selectedMail;
         if (!activeItem) { activeMailBody = ""; return; }
 
-        if (activeItem.body_content && activeItem.body_content.trim() !== "") {
+        if (activeItem.body_content && activeItem.body_content.trim() !== "" && activeItem.body_content !== "(Empty body)" && activeItem.body_content !== "(No content)" && activeItem.body_content !== "(No message body content)") {
             activeMailBody = activeItem.body_content;
         } else {
-            activeMailBody = "Loading message body...";
+            activeMailBody = "⏳ Loading message body from server...";
             var folderArg = getMaildirFolder(activeItem.folder);
 
             bodyFetchProc.running = false;
             bodyFetchProc.command = [
                 "sh", "-c",
                 'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
-                'SCR="' + Quickshell.shellDir + '/modules/overlays/email/backend/HimalayaEngine.lua"; ' +
-                'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
-                '"$CMD" "$SCR" FETCH_BODY "$1" "$2"',
+                'ID="$1"; FOLDER="$2"; ' +
+                'BODY=$(himalaya message read -m "$FOLDER" "$ID" 2>/dev/null); ' +
+                'if [ -z "$BODY" ] || [ "$BODY" = "(Empty body)" ]; then ' +
+                '  BODY=$(himalaya message read --mailbox "$FOLDER" "$ID" 2>/dev/null); ' +
+                'fi; ' +
+                'if [ -z "$BODY" ] || [ "$BODY" = "(Empty body)" ]; then ' +
+                '  BODY=$(himalaya -m "$FOLDER" message read "$ID" 2>/dev/null); ' +
+                'fi; ' +
+                'if [ -z "$BODY" ] || [ "$BODY" = "(Empty body)" ]; then ' +
+                '  BODY=$(himalaya message read "$ID" 2>/dev/null); ' +
+                'fi; ' +
+                'if [ -z "$BODY" ] || [ "$BODY" = "(Empty body)" ]; then ' +
+                '  BODY=$(himalaya message read --folder "$FOLDER" "$ID" 2>/dev/null); ' +
+                'fi; ' +
+                'printf "%s" "$BODY"',
                 "sh", activeItem.id.toString(), folderArg
             ];
             bodyFetchProc.running = true;
@@ -223,6 +323,10 @@ QtObject {
                             engine.fullMailCacheList = parsedData;
                             engine.recalculateFolderStats();
                             engine.filterEmailsByActiveFolder();
+
+                            // Start background prefetch of all bodies so every email opens instantly
+                            engine.prefetchIndex = 0;
+                            prefetchTimer.restart();
                         }
                     } catch (e) {
                         console.log("[EmailEngine] Index extraction fault: " + e.message);
@@ -350,10 +454,7 @@ QtObject {
         engine.selectedMail = filteredMails[currentMailIndex];
     }
 
-    // 30-DAY TRASH WORKFLOW (WITH STARRED PROTECTION):
-    // 1. Starred emails CANNOT be deleted.
-    // 2. Normal emails move to [Gmail]/Trash (held 30 days by Google, then auto-deleted).
-    // 3. Deleting inside Trash permanently expunges.
+    // 30-DAY TRASH WORKFLOW (WITH STARRED PROTECTION)
     function handleDeletion() {
         var activeItem = selectedMail;
         if (!activeItem) return;
@@ -362,7 +463,6 @@ QtObject {
         if (currentTime - lastDeleteTime < 200) return;
         lastDeleteTime = currentTime;
 
-        // ---- STARRED EMAIL PROTECTION ----
         var isStarred = (activeItem.flags || []).map(f => f.toLowerCase()).some(f => f === "flagged" || f === "starred");
         var isStarredFolder = (folderList[currentFolderIndex] === "starred");
 
@@ -372,7 +472,7 @@ QtObject {
                 "⭐ Starred Email Protected",
                 "Starred emails cannot be deleted. Press 'S' to unstar first."
             ]);
-            return; // Hard stop: refuse to delete starred emails
+            return;
         }
 
         var currentFolder = (activeItem.folder || "").toLowerCase();
@@ -383,11 +483,10 @@ QtObject {
         var targetSender = (activeItem.from ? (activeItem.from.addr || activeItem.from.name || "") : (activeItem.sender || "")).trim();
         var targetTimeKey = engine.getNormalizedDateKey(targetDate);
 
-        var trashFolderArg = getMaildirFolder("trash");     // "[Gmail]/Trash"
+        var trashFolderArg = getMaildirFolder("trash");
         var sourceFolderArg = getMaildirFolder(currentFolder);
 
         if (currentFolder === "trash") {
-            // Permanently delete if already inside Trash
             writeToQueue("DELETE", targetId, trashFolderArg, "");
 
             fullMailCacheList = fullMailCacheList.filter(item => {
@@ -398,17 +497,15 @@ QtObject {
                 return !((item.subject || "") === targetSub && (item.date || "") === targetDate && s === targetSender);
             });
         } else {
-            // Move to [Gmail]/Trash
             writeToQueue("MOVE", targetId, sourceFolderArg, trashFolderArg);
 
-            // Move matching unstarred duplicate copies to trash in memory immediately
             fullMailCacheList.forEach(item => {
                 if (!item) return;
                 var s = (item.from ? (item.from.addr || item.from.name || "") : (item.sender || "")).trim();
                 var timeKey = engine.getNormalizedDateKey(item.date);
 
                 var isDirectMatch = (targetId !== "" && item.id !== undefined && item.id.toString() === targetId)
-                || (targetMsgId !== "" && item["message-id"] && item["message-id"] === targetMsgId);
+                    || (targetMsgId !== "" && item["message-id"] && item["message-id"] === targetMsgId);
                 var isDuplicateMatch = (targetSub !== "" && item.subject === targetSub && s === targetSender && (targetTimeKey === "" || timeKey === targetTimeKey));
 
                 if (isDirectMatch || isDuplicateMatch) {
@@ -494,6 +591,13 @@ QtObject {
     function handleOutboundDelivery(toAddress, subjectLine, bodyContent) {
         if (!toAddress || toAddress.trim() === "") return;
         writeToQueue("SEND", toAddress.trim(), subjectLine.trim(), bodyContent);
+
+        if (typeof shell !== "undefined" && shell && shell.settingsManager && shell.settingsManager.emailSoundEnabled) {
+            var sound = shell.settingsManager.emailSendSound;
+            if (sound && sound.length > 0) {
+                Quickshell.execDetached(["pw-play", sound]);
+            }
+        }
         isComposing = false;
     }
 }

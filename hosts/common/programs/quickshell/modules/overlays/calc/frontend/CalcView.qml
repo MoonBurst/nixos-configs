@@ -2,17 +2,23 @@ import QtQuick
 import QtQuick.Controls 2
 import QtQuick.Layouts 1.15
 import "../backend"
+import "../../../style" as Style
+import "../../../common/Utils.js" as Utils
 
 Item {
     id: viewRoot
 
     required property CalcEngine engine
     property var theme: null
+    property var settingsManager: null
 
-    readonly property int fieldHeight: (shell && shell.settingsManager)
-        ? shell.settingsManager.getWindowFieldHeight("calc", 54) : 54
-    readonly property int overlayFontSize: (shell && shell.settingsManager && shell.settingsManager.overlayFontSize > 0)
-        ? shell.settingsManager.overlayFontSize : 18
+    readonly property int fieldHeight: settingsManager
+        ? settingsManager.getWindowFieldHeight("calc", 54) : 54
+    readonly property int overlayFontSize: (settingsManager && settingsManager.overlayFontSize > 0)
+        ? settingsManager.overlayFontSize : 18
+
+    readonly property var safePad: Utils.getSafeCardPadding(settingsManager)
+    readonly property var inputPad: Utils.getSafeInputPadding(settingsManager)
 
     signal completed()
     function clearAndFocus(expr) {
@@ -25,19 +31,36 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: (viewRoot.theme && viewRoot.theme.globalPadding) ? viewRoot.theme.globalPadding : 16
+        anchors.leftMargin: viewRoot.safePad.h
+        anchors.rightMargin: viewRoot.safePad.h
+        anchors.topMargin: viewRoot.safePad.v
+        anchors.bottomMargin: viewRoot.safePad.v
         spacing: 16
 
-        Rectangle {
+        // Universal Shape Input Bar
+        Item {
             Layout.fillWidth: true
+            Layout.preferredHeight: viewRoot.fieldHeight
+            Layout.minimumHeight: viewRoot.fieldHeight
+            Layout.maximumHeight: viewRoot.fieldHeight
             height: viewRoot.fieldHeight
-            radius: 8
-            color: (theme && theme.base00) ? theme.base00 : "#11111b"
-            border.width: calcField.activeFocus ? 2 : 1
-            border.color: calcField.activeFocus ? ((theme && theme.base05) ? theme.base05 : "yellow") : ((theme && theme.base03) ? theme.base03 : "#45475a")
+
+            Style.ShapeBox {
+                anchors.fill: parent
+                role: "input"
+                color: (theme && theme.base00) ? theme.base00 : "#11111b"
+                borderColor: calcField.activeFocus
+                    ? ((theme && theme.base05) ? theme.base05 : "yellow")
+                    : ((theme && theme.base03) ? theme.base03 : "#45475a")
+                borderWidth: calcField.activeFocus ? 2 : 1
+                slantWidth: 14
+            }
 
             RowLayout {
-                anchors.fill: parent; anchors.margins: 12; spacing: 10
+                anchors.fill: parent
+                anchors.leftMargin: viewRoot.inputPad.left
+                anchors.rightMargin: viewRoot.inputPad.right
+                spacing: 10
                 Text { text: "🧮"; font.pixelSize: Math.max(16, viewRoot.fieldHeight * 0.4) }
                 TextInput {
                     id: calcField
@@ -75,12 +98,18 @@ Item {
             }
         }
 
-        Rectangle {
+        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            radius: 8
-            color: (theme && theme.base00) ? theme.base00 : "#11111b"
-            border.width: 1; border.color: (theme && theme.base03) ? theme.base03 : "#45475a"
+
+            Style.ShapeBox {
+                anchors.fill: parent
+                role: "input"
+                color: (theme && theme.base00) ? theme.base00 : "#11111b"
+                borderColor: (theme && theme.base03) ? theme.base03 : "#45475a"
+                borderWidth: 1
+                slantWidth: 14
+            }
 
             Item {
                 anchors.fill: parent
@@ -99,17 +128,23 @@ Item {
                     anchors.fill: parent; columns: 3; columnSpacing: 10; rowSpacing: 10
                     Repeater {
                         model: engine.resultString.split("\n")
-                        delegate: Rectangle {
+                        delegate: Item {
                             readonly property var parts: modelData.split("|")
                             readonly property string cCode: parts.length > 3 ? parts[1] : ""
                             readonly property string cVal: parts.length > 3 ? parts[3] : modelData
                             readonly property bool isSelected: index === engine.selectedGridIndex
                             width: Math.floor((parent.width - 20) / 3)
                             height: Math.floor((parent.height - 30) / 4)
-                            radius: 6
-                            color: isSelected ? ((theme && theme.base02) ? theme.base02 : "#333") : "transparent"
-                            border.color: isSelected ? "#04f100" : "#444"
-                            border.width: isSelected ? 2 : 1
+
+                            Style.ShapeBox {
+                                anchors.fill: parent
+                                role: "input"
+                                color: parent.isSelected ? ((theme && theme.base02) ? theme.base02 : "#333") : "transparent"
+                                borderColor: parent.isSelected ? "#04f100" : "#444"
+                                borderWidth: parent.isSelected ? 2 : 1
+                                slantWidth: 8
+                            }
+
                             Column {
                                 anchors.fill: parent; anchors.margins: 8; spacing: 4
                                 Text { text: cCode; font.bold: true; font.pixelSize: Math.max(11, viewRoot.overlayFontSize - 4); color: isSelected ? "#04f100" : "yellow" }

@@ -1,7 +1,5 @@
 import QtQuick
 
-// Nullified: All preview sliders are unified in OverlayInspectorWindow.qml.
-// Dummy properties and signals prevent compilation errors in any window references.
 Item {
     id: dummyInspector
     visible: false

@@ -4,6 +4,8 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 import "../../../" as RootTheme
+import "../../style" as Style
+import "../../common" as Common
 import "../../settings" as SettingsTools
 import "./backend" as Backend
 import "./frontend" as Frontend
@@ -30,7 +32,8 @@ PanelWindow {
     visible: isOpenState || isPreviewMode
 
     property bool isCardActive: true
-    readonly property bool isModalOpen: viewLoader.item ? viewLoader.item.isModalActive() : false
+    readonly property bool isModalOpen: (emailEngine && emailEngine.isComposing)
+        || (viewLoader.item && (viewLoader.item.modalActive || viewLoader.item.isModalActive()))
 
     readonly property color activeBorderColor: (theme && theme.base03) ? theme.base03 : "#003399"
     readonly property color inactiveBorderColor: (theme && theme.base0D) ? theme.base0D : "#003399"
@@ -120,17 +123,14 @@ PanelWindow {
     WlrLayershell.namespace: "quickshell-email-window"
     WlrLayershell.layer: isPreviewMode ? WlrLayer.Top : WlrLayer.Overlay
 
-    // While setting up login, use OnDemand focus so you can freely type into your web browser
     WlrLayershell.keyboardFocus: {
         if (!visible || isPreviewMode) return WlrKeyboardFocus.None;
-        if (window.isModalOpen) return WlrKeyboardFocus.OnDemand;
         return window.isCardActive ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None;
     }
 
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
 
-    // When modal is active or window unfocused, shrink mask to the card so clicks outside pass to your browser
     mask: (window.isCardActive && !window.isModalOpen) ? null : cardMaskRegion
     Region { id: cardMaskRegion; item: emailCard }
 
@@ -165,49 +165,16 @@ PanelWindow {
         function close(): void { window.close(); }
     }
 
-    Process {
-        id: escWatcher
-        running: window.isOpenState && !window.isPreviewMode && (!viewLoader.item || !viewLoader.item.isModalActive())
-        command: [
-            "python3", "-u", "-c",
-            "import glob, struct, select, sys\n" +
-            "fds = []\n" +
-            "for dev in glob.glob('/dev/input/by-id/*-event-kbd') + glob.glob('/dev/input/event*'):\n" +
-            "    try:\n" +
-            "        fds.append(open(dev, 'rb', buffering=0))\n" +
-            "    except Exception:\n" +
-            "        pass\n" +
-            "if not fds:\n" +
-            "    sys.exit(0)\n" +
-            "fmt = 'llHHi' if struct.calcsize('l') == 8 else 'iiHHi'\n" +
-            "sz = struct.calcsize(fmt)\n" +
-            "while True:\n" +
-            "    r, _, _ = select.select(fds, [], [])\n" +
-            "    for fd in r:\n" +
-            "        try:\n" +
-            "            d = fd.read(sz)\n" +
-            "            if len(d) == sz:\n" +
-            "                _, _, t, code, val = struct.unpack(fmt, d)\n" +
-            "                if t == 1 and code == 1 and val == 1:\n" +
-            "                    print('ESC', flush=True)\n" +
-            "        except Exception:\n" +
-            "            pass\n"
-        ]
-        stdout: SplitParser {
-            splitMarker: "\n"
-            onRead: data => {
-                if (data.trim() === "ESC") {
-                    if (emailEngine.isComposing) {
-                        emailEngine.isComposing = false;
-                    } else {
-                        window.close();
-                    }
-                }
+    Common.GlobalEscWatcher {
+        active: window.isOpenState && !window.isPreviewMode && !window.isModalOpen
+        onEscapePressed: {
+            if (viewLoader.item && (Date.now() - viewLoader.item.lastModalCloseTime < 350)) {
+                return;
             }
+            window.close();
         }
     }
 
-    // Multi-screen click-off detector (Disabled while login modal is open)
     Variants {
         model: Quickshell.screens
         delegate: PanelWindow {
@@ -233,7 +200,6 @@ PanelWindow {
         }
     }
 
-    // Same-screen click-off detector (Disabled while login modal is open)
     MouseArea {
         anchors.fill: parent
         enabled: window.isCardActive && !window.isPreviewMode && !window.isModalOpen
@@ -251,6 +217,27 @@ PanelWindow {
         x: Math.round(Math.max(20, (window.width - width) / 2))
         y: Math.round(Math.max(20, (window.height - height) / 2))
 
+        readonly property int cardCornerCut: {
+            if (!settingsManager) return 0;
+            if (settingsManager.overlayCardShape === "hexagon") return Math.round(settingsManager.overlayHexagonCut || 36);
+            if (settingsManager.overlayCardShape === "slant") return Math.round(settingsManager.overlaySlantAngle || 32);
+            return 0;
+        }
+        readonly property int cardPadH: (settingsManager && settingsManager.overlayCardShape !== "rounded")
+            ? Math.max(24, Math.round(cardCornerCut * 1.0) + 16)
+            : 0
+        readonly property int cardPadV: (settingsManager && settingsManager.overlayCardShape !== "rounded")
+            ? Math.max(18, Math.round(cardCornerCut * 0.5) + 12)
+            : 0
+
+        Style.ShapeBox {
+            anchors.fill: parent
+            role: "card"
+            color: theme.base01
+            borderColor: window.isCardActive ? window.activeBorderColor : window.inactiveBorderColor
+            borderWidth: (theme && theme.globalBorderWidth !== undefined) ? theme.globalBorderWidth : 3
+        }
+
         MouseArea {
             anchors.fill: parent
             enabled: !window.isCardActive && !window.isPreviewMode && !window.isModalOpen
@@ -264,6 +251,10 @@ PanelWindow {
         Loader {
             id: viewLoader
             anchors.fill: parent
+            anchors.leftMargin: emailCard.cardPadH
+            anchors.rightMargin: emailCard.cardPadH
+            anchors.topMargin: emailCard.cardPadV
+            anchors.bottomMargin: emailCard.cardPadV
             active: window.isUiActive
             sourceComponent: Frontend.EmailView {
                 engine: emailEngine
@@ -273,29 +264,6 @@ PanelWindow {
             }
             onItemChanged: {
                 if (item && window.isOpenState && window.isCardActive) item.clearAndFocus();
-            }
-        }
-
-        Rectangle {
-            anchors.top: parent.top
-            anchors.right: parent.right
-            anchors.margins: 14
-            width: 28; height: 28; radius: 6
-            color: closeHov.hovered ? ((theme && theme.base08 !== undefined) ? theme.base08 : "#ff5555") : "transparent"
-            border.color: (theme && theme.base08 !== undefined) ? theme.base08 : "#ff5555"
-            border.width: 1.5
-            z: 10000
-
-            Text {
-                anchors.centerIn: parent
-                text: "✕"
-                font.bold: true; font.pixelSize: 13
-                color: closeHov.hovered ? ((theme && theme.base00 !== undefined) ? theme.base00 : "#000") : ((theme && theme.base08 !== undefined) ? theme.base08 : "#ff5555")
-            }
-            HoverHandler { id: closeHov }
-            MouseArea {
-                anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                onClicked: window.close()
             }
         }
     }
@@ -311,18 +279,23 @@ PanelWindow {
         settingsManager: window.settingsManager
         theme: window.theme
         defaultW: 1500; defaultH: 900
-            defaultFH: 48; defaultIS: 32
-                hasField: true; hasIcon: false
-                defaultPolicy: window.defaultPolicy
+        defaultFH: 48; defaultIS: 32
+        hasField: true; hasIcon: false
+        defaultPolicy: window.defaultPolicy
 
-                    onDoneRequested: {
-                        if (settingsManager) settingsManager.previewWindow = "";
-                    }
+        onDoneRequested: {
+            if (settingsManager) settingsManager.previewWindow = "";
+        }
     }
 
     Shortcut {
         sequence: "Escape"
-        enabled: window.visible && !window.isPreviewMode && (!viewLoader.item || !viewLoader.item.isModalActive())
-        onActivated: window.close()
+        enabled: window.visible && !window.isPreviewMode && !window.isModalOpen
+        onActivated: {
+            if (viewLoader.item && (Date.now() - viewLoader.item.lastModalCloseTime < 350)) {
+                return;
+            }
+            window.close();
+        }
     }
 }

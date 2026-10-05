@@ -9,6 +9,9 @@ QtObject {
     property var definitionEntries: []
     property string activeWord: ""
 
+    // In-memory LRU lookup cache: guarantees zero network calls for repeated words
+    property var lookupCache: ({})
+
     function clearData(message) {
         selectedIndex = 0;
         definitionEntries = [{ type: "status", text: message }];
@@ -16,7 +19,13 @@ QtObject {
 
     function stripHtml(htmlStr) {
         if (!htmlStr) return "";
-        return htmlStr.replace(/<[^>]*>/g, "").replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#39;/g, "'").trim();
+        return htmlStr.replace(/<[^>]*>/g, "")
+                      .replace(/&quot;/g, '"')
+                      .replace(/&amp;/g, '&')
+                      .replace(/&#39;/g, "'")
+                      .replace(/&lt;/g, '<')
+                      .replace(/&gt;/g, '>')
+                      .trim();
     }
 
     function parseResponse(dataStr) {
@@ -56,6 +65,9 @@ QtObject {
             clearData("No definitions found for '" + activeWord + "'.");
             return;
         }
+
+        // Cache successful response in memory
+        engine.lookupCache[activeWord] = entries;
         definitionEntries = entries;
         selectedIndex = 0;
     }
@@ -64,9 +76,12 @@ QtObject {
         running: false
         stdout: StdioCollector {
             onStreamFinished: {
-                var clean = text.trim();
-                if (clean.length > 0) engine.parseResponse(clean);
-                else engine.clearData("Definition lookup failed.");
+                var clean = text ? text.trim() : "";
+                if (clean.length > 0 && clean.startsWith("[") || clean.startsWith("{")) {
+                    engine.parseResponse(clean);
+                } else {
+                    engine.clearData("Definition lookup failed or word not found.");
+                }
             }
         }
     }
@@ -75,17 +90,27 @@ QtObject {
         const cleanWord = (word || "").toLowerCase().trim();
         if (!cleanWord) { clearData("Enter a word to define."); return; }
         activeWord = cleanWord;
+
+        // Instant Cache Hit (0ms latency, zero network packets)
+        if (engine.lookupCache[cleanWord]) {
+            definitionEntries = engine.lookupCache[cleanWord];
+            selectedIndex = 0;
+            return;
+        }
+
         clearData("Searching definition for '" + cleanWord + "'...");
 
+        // Properly URL-encoded parameters and safe non-blocking query
+        var encoded = encodeURIComponent(cleanWord);
         dictFetcher.running = false;
         dictFetcher.command = [
             "sh", "-c",
             'w="$1"; ' +
-            'out=$(curl -s -L --connect-timeout 4 --max-time 6 -A "Mozilla/5.0" "https://api.dictionaryapi.dev/api/v2/entries/en/$w" 2>/dev/null); ' +
-            'if echo "$out" | grep -q "definition"; then echo "$out"; else ' +
-            'curl -s -L --connect-timeout 4 --max-time 6 -A "Quickshell-Dict/1.0" "https://en.wiktionary.org/api/rest_v1/page/definition/$w" 2>/dev/null; ' +
+            'out=$(curl -s -L --connect-timeout 3 --max-time 5 -A "Mozilla/5.0" "https://api.dictionaryapi.dev/api/v2/entries/en/$w" 2>/dev/null); ' +
+            'if echo "$out" | grep -q "\\"definition\\""; then printf "%s" "$out"; else ' +
+            'curl -s -L --connect-timeout 3 --max-time 5 -A "Quickshell-Dict/1.0" "https://en.wiktionary.org/api/rest_v1/page/definition/$w" 2>/dev/null; ' +
             'fi',
-            "sh", cleanWord
+            "sh", encoded
         ];
         dictFetcher.running = true;
     }

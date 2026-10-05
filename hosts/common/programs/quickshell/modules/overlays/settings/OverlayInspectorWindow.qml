@@ -1,3 +1,4 @@
+import "../../common" as Common
 import QtQuick
 import QtQuick.Controls 2
 import QtQuick.Layouts 1.15

@@ -2,17 +2,19 @@ import QtQuick
 import QtQuick.Controls 2
 import QtQuick.Layouts 1.15
 import "../backend"
+import "../../../style" as Style
 
 Item {
     id: viewRoot
 
     required property WebSearchEngine engine
     property var theme: null
+    property var settingsManager: null
 
-    readonly property int fieldHeight: (shell && shell.settingsManager)
-        ? shell.settingsManager.getWindowFieldHeight("web", 54) : 54
-    readonly property int overlayFontSize: (shell && shell.settingsManager && shell.settingsManager.overlayFontSize > 0)
-        ? shell.settingsManager.overlayFontSize : 16
+    readonly property int fieldHeight: settingsManager
+        ? settingsManager.getWindowFieldHeight("web", 54) : 54
+    readonly property int overlayFontSize: (settingsManager && settingsManager.overlayFontSize > 0)
+        ? settingsManager.overlayFontSize : 16
 
     signal completed()
 
@@ -38,16 +40,24 @@ Item {
             Layout.alignment: Qt.AlignHCenter
         }
 
-        Rectangle {
+        // Universal Shape Input Bar
+        Item {
             Layout.fillWidth: true
             Layout.preferredHeight: viewRoot.fieldHeight
             Layout.minimumHeight: viewRoot.fieldHeight
             Layout.maximumHeight: viewRoot.fieldHeight
             height: viewRoot.fieldHeight
-            radius: 8
-            color: (theme && theme.base00) ? theme.base00 : "#11111b"
-            border.width: searchField.activeFocus ? 2 : 1
-            border.color: searchField.activeFocus ? ((theme && theme.base05) ? theme.base05 : "yellow") : ((theme && theme.base03) ? theme.base03 : "#45475a")
+
+            Style.ShapeBox {
+                anchors.fill: parent
+                role: "input"
+                color: (theme && theme.base00) ? theme.base00 : "#11111b"
+                borderColor: searchField.activeFocus
+                    ? ((theme && theme.base05) ? theme.base05 : "yellow")
+                    : ((theme && theme.base03) ? theme.base03 : "#45475a")
+                borderWidth: searchField.activeFocus ? 2 : 1
+                slantWidth: 14
+            }
 
             RowLayout {
                 anchors.fill: parent; anchors.margins: 12; spacing: 10
@@ -79,11 +89,19 @@ Item {
             }
         }
 
-        Rectangle {
+        // Universal Shape Action Button
+        Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 46
-            radius: 6
-            color: btnHov.hovered ? ((theme && theme.base05) ? theme.base05 : "yellow") : ((theme && theme.base03) ? theme.base03 : "#003399")
+
+            Style.ShapeBox {
+                anchors.fill: parent
+                role: "input"
+                color: btnHov.hovered ? ((theme && theme.base05) ? theme.base05 : "yellow") : ((theme && theme.base03) ? theme.base03 : "#003399")
+                borderColor: (theme && theme.base05) ? theme.base05 : "yellow"
+                borderWidth: 1
+                slantWidth: 10
+            }
 
             Text {
                 anchors.centerIn: parent

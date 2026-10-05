@@ -2,6 +2,7 @@ import Quickshell
 import QtQuick
 import QtQuick.LocalStorage
 import QtQuick.Layouts
+import "../../../style" as Style
 
 Rectangle {
     id: composeComp
@@ -36,11 +37,11 @@ Rectangle {
     property bool wasSent: false
 
     readonly property int fieldInputHeight: (typeof shell !== 'undefined' && shell && shell.settingsManager && shell.settingsManager.globalFieldHeight > 0)
-        ? shell.settingsManager.globalFieldHeight : 44
+    ? shell.settingsManager.globalFieldHeight : 44
 
     property string mailSignature: (typeof shell !== "undefined" && shell && shell.settingsManager && shell.settingsManager.emailSignature)
-        ? shell.settingsManager.emailSignature
-        : "\n\n--\nSeekers of light..\nBelieve not in justice...\nBelieve not in truth...\nFor they are empty and inconsistent, as are all things..."
+    ? shell.settingsManager.emailSignature
+    : "\n\n--\nSeekers of light..\nBelieve not in justice...\nBelieve not in truth...\nFor they are empty and inconsistent, as are all things..."
 
     property alias bodyInput: bodyInput
 
@@ -158,7 +159,7 @@ Rectangle {
                 tx.executeSql('CREATE TABLE IF NOT EXISTS queue (id INTEGER PRIMARY KEY AUTOINCREMENT, action TEXT, arg1 TEXT, arg2 TEXT, arg3 TEXT)');
                 tx.executeSql(
                     'INSERT INTO queue (action, arg1, arg2, arg3) VALUES (?, ?, ?, ?)',
-                    ['DRAFT', recipient, subject, bodyContent]
+                              ['DRAFT', recipient, subject, bodyContent]
                 );
             });
         } catch (err) {}
@@ -193,17 +194,24 @@ Rectangle {
             currentSuggestion = "";
             return;
         }
-        var txt = currentText.toLowerCase();
-        var match = contactsList.find(contact => contact.toLowerCase().startsWith(txt));
+        var txt = currentText.toLowerCase().trim();
+        var match = contactsList.find(contact => {
+            var cLower = contact.toLowerCase();
+            return cLower.startsWith(txt) && cLower !== txt;
+        });
         currentSuggestion = match || "";
     }
 
-    Rectangle {
+    Item {
         anchors.fill: parent
-        color: composeComp.modalBoxBg
-        border.color: outerBorderColor
-        border.width: outerBorderThickness
-        radius: (typeof theme !== 'undefined' && theme) ? theme.defaultCardRadius : 10
+
+        Style.ShapeBox {
+            anchors.fill: parent
+            role: "card"
+            color: composeComp.modalBoxBg
+            borderColor: composeComp.outerBorderColor
+            borderWidth: composeComp.outerBorderThickness
+        }
 
         Column {
             anchors.fill: parent
@@ -223,9 +231,17 @@ Rectangle {
                     Layout.fillWidth: true
                 }
 
-                Rectangle {
-                    width: 120; height: 30; color: composeComp.fieldBg; radius: 6
-                    border.color: composeComp.innerCardInactiveBorder; border.width: 1
+                Item {
+                    width: 120; height: 30
+
+                    Style.ShapeBox {
+                        anchors.fill: parent
+                        role: "input"
+                        slantWidth: 8
+                        color: composeComp.fieldBg
+                        borderColor: composeComp.innerCardInactiveBorder
+                        borderWidth: 1
+                    }
 
                     Text {
                         anchors.centerIn: parent
@@ -265,23 +281,40 @@ Rectangle {
                 spacing: 8
 
                 // 1. RECIPIENT FIELD
-                Rectangle {
-                    width: parent.width; height: composeComp.fieldInputHeight; color: composeComp.fieldBg
-                    radius: 8
-                    border.color: toInput.activeFocus ? composeComp.innerCardActiveBorder : composeComp.innerCardInactiveBorder
-                    border.width: toInput.activeFocus ? 2 : 1
+                Item {
+                    width: parent.width; height: composeComp.fieldInputHeight
+
+                    Style.ShapeBox {
+                        anchors.fill: parent
+                        role: "input"
+                        slantWidth: 10
+                        color: composeComp.fieldBg
+                        borderColor: toInput.activeFocus ? composeComp.innerCardActiveBorder : composeComp.innerCardInactiveBorder
+                        borderWidth: toInput.activeFocus ? 2 : 1
+                    }
 
                     Item {
                         anchors.fill: parent; anchors.margins: 10
 
                         Text {
-                            text: composeComp.currentSuggestion; font.family: composeComp.composeFontFamily; font.pixelSize: composeComp.inputFontSize; color: "#545454"
-                            anchors.fill: parent; visible: toInput.text !== "" && composeComp.currentSuggestion.toLowerCase().startsWith(toInput.text.toLowerCase())
+                            anchors.fill: parent
+                            verticalAlignment: Text.AlignVCenter
+                            font.family: composeComp.composeFontFamily
+                            font.pixelSize: composeComp.inputFontSize
+                            color: "#545454"
+                            text: composeComp.currentSuggestion
+                            visible: toInput.text !== "" && composeComp.currentSuggestion !== "" && composeComp.currentSuggestion.toLowerCase().startsWith(toInput.text.toLowerCase()) && (composeComp.currentSuggestion.toLowerCase() !== toInput.text.toLowerCase())
                         }
 
                         TextInput {
-                            id: toInput; anchors.fill: parent; font.family: composeComp.composeFontFamily; font.pixelSize: composeComp.inputFontSize; color: composeComp.textWriteColor
+                            id: toInput
+                            anchors.fill: parent
+                            font.family: composeComp.composeFontFamily
+                            font.pixelSize: composeComp.inputFontSize
+                            color: composeComp.textWriteColor
                             verticalAlignment: TextInput.AlignVCenter
+                            selectByMouse: true
+                            clip: true
                             onTextChanged: composeComp.checkAutocompleteSuggestions(text)
 
                             Keys.onPressed: (event) => {
@@ -298,12 +331,14 @@ Rectangle {
                                     event.accepted = true;
                                 }
                             }
+
                             Text {
                                 text: "To: [Tab to complete/next]"
                                 color: composeComp.placeholderTextColor
-                                visible: parent.text === ""
+                                visible: parent.text === "" && !parent.activeFocus
                                 anchors.fill: parent
                                 font.pixelSize: composeComp.inputFontSize
+                                font.family: composeComp.composeFontFamily
                                 verticalAlignment: Text.AlignVCenter
                             }
                         }
@@ -311,10 +346,17 @@ Rectangle {
                 }
 
                 // 2. SUBJECT FIELD
-                Rectangle {
-                    width: parent.width; height: composeComp.fieldInputHeight; color: composeComp.fieldBg; radius: 8
-                    border.color: subjectInput.activeFocus ? composeComp.innerCardActiveBorder : composeComp.innerCardInactiveBorder
-                    border.width: subjectInput.activeFocus ? 2 : 1
+                Item {
+                    width: parent.width; height: composeComp.fieldInputHeight
+
+                    Style.ShapeBox {
+                        anchors.fill: parent
+                        role: "input"
+                        slantWidth: 10
+                        color: composeComp.fieldBg
+                        borderColor: subjectInput.activeFocus ? composeComp.innerCardActiveBorder : composeComp.innerCardInactiveBorder
+                        borderWidth: subjectInput.activeFocus ? 2 : 1
+                    }
 
                     Item {
                         anchors.fill: parent; anchors.margins: 10
@@ -322,6 +364,7 @@ Rectangle {
                         TextInput {
                             id: subjectInput; anchors.fill: parent; font.family: composeComp.composeFontFamily; font.pixelSize: composeComp.inputFontSize; color: composeComp.textWriteColor
                             verticalAlignment: TextInput.AlignVCenter
+                            selectByMouse: true
 
                             Keys.onPressed: (event) => {
                                 if (event.key === Qt.Key_Escape) {
@@ -336,9 +379,10 @@ Rectangle {
                             Text {
                                 text: "Subject:"
                                 color: composeComp.placeholderTextColor
-                                visible: parent.text === ""
+                                visible: parent.text === "" && !parent.activeFocus
                                 anchors.fill: parent
                                 font.pixelSize: composeComp.inputFontSize
+                                font.family: composeComp.composeFontFamily
                                 verticalAlignment: Text.AlignVCenter
                             }
                         }
@@ -347,13 +391,18 @@ Rectangle {
             }
 
             // 3. BODY MESSAGE CONTENT CANVAS
-            Rectangle {
+            Item {
                 width: parent.width
                 height: Math.max(140, parent.height - (composeComp.fieldInputHeight * 2) - 150)
-                color: composeComp.fieldBg
-                radius: 8
-                border.color: bodyInput.activeFocus ? composeComp.innerCardActiveBorder : composeComp.innerCardInactiveBorder
-                border.width: bodyInput.activeFocus ? 2 : 1
+
+                Style.ShapeBox {
+                    anchors.fill: parent
+                    role: "input"
+                    slantWidth: 12
+                    color: composeComp.fieldBg
+                    borderColor: bodyInput.activeFocus ? composeComp.innerCardActiveBorder : composeComp.innerCardInactiveBorder
+                    borderWidth: bodyInput.activeFocus ? 2 : 1
+                }
 
                 Flickable {
                     id: bodyFlickableCanvas; anchors.fill: parent; anchors.margins: 12; contentWidth: width; contentHeight: bodyInput.height; clip: true
@@ -365,6 +414,7 @@ Rectangle {
                         font.pixelSize: composeComp.inputFontSize
                         color: composeComp.textWriteColor
                         wrapMode: TextEdit.Wrap
+                        selectByMouse: true
 
                         Keys.onPressed: (event) => {
                             if (event.key === Qt.Key_Escape) {
@@ -379,9 +429,10 @@ Rectangle {
                         Text {
                             text: "Write message content here..."
                             color: composeComp.placeholderTextColor
-                            visible: parent.text === ""
+                            visible: parent.text === "" && !parent.activeFocus
                             anchors.fill: parent
                             font.pixelSize: composeComp.inputFontSize
+                            font.family: composeComp.composeFontFamily
                         }
                     }
                 }
