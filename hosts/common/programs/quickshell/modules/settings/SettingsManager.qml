@@ -5,7 +5,12 @@ import Quickshell.Io
 Item {
     id: manager
 
-    property string nixThemeFile: (Quickshell.env("HOME") || "") + "/nix/hosts/common/theme.nix"
+    property string nixThemeFile: {
+        var envPath = Quickshell.env("THEME_NIX");
+        if (envPath && envPath.length > 0) return envPath;
+        var home = Quickshell.env("HOME") || "";
+        return home + "/.config/quickshell/theme.nix";
+    }
 
     Process {
         id: themeFinderProc
@@ -13,13 +18,13 @@ Item {
         command: [
             "sh", "-c",
             'if [ -n "$THEME_NIX" ] && [ -f "$THEME_NIX" ]; then echo "$THEME_NIX"; exit 0; fi; ' +
-            'for d in "$HOME/.config/quickshell" "$HOME/nix" "$HOME/dotfiles" "$HOME/.config" "/etc/nixos"; do ' +
+            'for d in "$HOME/.config/quickshell" "$HOME/dotfiles" "$HOME/.config" "$HOME/nix"; do ' +
             '  if [ -d "$d" ]; then ' +
             '    f=$(find "$d" -maxdepth 4 -name "theme.nix" 2>/dev/null | head -n 1); ' +
             '    if [ -n "$f" ] && [ -f "$f" ]; then echo "$f"; exit 0; fi; ' +
             '  fi; ' +
             'done; ' +
-            'echo "$HOME/nix/hosts/common/theme.nix"'
+            'echo "${THEME_NIX:-$HOME/.config/quickshell/theme.nix}"'
         ]
         stdout: SplitParser {
             onRead: data => {
