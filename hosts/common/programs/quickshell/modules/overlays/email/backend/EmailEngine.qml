@@ -428,37 +428,32 @@ Item {
     function saveMailCacheDisk() {
         engine.pruneCache();
         var payload = JSON.stringify(engine.fullMailCacheList);
-        console.log("[EmailEngine] saveMailCacheDisk payload bytes=" + payload.length);
 
-        // Read stdin with a short timeout. QML's Process.write never closes
-        // the child's stdin, so cat would block forever waiting for EOF.
-        // 200 ms is plenty for a few hundred KB over a pipe. The character-
-        // count trap also goes away because we no longer need a byte length.
+        // Accurate UTF-8 byte length count (never truncates multibyte characters)
+        var byteCount = unescape(encodeURIComponent(payload)).length;
+
+        // head -c terminates immediately once exact bytes are received
         cacheWriterProc.command = [
             "sh", "-c",
             'mkdir -p "$HOME/.cache/himalaya"; ' +
             'TMP="$HOME/.cache/himalaya/emails.json.tmp.$$"; ' +
-            'timeout 0.2 cat > "$TMP" 2>/dev/null; ' +
-            '[ -s "$TMP" ] && mv -f "$TMP" "$HOME/.cache/himalaya/emails.json" || rm -f "$TMP"'
+            'head -c "$1" > "$TMP"; ' +
+            'if [ -s "$TMP" ]; then mv -f "$TMP" "$HOME/.cache/himalaya/emails.json"; else rm -f "$TMP"; fi',
+            "sh",
+            String(byteCount)
         ];
         cacheWriterProc.pendingPayload = payload;
         cacheWriterProc.running = false;
         cacheWriterProc.running = true;
     }
 
-    // Writes via stdin so a large cache does not overflow ARG_MAX. Uses a
-    // temp file + mv so a failed write never truncates the good cache.
-    // Writes via stdin so a large cache does not overflow ARG_MAX. Uses
-    // `head -c $BYTES` because QML's Process.write does not signal EOF to
-    // the child; without a byte limit, `cat` would block forever and the
-    // mv would never execute. Atomic temp-file + mv so a failed write
-    // never truncates the existing cache.
     Process {
         id: cacheWriterProc
         property string pendingPayload: ""
         onStarted: {
             if (cacheWriterProc.pendingPayload.length > 0) {
                 cacheWriterProc.write(cacheWriterProc.pendingPayload);
+                cacheWriterProc.pendingPayload = "";
             }
         }
     }

@@ -73,6 +73,6 @@ Singleton {
     }
 
     function clipPath() {
-        return "/tmp/quickshot-clip.png";
+        return (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/quickshot-clip.png";
     }
 }

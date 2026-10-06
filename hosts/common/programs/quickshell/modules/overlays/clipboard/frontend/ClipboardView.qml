@@ -141,7 +141,7 @@ Item {
             'if [ -f "$SCR" ] && command -v lua >/dev/null 2>&1; then ' +
             '  lua "$SCR" ocr "$1"; ' +
             'else ' +
-            '  tmp="/tmp/qs_ocr_$1.png"; printf "%s\t\n" "$1" | cliphist decode > "$tmp" 2>/dev/null; ' +
+            ' tmp="${XDG_RUNTIME_DIR:-/tmp}/qs_ocr_$1.png"; printf "%s\t\n" "$1" | cliphist decode > "$tmp" 2>/dev/null; ' +
             '  tesseract "$tmp" stdout 2>/dev/null || true; rm -f "$tmp" 2>/dev/null; ' +
             'fi',
             "sh", String(item.id)
@@ -286,7 +286,7 @@ Item {
             'if [ -f "$SCR" ] && command -v lua >/dev/null 2>&1; then ' +
             '  lua "$SCR" wipe; ' +
             'else ' +
-            '  cliphist wipe 2>/dev/null; rm -f /tmp/qs_clip_thumb_*.png 2>/dev/null || true; ' +
+            ' cliphist wipe 2>/dev/null; rm -f "${XDG_RUNTIME_DIR:-/tmp}"/qs_clip_thumb_*.png 2>/dev/null || true; ' +
             'fi'
         ]
     }

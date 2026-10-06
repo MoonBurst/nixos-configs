@@ -26,12 +26,8 @@ ShellRoot {
         running: true
         command: [
             "sh", "-c",
-            'rm -f /tmp/qs_avatar_notif_*.png /tmp/quickshot_crop_*.png /tmp/qs_dict*.json 2>/dev/null || true; ' +
-            '# Clear stale IPC command files so overlays do not pop open on a fresh boot.\n' +
-            '# The magnifier state now lives under XDG_RUNTIME_DIR; remove both the\n' +
-            '# new location and the legacy /tmp path in case a prior session left one.\n' +
             'STATE_DIR="${XDG_RUNTIME_DIR:-/tmp}"; ' +
-            'rm -f "$STATE_DIR/quickshell-magnifier-state" /tmp/magnifier-state 2>/dev/null || true'
+            'rm -f "$STATE_DIR"/qs_avatar_notif_*.png "$STATE_DIR"/quickshot_crop_*.png "$STATE_DIR"/qs_dict*.json "$STATE_DIR"/quickshot*.png 2>/dev/null || true'
         ]
     }
 

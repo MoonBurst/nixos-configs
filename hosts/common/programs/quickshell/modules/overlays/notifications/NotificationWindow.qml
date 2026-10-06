@@ -246,7 +246,7 @@ Item {
                 onStatusChanged: {
                     if (status === Image.Ready && activeNotifId !== -1) {
                         let notifId = activeNotifId;
-                        let localPath = "/tmp/qs_avatar_notif_" + notifId + ".png";
+                        let localPath = (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/qs_avatar_notif_" + notifId + ".png";
 
                         grabToImage(function(result) {
                             if (result.saveToFile(localPath)) {

@@ -356,7 +356,7 @@ PanelWindow {
             exportClip.height = Qt.binding(function () { return root.height; });
             captureRoot.x = 0; captureRoot.y = 0;
             if (!cropResult) return;
-            var cropPath = "/dev/shm/quickshot_crop_" + new Date().getTime() + ".png";
+            var cropPath = (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/quickshot_crop_" + new Date().getTime() + ".png";
             cropResult.saveToFile(cropPath);
             wmEngine.executeReveal(cropPath);
         });
@@ -431,7 +431,7 @@ PanelWindow {
         if (!result) { abortExport(); return; }
         var path = (mode === "copy") ? ShotState.clipPath()
         : (mode === "save") ? ShotState.savePath()
-        : (mode === "ocr") ? "/tmp/quickshot-ocr.png" : "/tmp/quickshot-selftest.png";
+        : (mode === "ocr") ? ((Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/quickshot-ocr.png")
 
         var ok = result.saveToFile(path);
         if (ok && (mode === "copy" || mode === "save")) {
@@ -454,7 +454,7 @@ PanelWindow {
     function pickColor(x, y) {
         colorSamplerSource.grabToImage(function (result) {
             if (!result) return;
-            var tempPath = "/tmp/quickshot_pixel.png"; result.saveToFile(tempPath);
+            var tempPath = (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/quickshot_pixel.png";
             colorCanvas.sample("file://" + tempPath + "?t=" + new Date().getTime(), function (rgba) {
                 var hex = "#" + ((1 << 24) + (rgba[0] << 16) + (rgba[1] << 8) + rgba[2]).toString(16).slice(1);
                 ShotState.strokeColor = hex;
