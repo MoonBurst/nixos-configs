@@ -71,8 +71,16 @@ Item {
 
     Process {
         id: cmdRunner
-        onExited: {
+        stderr: StdioCollector { id: cmdErr }
+        onExited: (code) => {
             unifiedBox.gcRunning = false;
+            if (code !== 0 && cmdErr.text.indexOf("password is required") !== -1) {
+                Quickshell.execDetached([
+                    "notify-send", "-a", "Quickshell", "-u", "critical",
+                    "⚠️ Sudoers Configuration Missing",
+                    "Passwordless sudo (-n) is not configured for this command in /etc/sudoers."
+                ]);
+            }
             recalculateState();
         }
     }
