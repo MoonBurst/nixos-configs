@@ -95,6 +95,10 @@ Item {
         if (lower === "amogus" || lower === "amongus" || lower === "sus") {
             viewRoot.routeRequested("amogus", ""); return true;
         }
+        if (lower === "remind" || lower === "reminder" || lower === "reminders" || raw.startsWith("remind ")) {
+            var rText = (raw.indexOf(" ") !== -1) ? raw.slice(raw.indexOf(" ") + 1).trim() : "";
+            viewRoot.routeRequested("reminders", rText); return true;
+        }
         return false;
     }
 

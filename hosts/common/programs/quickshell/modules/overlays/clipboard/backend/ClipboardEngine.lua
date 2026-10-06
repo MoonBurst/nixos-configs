@@ -1,189 +1,100 @@
 #!/usr/bin/env lua
--- ClipboardEngine.lua: RFC-compliant JSON and execution bridge for cliphist
---
--- Recovers human-assigned watermark names from Quickshot's sidecar .json
--- files. cliphist rounds byte sizes to KiB in its display string ("71 KiB"),
--- so we cannot match on that. Instead we decode each image entry to a temp
--- PNG and stat the decoded file, whose byte count is exactly the original
--- PNG size. That exact size is then looked up in the name table.
 
-local action = arg[1] or "list"
+-- Backend driver for Quickshell Clipboard Manager (cliphist integration)
+local cmd = arg[1] or "list"
+local runtime = os.getenv("XDG_RUNTIME_DIR") or "/tmp"
 
-local function json_escape(s)
-    if not s then return '""' end
-    s = s:gsub('\\', '\\\\')
-    s = s:gsub('"', '\\"')
-    s = s:gsub('[%z\1-\31]', function(c)
-        if c == '\n' then return '\\n'
-        elseif c == '\r' then return '\\r'
-        elseif c == '\t' then return '\\t'
-        else return string.format('\\u%04x', string.byte(c))
-        end
-    end)
-    return '"' .. s .. '"'
-end
-
--- Build { exact_byte_size => "assigned_name" } from Quickshot history.
--- Skips sentinel names used for unnamed screenshots so they stay as generic
--- "Screenshot" entries in the list.
-local function build_name_lookup()
-    local lookup = {}
-    local home = os.getenv("HOME") or ""
-    if home == "" then return lookup end
-    local hist_dir = home .. "/.cache/quickshot_history"
-
-    local cmd = "for f in \"" .. hist_dir .. "\"/*.png; do " ..
-                "[ -f \"$f\" ] || continue; " ..
-                "sz=$(stat -c%s \"$f\" 2>/dev/null) || continue; " ..
-                "printf '%s|%s\\n' \"$sz\" \"$f\"; " ..
-                "done"
-    local h = io.popen(cmd)
-    if not h then return lookup end
-
-    -- Lexicographic filename order == chronological for Quickshot's
-    -- quickshot_YYYYMMDD_HHMMSS_<name>.png scheme, so later iterations
-    -- overwrite older entries on size collision — newest name wins.
-    for line in h:lines() do
-        local size_str, path = line:match("^(%d+)|(.+)$")
-        if size_str and path then
-            local json_path = path:gsub("%.png$", ".json")
-            local jf = io.open(json_path, "r")
-            if jf then
-                local content = jf:read("*a") or ""
-                jf:close()
-                local name = content:match('"name"%s*:%s*"([^"]*)"')
-                if name and name ~= ""
-                   and name ~= "Screenshot"
-                   and name ~= "REVEALED PROOF" then
-                    lookup[tonumber(size_str)] = name
-                end
-            end
-        end
-    end
-    h:close()
-    return lookup
-end
-
--- Decode a cliphist entry to a temp PNG (reused as the thumbnail) and
--- return its exact byte size, or nil.
-local function decode_and_stat(id_str)
-    local tmp = "/tmp/qs_clip_thumb_" .. id_str .. ".png"
-    local f = io.open(tmp, "r")
-    if not f then
-        os.execute(string.format("printf '%%s\\t\\n' '%s' | cliphist decode > '%s' 2>/dev/null", id_str, tmp))
-    else
-        f:close()
+-- Escapes strings for safe JSON serialization
+local function json_escape(str)
+if not str then return "" end
+    str = str:gsub("\\", "\\\\")
+    str = str:gsub('"', '\\"')
+    str = str:gsub("\n", "\\n")
+    str = str:gsub("\r", "\\r")
+    str = str:gsub("\t", "\\t")
+    return str
     end
 
-    local h = io.popen("stat -c%s '" .. tmp .. "' 2>/dev/null")
-    if not h then return nil end
-    local sz = tonumber((h:read("*a") or ""):match("%d+"))
-    h:close()
-    return sz
-end
-
-if action == "list" then
-    local handle = io.popen("cliphist list 2>/dev/null")
-    if not handle then
-        print("[]")
-        os.exit(0)
-    end
-
-    local name_lookup = nil
-    local items = {}
-
-    for line in handle:lines() do
-        local tab_pos = line:find("\t")
-        local id_str, rest
-        if tab_pos then
-            id_str = line:sub(1, tab_pos - 1):match("^%s*(%d+)%s*$")
-            rest = line:sub(tab_pos + 1)
-        else
-            id_str, rest = line:match("^(%d+)%s+(.*)$")
-        end
-
-        if id_str and rest then
-            local is_img = false
-            if rest:match("^%[%[%s*binary data") or rest:match("^%[%s*binary data") then
-                is_img = true
+    if cmd == "list" then
+        -- Fetches raw cliphist tab-delimited list and converts to clean JSON
+        local handle = io.popen("cliphist list 2>/dev/null")
+        if not handle then
+            print("[]")
+            return
             end
 
-            local dims = is_img and (rest:match("(%d+x%d+)") or "") or ""
-            local size = is_img and (rest:match("(%d+%.?%d*%s*[KMG]?i?B)") or "") or ""
-            local title = ""
-            local search_text = ""
-            local thumb = ""
+            local entries = {}
+            for line in handle:lines() do
+                local id, content = line:match("^(%d+)\t(.*)$")
+                if id and content then
+                    local is_img = content:find("%[%[ binary data") ~= nil or content:find("%[%[ image") ~= nil
+                    local thumb_path = ""
 
-            if is_img then
-                if name_lookup == nil then
-                    name_lookup = build_name_lookup()
-                end
+                    -- If image, decode a thumbnail to XDG_RUNTIME_DIR for quick asynchronous loading
+                    if is_img then
+                        thumb_path = runtime .. "/qs_clip_thumb_" .. id .. ".png"
+                        local check = io.open(thumb_path, "r")
+                        if not check then
+                            os.execute(string.format("printf '%%s\\t\\n' '%s' | cliphist decode > '%s' 2>/dev/null", id, thumb_path))
+                            else
+                                check:close()
+                                end
+                                thumb_path = "file://" .. thumb_path
+                                end
 
-                -- Decode once; the resulting temp file is both our thumbnail
-                -- and our exact-size source for the name lookup.
-                local exact_size = decode_and_stat(id_str)
-                local human = exact_size and name_lookup[exact_size] or nil
+                                local entry = string.format(
+                                    '{"id":"%s","isImage":%s,"text":"%s","displayText":"%s","title":"%s","searchText":"%s","thumbPath":"%s"}',
+                                    id,
+                                    is_img and "true" or "false",
+                                    json_escape(content),
+                                                            json_escape(content),
+                                                            is_img and "Image Entry" or "Text Entry",
+                                                            json_escape(content:lower()),
+                                                            json_escape(thumb_path)
+                                )
+                                table.insert(entries, entry)
+                                end
+                                end
+                                handle:close()
 
-                if human then
-                    title = human
-                    search_text = human:lower() .. " screenshot image"
-                else
-                    title = "Screenshot" .. (dims ~= "" and (" (" .. dims .. ")") or "")
-                    search_text = rest:lower()
-                end
+                                print("[" .. table.concat(entries, ",") .. "]")
 
-                thumb = "file:///tmp/qs_clip_thumb_" .. id_str .. ".png"
-            else
-                title = rest
-                search_text = rest:lower()
-            end
+                                elseif cmd == "preview" then
+                                    local id = arg[2]
+                                    if not id then return end
+                                        -- Outputs decoded text directly to stdout for preview
+                                        os.execute(string.format("printf '%%s\\t\\n' '%s' | cliphist decode 2>/dev/null", id))
 
-            local json_entry = string.format(
-                '{"id":%s,"isImage":%s,"text":%s,"displayText":%s,"title":%s,"searchText":%s,"date":"","dims":%s,"size":%s,"thumbPath":%s}',
-                json_escape(id_str),
-                is_img and "true" or "false",
-                json_escape(rest),
-                json_escape(rest),
-                json_escape(title),
-                json_escape(search_text),
-                json_escape(dims),
-                json_escape(size),
-                json_escape(thumb)
-            )
-            table.insert(items, json_entry)
-        end
-    end
-    handle:close()
+                                        elseif cmd == "ocr" then
+                                            local id = arg[2]
+                                            if not id then return end
+                                                local tmp_file = runtime .. "/qs_ocr_" .. id .. ".png"
 
-    print("[" .. table.concat(items, ",") .. "]")
+                                                -- Decode image, run tesseract OCR, and clean up temporary asset
+                                                os.execute(string.format("printf '%%s\\t\\n' '%s' | cliphist decode > '%s' 2>/dev/null", id, tmp_file))
+                                                local handle = io.popen(string.format("tesseract '%s' stdout 2>/dev/null", tmp_file))
+                                                if handle then
+                                                    local text = handle:read("*a")
+                                                    handle:close()
+                                                    io.write(text or "")
+                                                    end
+                                                    os.remove(tmp_file)
 
-elseif action == "preview" then
-    local id = arg[2]
-    if id and id ~= "" then
-        os.execute(string.format("printf '%%s\\t\\n' '%s' | cliphist decode", id))
-    end
+                                                    elseif cmd == "copy" then
+                                                        local id = arg[2]
+                                                        if not id then return end
+                                                            -- Copies selection back into Wayland active clipboard
+                                                            os.execute(string.format("printf '%%s\\t\\n' '%s' | cliphist decode 2>/dev/null | wl-copy", id))
 
-elseif action == "ocr" then
-    local id = arg[2]
-    if id and id ~= "" then
-        local tmp = "/tmp/qs_ocr_" .. id .. ".png"
-        os.execute(string.format("printf '%%s\\t\\n' '%s' | cliphist decode > '%s' 2>/dev/null", id, tmp))
-        os.execute(string.format("tesseract '%s' stdout 2>/dev/null || true; rm -f '%s' 2>/dev/null", tmp, tmp))
-    end
+                                                            elseif cmd == "delete" then
+                                                                local id = arg[2]
+                                                                if not id then return end
+                                                                    -- Purges entry from cliphist database and removes local thumbnail
+                                                                    os.execute(string.format("printf '%%s\\t\\n' '%s' | cliphist delete 2>/dev/null", id))
+                                                                    os.remove(runtime .. "/qs_clip_thumb_" .. id .. ".png")
 
-elseif action == "copy" then
-    local id = arg[2]
-    if id and id ~= "" then
-        os.execute(string.format("printf '%%s\\t\\n' '%s' | cliphist decode | wl-copy", id))
-    end
-
-elseif action == "delete" then
-    local id = arg[2]
-    if id and id ~= "" then
-        os.execute(string.format("printf '%%s\\t\\n' '%s' | cliphist delete", id))
-        os.remove("/tmp/qs_clip_thumb_" .. id .. ".png")
-    end
-
-elseif action == "wipe" then
-    os.execute("cliphist wipe 2>/dev/null; rm -f /tmp/qs_clip_thumb_*.png 2>/dev/null")
-end
+                                                                    elseif cmd == "wipe" then
+                                                                        -- Completely clears cliphist database and removes all cached thumbnails
+                                                                        os.execute("cliphist wipe 2>/dev/null")
+                                                                        os.execute(string.format("rm -f '%s'/qs_clip_thumb_*.png 2>/dev/null || true", runtime))
+                                                                        end

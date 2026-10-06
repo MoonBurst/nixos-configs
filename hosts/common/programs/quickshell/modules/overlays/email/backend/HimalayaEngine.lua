@@ -398,15 +398,32 @@ elseif action == "MOVE" then
         os.execute(path_prefix .. string.format('himalaya message move --folder %q %q %q 2>/dev/null', from_folder, msg_id, to_folder))
     end
 
-elseif action == "DOWNLOAD_ATTACHMENTS" then
-    local msg_id = arg[2]
-    local folder = arg[3] or "INBOX"
-    local dest_dir = arg[4] or (home_dir .. "/Downloads")
-    if msg_id then
-        os.execute(string.format('mkdir -p %q', dest_dir))
-        os.execute(path_prefix .. string.format('himalaya attachment download --folder %q %q --dir %q 2>/dev/null', folder, msg_id, dest_dir))
-        os.execute(string.format('notify-send -a Himalaya "Attachments Downloaded" "Saved to %s"', dest_dir))
-    end
+--Attachment Downloader
+    elseif action == "DOWNLOAD_ATTACHMENTS" then
+        local msg_id = arg[2]
+        local folder = arg[3] or "INBOX"
+
+        local dest_dir = arg[4]
+        if not dest_dir or dest_dir == "" then
+            dest_dir = home_dir .. "/Downloads"
+            end
+
+            if msg_id and msg_id ~= "" then
+                -- 1. Guarantee directory bounds exist on disk first
+                os.execute(string.format('mkdir -p %q', dest_dir))
+
+                -- 2. FIX: Navigate into your Downloads directory before running himalaya
+                -- This forces the unflagged file extractor to output files straight into the current path ring
+                local cmd = string.format('cd %q && %s himalaya attachment download --folder %q %s 2>/dev/null', dest_dir, path_prefix, folder, msg_id)
+                os.execute(cmd)
+
+                -- 3. Trigger desktop system alerts and file manager layout maps
+                os.execute(string.format('notify-send -a Himalaya "Attachments Downloaded" "Saved to %s"', dest_dir))
+                os.execute(string.format('xdg-open %q 2>/dev/null &', dest_dir))
+                else
+                    os.execute('notify-send -a Himalaya -u critical "❌ Download Error" "Invalid or missing email Message ID"')
+                    end
+
 
 elseif action == "CONTACT" then
     local nick = arg[2] or ""

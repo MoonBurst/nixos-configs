@@ -39,6 +39,7 @@ Common.OverlayWindow {
                 case "unicode": if (safeShell.unicodeWindow) safeShell.unicodeWindow.open(); return;
                 case "web": if (safeShell.startPageWindow) safeShell.startPageWindow.open(param); return;
                 case "amogus": if (safeShell.amogusWindowInstance) safeShell.amogusWindowInstance.showWindow(); return;
+                case "reminders": if (safeShell.remindersWindow) safeShell.remindersWindow.open(param); return;
             }
         }
 

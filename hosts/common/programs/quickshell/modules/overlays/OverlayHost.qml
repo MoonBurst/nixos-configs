@@ -19,6 +19,7 @@ import "./notifications" as Notifications
 import "./magnify" as Magnify
 import "./rng" as RNG
 import "./amogus" as AmogusModule
+import "./reminders" as RemindersModule
 
 Item {
     id: overlayHost
@@ -39,6 +40,7 @@ Item {
     property alias overlayInspectorWindow: overlayInspectorWindow
     property alias emailWindow: emailWindow
     property alias startPageWindow: startPageWindow
+    property alias remindersWindow: remindersWindow
 
     property alias magnifierOverlay: magnifierOverlay
     property alias diceRollerWindowInstance: diceRollerWindowInstance
@@ -51,7 +53,8 @@ Item {
             appLauncherWindow, calcWindow, clipboardWindow, dictionaryWindow,
             unicodeWindow, notesWindow, passWindow, powerWindow,
             todoWindow, geminiWindow, settingsWindow, emailWindow,
-            startPageWindow, diceRollerWindowInstance, amogusWindowInstance
+            startPageWindow, diceRollerWindowInstance, amogusWindowInstance,
+            remindersWindow
         ];
 
         for (var i = 0; i < list.length; i++) {
@@ -71,20 +74,21 @@ Item {
         }
     }
 
-    AppLauncherModule.AppLauncherWindow       { id: appLauncherWindow;       shell: overlayHost.shell }
-    CalcModule.CalcWindow                     { id: calcWindow;              shell: overlayHost.shell }
-    ClipboardModule.ClipboardWindow           { id: clipboardWindow;         shell: overlayHost.shell }
-    DictionaryModule.DictionaryWindow         { id: dictionaryWindow;        shell: overlayHost.shell }
-    UnicodeModule.UnicodeWindow               { id: unicodeWindow;           shell: overlayHost.shell }
-    NotesModule.NotesWindow                   { id: notesWindow;             shell: overlayHost.shell }
-    PassModule.PassWindow                     { id: passWindow;              shell: overlayHost.shell }
-    PowerModule.PowerWindow                   { id: powerWindow;             shell: overlayHost.shell }
-    TodoModule.TodoWindow                     { id: todoWindow;              shell: overlayHost.shell }
-    GeminiModule.GeminiWindow                 { id: geminiWindow;            shell: overlayHost.shell }
-    SettingsWindowModule.SettingsWindow       { id: settingsWindow;          shell: overlayHost.shell }
-    SettingsWindowModule.OverlayInspectorWindow { id: overlayInspectorWindow; shell: overlayHost.shell }
-    EmailModule.EmailWindow                   { id: emailWindow;             shell: overlayHost.shell }
-    WebSearchModule.StartPageWindow           { id: startPageWindow;         shell: overlayHost.shell }
+    AppLauncherModule.AppLauncherWindow         { id: appLauncherWindow;         shell: overlayHost.shell }
+    CalcModule.CalcWindow                       { id: calcWindow;                shell: overlayHost.shell }
+    ClipboardModule.ClipboardWindow             { id: clipboardWindow;           shell: overlayHost.shell }
+    DictionaryModule.DictionaryWindow           { id: dictionaryWindow;          shell: overlayHost.shell }
+    UnicodeModule.UnicodeWindow                 { id: unicodeWindow;             shell: overlayHost.shell }
+    NotesModule.NotesWindow                     { id: notesWindow;               shell: overlayHost.shell }
+    PassModule.PassWindow                       { id: passWindow;                shell: overlayHost.shell }
+    PowerModule.PowerWindow                     { id: powerWindow;               shell: overlayHost.shell }
+    TodoModule.TodoWindow                       { id: todoWindow;                shell: overlayHost.shell }
+    GeminiModule.GeminiWindow                   { id: geminiWindow;              shell: overlayHost.shell }
+    SettingsWindowModule.SettingsWindow         { id: settingsWindow;            shell: overlayHost.shell }
+    SettingsWindowModule.OverlayInspectorWindow   { id: overlayInspectorWindow;   shell: overlayHost.shell }
+    EmailModule.EmailWindow                     { id: emailWindow;               shell: overlayHost.shell }
+    WebSearchModule.StartPageWindow             { id: startPageWindow;           shell: overlayHost.shell }
+    RemindersModule.ReminderWindow             { id: remindersWindow;           shell: overlayHost.shell }
 
     Magnify.Magnify { id: magnifierOverlay }
     RNG.DiceRollerWindow { id: diceRollerWindowInstance; shell: overlayHost.shell }
@@ -97,6 +101,7 @@ Item {
         onShowHistoryModeChanged: overlayHost.shell.showHistoryMode = showHistoryMode
         onNotificationsEnabledChanged: overlayHost.shell.notificationsEnabled = notificationsEnabled
     }
+
 
     IpcHandler {
         target: "amogus"

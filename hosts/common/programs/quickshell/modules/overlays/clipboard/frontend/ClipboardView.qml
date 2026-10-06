@@ -4,6 +4,7 @@ import QtQuick.Layouts 1.15
 import Quickshell
 import Quickshell.Io
 import "../../../style" as Style
+import "../../../common" as Common
 import "../../../common/Utils.js" as Utils
 
 Item {
@@ -13,22 +14,23 @@ Item {
     property var settingsManager: null
 
     readonly property int fieldHeight: settingsManager
-        ? settingsManager.getWindowFieldHeight("clipboard", 52) : 52
+    ? settingsManager.getWindowFieldHeight("clipboard", 52) : 52
     readonly property int overlayFontSize: (settingsManager && settingsManager.overlayFontSize > 0)
-        ? settingsManager.overlayFontSize : 15
+    ? settingsManager.overlayFontSize : 15
 
     readonly property int controlBorderWidth: (settingsManager && settingsManager.controlBorderWidth)
-        ? settingsManager.controlBorderWidth
-        : ((theme && theme.controlBorderWidth) ? theme.controlBorderWidth : 2)
+    ? settingsManager.controlBorderWidth
+    : ((theme && theme.controlBorderWidth) ? theme.controlBorderWidth : 2)
 
     readonly property int globalBorderWidth: (settingsManager && settingsManager.globalBorderWidth)
-        ? settingsManager.globalBorderWidth
-        : ((theme && theme.globalBorderWidth) ? theme.globalBorderWidth : 3)
+    ? settingsManager.globalBorderWidth
+    : ((theme && theme.globalBorderWidth) ? theme.globalBorderWidth : 3)
 
     readonly property var inputPad: Utils.getSafeInputPadding(settingsManager)
 
     signal completed()
 
+    // Model and UI State
     property var rawItems: []
     property int selectedIndex: 0
     property string previewImage: ""
@@ -47,6 +49,7 @@ Item {
         id: clipModel
     }
 
+    // Resets search query and triggers a fresh fetch of clipboard history
     function clearAndFocus() {
         searchField.clear();
         reload();
@@ -63,6 +66,7 @@ Item {
         listProc.running = true;
     }
 
+    // Client-side filtering supporting text search and the 'image:' prefix
     function filterList(query) {
         var q = (query || "").toLowerCase().trim();
         var isImgFilter = (q === "image" || q === "images" || q === "shot" || q === "screenshots" || q.startsWith("image:"));
@@ -86,6 +90,7 @@ Item {
         updatePreview();
     }
 
+    // Updates preview display for selected text or graphical entry
     function updatePreview() {
         if (selectedIndex < 0 || selectedIndex >= clipModel.count) {
             previewImage = "";
@@ -113,76 +118,38 @@ Item {
             previewDims = "";
             previewSize = "";
             previewProc.running = false;
-            previewProc.command = [
-                "sh", "-c",
-                'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
-                'SCR="' + Quickshell.shellDir + '/modules/overlays/clipboard/backend/ClipboardEngine.lua"; ' +
-                'if [ -f "$SCR" ] && command -v lua >/dev/null 2>&1; then ' +
-                '  lua "$SCR" preview "$1"; ' +
-                'else ' +
-                '  printf "%s\t\n" "$1" | cliphist decode; ' +
-                'fi',
-                "sh", String(item.id)
-            ];
+            previewProc.command = Common.LuaRunner.cmd("modules/overlays/clipboard/backend/ClipboardEngine.lua", "preview", String(item.id));
             previewProc.running = true;
         }
     }
 
+    // Runs optical character recognition on image entries
     function runOcr(background) {
         if (selectedIndex < 0 || selectedIndex >= clipModel.count) return;
         var item = clipModel.get(selectedIndex);
         if (!item || !item.isImage) return;
 
         if (!background) viewRoot.isOcrRunning = true;
-        ocrProc.command = [
-            "sh", "-c",
-            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
-            'SCR="' + Quickshell.shellDir + '/modules/overlays/clipboard/backend/ClipboardEngine.lua"; ' +
-            'if [ -f "$SCR" ] && command -v lua >/dev/null 2>&1; then ' +
-            '  lua "$SCR" ocr "$1"; ' +
-            'else ' +
-            ' tmp="${XDG_RUNTIME_DIR:-/tmp}/qs_ocr_$1.png"; printf "%s\t\n" "$1" | cliphist decode > "$tmp" 2>/dev/null; ' +
-            '  tesseract "$tmp" stdout 2>/dev/null || true; rm -f "$tmp" 2>/dev/null; ' +
-            'fi',
-            "sh", String(item.id)
-        ];
+        ocrProc.command = Common.LuaRunner.cmd("modules/overlays/clipboard/backend/ClipboardEngine.lua", "ocr", String(item.id));
         ocrProc.running = false;
         ocrProc.running = true;
     }
 
+    // Re-copies selected entry into the active Wayland clipboard
     function copyCurrent() {
         if (selectedIndex < 0 || selectedIndex >= clipModel.count) return;
         var item = clipModel.get(selectedIndex);
-        copyProc.command = [
-            "sh", "-c",
-            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
-            'SCR="' + Quickshell.shellDir + '/modules/overlays/clipboard/backend/ClipboardEngine.lua"; ' +
-            'if [ -f "$SCR" ] && command -v lua >/dev/null 2>&1; then ' +
-            '  lua "$SCR" copy "$1"; ' +
-            'else ' +
-            '  printf "%s\t\n" "$1" | cliphist decode | wl-copy; ' +
-            'fi',
-            "sh", String(item.id)
-        ];
+        copyProc.command = Common.LuaRunner.cmd("modules/overlays/clipboard/backend/ClipboardEngine.lua", "copy", String(item.id));
         copyProc.running = false;
         copyProc.running = true;
         viewRoot.completed();
     }
 
+    // Deletes the active entry from cliphist
     function deleteCurrent() {
         if (selectedIndex < 0 || selectedIndex >= clipModel.count) return;
         var item = clipModel.get(selectedIndex);
-        deleteProc.command = [
-            "sh", "-c",
-            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
-            'SCR="' + Quickshell.shellDir + '/modules/overlays/clipboard/backend/ClipboardEngine.lua"; ' +
-            'if [ -f "$SCR" ] && command -v lua >/dev/null 2>&1; then ' +
-            '  lua "$SCR" delete "$1"; ' +
-            'else ' +
-            '  printf "%s\t\n" "$1" | cliphist delete; ' +
-            'fi',
-            "sh", String(item.id)
-        ];
+        deleteProc.command = Common.LuaRunner.cmd("modules/overlays/clipboard/backend/ClipboardEngine.lua", "delete", String(item.id));
         deleteProc.running = false;
         deleteProc.running = true;
 
@@ -197,6 +164,7 @@ Item {
         updatePreview();
     }
 
+    // Wipes all cliphist entries and local preview thumbnails
     function wipeAll() {
         wipeProc.running = false;
         wipeProc.running = true;
@@ -210,22 +178,10 @@ Item {
         previewSize = "";
     }
 
+    // Backend process handlers
     Process {
         id: listProc
-        command: [
-            "sh", "-c",
-            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
-            'SCR="' + Quickshell.shellDir + '/modules/overlays/clipboard/backend/ClipboardEngine.lua"; ' +
-            'if [ -f "$SCR" ] && command -v lua >/dev/null 2>&1; then ' +
-            '  lua "$SCR" list; ' +
-            'else ' +
-            '  cliphist list 2>/dev/null | awk -F\'\t\' \'BEGIN {printf "["} { if (NR>1) printf ","; ' +
-            '  gsub(/\\\\/, "\\\\\\\\", $2); gsub(/"/, "\\\\\"", $2); gsub(/\\n/, "\\\\n", $2); ' +
-            '  is_img = ($2 ~ /binary data/ || $2 ~ /\\[\\[/) ? "true" : "false"; ' +
-            '  printf "{\\"id\\":\\"%s\\",\\"isImage\\":%s,\\"text\\":\\"%s\\",\\"displayText\\":\\"%s\\",\\"title\\":\\"Entry\\",\\"searchText\\":\\"%s\\"}", $1, is_img, $2, $2, tolower($2) ' +
-            '  } END {print "]"}\'; ' +
-            'fi'
-        ]
+        command: Common.LuaRunner.cmd("modules/overlays/clipboard/backend/ClipboardEngine.lua", "list")
         stdout: StdioCollector {
             onStreamFinished: {
                 viewRoot.isFetching = false;
@@ -279,16 +235,7 @@ Item {
     Process { id: deleteProc }
     Process {
         id: wipeProc
-        command: [
-            "sh", "-c",
-            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
-            'SCR="' + Quickshell.shellDir + '/modules/overlays/clipboard/backend/ClipboardEngine.lua"; ' +
-            'if [ -f "$SCR" ] && command -v lua >/dev/null 2>&1; then ' +
-            '  lua "$SCR" wipe; ' +
-            'else ' +
-            ' cliphist wipe 2>/dev/null; rm -f "${XDG_RUNTIME_DIR:-/tmp}"/qs_clip_thumb_*.png 2>/dev/null || true; ' +
-            'fi'
-        ]
+        command: Common.LuaRunner.cmd("modules/overlays/clipboard/backend/ClipboardEngine.lua", "wipe")
     }
 
     Component.onCompleted: clearAndFocus()
@@ -299,7 +246,7 @@ Item {
         anchors.margins: 10
         spacing: 12
 
-        // Top Search Bar Row
+        // Top Search Bar & Actions
         RowLayout {
             Layout.fillWidth: true
             Layout.preferredHeight: viewRoot.fieldHeight
@@ -316,8 +263,8 @@ Item {
                     role: "input"
                     color: (theme && theme.base00) ? theme.base00 : "#11111b"
                     borderColor: searchField.activeFocus
-                        ? ((theme && theme.base05) ? theme.base05 : "yellow")
-                        : ((theme && theme.base03) ? theme.base03 : "#45475a")
+                    ? ((theme && theme.base05) ? theme.base05 : "yellow")
+                    : ((theme && theme.base03) ? theme.base03 : "#45475a")
                     borderWidth: viewRoot.controlBorderWidth
                     slantWidth: 14
                 }
@@ -382,7 +329,7 @@ Item {
             }
 
             Item {
-                Layout.preferredWidth: 80
+                Layout.preferredWidth: 84
                 Layout.fillHeight: true
 
                 Style.ShapeBox {
@@ -411,12 +358,13 @@ Item {
             }
         }
 
-        // Two-Column Split (List & Preview)
+        // Two-Column Split: Item List and Live Preview Pane
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             spacing: 14
 
+            // Left Pane: History List
             Item {
                 Layout.preferredWidth: Math.round(viewRoot.width * 0.46)
                 Layout.fillHeight: true
@@ -452,7 +400,7 @@ Item {
                             anchors.bottomMargin: model.isImage ? 8 : 4
                             spacing: 10
 
-                            // 1. Image Thumbnail
+                            // Thumbnail preview for image entries
                             Rectangle {
                                 visible: model.isImage
                                 Layout.preferredWidth: 54
@@ -474,7 +422,6 @@ Item {
                                 }
                             }
 
-                            // 2. Compact Text Icon
                             Text {
                                 visible: !model.isImage
                                 text: "📄"

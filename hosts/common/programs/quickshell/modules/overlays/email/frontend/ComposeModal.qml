@@ -9,6 +9,8 @@ Rectangle {
 
     visible: false
 
+    property var engine: null
+
     property color overlayBgColor: "#F40F0F0F"
     property color modalBoxBg: (typeof theme !== 'undefined' && theme) ? theme.base00 : "#121212"
     property color fieldBg: (typeof theme !== 'undefined' && theme) ? theme.base00 : "#121212"
@@ -29,7 +31,6 @@ Rectangle {
 
     property var contactsList: []
     property string currentSuggestion: ""
-    property var quickshellContext: null
 
     property string initialTo: ""
     property string initialSubject: ""
@@ -47,22 +48,70 @@ Rectangle {
 
     signal dispatchMailRequested(string to, string subject, string body)
     signal escapeDismissRequested()
-    signal attachmentRequested()
 
     anchors.fill: parent
     color: overlayBgColor
 
     MouseArea { anchors.fill: parent }
 
+    // Evaluates content, saves draft, and closes composing
     function dismissSelf() {
-        composeComp.checkAndSaveDraft();
+        var toText = toInput.text.trim();
+        var subText = subjectInput.text.trim();
+        var bodyText = bodyInput.text.trim();
+        var sigText = composeComp.mailSignature.trim();
+
+        var hasBodyContent = (bodyText !== "" && bodyText !== sigText);
+        var hasContent = (toText !== "") || (subText !== "") || hasBodyContent;
+
+        if (hasContent && !composeComp.wasSent && composeComp.engine) {
+            composeComp.engine.saveDraft(toInput.text, subjectInput.text, bodyInput.text);
+        }
+
+        if (composeComp.engine) {
+            composeComp.engine.isComposing = false;
+        }
+
         composeComp.escapeDismissRequested();
     }
 
-    Shortcut {
-        sequence: "Escape"
-        enabled: composeComp.visible
-        onActivated: composeComp.dismissSelf()
+    // Connects to window-level Escape signal dispatched from EmailWindow
+    Connections {
+        target: composeComp.engine
+        function onRequestDismissCompose() {
+            composeComp.dismissSelf();
+        }
+    }
+
+    // Direct Wayland Drag-and-Drop Area covering the entire modal
+    DropArea {
+        anchors.fill: parent
+        z: 99
+        onEntered: (drag) => {
+            drag.acceptProposedAction();
+        }
+        onPositionChanged: (drag) => {
+            drag.acceptProposedAction();
+        }
+        onDropped: (drop) => {
+            if (drop.hasUrls) {
+                var added = [];
+                for (var i = 0; i < drop.urls.length; i++) {
+                    var localPath = drop.urls[i].toString().replace(/^file:\/\//, "");
+                    var cleanPath = decodeURIComponent(localPath);
+                    bodyInput.text += "\n<#part filename=\"" + cleanPath + "\">\n<#/part>\n";
+                    added.push(cleanPath.split("/").pop());
+                }
+                drop.acceptProposedAction();
+                if (added.length > 0) {
+                    Quickshell.execDetached([
+                        "notify-send", "-a", "Email", "-i", "mail-attachment",
+                        "📎 File(s) Attached",
+                                            added.join(", ")
+                    ]);
+                }
+            }
+        }
     }
 
     Shortcut {
@@ -123,37 +172,7 @@ Rectangle {
             composeComp.initialTo = toInput.text;
             composeComp.initialSubject = subjectInput.text;
             composeComp.initialBody = bodyInput.text;
-        } else {
-            checkAndSaveDraft();
         }
-    }
-
-    Component.onDestruction: checkAndSaveDraft()
-
-    function checkAndSaveDraft() {
-        var isDirty = (toInput.text !== composeComp.initialTo) ||
-        (subjectInput.text !== composeComp.initialSubject) ||
-        (bodyInput.text !== composeComp.initialBody);
-
-        if (isDirty && !composeComp.wasSent) {
-            saveDraftOffline(toInput.text, subjectInput.text, bodyInput.text);
-            composeComp.initialTo = toInput.text;
-            composeComp.initialSubject = subjectInput.text;
-            composeComp.initialBody = bodyInput.text;
-        }
-    }
-
-    function saveDraftOffline(recipient, subject, bodyContent) {
-        try {
-            var db = LocalStorage.openDatabaseSync("QMailQueue", "1.0", "Offline QMail Queue", 1000000);
-            db.transaction(function(tx) {
-                tx.executeSql('CREATE TABLE IF NOT EXISTS queue (id INTEGER PRIMARY KEY AUTOINCREMENT, action TEXT, arg1 TEXT, arg2 TEXT, arg3 TEXT)');
-                tx.executeSql(
-                    'INSERT INTO queue (action, arg1, arg2, arg3) VALUES (?, ?, ?, ?)',
-                              ['DRAFT', recipient, subject, bodyContent]
-                );
-            });
-        } catch (err) {}
     }
 
     function loadContactsDatabase() {
@@ -175,7 +194,7 @@ Rectangle {
                     composeComp.contactsList = loadedContacts;
                 }
             }
-        }
+        };
         xhr.open("GET", contactsUrl, true);
         xhr.send();
     }
@@ -217,47 +236,20 @@ Rectangle {
                 width: parent.width
                 height: 35
 
-                Item {
+                Text {
+                    text: "NEW MAIL COMPOSITION"
+                    font.family: composeComp.composeFontFamily
+                    font.pixelSize: composeComp.inputFontSize
+                    font.bold: true
+                    color: (typeof theme !== 'undefined' && theme) ? theme.base05 : "#f7f700"
                     Layout.fillWidth: true
-                    Layout.preferredHeight: parent.height
-
-                    Text {
-                        anchors.left: parent.left
-                        anchors.leftMargin: toFieldBg.leftPadding
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "NEW MAIL COMPOSITION"
-                        font.family: composeComp.composeFontFamily
-                        font.pixelSize: composeComp.inputFontSize
-                        font.bold: true
-                        color: (typeof theme !== 'undefined' && theme) ? theme.base05 : "#f7f700"
-                    }
                 }
 
-                Item {
-                    width: 120; height: 30
-
-                    Style.ShapeBox {
-                        anchors.fill: parent
-                        role: "input"
-                        slantWidth: 8
-                        color: composeComp.fieldBg
-                        borderColor: composeComp.innerCardInactiveBorder
-                        borderWidth: 1
-                    }
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "📎 + Attach"
-                        font.family: composeComp.composeFontFamily
-                        font.pixelSize: composeComp.inputFontSize - 3
-                        font.bold: true
-                        color: composeComp.placeholderTextColor
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                        onClicked: composeComp.attachmentRequested()
-                    }
+                Text {
+                    text: "📎 Drag & drop files to attach"
+                    font.family: composeComp.composeFontFamily
+                    font.pixelSize: composeComp.inputFontSize - 3
+                    color: composeComp.placeholderTextColor
                 }
             }
 
@@ -265,10 +257,11 @@ Rectangle {
                 width: parent.width
                 spacing: 8
 
-                // 1. RECIPIENT FIELD
+                // Recipient Field
                 Item {
                     Layout.fillWidth: true
                     width: parent.width; height: composeComp.fieldInputHeight
+
                     Style.ShapeBox {
                         id: toFieldBg
                         anchors.fill: parent
@@ -278,7 +271,6 @@ Rectangle {
                         borderColor: toInput.activeFocus ? composeComp.innerCardActiveBorder : composeComp.innerCardInactiveBorder
                         borderWidth: controlBorderWidth
                     }
-
 
                     Item {
                         anchors.fill: parent
@@ -335,11 +327,10 @@ Rectangle {
                                 verticalAlignment: Text.AlignVCenter
                             }
                         }
-
                     }
                 }
 
-                // 2. SUBJECT FIELD
+                // Subject Field
                 Item {
                     width: parent.width; height: composeComp.fieldInputHeight
 
@@ -352,7 +343,6 @@ Rectangle {
                         borderColor: subjectInput.activeFocus ? composeComp.innerCardActiveBorder : composeComp.innerCardInactiveBorder
                         borderWidth: controlBorderWidth
                     }
-
 
                     Item {
                         anchors.fill: parent
@@ -393,12 +383,11 @@ Rectangle {
                                 verticalAlignment: Text.AlignVCenter
                             }
                         }
-
                     }
                 }
             }
 
-            // 3. BODY MESSAGE CONTENT CANVAS
+            // Message Body Canvas
             Item {
                 Layout.fillWidth: true
                 width: parent.width
@@ -417,10 +406,6 @@ Rectangle {
                 Flickable {
                     id: bodyFlickableCanvas
                     anchors.fill: parent
-                    // Use toFieldBg's padding so body text aligns exactly with
-                    // the To:/Subject: fields above. The body box is much
-                    // taller, which makes its own hexCutEffective larger and
-                    // would shift the text ~12px right.
                     anchors.leftMargin:   toFieldBg.leftPadding
                     anchors.rightMargin:  toFieldBg.rightPadding
                     anchors.topMargin:    12
@@ -451,7 +436,7 @@ Rectangle {
                         }
 
                         Text {
-                            text: "Write message content here..."
+                            text: "Write message content here (or drag & drop files anywhere)..."
                             color: composeComp.placeholderTextColor
                             visible: parent.text === "" && !parent.activeFocus
                             anchors.fill: parent
@@ -461,12 +446,11 @@ Rectangle {
                             font.family: composeComp.composeFontFamily
                         }
                     }
-
                 }
             }
 
             Text {
-                text: "Press [Ctrl + Enter] to Send  •  [ESC] to Dismiss"
+                text: "Press [Ctrl + Enter] to Send  •  [ESC] to Save Draft & Exit"
                 font.family: composeComp.composeFontFamily
                 font.pixelSize: composeComp.inputFontSize - 3
                 color: composeComp.placeholderTextColor

@@ -19,8 +19,8 @@ Item {
     readonly property int globalBorderWidth: (theme && theme.globalBorderWidth) ? theme.globalBorderWidth : 3
 
     readonly property int overlayFontSize: (settingsManager && settingsManager.overlayFontSize > 0)
-        ? settingsManager.overlayFontSize
-        : ((theme && theme.overlayFontSize) ? theme.overlayFontSize : 16)
+    ? settingsManager.overlayFontSize
+    : ((theme && theme.overlayFontSize) ? theme.overlayFontSize : 16)
 
     property int sidebarColumnWidth: Math.max(180, Math.round(width * 0.17))
     property int listingColumnWidth: Math.max(300, Math.round(width * 0.33))
@@ -29,10 +29,10 @@ Item {
     property double lastModalCloseTime: 0
 
     readonly property bool modalActive: (typeof himalayaSetupOverlay !== "undefined" && himalayaSetupOverlay && himalayaSetupOverlay.visible)
-        || (typeof contactModalOverlay !== "undefined" && contactModalOverlay && contactModalOverlay.visible)
-        || (typeof helpModalOverlay !== "undefined" && helpModalOverlay && helpModalOverlay.visible)
-        || (typeof composeWindowOverlay !== "undefined" && composeWindowOverlay && composeWindowOverlay.visible)
-        || (engine && engine.isComposing)
+    || (typeof contactModalOverlay !== "undefined" && contactModalOverlay && contactModalOverlay.visible)
+    || (typeof helpModalOverlay !== "undefined" && helpModalOverlay && helpModalOverlay.visible)
+    || (typeof composeWindowOverlay !== "undefined" && composeWindowOverlay && composeWindowOverlay.visible)
+    || (engine && engine.isComposing)
 
     function isModalActive() {
         return modalActive;
@@ -85,7 +85,7 @@ Item {
     function initiateDraftEdit() {
         var activeItem = engine.selectedMail;
         if (!activeItem) return;
-        var draftTo = activeItem.from ? (activeItem.from.addr || activeItem.from.name) : "";
+        var draftTo = activeItem.to && activeItem.to.length > 0 ? activeItem.to[0].addr : (activeItem.from ? (activeItem.from.addr || activeItem.from.name) : "");
         var draftSubject = activeItem.subject || "";
         var draftBody = engine.activeMailBody || "";
         engine.isComposing = true;
@@ -120,7 +120,6 @@ Item {
         }
     }
 
-    // Layout sits inside viewLoader's safe margins with clean vertical dividers between panes
     Row {
         anchors.fill: parent
         spacing: 0
@@ -129,9 +128,12 @@ Item {
             width: viewRoot.sidebarColumnWidth; height: parent.height
             folderListModel: engine.folderList; activeFolderIndex: engine.currentFolderIndex
             countsDictionary: engine.folderCountMap
+            systemFolders: engine.systemFolders
             fontSize: viewRoot.overlayFontSize
             onHelpRequested: helpModalOverlay.visible = true
             onSettingsRequested: himalayaSetupOverlay.visible = true
+            onAddFolderRequested: (name) => engine.addCustomFolder(name)
+            onRemoveFolderRequested: (name) => engine.removeCustomFolder(name)
         }
 
         Rectangle {
@@ -186,20 +188,18 @@ Item {
         id: composeWindowOverlay
         anchors.fill: parent
         visible: engine.isComposing
+        engine: viewRoot.engine
         inputFontSize: viewRoot.overlayFontSize
         onEscapeDismissRequested: {
             viewRoot.lastModalCloseTime = Date.now();
             engine.isComposing = false;
             mailListView.forceActiveFocus();
-            engine.readMailCache();
         }
         onDispatchMailRequested: (to, subject, body) => {
             viewRoot.lastModalCloseTime = Date.now();
             engine.handleOutboundDelivery(to, subject, body);
             mailListView.forceActiveFocus();
-            engine.readMailCache();
         }
-        onAttachmentRequested: fileDialog.open()
     }
 
     HimalayaSetupModal {
@@ -350,18 +350,6 @@ Item {
             onActivated: {
                 viewRoot.lastModalCloseTime = Date.now();
                 helpModalOverlay.visible = false;
-            }
-        }
-    }
-
-    FileDialog {
-        id: fileDialog
-        title: "Select File(s) to Attach"
-        fileMode: FileDialog.OpenFiles
-        onAccepted: {
-            for (var i = 0; i < selectedFiles.length; i++) {
-                var path = selectedFiles[i].toString().replace(/^file:\/\//, "");
-                composeWindowOverlay.bodyInput.text += "\n<#part filename=\"" + decodeURIComponent(path) + "\">\n<#/part>\n";
             }
         }
     }

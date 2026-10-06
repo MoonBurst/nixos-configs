@@ -133,10 +133,13 @@ QtObject {
                         break;
                     }
                 }
+                // Force layout list update
+                loadTodos();
             } catch (err) { loadTodos(); }
         }
         editingTaskId = -1;
     }
+
 
     function moveTodo(currentIndex, moveUp) {
         if (currentIndex < 0 || currentIndex >= tModel.count) return;

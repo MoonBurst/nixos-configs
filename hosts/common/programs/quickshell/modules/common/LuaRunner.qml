@@ -2,28 +2,33 @@ pragma Singleton
 import QtQuick
 import Quickshell
 
-// Centralized Lua launcher. Every `Process { command: [...] }` that invokes a
-// backend Lua script in this shell should go through `LuaRunner.cmd(...)`.
+// Centralized execution engine for backend scripts across the entire shell.
 //
-// What this gives us:
-//
-//  * One place to set up PATH so `luajit` is preferred over `lua` when present.
-//  * Positional-argument passing (never string-concatenated) so script paths
-//    and user-supplied arguments cannot break out of their shell context.
-//  * A single line at every call site instead of a 4-6 line sh -c wrapper.
+// Benefits:
+//  1. Unified PATH: Ensures NixOS profiles, local user bins, and system bins
+//     are searched so `luajit` is preferred over `lua` when available.
+//  2. Safe Argument Forwarding: Passes arguments positionally ($1, $2, ... $@),
+//     preventing shell injection and unescaped quote syntax errors.
+//  3. Path Normalization: Strips leading slashes from relative paths so callers
+//     can safely pass either "modules/..." or "/modules/...".
+//  4. Resource Efficiency: Uses `exec` to replace the shell process, avoiding
+//     unnecessary dangling child processes in memory.
 //
 // Usage:
 //   Process {
-//       command: LuaRunner.cmd("modules/bar/cpu/backend/CpuEngine.lua", "top-procs")
+//       command: Common.LuaRunner.cmd("modules/bar/cpu/backend/CpuEngine.lua", "top-procs")
 //   }
 Singleton {
     id: runner
 
-    // Returns a `command: [...]` array. `relPath` is relative to shellDir;
-    // every subsequent argument is forwarded verbatim as a positional
-    // parameter ($1, $2, ... to the Lua script via `arg`).
+    // Dispatches a Lua script using the preferred LuaJIT/Lua runtime.
+    //  - relPath: Path relative to Quickshell.shellDir
+    //  - ...rest: Optional arguments forwarded as positional parameters to the script
     function cmd(relPath) {
+        // Strip leading slashes to prevent double-slash path expansion
+        var cleanRel = String(relPath || "").replace(/^\/+/, "");
         var rest = Array.prototype.slice.call(arguments, 1);
+
         var parts = [
             "sh", "-c",
             'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
@@ -32,18 +37,22 @@ Singleton {
             'exec "$CMD" "$SCR" "$@"',
             "sh",
             Quickshell.shellDir,
-            String(relPath)
+            cleanRel
         ];
+
         for (var i = 0; i < rest.length; i++) {
             parts.push(String(rest[i]));
         }
         return parts;
     }
 
-    // Same as `cmd` but for Python scripts. Uses python3 unconditionally so
-    // the shell does not have to detect the interpreter on every call.
+    // Dispatches a Python script using python3.
+    //  - relPath: Path relative to Quickshell.shellDir
+    //  - ...rest: Optional arguments forwarded as positional parameters
     function py(relPath) {
+        var cleanRel = String(relPath || "").replace(/^\/+/, "");
         var rest = Array.prototype.slice.call(arguments, 1);
+
         var parts = [
             "sh", "-c",
             'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
@@ -51,8 +60,9 @@ Singleton {
             'exec python3 "$SCR" "$@"',
             "sh",
             Quickshell.shellDir,
-            String(relPath)
+            cleanRel
         ];
+
         for (var i = 0; i < rest.length; i++) {
             parts.push(String(rest[i]));
         }

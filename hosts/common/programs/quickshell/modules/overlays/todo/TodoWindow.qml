@@ -19,6 +19,7 @@ Common.OverlayWindow {
 
     viewComponent: Component {
         Frontend.TodoView {
+            id: todoViewInstance
             engine: todoEngine
             theme: todoWindow.theme
             settingsManager: todoWindow.settingsManager

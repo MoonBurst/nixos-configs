@@ -124,6 +124,7 @@ ShellRoot {
     property alias diceRollerWindowInstance: overlayHost.diceRollerWindowInstance
     property alias amogusWindowInstance: overlayHost.amogusWindowInstance
     property alias notificationOverlay: overlayHost.notificationOverlay
+    property alias remindersWindow: overlayHost.remindersWindow
 
     function closeOtherOverlays(activeWin) {
         overlayHost.closeOtherOverlays(activeWin);
