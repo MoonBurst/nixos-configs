@@ -7,6 +7,9 @@ import "../../common" as Common
 import "./backend" as Backend
 import "./frontend" as Frontend
 
+// Web search dialog overlay. Inherits native Wayland layer-shell keyboard focus
+// and per-window dismissal policies (Dismiss-on-Blur and Close-on-Escape)
+// configured via SettingsManager.
 Common.OverlayWindow {
     id: webWindow
 

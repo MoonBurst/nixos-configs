@@ -259,6 +259,62 @@ PanelWindow {
                     }
                 }
             }
+
+            // Window Dismissal Behavior Toggles (Dismiss on Click-Outside & Close on Escape)
+            // Allows configuring modal dismiss behavior per overlay. Toggling either button
+            // writes to standaloneWindows in settings.json and takes effect instantly.
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                // Toggle: Click-off / Blur dismissal
+                Rectangle {
+                    readonly property bool isBlurDismiss: settingsManager ? settingsManager.getWindowDismissOnBlur(inspectorWindow.previewId, true) : true
+                    Layout.fillWidth: true
+                    height: 26
+                    radius: 4
+                    color: isBlurDismiss ? inspectorCard.base0C : inspectorCard.base02
+                    border.color: isBlurDismiss ? inspectorCard.base0C : inspectorCard.base05
+                    border.width: 1
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: parent.isBlurDismiss ? "🖱️ Blur: Close" : "🖱️ Blur: Keep"
+                        font.bold: true
+                        font.pixelSize: 10
+                        color: parent.isBlurDismiss ? "#000000" : inspectorCard.base05
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: if (settingsManager) settingsManager.setWindowProp(inspectorWindow.previewId, "dismissOnBlur", !parent.isBlurDismiss)
+                    }
+                }
+
+                // Toggle: Keyboard Escape dismissal
+                Rectangle {
+                    readonly property bool isEscClose: settingsManager ? settingsManager.getWindowEscapeCloses(inspectorWindow.previewId, true) : true
+                    Layout.fillWidth: true
+                    height: 26
+                    radius: 4
+                    color: isEscClose ? inspectorCard.base0C : inspectorCard.base02
+                    border.color: isEscClose ? inspectorCard.base0C : inspectorCard.base05
+                    border.width: 1
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: parent.isEscClose ? "⎋ Esc: Close" : "⎋ Esc: Keep"
+                        font.bold: true
+                        font.pixelSize: 10
+                        color: parent.isEscClose ? "#000000" : inspectorCard.base05
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: if (settingsManager) settingsManager.setWindowProp(inspectorWindow.previewId, "escapeCloses", !parent.isEscClose)
+                    }
+                }
+            }
         }
     }
 }

@@ -184,6 +184,8 @@ PanelWindow {
             tooltipWindow.isCardActive = true;
         }
 
+        // Handles dismissing and resetting the state of interactive tooltips/popups.
+        // Called by the native Shortcut, internal FocusScope, and child capsule requests.
         function closeTooltip() {
             tooltipWindow.dismissed = true;
             tooltipWindow.isCardActive = false;
@@ -199,21 +201,7 @@ PanelWindow {
             }
         }
 
-        Process {
-            id: escWatcher
-            running: tooltipWindow.visible && tooltipWindow.isEngaged && tooltipWindow.isInteractive
-            command: [
-                "luajit",
-                Quickshell.shellDir + "/modules/common/escwatcher.lua"
-            ]
-            stdout: SplitParser {
-                splitMarker: "\n"
-                onRead: data => {
-                    if (data.trim() === "ESC") tooltipWindow.closeTooltip();
-                }
-            }
-        }
-
+        // Multi-screen click-off catcher: deactivates card focus when clicking another screen
         Variants {
             model: Quickshell.screens
             delegate: PanelWindow {
@@ -239,11 +227,14 @@ PanelWindow {
             }
         }
 
+        // Native Wayland layer-shell Escape handler: closes the tooltip without
+        // relying on raw /dev/input polling or background lua processes.
         Shortcut {
             sequence: "Escape"
             enabled: tooltipWindow.visible
             onActivated: tooltipWindow.closeTooltip()
         }
+
 
         readonly property bool isReady: moduleItem !== null && moduleItem.width > 0
 

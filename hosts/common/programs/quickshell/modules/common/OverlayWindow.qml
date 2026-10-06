@@ -39,9 +39,22 @@ PanelWindow {
     // ---- Argument passed to open(arg); subclasses cast as needed -----------
     property var pendingArg: null
 
-    // ---- Hooks --------------------------------------------------------------
-    // Set false for windows that should ignore the global Escape handler.
+    // ---- Hooks & Window Dismissal Policies ----------------------------------
+    // Subclasses provide their hardcoded design defaults here; the effective
+    // properties below resolve whether the user has customized this specific
+    // overlay via the Settings GUI / SettingsManager.
     property bool escapeCloses: true
+    property bool dismissOnBlurDefault: true
+
+    // Dynamically queries SettingsManager. If a per-window override exists in
+    // settings.json, that takes precedence; otherwise falls back to the subclass default.
+    readonly property bool effectiveDismissOnBlur: settingsManager
+    ? settingsManager.getWindowDismissOnBlur(windowId, dismissOnBlurDefault)
+    : dismissOnBlurDefault
+
+    readonly property bool effectiveEscapeCloses: settingsManager
+    ? settingsManager.getWindowEscapeCloses(windowId, escapeCloses)
+    : escapeCloses
 
     signal windowOpened()
     signal windowClosed()
@@ -180,22 +193,11 @@ PanelWindow {
         function close(): void { base.close(); }
     }
 
-    // Subscribe to the global Escape watcher. Only the topmost visible
-    // overlay responds to a given keypress; lower windows ignore it.
-    // The watcher is a singleton so its process is shared across all
-    // overlays, and it reads /dev/input directly so Escape works even
-    // after the compositor hands focus to an underlying app.
-    Connections {
-        target: EscapeWatcher
-        function onEscapePressed() {
-            if (!base.escapeCloses) return;
-            if (!base.visible || base.isPreviewMode) return;
-            // Only respond if this window is the topmost visible overlay.
-            if (base.isCardActive || base.isOpenState) base.close();
-        }
-    }
 
-// ---- Multi-screen click-off catcher ------------------------------------
+    // ---- Multi-screen click-off catcher ------------------------------------
+    // Captures mouse clicks that occur on secondary displays while this overlay is open.
+    // If dismiss-on-blur is enabled, clicking another display closes the overlay.
+    // If disabled, it only deactivates card focus visually, leaving the overlay on-screen.
     Variants {
         model: Quickshell.screens
         delegate: PanelWindow {
@@ -214,18 +216,24 @@ PanelWindow {
 
             MouseArea {
                 anchors.fill: parent
-                onPressed: base.isCardActive = false
+                onPressed: {
+                    if (base.effectiveDismissOnBlur) base.close();
+                    else base.isCardActive = false;
+                }
             }
         }
     }
 
     // ---- Same-screen click-off ---------------------------------------------
-    // Clicking outside the card deactivates it visually. The window stays
-    // open; Escape (routed through the raw-input watcher) closes it.
+    // Handles clicks occurring on the dark backdrop outside the centered card.
+    // Dismisses immediately if effectiveDismissOnBlur is true; otherwise deactivates focus.
     MouseArea {
         anchors.fill: parent
         enabled: base.isCardActive && !base.isPreviewMode
-        onPressed: base.isCardActive = false
+        onPressed: {
+            if (base.effectiveDismissOnBlur) base.close();
+            else base.isCardActive = false;
+        }
     }
 
     // ---- Card + injected view ----------------------------------------------
@@ -273,9 +281,11 @@ PanelWindow {
         }
     }
 
+    // Native Wayland layer-shell shortcut. Catches Escape while this window holds
+    // active surface focus, respecting the user's per-window GUI setting.
     Shortcut {
         sequence: "Escape"
-        enabled: base.visible && !base.isPreviewMode && base.escapeCloses
+        enabled: base.visible && !base.isPreviewMode && base.effectiveEscapeCloses
         onActivated: base.close()
     }
 }

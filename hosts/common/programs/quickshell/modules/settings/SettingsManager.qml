@@ -316,6 +316,29 @@ Item {
 
     function setWindowLoadPolicy(idStr, policy) { setWindowProp(idStr, "loadPolicy", policy); }
 
+    // Resolves whether clicking outside a specific overlay card should dismiss/close it
+    // or leave it open in an inactive state. Inspects the persisted `standaloneWindows` map.
+    // Reading `standaloneRevision` ensures any toggle in the GUI immediately triggers a
+    // reactive binding update across all open overlay windows.
+    function getWindowDismissOnBlur(idStr, defaultVal) {
+        var _rev = manager.standaloneRevision;
+        if (standaloneWindows && standaloneWindows[idStr] && standaloneWindows[idStr].dismissOnBlur !== undefined) {
+            return standaloneWindows[idStr].dismissOnBlur;
+        }
+        return (defaultVal !== undefined) ? defaultVal : true;
+    }
+
+    // Resolves whether pressing the Escape key while this specific overlay is active
+    // should close the window. Allows game trackers (e.g. Among Us) or pinned tools
+    // to opt out of accidental keyboard dismissal while leaving fast dialogs dismissible.
+    function getWindowEscapeCloses(idStr, defaultVal) {
+        var _rev = manager.standaloneRevision;
+        if (standaloneWindows && standaloneWindows[idStr] && standaloneWindows[idStr].escapeCloses !== undefined) {
+            return standaloneWindows[idStr].escapeCloses;
+        }
+        return (defaultVal !== undefined) ? defaultVal : true;
+    }
+
     function setWindowProp(idStr, prop, val) {
         var copy = Object.assign({}, standaloneWindows);
         if (!copy[idStr]) copy[idStr] = {};
