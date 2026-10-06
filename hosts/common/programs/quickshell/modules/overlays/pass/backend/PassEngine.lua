@@ -51,3 +51,7 @@ if cmd == "copy" then
     end
     os.exit(0)
 end
+-- When copying the decrypted secret to Wayland clipboard:
+os.execute("printf '%s' " .. secret .. " | wl-copy --sensitive 2>/dev/null || printf '%s' " .. secret .. " | wl-copy")
+-- Instantly remove from cliphist if it somehow captured it:
+os.execute("cliphist list 2>/dev/null | head -n 1 | cliphist delete 2>/dev/null || true")

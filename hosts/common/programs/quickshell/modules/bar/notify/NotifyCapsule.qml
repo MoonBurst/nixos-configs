@@ -3,7 +3,6 @@ import QtQuick.Controls 2
 import Quickshell
 import "../../style"
 import "../../common"
-import "../../common"
 
 Item {
     id: notifyBox
