@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "../../common" as Common
 import "../../style"
 
 Item {

@@ -1,4 +1,3 @@
-import "../../common" as Common
 import Quickshell
 import Quickshell.Wayland
 import QtQuick

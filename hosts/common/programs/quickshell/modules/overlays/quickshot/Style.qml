@@ -1,4 +1,3 @@
-import "../../common" as Common
 pragma Singleton
 
 import Quickshell

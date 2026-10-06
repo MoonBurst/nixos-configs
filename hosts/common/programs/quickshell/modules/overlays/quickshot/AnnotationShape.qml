@@ -1,4 +1,3 @@
-import "../../common" as Common
 import QtQuick
 import QtQuick.Shapes
 

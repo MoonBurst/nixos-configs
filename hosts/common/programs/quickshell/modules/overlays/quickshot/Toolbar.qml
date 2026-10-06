@@ -1,4 +1,3 @@
-import "../../common" as Common
 import QtQuick
 
 // Floating control panel: tool palette, colour picker, stroke-width picker and

@@ -1,4 +1,3 @@
-import "../../common" as Common
 import QtQuick
 
 // A single draggable resize handle. It reports drag positions in the coordinate

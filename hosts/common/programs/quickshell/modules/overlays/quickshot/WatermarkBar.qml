@@ -1,4 +1,3 @@
-import "../../common" as Common
 import QtQuick
 
 // Streamlined floating watermark bar with zero hardcoded names
