@@ -11,7 +11,15 @@ Item {
     property bool isStormHold: false
     property bool autoPausedSync: false
 
-    Process { id: pauseProc;  command: ["sudo", "-n", "game-sync-pause"] }
+    Process {
+        id: pauseProc
+        command: ["sudo", "-n", "game-sync-pause"]
+        onExited: (code) => {
+            if (code !== 0) {
+                Quickshell.execDetached(["notify-send", "-a", "Quickshell", "-u", "critical", "Sudoers Missing", "NOPASSWD required for game-sync-pause"]);
+            }
+        }
+    }
     Process { id: resumeProc; command: ["sudo", "-n", "game-sync-resume"] }
 
     Timer {
