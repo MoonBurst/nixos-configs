@@ -102,17 +102,9 @@ Item {
 
     readonly property real halfBorder: borderWidth / 2
 
-    // Effective chamfer for the hexagon shape. Defined on the root so both
-    // the shape itself and downstream content can reference the same value.
-readonly property real hexCutEffective: {
+    // Effective chamfer for the hexagon shape
+    readonly property real hexCutEffective: {
         if (effectiveShape !== "hexagon") return 0;
-        // Chamfer constraints, in order of priority:
-        //   byHeight — never eat more than 30% of the height. At 45% the
-        //              flat vertical band collapses on short rows (46–80px)
-        //              and the shape degenerates into a chevron/arrow.
-        //   byWidth  — never eat more than 15% of the width.
-        //   byContentH — leave room for a minimum flat top/bottom band.
-        //                Sized generously for inputs so text isn't squeezed.
         var minFlatH = role === "input" ? 100 : 140;
         var byHeight   = Math.round(height * 0.30);
         var byWidth    = Math.round(width * 0.15);
@@ -120,23 +112,13 @@ readonly property real hexCutEffective: {
         return Math.max(2, Math.min(hexCut, byHeight, byWidth, byContentH));
     }
 
-    // Safe-area insets. Content placed at these margins is guaranteed to be
-    // inside the visible shape outline, regardless of shape or size.
+    // Safe-area insets
     readonly property real contentInsetH: effectiveShape === "hexagon" ? (hexCutEffective + halfBorder) : 0
     readonly property real contentInsetV: contentInsetH
 
-    // Canonical content insets. Sibling content anchored at these margins
-    // will always sit inside the visible shape, at any size, border width,
-    // or chamfer setting. Mirrors SlantedBox's leftPadding/rightPadding API
-    // so both shape primitives are interchangeable in layout code.
     readonly property real leftPadding:   contentInsetH + (role === "input" ? 8 : 12)
     readonly property real rightPadding:  leftPadding
 
-    // Vertical insets only clear the border. The chamfer is a corner
-    // feature, so the top and bottom edges of the hexagon are flat
-    // between the corners and do not need to be inset by hexCutEffective.
-    // Using contentInsetV here shrinks the usable height by ~2*hexCut
-    // and clips short-field text at the top.
     readonly property real topPadding:    halfBorder + (role === "input" ? 6 : 10)
     readonly property real bottomPadding: topPadding
     readonly property real x1: (slantLeft === "Right") ? (slantWidth + halfBorder) : halfBorder
@@ -174,17 +156,12 @@ readonly property real hexCutEffective: {
         }
     }
 
-    // 3. Wide-Top Hexagon (Shape renders synchronously in the scene graph;
-    //    frame whenever a delegate was recycled mid-scroll.)
+    // 3. Wide-Top Hexagon
     Shape {
         id: hexShape
         anchors.fill: parent
         visible: root.effectiveShape === "hexagon"
 
-        // Chamfer size. Capped by height*0.45 to preserve the hexagon
-        // silhouette, and additionally by 20% of the smaller dimension so
-        // the corners never eat more space than the flat middle band can
-        // offer to content laid out edge-to-edge (text, badges, chips).
         readonly property real c: root.hexCutEffective
 
         ShapePath {
@@ -206,5 +183,4 @@ readonly property real hexCutEffective: {
             PathLine { x: hexShape.c + root.halfBorder;                  y: root.halfBorder }
         }
     }
-
 }

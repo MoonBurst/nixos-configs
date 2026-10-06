@@ -87,12 +87,7 @@ QtObject {
 
     function decryptAndCopy(key) {
         if (!key) return;
-        decryptProc.command = [
-            "lua",
-            Quickshell.shellDir + "/modules/overlays/pass/backend/PassEngine.lua",
-            "copy",
-            key
-        ];
+        decryptProc.command = Common.LuaRunner.cmd("modules/overlays/pass/backend/PassEngine.lua", "copy", key);
         decryptProc.running = true;
     }
 }

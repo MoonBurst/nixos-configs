@@ -7,7 +7,7 @@ import Quickshell.Wayland
 import Quickshell.Io
 import "." as AlarmInput
 import "../../style"
-import "../../common"
+import "../../common" as Common
 
 Item {
     id: alarmBox

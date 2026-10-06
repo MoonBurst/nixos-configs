@@ -21,6 +21,17 @@ Item {
     width: implicitWidth
     height: parent ? parent.height : 40
 
+    function parseWpctlLine(lineData) {
+        if (!lineData) return;
+        var clean = lineData.trim();
+        var isMuted = clean.indexOf("[MUTED]") !== -1;
+        var match = clean.match(/Volume:\s+([0-9.]+)/);
+        var vNum = "--%";
+        if (match) vNum = Math.round(parseFloat(match[1]) * 100) + "%";
+        var txtColor = isMuted ? audioBox.themeBase08.toString() : audioBox.themeBase05.toString();
+        audioBox.audioDisplayText = "<font color='" + audioBox.themeBase05 + "'>Audio:</font> <font color='" + txtColor + "'> " + vNum + "</font>";
+    }
+
     SlantedBox {
         id: bg
         anchors.fill: parent
@@ -30,39 +41,34 @@ Item {
         slantWidth: audioBox.slantWidth
     }
 
-    // Listen to sink volume and mute events via pactl subscribe
-    Process {
-        id: audioListener
-        running: true
-        command: ["sh", "-c", "wpctl get-volume @DEFAULT_AUDIO_SINK@; pactl subscribe 2>/dev/null | grep --line-buffered -E \"'change' on sink|'change' on server\""]
-
-        function parseWpctlLine(lineData) {
-            if (!lineData) return;
-            var clean = lineData.trim();
-            var isMuted = clean.indexOf("[MUTED]") !== -1;
-            var match = clean.match(/Volume:\s+([0-9.]+)/);
-            var vNum = "--%";
-            if (match) vNum = Math.round(parseFloat(match[1]) * 100) + "%";
-            var txtColor = isMuted ? audioBox.themeBase08.toString() : audioBox.themeBase05.toString();
-            audioBox.audioDisplayText = "<font color='" + audioBox.themeBase05 + "'>Audio:</font> <font color='" + txtColor + "'> " + vNum + "</font>";
-        }
-
-        stdout: SplitParser {
-            splitMarker: "\n"
-            onRead: data => {
-                audioQueryTrigger.running = false;
-                audioQueryTrigger.running = true;
-            }
+    Timer {
+        id: volumeQueryDebounce
+        interval: 60
+        repeat: false
+        onTriggered: {
+            audioQueryTrigger.running = false;
+            audioQueryTrigger.running = true;
         }
     }
 
-    // Quick one-pass helper to parse real-time levels safely
+    // Listens to PipeWire sink volume/mute events and catches external keybind updates
+    Process {
+        id: audioListener
+        running: true
+        command: ["sh", "-c", "pactl subscribe 2>/dev/null | grep --line-buffered -E \"'change' on sink|'change' on server\""]
+        stdout: SplitParser {
+            splitMarker: "\n"
+            onRead: data => volumeQueryDebounce.restart()
+        }
+    }
+
+    // Fetches real-time volume levels safely
     Process {
         id: audioQueryTrigger
         running: true
         command: ["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"]
         stdout: SplitParser {
-            onRead: data => audioListener.parseWpctlLine(data)
+            onRead: data => audioBox.parseWpctlLine(data)
         }
     }
 
@@ -97,7 +103,6 @@ Item {
         clip: true
     }
 
-    // Optimized On-Demand Device Switching Task
     Process {
         id: deviceToggleProcess
         running: false

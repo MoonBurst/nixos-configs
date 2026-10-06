@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "../../../common" as Common
 import "../../../common/Utils.js" as Utils
 
 QtObject {
@@ -20,14 +21,7 @@ QtObject {
     }
 
     readonly property Process appLoader: Process {
-        command: [
-            "sh", "-c",
-            'export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"; ' +
-            'export XDG_DATA_DIRS="$HOME/.local/share:$HOME/.nix-profile/share:/etc/profiles/per-user/${USER:-$(id -un 2>/dev/null)}/share:/run/current-system/sw/share:/usr/local/share:/usr/share:${XDG_DATA_DIRS:-}"; ' +
-            'SCR="' + Quickshell.shellDir + '/modules/overlays/launcher/backend/AppLauncherEngine.lua"; ' +
-            'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
-            '"$CMD" "$SCR"'
-        ]
+    command: Common.LuaRunner.cmd("modules/overlays/launcher/backend/AppLauncherEngine.lua")
         stdout: SplitParser {
             splitMarker: "\n"
             onRead: data => {
