@@ -58,7 +58,7 @@ PanelWindow {
             if (ShotState.tool === "colorpicker" && root.active && root.ready) {
                 captureRoot.grabToImage(function (result) {
                     if (result) {
-                        var path = "/tmp/quickshot-backdrop.png";
+                        var path = (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/quickshot-backdrop.png";
                         result.saveToFile(path);
                         backdropImage.source = "file://" + path + "?t=" + new Date().getTime();
                     }
@@ -431,6 +431,7 @@ PanelWindow {
         var path = (mode === "copy") ? ShotState.clipPath()
         : (mode === "save") ? ShotState.savePath()
         : (mode === "ocr") ? ((Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/quickshot-ocr.png")
+        : ((Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/quickshot-selftest.png");
 
         var ok = result.saveToFile(path);
         if (ok && (mode === "copy" || mode === "save")) {
@@ -454,6 +455,7 @@ PanelWindow {
         colorSamplerSource.grabToImage(function (result) {
             if (!result) return;
             var tempPath = (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/quickshot_pixel.png";
+            result.saveToFile(tempPath);
             colorCanvas.sample("file://" + tempPath + "?t=" + new Date().getTime(), function (rgba) {
                 var hex = "#" + ((1 << 24) + (rgba[0] << 16) + (rgba[1] << 8) + rgba[2]).toString(16).slice(1);
                 ShotState.strokeColor = hex;
