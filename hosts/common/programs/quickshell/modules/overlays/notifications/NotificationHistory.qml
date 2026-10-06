@@ -1,4 +1,3 @@
-import "../../common" as Common
 import "../../common/Utils.js" as Utils
 import "../../style" as Style
 import QtQuick
@@ -16,9 +15,9 @@ Item {
     property var rootItem: null
     property var controller: null
 
-    // Store only lightweight string target names to prevent pinning C++ QObjects in memory
-    property var actionTargetsMap: ({})
+    readonly property var safePad: Utils.getSafeCardPadding(shell ? shell.settingsManager : null)
 
+    property var actionTargetsMap: ({})
     property alias historyModel: historyNotificationsModel
 
     Shortcut {
@@ -81,7 +80,6 @@ Item {
                 }
             }
 
-            // Store purely string target mapping to prevent C++ QObject leaks
             actionTargetsMap[expiredEntry.notifId] = expiredEntry.appName || "";
 
             historyNotificationsModel.insert(0, {
@@ -90,11 +88,10 @@ Item {
                 "body": expiredEntry.body,
                 "appName": expiredEntry.appName,
                 "timestamp": new Date().toLocaleTimeString(Qt.locale(), "hh:mm AP"),
-                "avatarSource": avatarVal,
-                "previewSource": expiredEntry.previewSource || ""
+                                             "avatarSource": avatarVal,
+                                             "previewSource": expiredEntry.previewSource || ""
             });
 
-            // Strict FIFO limit to prevent unbounded RAM growth
             while (historyNotificationsModel.count > 50) {
                 let lastItem = historyNotificationsModel.get(historyNotificationsModel.count - 1);
                 if (lastItem && lastItem.notifId) {
@@ -174,12 +171,16 @@ Item {
 
             Column {
                 anchors.fill: parent
-                anchors.margins: 24
+                // Inset safely inside the card's chamfer to prevent clipping "Clear"
+                anchors.leftMargin: Math.max(28, historyEngine.safePad.h)
+                anchors.rightMargin: Math.max(28, historyEngine.safePad.h)
+                anchors.topMargin: Math.max(20, historyEngine.safePad.v)
+                anchors.bottomMargin: Math.max(20, historyEngine.safePad.v)
                 spacing: 16
 
                 Item {
                     width: parent.width
-                    height: 35
+                    height: 38
 
                     Text {
                         text: "📜 Notification History"
@@ -191,23 +192,42 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                     }
 
-                    Text {
-                        id: clearBtn
-                        text: "Clear"
-                        color: shell.theme.base05 || "#cdd6f4"
-                        font.family: shell.theme.fontFamily || "monospace"
-                        font.pixelSize: 20
-                        font.bold: true
+                    // Styled pill button kept inside the safe chamfer boundary
+                    Item {
+                        id: clearBtnContainer
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
+                        width: clearBtnText.implicitWidth + 24
+                        height: 32
+
+                        Style.ShapeBox {
+                            anchors.fill: parent
+                            role: "input"
+                            slantWidth: 6
+                            color: clearMouse.containsMouse ? (shell.theme.base08 || "#ff5555") : "transparent"
+                            borderColor: clearMouse.containsMouse ? (shell.theme.base08 || "#ff5555") : (shell.theme.base05 || "#cdd6f4")
+                            borderWidth: shell.theme.controlBorderWidth || 2
+                        }
+
+                        Text {
+                            id: clearBtnText
+                            anchors.centerIn: parent
+                            text: "Clear"
+                            color: clearMouse.containsMouse ? "#000000" : (shell.theme.base05 || "#cdd6f4")
+                            font.family: shell.theme.fontFamily || "monospace"
+                            font.pixelSize: 14
+                            font.bold: true
+                        }
 
                         MouseArea {
+                            id: clearMouse
                             anchors.fill: parent
+                            hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
                                 historyNotificationsModel.clear();
                                 historyEngine.actionTargetsMap = {};
-                                Quickshell.execDetached(["sh", "-c", "rm -f /tmp/qs_avatar_notif_*.png 2>/dev/null || true"]);
+                                Quickshell.execDetached(["sh", "-c", 'rm -f "${XDG_RUNTIME_DIR:-/tmp}"/qs_avatar_notif_*.png 2>/dev/null || true']);
                                 if (typeof historyListView !== "undefined" && historyListView) {
                                     historyListView.forceActiveFocus();
                                 }
@@ -219,7 +239,7 @@ Item {
                 ListView {
                     id: historyListView
                     width: parent.width
-                    height: parent.height - 55
+                    height: parent.height - 60
                     model: historyNotificationsModel
                     spacing: 12
                     clip: true
@@ -260,7 +280,7 @@ Item {
                                 let targetItem = historyNotificationsModel.get(currentIndex);
                                 if (targetItem) {
                                     delete historyEngine.actionTargetsMap[targetItem.notifId];
-                                    if (targetItem.avatarSource && targetItem.avatarSource.startsWith("file:///tmp/qs_avatar_")) {
+                                    if (targetItem.avatarSource && targetItem.avatarSource.startsWith("file://")) {
                                         Quickshell.execDetached(["rm", "-f", targetItem.avatarSource.replace(/^file:\/\//, "")]);
                                     }
                                 }
@@ -291,9 +311,9 @@ Item {
                         }
                     }
 
-                    delegate: Rectangle {
+                    delegate: Item {
                         id: delegateRoot
-                        width: parent ? parent.width : 0
+                        width: historyListView.width
                         property string asyncPreviewSource: ""
                         property bool hasRightPreview: (previewSource && previewSource !== "") || (asyncPreviewSource !== "")
 
@@ -305,11 +325,21 @@ Item {
                         }
 
                         height: hasRightPreview ? 450 : 180
-                        color: shell.theme.base01 || "#1e1e2e"
-                        radius: 10
 
-                        border.width: ListView.isCurrentItem ? 3 : 1
-                        border.color: ListView.isCurrentItem ? (shell.theme.base05 || "#cdd6f4") : (shell.theme.base03 || "#45475a")
+                        // Adopts the selected shape theme (Hexagon, Rounded, etc.)
+                        Style.ShapeBox {
+                            id: delegateBg
+                            anchors.fill: parent
+                            role: "input"
+                            color: shell.theme.base01 || "#1e1e2e"
+                            borderColor: ListView.isCurrentItem
+                            ? (shell.theme.base05 || "#cdd6f4")
+                            : (shell.theme.base03 || "#45475a")
+                            borderWidth: ListView.isCurrentItem
+                            ? (shell.theme.globalBorderWidth || 3)
+                            : (shell.theme.controlBorderWidth || 1)
+                            slantWidth: 10
+                        }
 
                         MouseArea {
                             anchors.fill: parent
@@ -335,29 +365,30 @@ Item {
                             }
                         }
 
+                        // Close button positioned inside safe insets
                         Text {
                             id: deleteItemBtn
-                            text: "❌"
-                            font.pixelSize: 20
-                            color: shell.theme.base05 || "#cdd6f4"
-                            opacity: 0.6
+                            text: "✕"
+                            font.pixelSize: 18
+                            font.bold: true
+                            color: deleteMouse.containsMouse ? (shell.theme.base08 || "#ff5555") : (shell.theme.base05 || "#cdd6f4")
+                            opacity: deleteMouse.containsMouse ? 1.0 : 0.6
                             anchors.top: parent.top
                             anchors.right: parent.right
-                            anchors.topMargin: 12
-                            anchors.rightMargin: 14
+                            anchors.topMargin: Math.max(12, delegateBg.topPadding)
+                            anchors.rightMargin: Math.max(16, delegateBg.rightPadding)
                             z: 10
 
                             MouseArea {
+                                id: deleteMouse
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
                                 hoverEnabled: true
-                                onEntered: deleteItemBtn.opacity = 1.0
-                                onExited: deleteItemBtn.opacity = 0.6
                                 onClicked: {
                                     let item = historyNotificationsModel.get(index);
                                     if (item) {
                                         delete historyEngine.actionTargetsMap[item.notifId];
-                                        if (item.avatarSource && item.avatarSource.startsWith("file:///tmp/qs_avatar_")) {
+                                        if (item.avatarSource && item.avatarSource.startsWith("file://")) {
                                             Quickshell.execDetached(["rm", "-f", item.avatarSource.replace(/^file:\/\//, "")]);
                                         }
                                     }
@@ -369,13 +400,16 @@ Item {
 
                         Row {
                             anchors.fill: parent
-                            anchors.margins: 14
+                            anchors.leftMargin: Math.max(16, delegateBg.leftPadding)
+                            anchors.rightMargin: Math.max(40, delegateBg.rightPadding + 20)
+                            anchors.topMargin: Math.max(14, delegateBg.topPadding)
+                            anchors.bottomMargin: Math.max(14, delegateBg.bottomPadding)
                             spacing: 20
 
                             Image {
                                 id: delegateAvatar
-                                width: 150
-                                height: 150
+                                width: 140
+                                height: 140
                                 anchors.verticalCenter: parent.verticalCenter
                                 source: avatarSource ? avatarSource : ""
                                 visible: source !== ""
@@ -383,7 +417,7 @@ Item {
                             }
 
                             Column {
-                                width: parent ? parent.width - 200 : 0
+                                width: parent.width - (delegateAvatar.visible ? 160 : 0)
                                 anchors.verticalCenter: parent.verticalCenter
                                 spacing: 6
 
@@ -394,23 +428,23 @@ Item {
                                     font.pixelSize: 20
                                     font.family: shell.theme.fontFamily || "monospace"
                                     elide: Text.ElideRight
-                                    width: parent ? parent.width : 0
+                                    width: parent.width
                                 }
                                 Text {
                                     visible: text !== "" && !delegateRoot.isBodyOnlyUrl
                                     text: body ? historyEngine.getCleanHistoryBody(body) : ""
                                     color: shell.theme.base05 || "#cdd6f4"
-                                    font.pixelSize: 20
+                                    font.pixelSize: 18
                                     font.family: shell.theme.fontFamily || "monospace"
                                     wrapMode: Text.Wrap
                                     maximumLineCount: delegateRoot.hasRightPreview ? 2 : 3
                                     elide: Text.ElideRight
-                                    width: parent ? parent.width : 0
+                                    width: parent.width
                                 }
 
                                 Image {
                                     id: delegatePreviewImage
-                                    width: parent ? parent.width - 40 : 0
+                                    width: parent.width - 40
                                     height: 220
                                     fillMode: Image.PreserveAspectFit
                                     horizontalAlignment: Image.AlignLeft
@@ -427,17 +461,22 @@ Item {
                                     }
                                 }
 
-                                Rectangle {
+                                Item {
                                     id: linkPreviewBox
                                     width: parent.width - 40
                                     height: 35
-                                    color: shell.theme.base02 || "#313244"
-                                    radius: 6
-                                    border.width: 1
-                                    border.color: shell.theme.base03 || "#45475a"
                                     visible: extractedUrl !== "" && !delegateRoot.hasRightPreview
 
                                     property string extractedUrl: historyEngine.extractUrl(body ? body : "")
+
+                                    Style.ShapeBox {
+                                        anchors.fill: parent
+                                        role: "input"
+                                        color: shell.theme.base02 || "#313244"
+                                        borderColor: shell.theme.base03 || "#45475a"
+                                        borderWidth: shell.theme.controlBorderWidth || 1
+                                        slantWidth: 6
+                                    }
 
                                     Row {
                                         anchors.fill: parent
@@ -446,13 +485,13 @@ Item {
                                         Text {
                                             text: "🔗"
                                             color: shell.theme.base05 || "#cdd6f4"
-                                            font.pixelSize: 20
+                                            font.pixelSize: 18
                                             anchors.verticalCenter: parent.verticalCenter
                                         }
                                         Text {
                                             text: linkPreviewBox.extractedUrl
                                             color: shell.theme.base05 || "#cdd6f4"
-                                            font.pixelSize: 20
+                                            font.pixelSize: 16
                                             font.family: shell.theme.fontFamily || "monospace"
                                             elide: Text.ElideRight
                                             width: parent.width - 40
@@ -473,7 +512,7 @@ Item {
                                 Text {
                                     text: timestamp ? timestamp : ""
                                     color: shell.theme.base05 || "#cdd6f4"
-                                    font.pixelSize: 20
+                                    font.pixelSize: 16
                                     font.family: shell.theme.fontFamily || "monospace"
                                 }
                             }
