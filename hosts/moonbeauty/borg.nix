@@ -251,7 +251,7 @@ EOF
   ];
 
   # 4. Sudo Rules for Borg Backup Controls & Helpers
-  security.sudo.extraRules = [
+security.sudo.extraRules = [
     {
       users = [ "moonburst" ];
       commands = [
@@ -284,18 +284,6 @@ EOF
         }
         {
           command = "/run/current-system/sw/bin/systemctl restart sync-backup-to-nextcloud.service";
-          options = [ "NOPASSWD" ];
-        }
-
-        # Systemctl Maintenance
-        {
-          command = "/run/current-system/sw/bin/systemctl reset-failed";
-          options = [ "NOPASSWD" ];
-        }
-
-        # Garbage Collection
-        {
-          command = "/run/current-system/sw/bin/nix-collect-garbage";
           options = [ "NOPASSWD" ];
         }
       ];

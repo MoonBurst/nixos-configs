@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 import Quickshell.Services.Pam
+import "../common" as Common
 
 Item {
     id: lockManager
@@ -15,6 +16,21 @@ Item {
 
     property alias lockPam: lockPam
     property alias sessionLock: sessionLock
+
+    readonly property string secondaryMode: (shell && shell.settingsManager && shell.settingsManager.lockSecondaryScreenMode)
+    ? shell.settingsManager.lockSecondaryScreenMode
+    : "mirror"
+
+    Process {
+        id: dpmsController
+        running: false
+        function setSecondaryPower(powerOn) {
+            var primaryName = (lockManager.shell && lockManager.shell.primaryScreen) ? lockManager.shell.primaryScreen.name : "";
+            command = Common.LuaRunner.cmd("modules/lockscreen/backend/LockEngine.lua", primaryName, powerOn ? "on" : "off");
+            running = false;
+            running = true;
+        }
+    }
 
     Process {
         id: pamServiceDetector
@@ -52,6 +68,14 @@ Item {
         onLockedChanged: {
             lockManager.globalPasswordBuffer = "";
             lockManager.passwordLength = 0;
+
+            if (locked) {
+                if (lockManager.secondaryMode === "off") {
+                    dpmsController.setSecondaryPower(false);
+                }
+            } else {
+                dpmsController.setSecondaryPower(true);
+            }
         }
         surface: Component {
             LockScreen {

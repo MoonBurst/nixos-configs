@@ -4,14 +4,14 @@
   imports = [
     ../common/default.nix
     ./automation.nix
-    ./sage.nix
+    ./borg.nix
+    ./ffmpeg.nix
     ./moonbeauty-hardware.nix
     ./mounts.nix
+    ./sage.nix
     ./test.nix
     ./website
-    ./ffmpeg.nix
     ./corectrl.nix
-    ./services.nix
   #  ./ai.nix
 #    ./vm.nix
   ];

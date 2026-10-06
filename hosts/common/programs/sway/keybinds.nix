@@ -35,9 +35,10 @@ in
     "${super}+k" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call clipboard toggle";
     "${super}+Shift+k" = "exec save-replay";
     "${super}+l" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call lockscreen lock";
-    "${super}+m" = "exec sh -c 'echo toggle > /tmp/magnifier-state'";
+    "${super}+m" = "exec qs -p ~/nix/hosts/common/programs/quickshell ipc call magnifier toggle";
     "${super}+o" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call todo toggle";
     "${super}+v" = "exec dictate";
+    #"Escape" = "exec kitty";
 
     # ░█▀▀░█░█░█▀▀░▀█▀░█▀▀░█▄█
     # ░▀▀█░░█░░▀▀█░░█░░█▀▀░█░█

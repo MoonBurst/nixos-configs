@@ -15,6 +15,26 @@ in
   # Required for Borg mounts (-o allow_other) in UnifiedMonitor.qml
   programs.fuse.userAllowOther = true;
 
+  # Passwordless sudo for maintenance actions triggered by Quickshell's Unified Dashboard
+  security.sudo.extraRules = [
+    {
+      users = [ username ];
+      commands = [
+        # Systemctl Maintenance (Reset Failed Services button)
+        {
+          command = "/run/current-system/sw/bin/systemctl reset-failed";
+          options = [ "NOPASSWD" ];
+        }
+
+        # Nix Garbage Collection (GC button)
+        {
+          command = "/run/current-system/sw/bin/nix-collect-garbage";
+          options = [ "NOPASSWD" ];
+        }
+      ];
+    }
+  ];
+
   # ---------------------------------------------------------------------------
   # 2. FONTS
   # ---------------------------------------------------------------------------
@@ -30,9 +50,8 @@ in
   # 3. SYSTEM PACKAGES
   # ---------------------------------------------------------------------------
   environment.systemPackages = with pkgs; [
-    # Core Runtimes & Interpreters
+    # Core Runtimes & Interpreters (Pure Lua / Luajit, no Python)
     luajit
-    (python3.withPackages (ps: with ps; [ ]))
     jq
     curl
 
@@ -98,7 +117,7 @@ in
   # ---------------------------------------------------------------------------
   systemd.user.services = {
     # Text clipboard stream watcher
-      cliphist-text = {
+    cliphist-text = {
       description = "Cliphist text clipboard watcher";
       wantedBy = [ "graphical-session.target" ];
       after = [ "graphical-session.target" ];
@@ -110,7 +129,7 @@ in
     };
 
     # Image clipboard stream watcher
-      cliphist-images = {
+    cliphist-images = {
       description = "Cliphist image clipboard watcher";
       wantedBy = [ "graphical-session.target" ];
       after = [ "graphical-session.target" ];
@@ -120,8 +139,6 @@ in
         RestartSec = "2s";
       };
     };
-
-
 
     # Music Player Daemon user service
     mpd = {

@@ -22,6 +22,12 @@ WlSessionLockSurface {
         return pScreen ? windowSurface.screen.name === pScreen.name : true;
     }
 
+    readonly property string secondaryMode: (rootRef && rootRef.settingsManager && rootRef.settingsManager.lockSecondaryScreenMode)
+    ? rootRef.settingsManager.lockSecondaryScreenMode
+    : "mirror"
+
+    readonly property bool shouldDisplayUi: isPrimaryScreen || (secondaryMode === "mirror")
+
     FocusScope {
         anchors.fill: parent
         focus: true
@@ -48,8 +54,17 @@ WlSessionLockSurface {
             anchors.fill: parent
             color: "#0a0a0f"
 
+            MouseArea {
+                anchors.fill: parent
+                onPressed: {
+                    if (interfaceLoader.item && interfaceLoader.item.passField) {
+                        interfaceLoader.item.passField.forceActiveFocus();
+                    }
+                }
+            }
+
             Rectangle {
-                visible: windowSurface.hasBattery && windowSurface.isPrimaryScreen
+                visible: windowSurface.hasBattery && windowSurface.shouldDisplayUi
                 anchors.top: parent.top
                 anchors.right: parent.right
                 anchors.margins: 32
@@ -83,17 +98,13 @@ WlSessionLockSurface {
             Loader {
                 id: interfaceLoader
                 anchors.centerIn: parent
-                active: windowSurface.isPrimaryScreen
+                active: windowSurface.shouldDisplayUi
                 sourceComponent: mainUserInterfaceComponent
             }
         }
 
+        // Global key capture with no bypass shortcuts
         Keys.onPressed: (event) => {
-            if (event.key === Qt.Key_Escape && (event.modifiers & Qt.ControlModifier) && (event.modifiers & Qt.AltModifier)) {
-                if (windowSurface.lockSession) windowSurface.lockSession.locked = false;
-                event.accepted = true;
-                return;
-            }
             if (event.key === Qt.Key_CapsLock) {
                 windowSurface.isCapsLockActive = !windowSurface.isCapsLockActive;
             } else if (event.text !== "" && event.text.length === 1) {
@@ -104,16 +115,27 @@ WlSessionLockSurface {
                 else if (c >= 'A' && c <= 'Z' && isShift) windowSurface.isCapsLockActive = false;
             }
 
-            if (!windowSurface || !windowSurface.screen || !windowSurface.rootRef) return;
-            if (!windowSurface.isPrimaryScreen) {
+            if (!windowSurface || !windowSurface.rootRef) return;
+
+            var activeField = (interfaceLoader.item && interfaceLoader.item.passField && interfaceLoader.item.passField.activeFocus);
+            if (!activeField) {
                 if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                    lockPam.active = true;
+                    if (windowSurface.rootRef.globalPasswordBuffer !== "") {
+                        var pam = windowSurface.rootRef.lockPam;
+                        if (pam) {
+                            if (pam.active) pam.abort();
+                            pam.start();
+                        }
+                    }
                 } else if (event.key === Qt.Key_Backspace) {
                     var str = windowSurface.rootRef.globalPasswordBuffer;
                     if (str.length > 0) {
                         windowSurface.rootRef.globalPasswordBuffer = str.substring(0, str.length - 1);
                         windowSurface.rootRef.passwordLength = windowSurface.rootRef.globalPasswordBuffer.length;
                     }
+                } else if (event.key === Qt.Key_Escape) {
+                    windowSurface.rootRef.globalPasswordBuffer = "";
+                    windowSurface.rootRef.passwordLength = 0;
                 } else if (event.text !== "") {
                     windowSurface.rootRef.globalPasswordBuffer += event.text;
                     windowSurface.rootRef.passwordLength = windowSurface.rootRef.globalPasswordBuffer.length;
@@ -128,6 +150,8 @@ WlSessionLockSurface {
             id: centerFormContainer
             spacing: 40
 
+            property alias passField: passwordField
+
             Timer {
                 id: clockTimer
                 interval: 1000
@@ -141,7 +165,9 @@ WlSessionLockSurface {
             }
 
             Component.onCompleted: {
-                passwordField.forceActiveFocus();
+                if (windowSurface.isPrimaryScreen) {
+                    passwordField.forceActiveFocus();
+                }
                 var d = new Date();
                 timeDisplay.text = d.toLocaleTimeString(Qt.locale(), "hh:mm");
                 dateDisplay.text = d.toLocaleDateString(Qt.locale(), "dddd, MMMM d");
@@ -188,9 +214,26 @@ WlSessionLockSurface {
                     font.family: stylixTheme.fontFamily
                     Layout.alignment: Qt.AlignHCenter
                     horizontalAlignment: TextInput.AlignHCenter
-                    focus: true
+                    focus: windowSurface.isPrimaryScreen
 
                     text: windowSurface.rootRef ? windowSurface.rootRef.globalPasswordBuffer : ""
+
+                    Binding {
+                        target: passwordField
+                        property: "text"
+                        value: windowSurface.rootRef ? windowSurface.rootRef.globalPasswordBuffer : ""
+                        when: !passwordField.activeFocus
+                    }
+
+                    Connections {
+                        target: windowSurface.rootRef || null
+                        function onGlobalPasswordBufferChanged() {
+                            if (windowSurface.rootRef && windowSurface.rootRef.globalPasswordBuffer === "" && passwordField.text !== "") {
+                                passwordField.text = "";
+                            }
+                        }
+                    }
+
                     background: Style.ShapeBox {
                         implicitWidth: stylixTheme.defaultCardWidth
                         implicitHeight: 50
@@ -213,7 +256,6 @@ WlSessionLockSurface {
                             }
                         }
                     }
-
 
                     onTextEdited: {
                         if (windowSurface.rootRef) {

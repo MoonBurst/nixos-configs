@@ -25,12 +25,6 @@ Item {
     readonly property bool isTooltipVisible: isPinned || hoverTracker.hovered || tooltipHovered
     property bool gcRunning: false
 
-    // Sudo Password Prompt State
-    property bool isPromptingPassword: false
-    property string pendingAuthAction: "mount"
-    property string mountErrorMsg: ""
-    property bool passwordError: false
-
     // Theme Fallbacks
     readonly property int themePadding: (shell && shell.theme && typeof shell.theme.globalPadding !== "undefined") ? shell.theme.globalPadding : 12
     readonly property int themeFontSize: (shell && shell.theme && typeof shell.theme.globalFontSize !== "undefined") ? shell.theme.globalFontSize : 14
@@ -89,55 +83,41 @@ Item {
         cmdRunner.running = true;
     }
 
-    // Authenticated Borg Mount Process
+    // Passwordless Borg Mount/Unmount Process using borg.nix sudoers rules
     Process {
         id: borgMountProc
         running: false
-        property string errorOutput: ""
-        stdout: SplitParser {
-            splitMarker: "\n"
-            onRead: data => { if (data && data.trim()) borgMountProc.errorOutput = data.trim(); }
+        property string currentAction: "mount"
+
+        function trigger(action) {
+            currentAction = action;
+            running = false;
+            command = action === "unmount"
+            ? ["sudo", "-n", "borg-umount-browser"]
+            : ["sudo", "-n", "borg-mount-browser"];
+            running = true;
         }
-        onStarted: { errorOutput = ""; }
+
         onExited: (code) => {
-            if (code === 0) {
-                unifiedBox.isPromptingPassword = false;
-                unifiedBox.passwordError = false;
-                unifiedBox.mountErrorMsg = "";
-                sudoPassField.text = "";
-                if (unifiedBox.pendingAuthAction === "mount") {
-                    Quickshell.execDetached(["xdg-open", "/tmp/borg-mount"]);
-                }
-                recalculateState();
-            } else {
-                unifiedBox.passwordError = true;
-                unifiedBox.mountErrorMsg = errorOutput ? errorOutput.slice(0, 45) : "Auth or Mount Failed";
-                sudoPassField.text = "";
-                sudoPassField.forceActiveFocus();
+            if (code === 0 && currentAction === "mount") {
+                // Ensure FUSE mount is ready, then open via MIME default (mimeapps.list)
+                Quickshell.execDetached([
+                    "sh", "-c",
+                    'DIR="/tmp/borg-mount"; ' +
+                    'for i in $(seq 1 10); do mountpoint -q "$DIR" && break || sleep 0.1; done; ' +
+                    'APP=$(xdg-mime query default inode/directory 2>/dev/null); ' +
+                    'if [ -n "$APP" ] && command -v gtk-launch >/dev/null 2>&1; then ' +
+                    '  gtk-launch "$APP" "$DIR" 2>/dev/null || xdg-open "$DIR"; ' +
+                    'elif command -v gio >/dev/null 2>&1; then ' +
+                    '  gio open "$DIR" 2>/dev/null || xdg-open "$DIR"; ' +
+                    'else ' +
+                    '  xdg-open "$DIR"; ' +
+                    'fi'
+                ]);
             }
+            recalculateState();
         }
     }
-
-    function executeBorgAction(password) {
-        if (!password) return;
-        unifiedBox.passwordError = false;
-        unifiedBox.mountErrorMsg = "";
-        borgMountProc.running = false;
-        if (unifiedBox.pendingAuthAction === "unmount") {
-            borgMountProc.command = [
-                "sudo", "-S", "-k", "bash", "-c",
-                "fusermount -u -z /tmp/borg-mount 2>/dev/null || borg umount /tmp/borg-mount 2>/dev/null || umount -l /tmp/borg-mount"
-            ];
-        } else {
-            borgMountProc.command = [
-                "sudo", "-S", "-k", "bash", "-c",
-                "fusermount -u -z /tmp/borg-mount 2>/dev/null || true; mkdir -p /tmp/borg-mount && export BORG_PASSPHRASE=$(cat /run/secrets/borg_passphrase 2>/dev/null || true); borg mount -o allow_other /mnt/main_backup /tmp/borg-mount"
-            ];
-        }
-        borgMountProc.running = true;
-        borgMountProc.write(password + "\n");
-    }
-
     // --- ENGINES ---
     RecordingEngine { id: recEngine; onIsRecordingChanged: recalculateState(); onIsStreamingChanged: recalculateState() }
     GameSentinel { id: gameSentinel; onIsStormHoldChanged: recalculateState() }
@@ -251,10 +231,10 @@ Item {
         id: tooltip
         moduleItem: unifiedBox
         barWindow: unifiedBox.barWindow
-        tooltipActive: unifiedBox.isTooltipVisible || unifiedBox.isPromptingPassword
-        pin: unifiedBox.isPinned || unifiedBox.isPromptingPassword
+        tooltipActive: unifiedBox.isTooltipVisible
+        pin: unifiedBox.isPinned
         alignSide: "Left"
-        keyboardFocus: unifiedBox.isPromptingPassword ? WlrLayershell.Exclusive : WlrLayershell.None
+        keyboardFocus: WlrKeyboardFocus.None
 
         collapsedCoreWidth: unifiedBox.tooltipCollapsedWidth
         expandedCoreWidth: unifiedBox.tooltipExpandedWidth
@@ -378,12 +358,11 @@ Item {
                 MouseArea {
                     anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        unifiedBox.pendingAuthAction = borgEngine.isMounted ? "unmount" : "mount";
-                        unifiedBox.isPromptingPassword = true;
-                        unifiedBox.passwordError = false;
-                        unifiedBox.mountErrorMsg = "";
-                        sudoPassField.text = "";
-                        Qt.callLater(() => sudoPassField.forceActiveFocus());
+                        if (borgEngine.isMounted) {
+                            borgMountProc.trigger("unmount");
+                        } else {
+                            borgMountProc.trigger("mount");
+                        }
                     }
                 }
             }
@@ -405,82 +384,6 @@ Item {
                             unifiedBox.gcRunning = true;
                             unifiedBox.runCmd("if command -v nix-collect-garbage >/dev/null 2>&1; then sudo -n nix-collect-garbage --delete-older-than 14d; else sudo -n journalctl --vacuum-time=14d 2>/dev/null || true; fi");
                         }
-                    }
-                }
-            }
-        }
-
-        // 2. THEMED INLINE SUDO PASSWORD PROMPT
-        RowLayout {
-            id: sudoPasswordRow
-            onVisibleChanged: if (visible) Qt.callLater(() => sudoPassField.forceActiveFocus())
-            visible: unifiedBox.isPromptingPassword
-            spacing: 8
-            y: tooltip.liveTooltipHeight - 40
-            x: tooltip.slantX(y) + 24
-            width: tooltip.effectiveCoreWidth - 48
-
-            Text {
-                text: unifiedBox.passwordError ? "⚠️ Auth Failed:" : "🔑 Sudo Password:"
-                font.family: themeFontFamily
-                font.pixelSize: 11
-                font.bold: true
-                color: unifiedBox.passwordError ? themeBase08 : themeBase05
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 26
-                clip: true
-                height: 26
-                radius: 4
-                color: themeBase00
-                border.color: unifiedBox.passwordError ? themeBase08 : themeBase05
-                border.width: 1
-
-                TextInput {
-                    id: sudoPassField
-                    clip: true
-                    anchors.fill: parent
-                    anchors.margins: 4
-                    echoMode: TextInput.Password
-                    color: themeBase05
-                    font.family: themeFontFamily
-                    font.pixelSize: 13
-                    verticalAlignment: TextInput.AlignVCenter
-                    focus: true
-                    onAccepted: unifiedBox.executeBorgAction(text)
-
-                    Keys.onPressed: (event) => {
-                        if (event.key === Qt.Key_Escape) {
-                            unifiedBox.isPromptingPassword = false;
-                            unifiedBox.passwordError = false;
-                            event.accepted = true;
-                        }
-                    }
-                }
-            }
-
-            Rectangle {
-                width: 65; height: 26; radius: 4
-                color: mountConfirmHover.hovered ? themeBase0C : "transparent"
-                border.color: themeBase0C; border.width: 1
-                Text { anchors.centerIn: parent; text: "✔ OK"; font.bold: true; font.pixelSize: 11; color: mountConfirmHover.hovered ? themeBase00 : themeBase0C }
-                HoverHandler { id: mountConfirmHover }
-                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: unifiedBox.executeBorgAction(sudoPassField.text) }
-            }
-
-            Rectangle {
-                width: 50; height: 26; radius: 4
-                color: mountCancelHover.hovered ? themeBase08 : "transparent"
-                border.color: themeBase08; border.width: 1
-                Text { anchors.centerIn: parent; text: "✕"; font.bold: true; font.pixelSize: 11; color: mountCancelHover.hovered ? themeBase00 : themeBase08 }
-                HoverHandler { id: mountCancelHover }
-                MouseArea {
-                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        unifiedBox.isPromptingPassword = false;
-                        unifiedBox.passwordError = false;
                     }
                 }
             }
