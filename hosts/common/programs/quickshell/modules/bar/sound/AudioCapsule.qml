@@ -29,13 +29,12 @@ Item {
         slantWidth: audioBox.slantWidth
     }
 
-    // 1. HIGH-PERFORMANCE PERSISTENT AUDIO MONITOR
-    // Stays alive permanently, reading volume changes from stdout without timer loops
+    // Listen to sink volume and mute events via pactl subscribe
     Process {
         id: audioListener
         running: true
-        command: ["sh", "-c", "wpctl get-volume @DEFAULT_AUDIO_SINK@; pw-mon -b | grep --line-buffered -E 'sinks|volume|mute'"]
-        
+        command: ["sh", "-c", "wpctl get-volume @DEFAULT_AUDIO_SINK@; pactl subscribe 2>/dev/null | grep --line-buffered -E \"'change' on sink|'change' on server\""]
+
         function parseWpctlLine(lineData) {
             if (!lineData) return;
             var clean = lineData.trim();
@@ -50,7 +49,6 @@ Item {
         stdout: SplitParser {
             splitMarker: "\n"
             onRead: data => {
-                // Whenever PipeWire emits a volume event, fetch the clean string value instantly
                 audioQueryTrigger.running = false;
                 audioQueryTrigger.running = true;
             }
@@ -102,10 +100,7 @@ Item {
     Process {
         id: deviceToggleProcess
         running: false
-        command: [
-            "sh", "-c",
-            "SCR=\"$HOME/nix/hosts/common/scripts/sound_sink_switcher.sh\"; if [ -x \"$SCR\" ]; then \"$SCR\"; else next_sink=$(wpctl status | awk '/Sinks:/{flag=1; next} /Sources:/{flag=0} flag && /^[ \\t]+[0-9]+/ {print $1}' | tr -d '.' | grep -v '*' | head -n 1); [ -n \"$next_sink\" ] && wpctl set-default \"$next_sink\"; fi"
-        ]
+        command: Common.LuaRunner.cmd("modules/bar/sound/backend/SinkSwitcher.lua")
         onExited: audioQueryTrigger.running = true
     }
 

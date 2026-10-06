@@ -38,7 +38,7 @@ Item {
     Process {
         id: micListener
         running: true
-        command: ["sh", "-c", "wpctl get-volume @DEFAULT_AUDIO_SOURCE@; pw-mon -b | grep --line-buffered -E 'sources|source|volume|mute'"]
+        command: ["sh", "-c", "wpctl get-volume @DEFAULT_AUDIO_SOURCE@ 2>/dev/null; pactl subscribe 2>/dev/null | grep --line-buffered -E \"'change' on source|'change' on server\""]
         stdout: SplitParser {
             splitMarker: "\n"
             onRead: data => {
