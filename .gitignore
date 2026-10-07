@@ -17,3 +17,4 @@ hosts/common/programs/quickshell/resources/
 
 # Explicitly white-list and force-track your secure SOPS data vault package
 !hosts/common/programs/quickshell/resources.tar
+!/resources.tar

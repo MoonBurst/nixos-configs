@@ -12,8 +12,7 @@
       ll = "ls -l";
       ".." = "cd ..";
 
-      # AUTOMATED RESTORE: Pulls changes from both repos, rebuilds system, decrypts GPG/Pass, and unpacks your resources cleanly
-      restore_from_git = "cd ~/nix && git fetch origin && git reset --hard origin/main && sudo nixos-rebuild switch --flake . && mkdir -p -m 700 ~/.local/share/gnupg && (sops -d --extract '[\"gpg_private_key\"]' secrets.yaml | gpg --import || echo 'Warning: Could not import GPG key.') && (sops -d pass-backup.enc | tar -xz -C ~/.local/share || echo 'Warning: Could not restore password store backup.') && (echo '🔒 Decrypting and restoring plain-text quickshell resources folder...' && cd ~/nix/hosts/common/programs/quickshell && rm -rf ./resources && sops -d resources.tar | tar -xf - || echo 'Warning: Failed to decrypt resources archive.') && (echo '🐙 Syncing development code from standalone quickshell repo...' && cd ~/nix/hosts/common/programs/quickshell && git fetch origin && git reset --hard origin/master || echo 'Warning: Standalone quickshell repository code fetch failed.')";
+      restore_from_git = "cd ~/nix && git fetch origin && git reset --hard origin/main && sudo nixos-rebuild switch --flake . && mkdir -p -m 700 ~/.local/share/gnupg && (sops -d --extract '[\"gpg_private_key\"]' secrets.yaml | gpg --import || echo 'Warning: Could not import GPG key.') && (sops -d pass-backup.enc | tar -xz -C ~/.local/share || echo 'Warning: Could not restore password store backup.') && (echo '🔒 Decrypting and restoring plain-text quickshell resources folder...' && cd ~/nix/hosts/common/programs/quickshell && rm -rf ./resources && sops -d ~/nix/resources.tar | tar -xf - || echo 'Warning: Failed to decrypt resources archive.') && (echo '🐙 Syncing development code from standalone quickshell repo...' && cd ~/nix/hosts/common/programs/quickshell && git fetch origin && git reset --hard origin/main || echo 'Warning: Standalone quickshell repository code fetch failed.')";
 
       nix-switch = "sudo nixos-rebuild switch --flake ~/nix";
       wallpaper = "/home/moonburst/nix/hosts/common/scripts/wallpaper.sh";
@@ -32,6 +31,7 @@
       bind-6400 = "echo '0000:2b:00.0' | sudo tee /sys/bus/pci/drivers/amdgpu/bind";
       historycleaner = "$HOME/scripts/alias_scripts/historycleaner.sh";
       nolog = "unset HISTFILE";
+      hupdate = "$HOME/update_horizon.sh";
       search = "nix search nixpkgs";
       open = "xdg-open";
     };
@@ -51,6 +51,7 @@
       zstyle ':completion:*:ssh:*' users ' '
       zstyle ':completion:*:*:ssh:*:*' tag-order hosts
 
+      # FIXED COMPRESSION PIPELINE: Packages your assets directly out to your parent nix root path context securely
       nupdate() {
         local HOSTNAME=$(hostname)
         local FLAKE_PATH="$HOME/nix"
@@ -62,16 +63,16 @@
 
         local AGE_KEY="$HOME/.config/sops/age/moon_keys.txt"
 
-        # --- Automated Quickshell resource sync hook (Matches Passwords Perfectly!) ---
+        # --- Automated Quickshell resource sync hook (Outputs straight to Nix folder root!) ---
         local QS_PATH="$FLAKE_PATH/hosts/common/programs/quickshell"
         if [ -d "$QS_PATH/resources" ]; then
           if [ -f "$AGE_KEY" ]; then
             echo "🔐 Automatically encrypting and updating local resources.tar archive snapshot..."
             local TEMP_QS_TAR="$HOME/qs-resources-temp.tar"
 
-            # Pack, encrypt using your raw age public key, and output a clean encrypted file out-of-tree
+            # Pack, encrypt using your raw age public key, and output cleanly to your nix folder root
             tar -cf "$TEMP_QS_TAR" -C "$QS_PATH" resources && \
-            sops --encrypt --age $(age-keygen -y "$AGE_KEY") "$TEMP_QS_TAR" > "$QS_PATH/resources.tar" && \
+            sops --encrypt --age $(age-keygen -y "$AGE_KEY") "$TEMP_QS_TAR" > "$FLAKE_PATH/resources.tar" && \
             rm "$TEMP_QS_TAR"
             echo "Quickshell resources archive backup complete."
           else
