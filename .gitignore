@@ -1,6 +1,19 @@
-/hosts/common/programs/quickshell/Theme.qml
+# Ignore cached text editor swap footprints
+.*.kate-swp
+*.kate-swp
+
+# Ignore localized machine-learning configurations
 hosts/common/assets/*.onnx
 hosts/common/assets/*.index
 hosts/common/assets/*.pth
-.*.kate-swp
-*.kate-swp
+
+# Tell the main flake repository to ignore raw quickshell code blocks
+hosts/common/programs/quickshell/modules/
+hosts/common/programs/quickshell/Theme.qml
+hosts/common/programs/quickshell/shell.qml
+
+# Block your raw unencrypted credentials path completely
+hosts/common/programs/quickshell/resources/
+
+# Explicitly white-list and force-track your secure SOPS data vault package
+!hosts/common/programs/quickshell/resources.tar
