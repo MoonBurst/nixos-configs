@@ -11,6 +11,10 @@
     shellAliases = {
       ll = "ls -l";
       ".." = "cd ..";
+
+      # AUTOMATED RESTORE: Pulls changes from both repos, rebuilds system, decrypts GPG/Pass, and unpacks your resources cleanly
+      restore_from_git = "cd ~/nix && git fetch origin && git reset --hard origin/main && sudo nixos-rebuild switch --flake . && mkdir -p -m 700 ~/.local/share/gnupg && (sops -d --extract '[\"gpg_private_key\"]' secrets.yaml | gpg --import || echo 'Warning: Could not import GPG key.') && (sops -d pass-backup.enc | tar -xz -C ~/.local/share || echo 'Warning: Could not restore password store backup.') && (echo '🔒 Decrypting and restoring plain-text quickshell resources folder...' && cd ~/nix/hosts/common/programs/quickshell && rm -rf ./resources && sops -d resources.tar | tar -xf - || echo 'Warning: Failed to decrypt resources archive.') && (echo '🐙 Syncing development code from standalone quickshell repo...' && cd ~/nix/hosts/common/programs/quickshell && git fetch origin && git reset --hard origin/master || echo 'Warning: Standalone quickshell repository code fetch failed.')";
+
       nix-switch = "sudo nixos-rebuild switch --flake ~/nix";
       wallpaper = "/home/moonburst/nix/hosts/common/scripts/wallpaper.sh";
       grab = "scripts/alias_scripts/search.sh";
@@ -28,15 +32,12 @@
       bind-6400 = "echo '0000:2b:00.0' | sudo tee /sys/bus/pci/drivers/amdgpu/bind";
       historycleaner = "$HOME/scripts/alias_scripts/historycleaner.sh";
       nolog = "unset HISTFILE";
-      hupdate = "$HOME/update_horizon.sh";
       search = "nix search nixpkgs";
-      restore_from_git = "cd ~/nix && git fetch origin && git reset --hard origin/main && sudo nixos-rebuild switch --flake . && mkdir -p -m 700 ~/.local/share/gnupg && (sops -d --extract '[\"gpg_private_key\"]' secrets.yaml | gpg --import || echo 'Warning: Could not import GPG key.') && (sops -d pass-backup.enc | tar -xz -C ~/.local/share || echo 'Warning: Could not restore password store backup.')";
       open = "xdg-open";
     };
 
     interactiveShellInit = ''
       export SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/moon_keys.txt"
-
 
       if [ -z "$XDG_RUNTIME_DIR" ]; then
         export XDG_RUNTIME_DIR="/run/user/$(id -u)"
@@ -45,7 +46,6 @@
         export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
       fi
 
-      # --- SSH Completion Fix ---
       zstyle ':completion:*:*:ssh:*:hosts' hosts moonbeauty lunarchild
       zstyle ':completion:*:*:scp:*:hosts' hosts moonbeauty lunarchild
       zstyle ':completion:*:ssh:*' users ' '
@@ -60,9 +60,27 @@
           return 1
         fi
 
+        local AGE_KEY="$HOME/.config/sops/age/moon_keys.txt"
+
+        # --- Automated Quickshell resource sync hook (Matches Passwords Perfectly!) ---
+        local QS_PATH="$FLAKE_PATH/hosts/common/programs/quickshell"
+        if [ -d "$QS_PATH/resources" ]; then
+          if [ -f "$AGE_KEY" ]; then
+            echo "🔐 Automatically encrypting and updating local resources.tar archive snapshot..."
+            local TEMP_QS_TAR="$HOME/qs-resources-temp.tar"
+
+            # Pack, encrypt using your raw age public key, and output a clean encrypted file out-of-tree
+            tar -cf "$TEMP_QS_TAR" -C "$QS_PATH" resources && \
+            sops --encrypt --age $(age-keygen -y "$AGE_KEY") "$TEMP_QS_TAR" > "$QS_PATH/resources.tar" && \
+            rm "$TEMP_QS_TAR"
+            echo "Quickshell resources archive backup complete."
+          else
+            echo "Warning: Age key '$AGE_KEY' not found. Skipping quickshell resource backup."
+          fi
+        fi
+
         # --- Backup password store if it exists ---
         local PASS_DIR="$HOME/.local/share/pass"
-        local AGE_KEY="$HOME/.config/sops/age/moon_keys.txt"
 
         if [ -d "$PASS_DIR" ]; then
           if [ -f "$AGE_KEY" ]; then
@@ -80,7 +98,6 @@
           echo "Warning: Password store '$PASS_DIR' not found. Skipping password backup."
         fi
 
-        # --- Proceed with NixOS rebuild ---
         echo "Rebuilding and switching NixOS configuration..."
         sudo nixos-rebuild switch --flake "$FLAKE_PATH#$HOSTNAME" --log-format bar-with-logs --quiet --option warn-dirty false
       }
@@ -117,21 +134,7 @@
     WLR_NO_HARDWARE_CURSORS = "1";
     WLR_RENDERER_ALLOW_SOFTWARE = "1";
     WLR_RENDERER = "gles2";
-    # XDG_SESSION_TYPE is safe to hardcode -- every session here is
-    # Wayland regardless of which compositor is running.
     XDG_SESSION_TYPE = "wayland";
-    # XDG_CURRENT_DESKTOP / XDG_SESSION_DESKTOP intentionally NOT set
-    # here. This file is loaded for every session (PAM/login-level,
-    # before any compositor starts), so a value baked in here would
-    # always be "sway" -- even under Hyprland or anything else -- and
-    # would break desktop-portal selection, GTK/Qt theming decisions,
-    # and any app that keys off XDG_CURRENT_DESKTOP. Set these per
-    # compositor instead, in sway's / Hyprland's own startup, and
-    # re-export them into the systemd/dbus user environment there
-    # (e.g. `dbus-update-activation-environment --systemd --all` or
-    # `systemctl --user import-environment`) so dbus/systemd-activated
-    # apps and new terminals see the right values, not just direct
-    # children of the compositor process.
     CARGO_HOME = "$HOME/.local/share/cargo";
     DOTNET_CLI_HOME = "$HOME/.local/share/dotnet";
     GNUPGHOME = "$HOME/.local/share/gnupg";
@@ -141,11 +144,7 @@
     PASSWORD_STORE_DIR = "$HOME/.local/share/pass";
     RUSTUP_HOME = "$HOME/.local/share/rustup";
     CLIPHIST_DB_PATH = "/tmp/cliphist_db";
-
-    # Disable Qt's internal font database debug tracing globally
     QT_LOGGING_RULES = "qt.text.font.db.debug=false";
-
-    # DYNAMIC SOURCE LINKING: Evaluates to package name strings dynamically based on mime.nix config options
     EDITOR = "${config.apps.editor.pname or config.apps.editor.name or "micro"}";
     TERMINAL = "${config.apps.terminal.pname or config.apps.terminal.name or "ghostty"}";
   };
