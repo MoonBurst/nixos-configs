@@ -44,18 +44,24 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 12
-        spacing: 14
+        anchors.margins: 14
+        spacing: 12
 
+        // Header Title
         Text {
             text: "⏰ SCHEDULED CRITICAL REMINDERS"
             font.bold: true
             font.pixelSize: viewRoot.overlayFontSize + 2
             color: (theme && theme.base05) ? theme.base05 : "yellow"
+            Layout.fillWidth: true
         }
 
+        // 1. Task Name Input Row
         Item {
             Layout.fillWidth: true
+            Layout.preferredHeight: viewRoot.fieldHeight
+            Layout.minimumHeight: viewRoot.fieldHeight
+            Layout.maximumHeight: viewRoot.fieldHeight
             height: viewRoot.fieldHeight
 
             Style.ShapeBox {
@@ -96,93 +102,113 @@ Item {
             }
         }
 
-        RowLayout {
+        // 2. When Input & Schedule Button Row
+        Item {
             Layout.fillWidth: true
+            Layout.preferredHeight: viewRoot.fieldHeight
+            Layout.minimumHeight: viewRoot.fieldHeight
+            Layout.maximumHeight: viewRoot.fieldHeight
             height: viewRoot.fieldHeight
-            spacing: 10
 
-            Item {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
+            RowLayout {
+                anchors.fill: parent
+                spacing: 10
 
-                Style.ShapeBox {
-                    id: whenBg
-                    anchors.fill: parent
-                    role: "input"
-                    color: (theme && theme.base00) ? theme.base00 : "#11111b"
-                    borderColor: whenInput.activeFocus ? ((theme && theme.base05) ? theme.base05 : "yellow") : ((theme && theme.base03) ? theme.base03 : "#45475a")
-                    borderWidth: viewRoot.controlBorderWidth
-                    slantWidth: 10
-                }
+                Item {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
 
-                TextInput {
-                    id: whenInput
-                    anchors.fill: parent
-                    anchors.leftMargin: Math.max(14, whenBg.leftPadding)
-                    anchors.rightMargin: Math.max(14, whenBg.rightPadding)
-                    font.pixelSize: viewRoot.overlayFontSize
-                    color: (theme && theme.base05) ? theme.base05 : "yellow"
-                    verticalAlignment: TextInput.AlignVCenter
-                    selectByMouse: true
-
-                    Text {
+                    Style.ShapeBox {
+                        id: whenBg
                         anchors.fill: parent
-                        verticalAlignment: Text.AlignVCenter
-                        text: "When (e.g. 15m, 1h 30m, 5pm, tomorrow 9am)..."
-                        color: "#666"
-                        visible: parent.text === "" && !parent.activeFocus
-                        font.pixelSize: viewRoot.overlayFontSize
+                        role: "input"
+                        color: (theme && theme.base00) ? theme.base00 : "#11111b"
+                        borderColor: whenInput.activeFocus ? ((theme && theme.base05) ? theme.base05 : "yellow") : ((theme && theme.base03) ? theme.base03 : "#45475a")
+                        borderWidth: viewRoot.controlBorderWidth
+                        slantWidth: 10
                     }
 
-                    Keys.onPressed: (event) => {
-                        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                            viewRoot.submitReminder();
-                            event.accepted = true;
+                    TextInput {
+                        id: whenInput
+                        anchors.fill: parent
+                        anchors.leftMargin: Math.max(14, whenBg.leftPadding)
+                        anchors.rightMargin: Math.max(14, whenBg.rightPadding)
+                        font.pixelSize: viewRoot.overlayFontSize
+                        color: (theme && theme.base05) ? theme.base05 : "yellow"
+                        verticalAlignment: TextInput.AlignVCenter
+                        selectByMouse: true
+
+                        Text {
+                            anchors.fill: parent
+                            verticalAlignment: Text.AlignVCenter
+                            text: "When (e.g. 15m, 1h 30m, 5pm, tomorrow 9am)..."
+                            color: "#666"
+                            visible: parent.text === "" && !parent.activeFocus
+                            font.pixelSize: viewRoot.overlayFontSize
+                        }
+
+                        Keys.onPressed: (event) => {
+                            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                                viewRoot.submitReminder();
+                                event.accepted = true;
+                            }
                         }
                     }
                 }
-            }
 
-            Item {
-                width: 130
-                Layout.fillHeight: true
+                Item {
+                    Layout.preferredWidth: 130
+                    Layout.fillHeight: true
 
-                Style.ShapeBox {
-                    anchors.fill: parent
-                    role: "input"
-                    slantWidth: 8
-                    color: schedHov.hovered ? ((theme && theme.base0C) ? theme.base0C : "#04f100") : ((theme && theme.base02) ? theme.base02 : "#1e1e2e")
-                    borderColor: (theme && theme.base0C) ? theme.base0C : "#04f100"
-                    borderWidth: viewRoot.controlBorderWidth
-                }
+                    Style.ShapeBox {
+                        anchors.fill: parent
+                        role: "input"
+                        slantWidth: 8
+                        color: schedHov.hovered ? ((theme && theme.base0C) ? theme.base0C : "#04f100") : ((theme && theme.base02) ? theme.base02 : "#1e1e2e")
+                        borderColor: (theme && theme.base0C) ? theme.base0C : "#04f100"
+                        borderWidth: viewRoot.controlBorderWidth
+                    }
 
-                Text {
-                    anchors.centerIn: parent
-                    text: "+ Schedule"
-                    font.bold: true
-                    font.pixelSize: 13
-                    color: schedHov.hovered ? "#000" : ((theme && theme.base0C) ? theme.base0C : "#04f100")
-                }
+                    Text {
+                        anchors.centerIn: parent
+                        text: "+ Schedule"
+                        font.bold: true
+                        font.pixelSize: 13
+                        color: schedHov.hovered ? "#000" : ((theme && theme.base0C) ? theme.base0C : "#04f100")
+                    }
 
-                HoverHandler { id: schedHov }
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: viewRoot.submitReminder()
+                    HoverHandler { id: schedHov }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: viewRoot.submitReminder()
+                    }
                 }
             }
         }
 
+        // 3. Quick Presets Row
         RowLayout {
             Layout.fillWidth: true
+            Layout.preferredHeight: 28
+            Layout.minimumHeight: 28
+            Layout.maximumHeight: 28
             spacing: 8
 
-            Text { text: "Quick:"; font.bold: true; font.pixelSize: 11; color: "#888" }
+            Text {
+                text: "Quick:"
+                font.bold: true
+                font.pixelSize: 11
+                color: "#888"
+                Layout.alignment: Qt.AlignVCenter
+            }
 
             Repeater {
                 model: ["5m", "15m", "30m", "1h", "2h", "tomorrow 9am"]
                 delegate: Item {
-                    width: qTxt.implicitWidth + 20; height: 26
+                    width: qTxt.implicitWidth + 20
+                    height: 26
+                    Layout.alignment: Qt.AlignVCenter
 
                     Style.ShapeBox {
                         anchors.fill: parent
@@ -216,12 +242,20 @@ Item {
             Item { Layout.fillWidth: true }
         }
 
-        Rectangle { Layout.fillWidth: true; height: 1; color: (theme && theme.base03) ? theme.base03 : "#45475a" }
+        // Divider Line
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+            Layout.minimumHeight: 1
+            Layout.maximumHeight: 1
+            color: (theme && theme.base03) ? theme.base03 : "#45475a"
+        }
 
+        // 4. Empty State Placeholder (Visible only when list is empty)
         Item {
             visible: engine.remindersList.length === 0
             Layout.fillWidth: true
-            Layout.fillHeight: true
+            Layout.fillHeight: visible
 
             Text {
                 anchors.centerIn: parent
@@ -231,11 +265,12 @@ Item {
             }
         }
 
+        // 5. Active Reminders List (Takes all remaining vertical space)
         ListView {
             id: reminderListView
             visible: engine.remindersList.length > 0
             Layout.fillWidth: true
-            Layout.fillHeight: true
+            Layout.fillHeight: visible
             clip: true
             spacing: 8
             model: engine.remindersList
@@ -260,10 +295,15 @@ Item {
                     anchors.rightMargin: Math.max(14, cardBg.rightPadding)
                     spacing: 12
 
-                    Text { text: "⏰"; font.pixelSize: 18 }
+                    Text {
+                        text: "⏰"
+                        font.pixelSize: 18
+                        Layout.alignment: Qt.AlignVCenter
+                    }
 
                     ColumnLayout {
                         Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignVCenter
                         spacing: 2
 
                         Text {
@@ -283,8 +323,13 @@ Item {
                     }
 
                     Rectangle {
-                        height: 24; width: cdText.implicitWidth + 14; radius: 4
-                        color: "#181825"; border.color: (theme && theme.base0C) ? theme.base0C : "#04f100"; border.width: 1
+                        height: 24
+                        width: cdText.implicitWidth + 14
+                        radius: 4
+                        color: "#181825"
+                        border.color: (theme && theme.base0C) ? theme.base0C : "#04f100"
+                        border.width: 1
+                        Layout.alignment: Qt.AlignVCenter
 
                         Text {
                             id: cdText
@@ -297,9 +342,13 @@ Item {
                     }
 
                     Rectangle {
-                        width: 26; height: 26; radius: 4
+                        width: 26
+                        height: 26
+                        radius: 4
                         color: delHov.hovered ? "#ff5555" : "transparent"
-                        border.color: "#ff5555"; border.width: 1
+                        border.color: "#ff5555"
+                        border.width: 1
+                        Layout.alignment: Qt.AlignVCenter
 
                         Text {
                             anchors.centerIn: parent

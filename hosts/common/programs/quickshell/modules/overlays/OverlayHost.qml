@@ -15,6 +15,7 @@ import "./gemini" as GeminiModule
 import "./settings" as SettingsWindowModule
 import "./email" as EmailModule
 import "./websearch" as WebSearchModule
+import "./reminders" as ReminderModule
 import "./notifications" as Notifications
 import "./magnify" as Magnify
 import "./rng" as RNG
@@ -39,6 +40,7 @@ Item {
     property alias overlayInspectorWindow: overlayInspectorWindow
     property alias emailWindow: emailWindow
     property alias startPageWindow: startPageWindow
+    property alias reminderWindow: reminderWindow
 
     property alias magnifierOverlay: magnifierOverlay
     property alias diceRollerWindowInstance: diceRollerWindowInstance
@@ -51,7 +53,7 @@ Item {
             appLauncherWindow, calcWindow, clipboardWindow, dictionaryWindow,
             unicodeWindow, notesWindow, passWindow, powerWindow,
             todoWindow, geminiWindow, settingsWindow, emailWindow,
-            startPageWindow, diceRollerWindowInstance, amogusWindowInstance
+            startPageWindow, reminderWindow, diceRollerWindowInstance, amogusWindowInstance
         ];
 
         for (var i = 0; i < list.length; i++) {
@@ -85,6 +87,7 @@ Item {
     SettingsWindowModule.OverlayInspectorWindow { id: overlayInspectorWindow; shell: overlayHost.shell }
     EmailModule.EmailWindow                   { id: emailWindow;             shell: overlayHost.shell }
     WebSearchModule.StartPageWindow           { id: startPageWindow;         shell: overlayHost.shell }
+    ReminderModule.ReminderWindow             { id: reminderWindow;          shell: overlayHost.shell }
 
     Magnify.Magnify { id: magnifierOverlay }
     RNG.DiceRollerWindow { id: diceRollerWindowInstance; shell: overlayHost.shell }

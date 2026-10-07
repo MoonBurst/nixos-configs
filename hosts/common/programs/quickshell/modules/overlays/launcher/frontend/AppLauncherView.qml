@@ -58,6 +58,10 @@ Item {
         if (lower === "todo" || lower === "td" || raw.startsWith("todo ") || raw.startsWith("td ")) {
             viewRoot.routeRequested("todo", ""); return true;
         }
+        if (lower === "remind" || lower === "reminder" || lower === "reminders" || raw.startsWith("remind ") || raw.startsWith("reminder ") || raw.startsWith("reminders ")) {
+            var remText = (raw.indexOf(" ") !== -1) ? raw.slice(raw.indexOf(" ") + 1).trim() : "";
+            viewRoot.routeRequested("reminders", remText); return true;
+        }
         if (lower === "em" || lower === "email" || lower === "mail" || raw.startsWith("em ") || raw.startsWith("email ")) {
             viewRoot.routeRequested("email", ""); return true;
         }
@@ -159,7 +163,7 @@ Item {
                     Text {
                         anchors.fill: parent
                         verticalAlignment: Text.AlignVCenter
-                        text: "Search apps or type tool (settings, clip, todo, em, def, rng, calc, pass)..."
+                        text: "Search apps or type tool (remind, todo, clip, calc, pass, def)..."
                         color: (theme && theme.base0B) ? theme.base0B : "#666"
                         font.pixelSize: parent.font.pixelSize
                         font.family: parent.font.family

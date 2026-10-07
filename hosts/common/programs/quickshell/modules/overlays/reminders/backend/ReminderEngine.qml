@@ -29,7 +29,7 @@ Item {
     // Periodically checks due reminders via Lua
     Timer {
         id: checkTimer
-        interval: 1000
+        interval: 2000
         running: true
         repeat: true
         onTriggered: {
@@ -51,7 +51,6 @@ Item {
         }
     }
 
-    // Add reminder via Lua
     Process {
         id: addProc
         stdout: StdioCollector {
@@ -69,13 +68,12 @@ Item {
             "modules/overlays/reminders/backend/ReminderEngine.lua",
             "add",
             text.trim(),
-                                               whenExpr.trim()
+            whenExpr.trim()
         );
         addProc.running = false;
         addProc.running = true;
     }
 
-    // Delete reminder via Lua
     Process {
         id: deleteProc
         stdout: StdioCollector {
@@ -97,7 +95,6 @@ Item {
         deleteProc.running = true;
     }
 
-    // Live display helper for QML countdown badges
     function formatRemaining(targetEpoch) {
         var diff = targetEpoch - Math.floor(Date.now() / 1000);
         if (diff <= 0) return "Due now";
