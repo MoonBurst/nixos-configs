@@ -31,25 +31,25 @@ in
     "${super}+q" = "exec ${pkgs.bash}/bin/bash ${scriptsDir}/safekill.sh";
     "${super}+Shift+q" = "kill";
     "${super}+e" = "exec ${explorer}";
-    "${super}+d" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call launcher toggle";
-    "${super}+k" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call clipboard toggle";
+    "${super}+d" = "exec quickshell -p ~/Projects/quickshell/shell.qml ipc call launcher toggle";
+    "${super}+k" = "exec quickshell -p ~/Projects/quickshell/shell.qml ipc call clipboard toggle";
     "${super}+Shift+k" = "exec save-replay";
-    "${super}+l" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call lockscreen lock";
-    "${super}+m" = "exec qs -p ~/nix/hosts/common/programs/quickshell ipc call magnifier toggle";
-    "${super}+o" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call todo toggle";
+    "${super}+l" = "exec quickshell -p ~/Projects/quickshell/shell.qml ipc call lockscreen lock";
+    "${super}+m" = "exec qs -p ~/Projects/quickshell ipc call magnifier toggle";
+    "${super}+o" = "exec quickshell -p ~/Projects/quickshell/shell.qml ipc call todo toggle";
     "${super}+v" = "exec dictate";
     #"Escape" = "exec kitty";
 
     # ░█▀▀░█░█░█▀▀░▀█▀░█▀▀░█▄█
     # ░▀▀█░░█░░▀▀█░░█░░█▀▀░█░█
     # ░▀▀▀░░▀░░▀▀▀░░▀░░▀▀▀░▀░▀
-    "${super}+h" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call global_notif toggleHistory";
+    "${super}+h" = "exec quickshell -p ~/Projects/quickshell/shell.qml ipc call global_notif toggleHistory";
 
+    "${super}+Tab"    = "exec quickshell -p ~/Projects/quickshell/shell.qml ipc call global_notif jumpToLatest";
+    "${super}+Escape" = "exec quickshell -p ~/Projects/quickshell/shell.qml ipc call global_notif dismissLatest";
 
-        "${super}+Tab"     = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call global_notif jumpToLatest";
-        "${super}+Escape" = "exec quickshell -p ~/nix/hosts/common/programs/quickshell/shell.qml ipc call global_notif dismissLatest";
-        "${super}+Shift+minus" = "move scratchpad";
-        "${super}+Shift+Equal" = "scratchpad show";
+     "${super}+Shift+minus" = "move scratchpad";
+     "${super}+Shift+Equal" = "scratchpad show";
 
 
     # ░█▀▀░█▀▀░█▀▄░█▀▀░█▀▀░█▀█░█▀▀░█░█░█▀█░▀█▀

@@ -63,7 +63,7 @@ in
     home.file.".local/share/icons/Numix".source = "${inputs.moon-numix.packages.${pkgs.stdenv.hostPlatform.system}.default}/share/icons/Numix";
     home.file.".local/share/icons/Numix-Light".source = "${inputs.moon-numix.packages.${pkgs.stdenv.hostPlatform.system}.default}/share/icons/Numix-Light";
 
-    home.file."nix/hosts/common/programs/quickshell/Theme.qml".text = ''
+    home.file."Projects/quickshell/Theme.qml".text = ''
       import QtQuick
 
       QtObject {
