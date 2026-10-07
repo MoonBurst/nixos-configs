@@ -7,7 +7,7 @@ import Quickshell.Wayland
 import Quickshell.Io
 import "." as AlarmInput
 import "../../style"
-import "../../common"
+import "../../common" as Common
 
 Item {
     id: alarmBox
@@ -67,12 +67,7 @@ Item {
     Process {
         id: pwPlayCheckProc
         running: true
-        command: [
-            "sh", "-c",
-            'SCR="' + Quickshell.shellDir + '/modules/bar/alarm/backend/AlarmEngine.lua"; ' +
-            'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
-            '"$CMD" "$SCR" check-player'
-        ]
+        command: Common.LuaRunner.cmd("modules/bar/alarm/backend/AlarmEngine.lua", "check-player")
         stdout: SplitParser {
             onRead: data => { alarmBox.hasPwPlay = (data.trim() === "1"); }
         }
@@ -81,15 +76,7 @@ Item {
     Process {
         id: alarmFetcher
         running: true
-        command: [
-            "sh", "-c",
-            'SCR="' + Quickshell.shellDir + '/modules/bar/alarm/backend/AlarmEngine.lua"; ' +
-            'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
-            '"$CMD" "$SCR" poll "$1" "$2"',
-            "sh",
-            alarmBox.stateFile,
-            alarmBox.soundPath
-        ]
+        command: Common.LuaRunner.cmd("modules/bar/alarm/backend/AlarmEngine.lua", "poll", alarmBox.stateFile, alarmBox.soundPath)
         stdout: SplitParser {
             onRead: data => { alarmBox.alarmDisplayText = data ? data.trim() : "No Alarm"; }
         }
@@ -98,14 +85,7 @@ Item {
     Process {
         id: alarmCancelEngine
         running: false
-        command: [
-            "sh", "-c",
-            'SCR="' + Quickshell.shellDir + '/modules/bar/alarm/backend/AlarmEngine.lua"; ' +
-            'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
-            '"$CMD" "$SCR" cancel "$1"',
-            "sh",
-            alarmBox.stateFile
-        ]
+        command: Common.LuaRunner.cmd("modules/bar/alarm/backend/AlarmEngine.lua", "cancel", alarmBox.stateFile)
     }
 
     Process { id: alarmWriteEngine; running: false }
@@ -180,17 +160,14 @@ Item {
         }
 
         if (totalSeconds > 0) {
-            alarmWriteEngine.command = [
-                "sh", "-c",
-                'SCR="' + Quickshell.shellDir + '/modules/bar/alarm/backend/AlarmEngine.lua"; ' +
-                'CMD="lua"; command -v luajit >/dev/null 2>&1 && CMD="luajit"; ' +
-                '"$CMD" "$SCR" save "$1" "$2" "$3" "$4"',
-                "sh",
+            alarmWriteEngine.command = Common.LuaRunner.cmd(
+                "modules/bar/alarm/backend/AlarmEngine.lua",
+                "save",
                 alarmBox.stateFile,
                 currentEpoch.toString(),
                 totalSeconds.toString(),
                 msg
-            ];
+            );
             alarmWriteEngine.running = false;
             alarmWriteEngine.running = true;
         }
