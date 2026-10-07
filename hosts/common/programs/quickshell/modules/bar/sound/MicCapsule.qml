@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "../../style"
+import "../../common" as Common
 
 Item {
     id: micBox
@@ -32,59 +33,68 @@ Item {
         borderColor: micBox.muted ? micBox.themeBase08 : micBox.themeBase05
     }
 
-    Process { id: micMuteCmd; command: ["wpctl", "set-mute", "@DEFAULT_AUDIO_SOURCE@", "toggle"] }
+    function applyMicData(data) {
+        if (!data) return;
+        var clean = data.trim();
+        var parts = clean.split("|");
+        if (parts.length >= 2) {
+            var volVal = parseInt(parts[0]) || 0;
+            var isMuted = parts[1] === "1";
+            micBox.muted = isMuted;
 
-    // Persistent PipeWire event listener (Zero timer polling)
+            var mNum = isMuted ? "MUTED" : (volVal + "%");
+            var statusColor = isMuted ? micBox.themeBase08.toString() : micBox.themeBase05.toString();
+            micBox.micDisplayText = "<font color='" + micBox.themeBase0C + "'>Mic:</font> <font color='" + statusColor + "'>" + mNum + "</font>";
+
+            if (shell && shell.settingsManager) {
+                shell.settingsManager.updateMicFromSystem(isMuted, volVal);
+            }
+        }
+    }
+
+    // Persistent PipeWire event listener for microphone source changes
     Process {
         id: micListener
         running: true
-        command: ["sh", "-c", "wpctl get-volume @DEFAULT_AUDIO_SOURCE@; pw-mon -b | grep --line-buffered -E 'sources|source|volume|mute'"]
+        command: Common.LuaRunner.cmd("modules/bar/sound/backend/AudioEngine.lua", "monitor-source")
         stdout: SplitParser {
             splitMarker: "\n"
-            onRead: data => {
-                micQueryProc.running = false;
-                micQueryProc.running = true;
-            }
+            onRead: data => micBox.applyMicData(data)
         }
     }
 
     Process {
         id: micQueryProc
         running: true
-        command: ["sh", "-c", "wpctl get-volume @DEFAULT_AUDIO_SOURCE@ 2>/dev/null || echo 'Volume: 0.00'"]
+        command: Common.LuaRunner.cmd("modules/bar/sound/backend/AudioEngine.lua", "get-source")
         stdout: SplitParser {
-            onRead: data => {
-                if (!data) return;
-                var raw = data.trim();
-                var isMuted = raw.indexOf("[MUTED]") !== -1;
-                micBox.muted = isMuted;
-                var mNum = "0%";
-                var volVal = 0;
-                if (!isMuted) {
-                    var mMatch = raw.match(/[0-9.]+/);
-                    if (mMatch) {
-                        volVal = Math.round(parseFloat(mMatch[0]) * 100);
-                        mNum = volVal + "%";
-                    }
-                } else {
-                    mNum = "MUTED";
-                    var mMatch2 = raw.match(/[0-9.]+/);
-                    if (mMatch2) volVal = Math.round(parseFloat(mMatch2[0]) * 100);
-                }
-                var statusColor = isMuted ? micBox.themeBase08.toString() : micBox.themeBase05.toString();
-                micBox.micDisplayText = "<font color='" + micBox.themeBase0C + "'>Mic:</font> <font color='" + statusColor + "'>" + mNum + "</font>";
+            onRead: data => micBox.applyMicData(data)
+        }
+    }
 
-                if (shell && shell.settingsManager) {
-                    shell.settingsManager.updateMicFromSystem(isMuted, volVal);
-                }
-            }
+    Timer {
+        interval: 2000
+        running: true
+        repeat: true
+        onTriggered: {
+            micQueryProc.running = false;
+            micQueryProc.running = true;
+        }
+    }
+
+    Process {
+        id: micMuteCmd
+        command: Common.LuaRunner.cmd("modules/bar/sound/backend/AudioEngine.lua", "toggle-source-mute")
+        onExited: {
+            micQueryProc.running = false;
+            micQueryProc.running = true;
         }
     }
 
     TapHandler {
         onTapped: {
-            micMuteCmd.running = false; micMuteCmd.running = true;
-            micQueryProc.running = false; micQueryProc.running = true;
+            micMuteCmd.running = false;
+            micMuteCmd.running = true;
         }
     }
 

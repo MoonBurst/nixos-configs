@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "../../style"
+import "../../common" as Common
 
 Item {
     id: audioBox
@@ -29,41 +30,47 @@ Item {
         slantWidth: audioBox.slantWidth
     }
 
-    // 1. HIGH-PERFORMANCE PERSISTENT AUDIO MONITOR
-    // Stays alive permanently, reading volume changes from stdout without timer loops
-    Process {
-        id: audioListener
-        running: true
-        command: ["sh", "-c", "wpctl get-volume @DEFAULT_AUDIO_SINK@; pw-mon -b | grep --line-buffered -E 'sinks|volume|mute'"]
-        
-        function parseWpctlLine(lineData) {
-            if (!lineData) return;
-            var clean = lineData.trim();
-            var isMuted = clean.indexOf("[MUTED]") !== -1;
-            var match = clean.match(/Volume:\s+([0-9.]+)/);
-            var vNum = "--%";
-            if (match) vNum = Math.round(parseFloat(match[1]) * 100) + "%";
+    function applyVolumeData(data) {
+        if (!data) return;
+        var clean = data.trim();
+        var parts = clean.split("|");
+        if (parts.length >= 2) {
+            var vNum = parts[0] + "%";
+            var isMuted = parts[1] === "1";
             var txtColor = isMuted ? audioBox.themeBase08.toString() : audioBox.themeBase05.toString();
             audioBox.audioDisplayText = "<font color='" + audioBox.themeBase05 + "'>Audio:</font> <font color='" + txtColor + "'> " + vNum + "</font>";
         }
+    }
 
+    // Persistent real-time event listener: updates immediately on keyboard hotkeys
+    Process {
+        id: audioListener
+        running: true
+        command: Common.LuaRunner.cmd("modules/bar/sound/backend/AudioEngine.lua", "monitor-sink")
         stdout: SplitParser {
             splitMarker: "\n"
-            onRead: data => {
-                // Whenever PipeWire emits a volume event, fetch the clean string value instantly
-                audioQueryTrigger.running = false;
-                audioQueryTrigger.running = true;
-            }
+            onRead: data => audioBox.applyVolumeData(data)
         }
     }
 
-    // Quick one-pass helper to parse real-time levels safely
+    // One-pass status query process
     Process {
         id: audioQueryTrigger
         running: true
-        command: ["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"]
+        command: Common.LuaRunner.cmd("modules/bar/sound/backend/AudioEngine.lua", "get-sink")
         stdout: SplitParser {
-            onRead: data => audioListener.parseWpctlLine(data)
+            onRead: data => audioBox.applyVolumeData(data)
+        }
+    }
+
+    // Synchronization heartbeat: guarantees hotkeys and external changes never stall
+    Timer {
+        interval: 1500
+        running: true
+        repeat: true
+        onTriggered: {
+            audioQueryTrigger.running = false;
+            audioQueryTrigger.running = true;
         }
     }
 
@@ -76,7 +83,7 @@ Item {
         }
         onWheel: (wheel) => {
             var step = wheel.angleDelta.y > 0 ? "5%+" : "5%-";
-            Quickshell.execDetached(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", step, "--limit", "1.0"]);
+            Quickshell.execDetached(Common.LuaRunner.cmd("modules/bar/sound/backend/AudioEngine.lua", "set-sink-volume", step));
             audioQueryTrigger.running = true;
         }
     }
@@ -98,21 +105,17 @@ Item {
         clip: true
     }
 
-    // Optimized On-Demand Device Switching Task
     Process {
         id: deviceToggleProcess
         running: false
-        command: [
-            "sh", "-c",
-            "SCR=\"$HOME/nix/hosts/common/scripts/sound_sink_switcher.sh\"; if [ -x \"$SCR\" ]; then \"$SCR\"; else next_sink=$(wpctl status | awk '/Sinks:/{flag=1; next} /Sources:/{flag=0} flag && /^[ \\t]+[0-9]+/ {print $1}' | tr -d '.' | grep -v '*' | head -n 1); [ -n \"$next_sink\" ] && wpctl set-default \"$next_sink\"; fi"
-        ]
+        command: Common.LuaRunner.cmd("modules/bar/sound/backend/AudioEngine.lua", "switch-sink")
         onExited: audioQueryTrigger.running = true
     }
 
     Process {
         id: muteToggleProcess
         running: false
-        command: ["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"]
+        command: Common.LuaRunner.cmd("modules/bar/sound/backend/AudioEngine.lua", "toggle-sink-mute")
         onExited: audioQueryTrigger.running = true
     }
 }
