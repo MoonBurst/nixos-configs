@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Launch Quickshot: a region-selection screenshot + annotation tool built on
+# Quickshell. Bind this to a key in your compositor, e.g. for Hyprland:
+#
+#   bind = , Print, exec, /path/to/quickshot/quickshot
+#
+set -euo pipefail
+here="$(cd -- "$(dirname -- "$(readlink -f -- "$0")")" >/dev/null && pwd)"
+exec qs -n -p "$here" "$@"

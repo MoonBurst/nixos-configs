@@ -6,6 +6,7 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 import "../../style"
+import "../../common" as Common
 
 Item {
     id: weatherCapsule
@@ -54,15 +55,11 @@ Item {
         slantWidth: weatherCapsule.slantWidth
     }
 
-    // Direct fetcher invoking the 24-hour forecast engine
+    // Direct fetcher invoking the 24-hour forecast engine via pure Lua
     Process {
         id: forecastFetcher
         running: true
-        command: [
-            "sh", "-c",
-            'SCR="' + Quickshell.shellDir + '/modules/bar/weather/backend/WeatherEngine.py"; ' +
-            'if [ -f "$SCR" ]; then python3 "$SCR"; else lua "' + Quickshell.shellDir + '/modules/bar/weather/backend/WeatherEngine.lua"; fi'
-        ]
+        command: Common.LuaRunner.cmd("modules/bar/weather/backend/WeatherEngine.lua")
         stdout: SplitParser {
             splitMarker: "\n"
             onRead: data => {

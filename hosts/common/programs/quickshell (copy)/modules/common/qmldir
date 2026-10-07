@@ -1,0 +1,4 @@
+singleton LuaRunner 1.0 LuaRunner.qml
+BatteryEngine 1.0 BatteryEngine.qml
+ProcessMonitorList 1.0 ProcessMonitorList.qml
+OverlayWindow 1.0 OverlayWindow.qml
