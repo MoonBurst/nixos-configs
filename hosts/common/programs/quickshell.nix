@@ -1,39 +1,43 @@
 # ./quickshell.nix
-# Unified, self-contained NixOS module for Quickshell, Himalaya, Cliphist, MPD, and Overlays
+# Universal self-contained NixOS module for Quickshell, Himalaya, Cliphist, MPD, and Overlays
 { config, pkgs, lib, ... }:
 
 let
-  username = "moonburst";
+  normalUsers = lib.attrNames (lib.filterAttrs (name: u: u.isNormalUser) config.users.users);
+  primaryUser = if (builtins.length normalUsers > 0) then (builtins.head normalUsers) else "root";
 in
 {
-  # ---------------------------------------------------------------------------
-  # 1. SECURITY & PERMISSIONS
-  # ---------------------------------------------------------------------------
-  # PAM service for Quickshell lockscreen authentication (LockManager.qml)
-  security.pam.services.quickshell = {};
+#This is so when the lockscreen is unlocked, PAM is valid
+  security.pam.services.quickshell = {
+    enableGnomeKeyring = true;
+    text = ''
+      auth     include      login
+      account  include      login
+      session  include      login
+      password include      login
+    '';
+  };
 
   # Required for Borg mounts (-o allow_other) in UnifiedMonitor.qml
   programs.fuse.userAllowOther = true;
 
-  # Passwordless sudo for maintenance actions triggered by Quickshell's Unified Dashboard
-  security.sudo.extraRules = [
-    {
-      users = [ username ];
-      commands = [
-        # Systemctl Maintenance (Reset Failed Services button)
-        {
-          command = "/run/current-system/sw/bin/systemctl reset-failed";
-          options = [ "NOPASSWD" ];
-        }
+  # Passwordless sudo rules mapped dynamically to whatever user is compiling the flake
+  security.sudo.extraRules = lib.singleton {
+    users = normalUsers;
+    commands = [
+      # Systemctl Maintenance (Reset Failed Services button)
+      {
+        command = "/run/current-system/sw/bin/systemctl reset-failed";
+        options = [ "NOPASSWD" ];
+      }
 
-        # Nix Garbage Collection (GC button)
-        {
-          command = "/run/current-system/sw/bin/nix-collect-garbage";
-          options = [ "NOPASSWD" ];
-        }
-      ];
-    }
-  ];
+      # Nix Garbage Collection (GC button)
+      {
+        command = "/run/current-system/sw/bin/nix-collect-garbage";
+        options = [ "NOPASSWD" ];
+      }
+    ];
+  };
 
   # ---------------------------------------------------------------------------
   # 2. FONTS
@@ -92,17 +96,15 @@ in
     xdg-utils
   ];
 
-  # ---------------------------------------------------------------------------
-  # 4. MPD CONFIGURATION
-  # ---------------------------------------------------------------------------
+  #I'm assuming you have MPD already from before this. If you don't, go ahead and enable this.
   services.mpd.enable = false;
-
+  #Music path for MPD
   environment.etc."mpd.conf".text = ''
-    music_directory     "/home/${username}/Music"
-    playlist_directory  "/home/${username}/.config/mpd/playlists"
-    db_file             "/home/${username}/.local/share/mpd/tag_cache"
-    state_file          "/home/${username}/.local/share/mpd/state"
-    sticker_file        "/home/${username}/.local/share/mpd/sticker.sql"
+    music_directory     "/home/${primaryUser}/Music"
+    playlist_directory  "/home/${primaryUser}/.config/mpd/playlists"
+    db_file             "/home/${primaryUser}/.local/share/mpd/tag_cache"
+    state_file          "/home/${primaryUser}/.local/share/mpd/state"
+    sticker_file        "/home/${primaryUser}/.local/share/mpd/sticker.sql"
     auto_update         "yes"
 
     audio_output {
@@ -122,7 +124,7 @@ in
       wantedBy = [ "graphical-session.target" ];
       after = [ "graphical-session.target" ];
       serviceConfig = {
-        ExecStart = "${pkgs.wl-clipboard}/bin/wl-paste --type text --watch ${pkgs.cliphist}/bin/cliphist -max-items 500 store";
+        ExecStart = "${pkgs.wl-clipboard}/bin/wl-paste --type text --watch ${pkgs.cliphist}/bin/cliphist -max-items 100 store";
         Restart = "always";
         RestartSec = "2s";
       };
@@ -149,9 +151,10 @@ in
         ExecStart = "${pkgs.mpd}/bin/mpd --no-daemon /etc/mpd.conf";
         Restart = "on-failure";
       };
+      # Self-contained runtime workspace generation loop using environmental paths
       preStart = ''
-        mkdir -p /home/${username}/.config/mpd/playlists
-        mkdir -p /home/${username}/.local/share/mpd
+        mkdir -p $HOME/.config/mpd/playlists
+        mkdir -p $HOME/.local/share/mpd
       '';
     };
 
