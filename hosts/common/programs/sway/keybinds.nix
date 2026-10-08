@@ -55,7 +55,7 @@ in
     # ░█▀▀░█▀▀░█▀▄░█▀▀░█▀▀░█▀█░█▀▀░█░█░█▀█░▀█▀
     # ░▀▀█░█░░░█▀▄░█▀▀░█▀▀░█░█░▀▀█░█▀█░█░█░░█░
     # ░▀▀▀░▀▀▀░▀░▀░▀▀▀░▀▀▀░▀░▀░▀▀▀░▀░▀░▀▀▀░░▀░
-   "${super}+SHIFT+S" = "exec qs -n -p ~/nix/hosts/common/programs/quickshell/modules/overlays/quickshot";
+   "${super}+SHIFT+S" = "exec qs -n -p ~/Projects/quickshell/modules/overlays/quickshot";
 
     # ░█░█░█▀█░█▀▄░█░█░█▀▀░█▀█░█▀█░█▀▀░█▀▀
     # ░█▄█░█░█░█▀▄░█▀▄░▀▀█░█▀▀░█▀█░█░░░█▀▀
@@ -104,16 +104,13 @@ in
     "XF86AudioLowerVolume" = "exec ${pkgs.wireplumber}/bin/wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-";
     "XF86AudioMute"        = "exec ${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle";
 
-    # Music Portal Script
-    "F11" = "exec bash /home/moonburst/nix/hosts/moonbeauty/programs/waybar/modules/music_portal.sh";
-
-    # MPD Media Key Controls
-    "F10"             = "exec ${pkgs.mpc}/bin/mpc prev";
-    "XF86AudioMedia"  = "exec ${pkgs.mpc}/bin/mpc toggle";
-    "XF86AudioPlay"   = "exec ${pkgs.mpc}/bin/mpc toggle";
-    "XF86AudioStop"   = "exec ${pkgs.mpc}/bin/mpc stop";
-    "XF86AudioPrev"   = "exec ${pkgs.mpc}/bin/mpc prev";
-    "XF86AudioNext"   = "exec ${pkgs.mpc}/bin/mpc next";
+  # MPD Media Key Controls
+ "F10"             = "exec ${pkgs.playerctl}/bin/playerctl previous";
+  "XF86AudioMedia"  = "exec ${pkgs.playerctl}/bin/playerctl play-pause";
+  "XF86AudioPlay"   = "exec ${pkgs.playerctl}/bin/playerctl play-pause";
+  "XF86AudioStop"   = "exec ${pkgs.playerctl}/bin/playerctl stop";
+  "XF86AudioPrev"   = "exec ${pkgs.playerctl}/bin/playerctl previous";
+  "XF86AudioNext"   = "exec ${pkgs.playerctl}/bin/playerctl next";
 
     # **Mouse Cursor Emulation**
     "${super}+Control+Left"   = "seat - cursor move -10 0";
