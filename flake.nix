@@ -6,6 +6,12 @@
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
     nur.url = "github:nix-community/NUR";
     fluxer.url = "github:Hy4Ri/fluxer-flake";
+    luffy.url = "github:DemonKingSwarn/luffy";
+
+    tumblr-dms = {
+      url = "github:beeper/tumblr-dms";
+      flake = false;
+    };
 
     stylix = {
       url = "github:danth/stylix/release-26.05";
@@ -26,6 +32,11 @@
 
     sops-nix.url = "github:Mic92/sops-nix";
     moon-numix.url = "github:moonburst/moon-numix-icons";
+    night-diamond-moon = {
+      url = "git+ssh://git@github.com/MoonBurst/Night-Diamond-Moon?ref=main";
+      flake = false;
+    };
+
 
     horizon = {
       url = "github:Fchat-Horizon/Horizon?ref=main";

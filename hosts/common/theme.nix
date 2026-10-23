@@ -8,7 +8,7 @@ let
     base02 = "#1a1a1a";
     base03 = "#003399";
     base04 = "#4D4E93";
-    base05 = "#f7f700";
+    base05 = "#ffff00";
     base06 = "#EBDBB2";
     base07 = "#cccccc";
     base08 = "#ff0000";
@@ -20,6 +20,12 @@ let
     base0E = "#675DDB";
     base0F = "#FF8019";
   };
+
+  nightDiamondMoon = pkgs.runCommand "night-diamond-moon-cursor" { } ''
+    mkdir -p $out/share/icons/Night-Diamond-Moon
+    cp -r ${inputs.night-diamond-moon}/cursors $out/share/icons/Night-Diamond-Moon/cursors
+    cp ${inputs.night-diamond-moon}/index.theme $out/share/icons/Night-Diamond-Moon/index.theme
+  '';
 in
 {
   imports = [ inputs.stylix.nixosModules.stylix ];
@@ -48,7 +54,7 @@ in
       dark = "Numix"; light = "Numix-Light";
     };
 
-    cursor = { package = pkgs.nightdiamond-cursors; name = "NightDiamond-Blue"; size = 24; };
+    cursor = { package = nightDiamondMoon; name = "Night-Diamond-Moon"; size = 48; };
 
     fonts = {
       sizes = { applications = 20; desktop = 20; popups = 20; };

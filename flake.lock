@@ -275,9 +275,27 @@
         "type": "github"
       }
     },
-    "moon-numix": {
+    "luffy": {
       "inputs": {
         "nixpkgs": "nixpkgs_3"
+      },
+      "locked": {
+        "lastModified": 1789566317,
+        "narHash": "sha256-XuP8mEGNT6GyMr0veVIBsj/jFzOI/7lK48acetfyPWY=",
+        "owner": "DemonKingSwarn",
+        "repo": "luffy",
+        "rev": "0e0abc6bb1c10a02c2d0db2711a04ca9bb836deb",
+        "type": "github"
+      },
+      "original": {
+        "owner": "DemonKingSwarn",
+        "repo": "luffy",
+        "type": "github"
+      }
+    },
+    "moon-numix": {
+      "inputs": {
+        "nixpkgs": "nixpkgs_4"
       },
       "locked": {
         "lastModified": 1772051255,
@@ -291,6 +309,23 @@
         "owner": "moonburst",
         "repo": "moon-numix-icons",
         "type": "github"
+      }
+    },
+    "night-diamond-moon": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1792216046,
+        "narHash": "sha256-X8PPWR/f21DdBNy30t1w0vsHINJReZUIS8J1GAFOExQ=",
+        "ref": "main",
+        "rev": "2b2ea48e8e691ee4d8fdb69ab8151125a20211f3",
+        "revCount": 5,
+        "type": "git",
+        "url": "ssh://git@github.com/MoonBurst/Night-Diamond-Moon"
+      },
+      "original": {
+        "ref": "main",
+        "type": "git",
+        "url": "ssh://git@github.com/MoonBurst/Night-Diamond-Moon"
       }
     },
     "nixpkgs": {
@@ -358,6 +393,22 @@
     },
     "nixpkgs_3": {
       "locked": {
+        "lastModified": 1776169885,
+        "narHash": "sha256-l/iNYDZ4bGOAFQY2q8y5OAfBBtrDAaPuRQqWaFHVRXM=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "4bd9165a9165d7b5e33ae57f3eecbcb28fb231c9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_4": {
+      "locked": {
         "lastModified": 1771848320,
         "narHash": "sha256-0MAd+0mun3K/Ns8JATeHT1sX28faLII5hVLq0L3BdZU=",
         "owner": "NixOS",
@@ -372,7 +423,7 @@
         "type": "github"
       }
     },
-    "nixpkgs_4": {
+    "nixpkgs_5": {
       "locked": {
         "lastModified": 1791031588,
         "narHash": "sha256-/FGDr01siZ8txrVzkOz6CYjiz0XR27JuVJP+aWchi4s=",
@@ -388,7 +439,7 @@
         "type": "github"
       }
     },
-    "nixpkgs_5": {
+    "nixpkgs_6": {
       "locked": {
         "lastModified": 1790578696,
         "narHash": "sha256-ZoxIApko70jCdbH3l20HWXOBaT2HZd87orzd2yJ9dVE=",
@@ -404,7 +455,7 @@
         "type": "github"
       }
     },
-    "nixpkgs_6": {
+    "nixpkgs_7": {
       "locked": {
         "lastModified": 1790480522,
         "narHash": "sha256-fXrm/q9klVBtVq5rGQ+XpI/dokPuSB15ZK2CZvWxXOk=",
@@ -423,7 +474,7 @@
     "nur": {
       "inputs": {
         "flake-parts": "flake-parts_2",
-        "nixpkgs": "nixpkgs_5"
+        "nixpkgs": "nixpkgs_6"
       },
       "locked": {
         "lastModified": 1790650382,
@@ -471,17 +522,20 @@
         "fluxer": "fluxer",
         "home-manager": "home-manager",
         "horizon": "horizon",
+        "luffy": "luffy",
         "moon-numix": "moon-numix",
-        "nixpkgs": "nixpkgs_4",
+        "night-diamond-moon": "night-diamond-moon",
+        "nixpkgs": "nixpkgs_5",
         "nixpkgs-unstable": "nixpkgs-unstable",
         "nur": "nur",
         "sops-nix": "sops-nix",
-        "stylix": "stylix"
+        "stylix": "stylix",
+        "tumblr-dms": "tumblr-dms"
       }
     },
     "sops-nix": {
       "inputs": {
-        "nixpkgs": "nixpkgs_6"
+        "nixpkgs": "nixpkgs_7"
       },
       "locked": {
         "lastModified": 1790498116,
@@ -622,6 +676,22 @@
       "original": {
         "owner": "tinted-theming",
         "repo": "base16-zed",
+        "type": "github"
+      }
+    },
+    "tumblr-dms": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1792698198,
+        "narHash": "sha256-hs7X0mxvwFloPcDRVMFABT0uFkQiK5mE72TbGSMQ/UE=",
+        "owner": "beeper",
+        "repo": "tumblr-dms",
+        "rev": "3e6719a2e4039d4538b976069cbac703a87fdd28",
+        "type": "github"
+      },
+      "original": {
+        "owner": "beeper",
+        "repo": "tumblr-dms",
         "type": "github"
       }
     }

@@ -20,6 +20,7 @@
       "corectrl"
       "i2c"
       "libvirtd"
+      "podman"
     ];
     shell = pkgs.zsh;
   };

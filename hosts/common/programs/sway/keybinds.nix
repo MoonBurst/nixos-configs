@@ -1,9 +1,9 @@
 { pkgs, lib, config, ... }:
 
 let
-    # ░█░█░█▀█░█▀▄░▀█▀░█▀█░█▀▄░█░░░█▀▀░█▀▀
-    # ░█▀▄░█▀█░█▀▄░░█░░█▀█░█▀▄░█░░░█▀▀░▀▀█
-    # ░░▀░░▀░▀░▀░▀░▀▀▀░▀░▀░▀▀░░▀▀▀░▀▀▀░▀▀▀
+    # ░█▀▀░█░█░█▀▀░▀█▀░█▀▀░█▄█
+    # ░▀▀█░░█░░▀▀█░░█░░█▀▀░█░█
+    # ░▀▀▀░░▀░░▀▀▀░░▀░░▀▀▀░▀░▀
   super = "Mod4";
   alt = "Mod1";
 
@@ -24,29 +24,28 @@ in
 {
   wayland.windowManager.sway.config.keybindings = lib.mkOptionDefault {
 
-# ░█▀█░█▀█░█▀█░░░█░░░█▀█░█░█░█▀█░█▀▀░█░█░█▀▀░█▀▄░█▀▀
-# ░█▀█░█▀▀░█▀▀░░░█░░░█▀█░█░█░█░█░█░░░█▀█░█▀▀░█▀▄░▀▀█
-# ░▀░▀░▀░░░▀░░░░░▀▀▀░▀░▀░▀░▀░▀▀▀░▀░▀░▀▀▀░▀░▀░▀▀▀░▀░▀
+# ░█▀▀░█░█░█▀▀░▀█▀░█▀▀░█▄█
+# ░▀▀█░░█░░▀▀█░░█░░█▀▀░█░█
+# ░▀▀▀░░▀░░▀▀▀░░▀░░▀▀▀░▀░▀
     "${super}+Return" = "exec ${term}";
     "${super}+q" = "exec ${pkgs.bash}/bin/bash ${scriptsDir}/safekill.sh";
     "${super}+Shift+q" = "kill";
     "${super}+e" = "exec ${explorer}";
-    "${super}+d" = "exec quickshell -p ~/Projects/quickshell/shell.qml ipc call launcher toggle";
-    "${super}+k" = "exec quickshell -p ~/Projects/quickshell/shell.qml ipc call clipboard toggle";
+    "${super}+d" = "exec ~/.local/bin/mbs toggle Launcher";
+    "${super}+k" = "exec ~/.local/bin/mbs toggle Clipboard";
     "${super}+Shift+k" = "exec save-replay";
-    "${super}+l" = "exec quickshell -p ~/Projects/quickshell/shell.qml ipc call lockscreen lock";
-    "${super}+m" = "exec qs -p ~/Projects/quickshell ipc call magnifier toggle";
-    "${super}+o" = "exec quickshell -p ~/Projects/quickshell/shell.qml ipc call todo toggle";
+    "${super}+l" = "exec ~/.local/bin/mbs toggle Lockscreen";
+    # "${super}+m" = "exec ~/.local/bin/mbs toggle Magnifier";   # removed: no Magnifier target exists in OverlayTarget
+    "${super}+o" = "exec ~/.local/bin/mbs toggle Todo";
     "${super}+v" = "exec dictate";
     #"Escape" = "exec kitty";
 
     # ░█▀▀░█░█░█▀▀░▀█▀░█▀▀░█▄█
     # ░▀▀█░░█░░▀▀█░░█░░█▀▀░█░█
     # ░▀▀▀░░▀░░▀▀▀░░▀░░▀▀▀░▀░▀
-    "${super}+h" = "exec quickshell -p ~/Projects/quickshell/shell.qml ipc call global_notif toggleHistory";
-
-    "${super}+Tab"    = "exec quickshell -p ~/Projects/quickshell/shell.qml ipc call global_notif jumpToLatest";
-    "${super}+Escape" = "exec quickshell -p ~/Projects/quickshell/shell.qml ipc call global_notif dismissLatest";
+    "${super}+Tab" = "exec /home/moonburst/projects/Moon-Beauty-Shell/target/release/moon-beauty-shell --activate-latest-notif";
+    "${super}+h"   = "exec /home/moonburst/projects/Moon-Beauty-Shell/target/release/moon-beauty-shell --toggle history";
+    "${super}+Escape" = "exec ~/.local/bin/mbs dismiss";
 
      "${super}+Shift+minus" = "move scratchpad";
      "${super}+Shift+Equal" = "scratchpad show";
@@ -55,11 +54,11 @@ in
     # ░█▀▀░█▀▀░█▀▄░█▀▀░█▀▀░█▀█░█▀▀░█░█░█▀█░▀█▀
     # ░▀▀█░█░░░█▀▄░█▀▀░█▀▀░█░█░▀▀█░█▀█░█░█░░█░
     # ░▀▀▀░▀▀▀░▀░▀░▀▀▀░▀▀▀░▀░▀░▀▀▀░▀░▀░▀▀▀░░▀░
-   "${super}+SHIFT+S" = "exec qs -n -p ~/Projects/quickshell/modules/overlays/quickshot";
+   "${super}+SHIFT+S" = "exec /home/moonburst/.local/bin/moonbeauty --screenshot";
 
-    # ░█░█░█▀█░█▀▄░█░█░█▀▀░█▀█░█▀█░█▀▀░█▀▀
-    # ░█▄█░█░█░█▀▄░█▀▄░▀▀█░█▀▀░█▀█░█░░░█▀▀
-    # ░▀░▀░▀▀▀░▀░▀░▀░▀░▀▀▀░▀░░░▀░▀░▀▀▀░▀░▀
+    # ░█▀▀░█▀▀░█▀▄░█▀▀░█▀▀░█▀█░█▀▀░█░█░█▀█░▀█▀
+    # ░▀▀█░█░░░█▀▄░█▀▀░█▀▀░█░█░▀▀█░█▀█░█░█░░█░
+    # ░▀▀▀░▀▀▀░▀░▀░▀▀▀░▀▀▀░▀░▀░▀▀▀░▀░▀░▀▀▀░░▀░
     # **Workspace Navigation**
     "${super}+1" = "workspace number 1";
     "${super}+2" = "workspace number 2";
@@ -92,9 +91,9 @@ in
     "${super}+Shift+7" = "move container to workspace number 7; workspace number 7;";
     "${super}+Shift+8" = "move container to workspace number 8; workspace number 8;";
 
-    # ░█▄█░█▀▀░█▀▄░▀█▀░█▀█
-    # ░█░█░█▀▀░█░█░░█░░█▀█
-    # ░▀░▀░▀▀▀░▀▀░░▀▀▀░▀░▀
+    # ░█▀▀░█░█░█▀▀░▀█▀░█▀▀░█▄█
+    # ░▀▀█░░█░░▀▀█░░█░░█▀▀░█░█
+    # ░▀▀▀░░▀░░▀▀▀░░▀░░▀▀▀░▀░▀
     # **Media & Audio**
     "${super}+0" = "exec ${pkgs.bash}/bin/bash ${scriptsDir}/toggle_mic.sh";
     "${super}+minus" = "exec ${pkgs.bash}/bin/bash ${scriptsDir}/sound_sink_switcher.sh";
