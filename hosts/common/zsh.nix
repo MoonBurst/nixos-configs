@@ -36,8 +36,10 @@
       open = "xdg-open";
     };
 
-    interactiveShellInit = ''
-      export SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/moon_keys.txt"
+	interactiveShellInit = ''
+	export SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/moon_keys.txt"
+	SAVEHIST=$HISTSIZE
+	setopt BANG_HIST
 
       if [ -z "$XDG_RUNTIME_DIR" ]; then
         export XDG_RUNTIME_DIR="/run/user/$(id -u)"
@@ -51,7 +53,6 @@
       zstyle ':completion:*:ssh:*' users ' '
       zstyle ':completion:*:*:ssh:*:*' tag-order hosts
 
-      # FIXED COMPRESSION PIPELINE: Packages your assets directly out to your parent nix root path context securely
       nupdate() {
         local HOSTNAME=$(hostname)
         local FLAKE_PATH="$HOME/nix"
@@ -63,8 +64,7 @@
 
         local AGE_KEY="$HOME/.config/sops/age/moon_keys.txt"
 
-        # --- Automated Quickshell resource sync hook (Outputs straight to Nix folder root!) ---
-        local QS_PROJECT_PATH="$HOME/Projects/quickshell"
+        local QS_PROJECT_PATH="$HOME/projects/quickshell"
         if [ -d "$QS_PROJECT_PATH/resources" ]; then
           if [ -f "$AGE_KEY" ]; then
             echo "🔐 Automatically encrypting and updating local resources.tar archive snapshot..."

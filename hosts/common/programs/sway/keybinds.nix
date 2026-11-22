@@ -31,22 +31,21 @@ in
     "${super}+q" = "exec ${pkgs.bash}/bin/bash ${scriptsDir}/safekill.sh";
     "${super}+Shift+q" = "kill";
     "${super}+e" = "exec ${explorer}";
-    "${super}+d" = "exec ~/.local/bin/mbs toggle Launcher";
-    "${super}+k" = "exec ~/.local/bin/mbs toggle Clipboard";
+    "${super}+d"     = "exec ~/.local/bin/moonbeauty --launcher";
+    "${super}+k"     = "exec ~/.local/bin/moonbeauty --clipboard";
     "${super}+Shift+k" = "exec save-replay";
-    "${super}+l" = "exec ~/.local/bin/mbs toggle Lockscreen";
+    "${super}+l"     = "exec ~/.local/bin/moonbeauty --lockscreen";
     # "${super}+m" = "exec ~/.local/bin/mbs toggle Magnifier";   # removed: no Magnifier target exists in OverlayTarget
-    "${super}+o" = "exec ~/.local/bin/mbs toggle Todo";
+    "${super}+o"     = "exec ~/.local/bin/moonbeauty --todo";
     "${super}+v" = "exec dictate";
     #"Escape" = "exec kitty";
 
     # ░█▀▀░█░█░█▀▀░▀█▀░█▀▀░█▄█
     # ░▀▀█░░█░░▀▀█░░█░░█▀▀░█░█
     # ░▀▀▀░░▀░░▀▀▀░░▀░░▀▀▀░▀░▀
-    "${super}+Tab" = "exec /home/moonburst/projects/Moon-Beauty-Shell/target/release/moon-beauty-shell --activate-latest-notif";
-    "${super}+h"   = "exec /home/moonburst/projects/Moon-Beauty-Shell/target/release/moon-beauty-shell --toggle history";
-    "${super}+Escape" = "exec ~/.local/bin/mbs dismiss";
-
+    "${super}+Tab"   = "exec ~/.local/bin/moonbeauty --activate-latest-notif";
+    "${super}+h"     = "exec ~/.local/bin/moonbeauty --history";
+    "${super}+Escape"= "exec ~/.local/bin/moonbeauty --dismiss-notif";
      "${super}+Shift+minus" = "move scratchpad";
      "${super}+Shift+Equal" = "scratchpad show";
 
@@ -54,7 +53,7 @@ in
     # ░█▀▀░█▀▀░█▀▄░█▀▀░█▀▀░█▀█░█▀▀░█░█░█▀█░▀█▀
     # ░▀▀█░█░░░█▀▄░█▀▀░█▀▀░█░█░▀▀█░█▀█░█░█░░█░
     # ░▀▀▀░▀▀▀░▀░▀░▀▀▀░▀▀▀░▀░▀░▀▀▀░▀░▀░▀▀▀░░▀░
-   "${super}+SHIFT+S" = "exec /home/moonburst/.local/bin/moonbeauty --screenshot";
+    "${super}+SHIFT+S" = "exec ~/.local/bin/moonbeauty --screenshot";
 
     # ░█▀▀░█▀▀░█▀▄░█▀▀░█▀▀░█▀█░█▀▀░█░█░█▀█░▀█▀
     # ░▀▀█░█░░░█▀▄░█▀▀░█▀▀░█░█░▀▀█░█▀█░█░█░░█░
@@ -104,12 +103,13 @@ in
     "XF86AudioMute"        = "exec ${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle";
 
   # MPD Media Key Controls
- "F10"             = "exec ${pkgs.playerctl}/bin/playerctl previous";
-  "XF86AudioMedia"  = "exec ${pkgs.playerctl}/bin/playerctl play-pause";
-  "XF86AudioPlay"   = "exec ${pkgs.playerctl}/bin/playerctl play-pause";
-  "XF86AudioStop"   = "exec ${pkgs.playerctl}/bin/playerctl stop";
-  "XF86AudioPrev"   = "exec ${pkgs.playerctl}/bin/playerctl previous";
-  "XF86AudioNext"   = "exec ${pkgs.playerctl}/bin/playerctl next";
+"F10"             = "exec ~/.local/bin/moonbeauty --music-previous";
+"XF86AudioMedia"  = "exec ~/.local/bin/moonbeauty --music-cycle";
+"XF86AudioPlay"   = "exec ~/.local/bin/moonbeauty --music-cycle";
+"XF86AudioStop"   = "exec ~/.local/bin/moonbeauty --music-play-pause";
+"XF86AudioPrev"   = "exec ~/.local/bin/moonbeauty --music-previous";
+"XF86AudioNext"   = "exec ~/.local/bin/moonbeauty --music-next";
+
 
     # **Mouse Cursor Emulation**
     "${super}+Control+Left"   = "seat - cursor move -10 0";

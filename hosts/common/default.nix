@@ -11,10 +11,9 @@
     ./theme.nix
     ./users.nix
     ./zsh.nix
-    ./programs/brave.nix
     ./programs/librewolf.nix
     ./programs/nemo.nix
-    ./programs/quickshell.nix
+    ./programs/ungoogled.nix
   ];
 
   programs.sway.enable = true;

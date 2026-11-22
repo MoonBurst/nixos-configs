@@ -82,7 +82,19 @@
         User moonburst
     '';
   };
-
+services.adguardhome = {
+  enable = true;
+  openFirewall = true;
+  settings = {
+    http = {
+      address = "127.0.0.1:8080";
+    };
+    dns = {
+      bind_hosts = [ "0.0.0.0" ];
+    };
+  };
+};
+networking.nameservers = [ "127.0.0.1" ];
 
   # --- PAM Lockscreen Configuration ---
   security.pam.services.quickshell.enableGnomeKeyring = true;

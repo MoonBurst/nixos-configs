@@ -1,17 +1,395 @@
 { config, pkgs, lib, ... }@args:
 
 let
-  unstablePkgs = if args ? inputs.nixpkgs-unstable
-  then import args.inputs.nixpkgs-unstable {
+  unstablePkgs = import (if args ? inputs.nixpkgs-unstable then args.inputs.nixpkgs-unstable else pkgs.path) {
     system = pkgs.stdenv.hostPlatform.system;
-    config.permittedInsecurePackages = [ "olm-3.2.16" ];
-  }
-  else pkgs;
+    config = {
+      permittedInsecurePackages = [ "olm-3.2.16" ];
+    };
+  };
+
+  # Request pacing and 429 cooldown for the Tumblr client
+  tumblrThrottleGo = pkgs.writeText "throttle.go" ''
+      package tumblr
+
+      import (
+          "context"
+          "errors"
+          "net/http"
+          "os"
+          "strconv"
+          "strings"
+          "sync"
+          "time"
+      )
+
+      const (
+          defaultMinRequestInterval = time.Second
+          rateLimitCooldownBase     = 30 * time.Minute
+          rateLimitCooldownMax      = 6 * time.Hour
+      )
+
+      // Process-wide request pacing. Every Tumblr request waits for its turn, and
+      // after an HTTP 429 all requests are refused locally for a cooldown period so
+      // the bridge stops hammering a server that already asked it to slow down.
+      var throttle struct {
+          sync.Mutex
+          next         time.Time
+          blockedUntil time.Time
+          strikes      int
+          loaded       bool
+      }
+
+      func minRequestInterval() time.Duration {
+          if v := strings.TrimSpace(os.Getenv("TUMBLR_MIN_REQUEST_INTERVAL_MS")); v != "" {
+              if ms, err := strconv.Atoi(v); err == nil && ms >= 0 {
+                  return time.Duration(ms) * time.Millisecond
+              }
+          }
+          return defaultMinRequestInterval
+      }
+
+      func rateLimitFile() string {
+          return strings.TrimSpace(os.Getenv("TUMBLR_RATE_LIMIT_FILE"))
+      }
+
+      // loadRateLimitLocked restores the cooldown from disk once per process, so a
+      // service restart does not immediately send requests again after a 429.
+      func loadRateLimitLocked() {
+          if throttle.loaded {
+              return
+          }
+          throttle.loaded = true
+          path := rateLimitFile()
+          if path == "" {
+              return
+          }
+          data, err := os.ReadFile(path)
+          if err != nil {
+              return
+          }
+          secs, err := strconv.ParseInt(strings.TrimSpace(string(data)), 10, 64)
+          if err != nil {
+              return
+          }
+          throttle.blockedUntil = time.Unix(secs, 0)
+      }
+
+      func saveRateLimitLocked() {
+          path := rateLimitFile()
+          if path == "" {
+              return
+          }
+          _ = os.WriteFile(path, []byte(strconv.FormatInt(throttle.blockedUntil.Unix(), 10)), 0o600)
+      }
+
+      // waitForRequestSlot blocks until this request may be sent, or fails right
+      // away with a local 429 while a rate-limit cooldown is active.
+      func waitForRequestSlot(ctx context.Context, priority bool) error {
+          throttle.Lock()
+          loadRateLimitLocked()
+          now := time.Now()
+          if now.Before(throttle.blockedUntil) {
+              throttle.Unlock()
+              return &Error{
+                  StatusCode: http.StatusTooManyRequests,
+                  Status:     "paused locally after a Tumblr rate limit; will try again later",
+              }
+          }
+          if priority {
+              // User-initiated message sends skip the pacing queue so they are not
+              // stuck behind a long sync backlog. They still honor the cooldown.
+              throttle.Unlock()
+              return nil
+          }
+          slot := throttle.next
+          if slot.Before(now) {
+              slot = now
+          }
+          throttle.next = slot.Add(minRequestInterval())
+          throttle.Unlock()
+
+          wait := time.Until(slot)
+          if wait <= 0 {
+              return nil
+          }
+          timer := time.NewTimer(wait)
+          defer timer.Stop()
+          select {
+          case <-ctx.Done():
+              return ctx.Err()
+          case <-timer.C:
+              return nil
+          }
+      }
+
+      // waitForBootstrapSlot is waitForRequestSlot for the page bootstrap request,
+      // which reports failures as a BootstrapError.
+      func waitForBootstrapSlot(ctx context.Context) error {
+          err := waitForRequestSlot(ctx, false)
+          var apiErr *Error
+          if errors.As(err, &apiErr) {
+              return &BootstrapError{StatusCode: apiErr.StatusCode, Message: apiErr.Status}
+          }
+          return err
+      }
+
+      // noteResponseStatus starts or extends the cooldown after a 429 and clears
+      // the strike counter after a successful response.
+      func noteResponseStatus(resp *http.Response) {
+          if resp == nil {
+              return
+          }
+          throttle.Lock()
+          defer throttle.Unlock()
+          if resp.StatusCode != http.StatusTooManyRequests {
+              if resp.StatusCode < http.StatusBadRequest {
+                  throttle.strikes = 0
+              }
+              return
+          }
+          cooldown := rateLimitCooldownBase
+          for i := 0; i < throttle.strikes && cooldown < rateLimitCooldownMax; i++ {
+              cooldown *= 2
+          }
+          if secs, err := strconv.Atoi(strings.TrimSpace(resp.Header.Get("Retry-After"))); err == nil {
+              if asked := time.Duration(secs) * time.Second; asked > cooldown {
+                  cooldown = asked
+              }
+          }
+          if cooldown > rateLimitCooldownMax {
+              cooldown = rateLimitCooldownMax
+          }
+          throttle.strikes++
+          throttle.blockedUntil = time.Now().Add(cooldown)
+          saveRateLimitLocked()
+      }
+  '';
+
+  tumblrDmsPkg = unstablePkgs.buildGoModule {
+    pname = "tumblr-dms";
+    version = "unstable";
+
+    src = if args ? inputs.tumblr-dms
+      then args.inputs.tumblr-dms
+      else pkgs.fetchFromGitHub {
+        owner = "beeper";
+        repo = "tumblr-dms";
+        rev = "main";
+        hash = lib.fakeHash;
+      };
+
+    proxyVendor = true;
+    vendorHash = "sha256-XRF5hxwck+l9SmtzZqJn99GL+Ztd7pRTPAEa+Pm6GZU=";
+    nativeBuildInputs = [ unstablePkgs.pkg-config ];
+    buildInputs = [ unstablePkgs.olm ];
+    tags = [ "goolm" ];
+    doCheck = false;
+    postPatch = ''
+      cp --no-preserve=mode ${tumblrThrottleGo} pkg/tumblr/throttle.go
+      ${pkgs.python3}/bin/python3 -c '
+# 1. Patch login flow to accept session cookies directly in Matrix chat
+with open("pkg/connector/login.go", "r") as f:
+    s = f.read()
+
+new_step = """func (tl *TumblrLogin) credentialsStep(instructions string) *bridgev2.LoginStep {
+\ttl.step = loginStepIDCredentials
+\treturn &bridgev2.LoginStep{
+\t\tType:         bridgev2.LoginStepTypeUserInput,
+\t\tStepID:       loginStepIDCredentials,
+\t\tInstructions: "Paste your Tumblr Cookie header from browser DevTools (Network tab -> Request Headers -> Cookie):",
+\t\tUserInputParams: &bridgev2.LoginUserInputParams{Fields: []bridgev2.LoginInputDataField{
+\t\t\t{
+\t\t\t\tType: bridgev2.LoginInputFieldTypeToken,
+\t\t\t\tID:   "cookie_header",
+\t\t\t\tName: "Cookie Header",
+\t\t\t},
+\t\t}},
+\t}
+}"""
+
+new_submit = """func (tl *TumblrLogin) submitCredentials(ctx context.Context, input map[string]string) (*bridgev2.LoginStep, error) {
+\trawCookie := strings.TrimSpace(input["cookie_header"])
+\tif rawCookie == "" {
+\t\treturn tl.credentialsStep("Cookie header cannot be empty. Paste the Cookie header from your browser:"), nil
+\t}
+\tcookieMap := map[string]string{
+\t\t"cookie_header": rawCookie,
+\t\tloginFieldUserAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+\t}
+\treturn tl.submitCookieInput(ctx, cookieMap)
+}"""
+
+idx1 = s.find("func (tl *TumblrLogin) credentialsStep(")
+idx2 = s.find("func (tl *TumblrLogin) twoFactorStep(")
+assert idx1 != -1 and idx2 != -1, "credentialsStep range not found"
+s = s[:idx1] + new_step + "\n\n" + s[idx2:]
+
+idx3 = s.find("func (tl *TumblrLogin) submitCredentials(")
+idx4 = s.find("func (tl *TumblrLogin) submitTwoFactor(")
+assert idx3 != -1 and idx4 != -1, "submitCredentials range not found"
+s = s[:idx3] + new_submit + "\n\n" + s[idx4:]
+
+with open("pkg/connector/login.go", "w") as f:
+    f.write(s)
+
+# 1b. Pace requests and pause for a while after an HTTP 429
+p = "pkg/tumblr/client.go"
+c = open(p).read()
+
+old = "\tresp, err := httpClient.Do(req)\n"
+assert c.count(old) == 1
+c = c.replace(old, "\tif err := waitForRequestSlot(ctx, method == http.MethodPost && path == \"/v2/conversations/messages\"); err != nil {\n\t\treturn err\n\t}\n" + old + "\tif err == nil {\n\t\tnoteResponseStatus(resp)\n\t}\n")
+
+old = "\tresp, err := c.bootstrapHTTPClient().Do(req)\n"
+assert c.count(old) == 1
+c = c.replace(old, "\tif err := waitForBootstrapSlot(ctx); err != nil {\n\t\treturn err\n\t}\n" + old + "\tif err == nil {\n\t\tnoteResponseStatus(resp)\n\t}\n")
+
+open(p, "w").write(c)
+
+# 2. Patch backfill to loop backwards through all Tumblr message history during room creation
+with open("pkg/connector/backfill.go", "r") as f:
+    b = f.read()
+
+old_forward = """\tif params.Forward {
+\t\tmessages, ok := params.BundledData.([]tumblr.Message)
+\t\tif ok {
+\t\t\treturn tc.backfillResponseFromMessagesWithAnchorAndLimit(ctx, params.Portal, messages, params.AnchorMessage, count)
+\t\t}
+\t\treturn &bridgev2.FetchMessagesResponse{
+\t\t\tForward: true,
+\t\t\tHasMore: false,
+\t\t}, nil
+\t}"""
+
+new_forward = """\tif err := tc.requireLoggedIn(); err != nil {
+\t\treturn nil, err
+\t}
+\tmeta, err := tc.validatedLoginMetadata()
+\tif err != nil {
+\t\treturn nil, err
+\t}
+\tclient, err := tc.tumblrClient()
+\tif err != nil {
+\t\treturn nil, err
+\t}
+
+\tif params.Forward {
+\t\tvar messages []tumblr.Message
+\t\tif bundled, ok := params.BundledData.([]tumblr.Message); ok {
+\t\t\tmessages = append(messages, bundled...)
+\t\t}
+\t\tcursor := ""
+\t\tif len(messages) > 0 {
+\t\t\toldest := messages[0]
+\t\t\tfor _, m := range messages {
+\t\t\t\tif m.Timestamp < oldest.Timestamp {
+\t\t\t\t\toldest = m
+\t\t\t\t}
+\t\t\t}
+\t\t\tcursor = fmt.Sprintf("%d", oldest.Timestamp)
+\t\t}
+\t\tfor len(messages) < count {
+\t\t\tbatchCount := count - len(messages)
+\t\t\tif batchCount > 100 {
+\t\t\t\tbatchCount = 100
+\t\t\t}
+\t\t\tresp, err := client.GetConversationBefore(ctx, meta.SelectedBlogName, conversationID, batchCount, cursor)
+\t\t\tif err != nil || resp == nil || len(resp.Messages) == 0 {
+\t\t\t\tbreak
+\t\t\t}
+\t\t\tmessages = append(messages, resp.Messages...)
+\t\t\tnextBefore, err := resp.NextBefore()
+\t\t\tif err != nil {
+\t\t\t\tbreak
+\t\t\t}
+\t\t\tnextBefore = strings.TrimSpace(nextBefore)
+\t\t\tif nextBefore == "" || nextBefore == cursor {
+\t\t\t\tbreak
+\t\t\t}
+\t\t\tcursor = nextBefore
+\t\t}
+\t\tif len(messages) > 0 {
+\t\t\treturn tc.backfillResponseFromMessagesWithAnchorAndLimit(ctx, params.Portal, messages, params.AnchorMessage, count)
+\t\t}
+\t\treturn &bridgev2.FetchMessagesResponse{
+\t\t\tForward: true,
+\t\t\tHasMore: false,
+\t\t}, nil
+\t}"""
+
+assert old_forward in b, "old_forward not found in backfill.go"
+b = b.replace(old_forward, new_forward)
+
+old_dupe = """\tif err := tc.requireLoggedIn(); err != nil {
+\t\treturn nil, err
+\t}
+\tmeta, err := tc.validatedLoginMetadata()
+\tif err != nil {
+\t\treturn nil, err
+\t}
+\tcursor := string(params.Cursor)
+\tif cursor == "" && params.AnchorMessage != nil && !params.AnchorMessage.Timestamp.IsZero() {
+\t\tcursor = fmt.Sprintf("%d", params.AnchorMessage.Timestamp.UnixMilli())
+\t}
+\tclient, err := tc.tumblrClient()
+\tif err != nil {
+\t\treturn nil, err
+\t}"""
+
+new_dupe = """\tcursor := string(params.Cursor)
+\tif cursor == "" && params.AnchorMessage != nil && !params.AnchorMessage.Timestamp.IsZero() {
+\t\tcursor = fmt.Sprintf("%d", params.AnchorMessage.Timestamp.UnixMilli())
+\t}"""
+
+assert old_dupe in b, "old_dupe not found in backfill.go"
+b = b.replace(old_dupe, new_dupe)
+
+old_limit = """func (tc *TumblrClient) backfillLimit(requested int) int {
+\tlimit := defaultConversationSyncLimit
+\tif tc != nil && tc.connector != nil {
+\t\tlimit = tc.connector.Config.ConversationSyncBatchLimit()
+\t}
+\tif requested <= 0 || requested > limit {
+\t\treturn limit
+\t}
+\treturn requested
+}"""
+
+new_limit = """func (tc *TumblrClient) backfillLimit(requested int) int {
+\tif requested > 0 {
+\t\treturn requested
+\t}
+\tlimit := defaultConversationSyncLimit
+\tif tc != nil && tc.connector != nil {
+\t\tlimit = tc.connector.Config.ConversationSyncBatchLimit()
+\t}
+\treturn limit
+}"""
+
+assert old_limit in b, "old_limit not found in backfill.go"
+b = b.replace(old_limit, new_limit)
+
+with open("pkg/connector/backfill.go", "w") as f:
+    f.write(b)
+'
+    '';
+
+    postInstall = ''
+      if [ -f "$out/bin/tumblr" ] && [ ! -f "$out/bin/tumblr-dms" ]; then
+        ln -s "$out/bin/tumblr" "$out/bin/tumblr-dms"
+      fi
+    '';
+  };
 
   enableVerboseLogging = false;
 
   registrationPath = "/run/discord-registration.yaml";
   bridgeConfigPath = "/var/lib/mautrix-discord/bridge-config.yaml";
+
+  tumblrRegistrationPath = "/run/tumblr-registration.yaml";
+  tumblrBridgeConfigPath = "/var/lib/tumblr-bridge/bridge-config.yaml";
+
   puppetSecretPath = config.sops.secrets.matrix_double_puppet_secret.path;
   discordEnvPath = config.sops.templates."discord-env".path;
 
@@ -222,6 +600,7 @@ except Exception as e:
 '';
 in
 
+
 {
   nixpkgs.config.permittedInsecurePackages = [
     "olm-3.2.16"
@@ -229,6 +608,7 @@ in
 
   environment.systemPackages = [
     unstablePkgs.cloudflared
+    tumblrDmsPkg
   ];
 
   sops.secrets = {
@@ -239,6 +619,10 @@ in
     "matrix_registration_secret" = { owner = "continuwuity"; };
     "matrix_double_puppet_secret" = { owner = "continuwuity"; };
     "cloudflare_token" = { owner = "continuwuity"; };
+
+    # Tumblr Bridge tokens
+    "matrix_tumblr_as_token" = { owner = "tumblr-bridge"; };
+    "matrix_tumblr_hs_token" = { owner = "tumblr-bridge"; };
   };
 
   sops.templates."continuwuity-env" = {
@@ -314,6 +698,143 @@ in
     '';
   };
 
+  # Bridgev2 Registration for Tumblr Bridge for Matrix
+  sops.templates."tumblr-registration.yaml" = {
+    path = tumblrRegistrationPath;
+    owner = "continuwuity";
+    group = "tumblr-bridge";
+    mode = "0440";
+    content = ''
+      id: tumblrdms
+      as_token: ${config.sops.placeholder.matrix_tumblr_as_token}
+      hs_token: ${config.sops.placeholder.matrix_tumblr_hs_token}
+      namespaces:
+        users:
+          - exclusive: true
+            regex: "@tumblrdms_.*:moonburst.net"
+          - exclusive: true
+            regex: "@tumblrdmsbot:moonburst.net"
+        aliases: [{ exclusive: true, regex: "#tumblrdms_.*:moonburst.net" }]
+      url: "http://127.0.0.1:29335"
+      sender_localpart: tumblrdmsbot
+      rate_limited: false
+    '';
+  };
+
+  # Bridgev2 Configuration for Tumblr Bridge for Matrix
+  sops.templates."tumblr-bridge-config" = {
+    path = tumblrBridgeConfigPath;
+    owner = "tumblr-bridge";
+    content = ''
+      network:
+        displayname_template: "{{ if .DisplayName }}{{ .DisplayName }}{{ else }}{{ .Username }}{{ end }}"
+        # Discover and sync conversation threads from Tumblr (page size, capped at 100 by the bridge)
+        conversation_sync_limit: 50
+        request_timeout_seconds: 30
+        user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125 Safari/537.36"
+
+      bridge:
+        command_prefix: '!tumblr'
+        personal_filtering_spaces: true
+        private_chat_portal_meta: true
+        async_events: false
+        split_portals: false
+        resend_bridge_info: false
+        no_bridge_info_state_key: false
+        bridge_status_notices: errors
+        bridge_matrix_leave: false
+        bridge_notices: false
+        tag_only_on_create: true
+        mute_only_on_create: true
+        kick_matrix_users: true
+        cleanup_on_logout:
+          enabled: false
+        relay:
+          enabled: false
+        permissions:
+          "*": relay
+          "moonburst.net": user
+          "@moonburst:moonburst.net": admin
+
+      database:
+        type: sqlite3-fk-wal
+        uri: file:/var/lib/tumblr-bridge/tumblr.db?_txlock=immediate
+        max_open_conns: 5
+        max_idle_conns: 1
+
+      homeserver:
+        address: http://127.0.0.1:6167
+        domain: moonburst.net
+        software: standard
+        async_media: false
+        websocket: false
+        ping_interval_seconds: 0
+        retry_limit: 4
+
+      appservice:
+        address: http://127.0.0.1:29335
+        hostname: 127.0.0.1
+        port: 29335
+        id: tumblrdms
+        bot:
+          username: tumblrdmsbot
+          displayname: Tumblr Bridge
+          avatar: ""
+        ephemeral_events: true
+        async_transactions: false
+        as_token: ${config.sops.placeholder.matrix_tumblr_as_token}
+        hs_token: ${config.sops.placeholder.matrix_tumblr_hs_token}
+        username_template: tumblrdms_{{.}}
+
+      matrix:
+        message_status_events: false
+        delivery_receipts: false
+        message_error_notices: true
+        sync_direct_chat_list: true
+        federate_rooms: true
+        upload_file_threshold: 5242880
+        ghost_extra_profile_info: false
+
+      provisioning:
+        shared_secret: generate
+        allow_matrix_auth: true
+        debug_endpoints: false
+        enable_session_transfers: false
+        fail_on_webauthn: false
+
+      public_media:
+        enabled: false
+
+      direct_media:
+        enabled: false
+
+      # Full message history backfill: paginates backwards until all history is imported
+      backfill:
+        enabled: true
+        max_initial_messages: 100
+        max_catchup_messages: 50
+        unread_hours_threshold: 720
+
+      double_puppet:
+        servers: {}
+        allow_discovery: false
+        secrets:
+          "moonburst.net": ${config.sops.placeholder.matrix_double_puppet_secret}
+
+      encryption:
+        allow: false
+        default: false
+        require: false
+        pickle_key: generate
+
+      logging:
+        min_level: debug
+        writers:
+          - type: stdout
+            format: pretty-colored
+    '';
+  };
+
   services.matrix-continuwuity = {
     enable = true;
     package = unstablePkgs.matrix-continuwuity;
@@ -328,7 +849,10 @@ in
         url_preview = true;
         url_preview_ip_range_blacklist = [ "127.0.0.0/8" "10.0.0.0/8" "172.16.0.0/12" "192.168.0.0/16" "::1/128" ];
       };
-      appservice.config_files = [ registrationPath ];
+      appservice.config_files = [
+        registrationPath
+        tumblrRegistrationPath
+      ];
     };
   };
 
@@ -365,6 +889,48 @@ in
       LogLevelMax = lib.mkIf (!enableVerboseLogging) "err";
     };
   };
+
+  # Tumblr Bridge for Matrix Daemon
+  systemd.services.tumblr-bridge = {
+    description = "Tumblr Bridge for Matrix";
+    after = [ "network.target" "continuwuity.service" ];
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      ExecStart = "${tumblrDmsPkg}/bin/tumblr-dms -c ${tumblrBridgeConfigPath} -n";
+      Environment = [
+        "TUMBLR_MIN_REQUEST_INTERVAL_MS=1500"
+        "TUMBLR_RATE_LIMIT_FILE=/var/lib/tumblr-bridge/rate-limit-until"
+      ];
+      Restart = "always";
+      RestartSec = "10s";
+      User = "tumblr-bridge";
+      Group = "tumblr-bridge";
+      SupplementaryGroups = [ "continuwuity" ];
+      StateDirectory = "tumblr-bridge";
+      WorkingDirectory = "/var/lib/tumblr-bridge";
+    };
+  };
+
+
+  services.nginx.virtualHosts."_" = {
+  listen = [
+    {
+      addr = "0.0.0.0";
+      port = 80;
+      extraParameters = [ "default_server" ];
+    }
+    {
+      addr = "[::]";
+      port = 80;
+      extraParameters = [ "default_server" ];
+    }
+  ];
+
+  extraConfig = ''
+    return 444;
+  '';
+};
+
 
   services.nginx.virtualHosts."moonburst.net" = {
     listen = defaultListen;
@@ -499,7 +1065,7 @@ in
           proxy_pass https://$sable_upstream;
           proxy_set_header Host $sable_upstream;
           proxy_ssl_server_name on;
-          
+
           proxy_hide_header Content-Security-Policy;
           proxy_set_header Accept-Encoding "";
           sub_filter_once off;
@@ -552,11 +1118,19 @@ in
   users.users.continuwuity = {
     isSystemUser = true;
     group = "continuwuity";
-    extraGroups = [ "mautrix-discord" ];
+    extraGroups = [ "mautrix-discord" "tumblr-bridge" ];
+  };
+
+  users.groups.tumblr-bridge = {};
+  users.users.tumblr-bridge = {
+    isSystemUser = true;
+    group = "tumblr-bridge";
+    extraGroups = [ "continuwuity" ];
   };
 
   systemd.tmpfiles.rules = [
     "d /var/lib/mautrix-discord 0750 mautrix-discord mautrix-discord -"
+    "d /var/lib/tumblr-bridge 0750 tumblr-bridge tumblr-bridge -"
     "d /var/lib/continuwuity 0700 continuwuity continuwuity -"
     "d /var/lib/continuwuity/media 0700 continuwuity continuwuity -"
   ];

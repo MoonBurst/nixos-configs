@@ -27,7 +27,6 @@ in
           browserpass
           sponsorblock
           simple-tab-groups
-          stylus
           tampermonkey
           ublock-origin
           youtube-nonstop
@@ -90,7 +89,7 @@ in
           }
 
           a, a * {
-              color: #${stylixColors.base0D} !important;
+              color: #${stylixColors.base05} !important;
           }
 
           /* Let pages keep their own text color on elements explicitly
@@ -109,110 +108,6 @@ in
               background-color: #${stylixColors.base01} !important;
               color: #${stylixColors.base05} !important;
               border: 1px solid #${stylixColors.base03} !important;
-          }
-      }
-
-      @-moz-document domain("tumblr.com") {
-          :root, [data-theme], body, html, main, div,
-          .CX_9D, .qWqk3, [class*="chat"], [class*="message"] {
-              --content-ui: #${stylixColors.base0B} !important;
-              --color-accent: #${stylixColors.base0B} !important;
-              --brand-color: #${stylixColors.base0B} !important;
-              --accent: #${stylixColors.base0B} !important;
-              --interactive-accent: #${stylixColors.base0B} !important;
-              --brand-sky-blue: #${stylixColors.base0B} !important;
-              --accent-color: #${stylixColors.base0B} !important;
-              --bubble-bg: #${stylixColors.base0B} !important;
-              --content-text-on-ui: #ffffff !important;
-          }
-
-          .CX_9D, .qWqk3,
-          div[style*="0, 184, 255"], div[style*="00b8ff"],
-          [class*="chat_"], [class*="bubble_"], [class*="message_"] {
-              background-color: #${stylixColors.base0B} !important;
-              color: #ffffff !important;
-              border: none !important;
-              outline: none !important;
-              box-shadow: none !important;
-          }
-
-          div.CX_9D, div.qWqk3,
-          div.CX_9D *, div.qWqk3 *,
-          [class*="chat_"] *, [class*="bubble_"] *, [class*="message_"] *,
-          [class*="CX_9D"] *, [class*="qWqk3"] *,
-          span, p, div, li, a, yt-formatted-string,
-          .j17Mp *, .be6E9 *, .CvL1C *, .gCivL * {
-              font-size: 25px !important;
-              line-height: 1.65 !important;
-          }
-
-          .peQ_s, .post-container, .posts-list-item,
-          .CxMIf, .stream-container, .main-stream-content, .items-list {
-              margin-bottom: 0 !important;
-              padding-bottom: 0 !important;
-              margin-top: 0 !important;
-              padding-top: 0 !important;
-              gap: 0px !important;
-          }
-
-          html, body {
-              margin: 0 !important;
-              padding: 0 !important;
-              height: auto !important;
-              min-height: 0 !important;
-          }
-
-          .DMq0a img {
-              width: 100% !important;
-              height: auto !important;
-              display: block;
-          }
-
-          .j17Mp, .be6E9 {
-              width: 1800px !important;
-              max-width: 95vw !important;
-              min-height: calc(50vh) !important;
-              max-height: none !important;
-              transform-origin: bottom right;
-          }
-
-          .CvL1C, .gCivL {
-              width: 1500px !important;
-              max-width: 95vw !important;
-              min-height: calc(1vh) !important;
-              max-height: none !important;
-          }
-
-          .j17Mp, .be6E9, .CvL1C, .gCivL {
-              margin-top: 0 !important;
-              margin-bottom: 0 !important;
-              margin-left: auto;
-              margin-right: auto;
-          }
-
-          .j17Mp + .j17Mp, .j17Mp + .be6E9, .j17Mp + .CvL1C, .j17Mp + .gCivL,
-          .be6E9 + .j17Mp, .be6E9 + .be6E9, .be6E9 + .CvL1C, .be6E9 + .gCivL,
-          .CvL1C + .j17Mp, .CvL1C + .be6E9, .CvL1C + .CvL1C, .CvL1C + .gCivL,
-          .gCivL + .j17Mp, .gCivL + .be6E9, .gCivL + .CvL1C, .gCivL + .gCivL {
-              margin-top: 0 !important;
-              padding-top: 0 !important;
-          }
-
-          .j17Mp > *, .be6E9 > *, .CvL1C > *, .gCivL > * {
-              max-width: 100% !important;
-              width: 1000% !important;
-              box-sizing: border-box;
-              padding: 0 20px !important;
-          }
-
-          .j17Mp p, .j17Mp h1, .j17Mp h2, .j17Mp h3, .j17Mp ul, .j17Mp ol, .j17Mp li,
-          .be6E9 p, .be6E9 h1, .be6E9 h2, .be6E9 h3, .be6E9 ul, .be6E9 ol, .be6E9 li,
-          .CvL1C p, .CvL1C h1, .CvL1C h2, .CvL1C h3, .CvL1C ul, .CvL1C ol, .CvL1C li,
-          .gCivL p, .gCivL h1, .gCivL h2, .gCivL h3, .gCivL ul, .gCivL ol, .gCivL li {
-              margin-top: 0 !important;
-              margin-bottom: 0 !important;
-              padding-top: 0 !important;
-              padding-bottom: 0 !important;
           }
       }
     '';

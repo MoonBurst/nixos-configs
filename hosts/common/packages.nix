@@ -55,6 +55,7 @@
     playerctl                   # Media key control
     wtype                       # Virtual keystroke tool
     fastfetch                   # System info
+    libjxl
     # --- System Libraries & Audio Engines ---
     gdk-pixbuf                  # Image library
     webp-pixbuf-loader          # WebP support for GTK

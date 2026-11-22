@@ -2,7 +2,7 @@
 
 let
   apps = {
-    browser     = pkgs.librewolf;
+    browser     = pkgs.chromium;
     editor      = pkgs.kdePackages.kate;
     fileManager = pkgs.nemo;
     imageViewer = pkgs.qview;
@@ -12,20 +12,39 @@ let
     terminal    = pkgs.ghostty;
   };
 
-  # This helper finds the .desktop filename inside the package automatically
+  # Find the canonical .desktop file for a package, skipping the
+  # autostart / handler / service / portal variants that are
+  # NoDisplay=true and often don't declare the MIME type we want.
+  #
+  # Previously this used lib.findFirst on the raw readDir output, which
+  # sorts alphabetically — for pkgs.nemo that picked
+  # "nemo-autostart.desktop" before "nemo.desktop", breaking inode/directory.
+  # Same class of bug would hit any package with an autostart variant.
   getDesktop = pkg:
     let
       appDir = "${pkg}/share/applications";
-      # Check if the directory exists to prevent build errors
-      files = if builtins.pathExists appDir
-              then builtins.attrNames (builtins.readDir appDir)
-              else [];
-      # Find the first file ending in .desktop
-      desktopFile = lib.findFirst (name: lib.hasSuffix ".desktop" name) "unknown" files;
+      pname  = pkg.pname or (lib.getName pkg);
+      files  = if builtins.pathExists appDir
+               then builtins.attrNames (builtins.readDir appDir)
+               else [];
+      usable = lib.filter (n:
+        lib.hasSuffix ".desktop" n
+        && !(lib.hasInfix "autostart" n)
+        && !(lib.hasInfix "handler" n)
+        && !(lib.hasInfix "service" n)
+        && !(lib.hasInfix "portal" n)
+      ) files;
+      exactName = "${pname}.desktop";
+      kdeName   = "org.kde.${pname}.desktop";
+      ordered =
+        lib.optional (builtins.elem exactName usable) exactName
+        ++ lib.optional (builtins.elem kdeName usable) kdeName
+        ++ usable;
     in
-      desktopFile;
+      if ordered == []
+      then throw "mime.nix: no usable .desktop file found in ${appDir} for ${pname}"
+      else builtins.head ordered;
 
-  # The Notifier Script
   mimeNotifier = pkgs.writeShellScriptBin "mime-fallback" ''
     MIME=$(${pkgs.xdg-utils}/bin/xdg-mime query filetype "$1" | cut -d';' -f1)
     ${pkgs.libnotify}/bin/notify-send \
@@ -34,20 +53,16 @@ let
       --icon=dialog-error
   '';
 
-  # Helper: [ FoundDesktopFile "mime-fallback.desktop" ]
   dumb = pkg: [ (getDesktop pkg) "mime-fallback.desktop" ];
 
 in {
-  # --- 1. SYSTEM LEVEL OPTIONS ---
   options.apps = lib.mkOption {
     type = lib.types.attrsOf lib.types.package;
     default = {};
     description = "Centralized applications list owned by mime.nix";
   };
 
-  # --- 2. SYSTEM LEVEL CONFIGURATIONS ---
   config = {
-    _module.args.apps = apps;
     apps = apps;
 
     environment.systemPackages = [
@@ -93,6 +108,7 @@ in {
           "image/webp"             = dumb apps.imageViewer;
           "image/gif"              = dumb apps.imageViewer;
           "image/bmp"              = dumb apps.imageViewer;
+          "image/jxl"              = dumb apps.imageViewer;
 
           # Documents & Files
           "application/pdf"        = dumb apps.pdfViewer;
@@ -100,8 +116,9 @@ in {
           "application/x-shellscript" = dumb apps.editor;
           "x-scheme-handler/terminal" = dumb apps.terminal;
 
-          # FIXED: Folders must pass a single string or flattened explicit application filename sequence
-          "inode/directory"        = [ "nemo.desktop" ];
+          # Now resolves to "nemo.desktop" automatically — the
+          # getDesktop filter drops "nemo-autostart.desktop".
+          "inode/directory"        = dumb apps.fileManager;
         };
       };
     };

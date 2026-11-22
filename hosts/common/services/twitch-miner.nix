@@ -1,11 +1,11 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 {
-  # 1. Enable Podman virtualization backend
+  # 1. Podman backend (needed for OCI containers + auto-update + auto-prune)
   virtualisation.podman = {
     enable = true;
     dockerCompat = true;
-    defaultNetwork.settings.dns_enabled = true;
+    defaultNetwork.settings.dns_enabled = lib.mkForce false;
 
     autoPrune = {
       enable = true;
@@ -13,7 +13,7 @@
     };
   };
 
-  # Podman Auto-Update Timer (Automatically updates miners on weekly schedule)
+  # Podman Auto-Update Timer
   systemd.timers.podman-auto-update = {
     wantedBy = [ "timers.target" ];
     timerConfig = {
@@ -22,26 +22,25 @@
     };
   };
 
-  # 2. Open necessary ports in the NixOS Firewall
+  # 2. Firewall ports for the two miner web UIs
   networking.firewall.allowedTCPPorts = [
-    8082 5800 # Main Miner
-    8084 5801 # Berrydrop Miner
+    8082 5800 # Main Miner (MoonBurst)
+    8084 5801 # Berrydrop Miner (Berrydropx)
   ];
 
-  # 3. Automatically create directories on the host with correct permissions
+  # 3. Writable data dirs (session files live here)
   systemd.tmpfiles.rules = [
     "d /var/lib/twitch-drops-miner/main 0777 root root -"
     "d /var/lib/twitch-drops-miner/berrydrop 0777 root root -"
   ];
 
-  # 4. Declarative Multi-Container OCI Podman Setup
+  # 4. Declarative OCI containers
   virtualisation.oci-containers = {
     backend = "podman";
     containers = {
-
-      # Container Instance 1: Main Twitch Miner
       "twitch-miner" = {
         image = "docker.io/dungfu/twitch-drops-miner:latest";
+        extraOptions = [ "--dns=10.88.0.1" ];
         autoStart = true;
         labels = {
           "io.containers.autoupdate" = "registry";
@@ -58,9 +57,9 @@
         };
       };
 
-      # Container Instance 2: Berrydrop Twitch Miner
       "twitchminer-berrydrop" = {
         image = "docker.io/dungfu/twitch-drops-miner:latest";
+        extraOptions = [ "--dns=10.88.0.1" ];
         autoStart = true;
         labels = {
           "io.containers.autoupdate" = "registry";
@@ -76,11 +75,10 @@
           TZ = "America/Chicago";
         };
       };
-
     };
   };
 
-  # 5. Passwordless Sudo Rules Strictly for Podman
+  # 5. Passwordless sudo for podman (used by the miner's auto-heal + by you for management)
   security.sudo.extraRules = [
     {
       users = [ "moonburst" ];

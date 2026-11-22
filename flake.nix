@@ -7,11 +7,12 @@
     nur.url = "github:nix-community/NUR";
     fluxer.url = "github:Hy4Ri/fluxer-flake";
     luffy.url = "github:DemonKingSwarn/luffy";
+	chromexup.url = "github:crabdancing/chromexup-flake";
 
-    tumblr-dms = {
-      url = "github:beeper/tumblr-dms";
-      flake = false;
-    };
+  tumblr-dms = {
+    url = "github:beeper/tumblr-dms/13b71e464c7e172ffd8272fd47cf605402b89f5a";
+    flake = false;
+  };
 
     stylix = {
       url = "github:danth/stylix/release-26.05";
@@ -41,6 +42,14 @@
     horizon = {
       url = "github:Fchat-Horizon/Horizon?ref=main";
     };
+
+    sable = {
+      url = "git+https://git.sable.moe/SableClient/sable-next?ref=refs/tags/latest";
+      inputs.nixpkgs.follows = "nixpkgs-unstable";
+    };
+
+
+
 
   };
 

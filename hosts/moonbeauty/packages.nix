@@ -10,17 +10,6 @@ let
     exec ${inputs.horizon.packages.${pkgs.stdenv.hostPlatform.system}.horizon-electron}/bin/horizon-electron --ozone-platform=wayland --password-store=gnome-libsecret "$@"
   '';
 
-  matrixApp = pkgs.writeShellScriptBin "matrix" ''
-    exec ${pkgs.brave}/bin/brave \
-      --app=https://moonburst.net \
-      --class=matrix-app \
-      --name=matrix-app \
-      --user-data-dir="$HOME/.config/matrix-brave" \
-      --no-first-run \
-      --no-singleton-window \
-      --enable-features=UseOzonePlatform \
-      --ozone-platform=wayland
-  '';
 in
 {
   home.packages = with pkgs; [
@@ -31,12 +20,12 @@ in
     unstable.archipelago
     unstable.poptracker
     unstable.quickshell
+    inputs.sable.packages.${pkgs.stdenv.hostPlatform.system}.sable-desktop
 
     # --- Communication & Social ---
     jami
     nicotine-plus
     mission-center
-    matrixApp
 
     # --- Media & Graphics ---
     krita
@@ -63,18 +52,6 @@ in
       icon = "fchat-horizon";
       terminal = false;
       categories = [ "Game" ];
-    };
-
-    matrix-brave = {
-      name = "Matrix (Brave)";
-      genericName = "Matrix Client";
-      exec = "${matrixApp}/bin/matrix";
-      icon = "matrix";
-      terminal = false;
-      categories = [ "Network" "Chat" ];
-      settings = {
-        StartupWMClass = "matrix-app";
-      };
     };
   };
 }
