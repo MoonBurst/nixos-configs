@@ -843,6 +843,10 @@ in
         server_name = "moonburst.net";
         port = [ 6167 ];
         address = [ "127.0.0.1" ];
+        well_known = {
+          client = "https://moonburst.net";
+          server = "moonburst.net:443";
+        };
         max_request_size = 800000000;
         allow_registration = true;
         login_shared_secret_file = puppetSecretPath;
@@ -950,6 +954,12 @@ in
         add_header Content-Type application/json;
         add_header Access-Control-Allow-Origin *;
         return 200 "{\"m.homeserver\":{\"base_url\":\"https://moonburst.net\"},\"org.matrix.msc4143.rtc_foci\":[{\"type\":\"livekit\",\"livekit_service_url\":\"https://matrix.org\"}]}";
+      '';
+
+      "= /.well-known/matrix/support".extraConfig = ''
+        add_header Content-Type application/json;
+        add_header Access-Control-Allow-Origin *;
+        return 200 '{"contacts":[{"matrix_id":"@moonburst:moonburst.net","email":"admin@moonburst.net","role":"m.role.admin"}]}';
       '';
 
       "= /.well-known/security.txt".extraConfig = ''
